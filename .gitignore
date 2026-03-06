@@ -1,0 +1,7 @@
+node_modules/
+dist/
+*.db
+*.mind
+.env
+coverage/
+*.tsbuildinfo
