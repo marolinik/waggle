@@ -6,6 +6,7 @@ import { createDb, type Db } from './db/connection.js';
 import redisPlugin from './plugins/redis.js';
 import authPlugin from './plugins/auth.js';
 import { webhookRoutes } from './routes/webhooks.js';
+import { teamRoutes } from './routes/teams.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -29,6 +30,7 @@ export async function buildServer(configOverrides?: Partial<ServerConfig>) {
   await server.register(redisPlugin);
   await server.register(authPlugin);
   await server.register(webhookRoutes);
+  await server.register(teamRoutes);
 
   // Health check
   server.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
