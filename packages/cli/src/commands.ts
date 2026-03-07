@@ -39,4 +39,5 @@ export const COMMANDS: Record<string, string> = {
   clear: '/clear         — Clear conversation history',
   help: '/help          — Show this help message',
   identity: '/identity      — Show agent identity',
+  admin: '/admin <cmd>   — Admin commands (teams|jobs|cron|audit|stats)',
 };

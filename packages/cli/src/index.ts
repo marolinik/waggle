@@ -25,6 +25,7 @@ Commands (inside REPL):
   /model <name>   Switch model
   /models          List available models
   /identity        Show agent identity
+  /admin <cmd>    Admin commands (teams|jobs|cron|audit|stats)
   /clear           Clear conversation
   /help            Show commands
   /exit            Quit

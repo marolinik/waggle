@@ -11,6 +11,7 @@ import { MindDB, WaggleConfig, type Embedder } from '@waggle/core';
 import { Orchestrator, ModelRouter, openaiChat, type ChatMessage } from '@waggle/agent';
 import { parseCommand, COMMANDS } from './commands.js';
 import { renderMarkdown } from './renderer.js';
+import { AdminClient, formatTable } from './commands/admin.js';
 
 // Mock embedder — same as sidecar, real embeddings in future milestone
 const mockEmbedder: Embedder = {
@@ -64,8 +65,8 @@ export async function startRepl(options: ReplOptions = {}): Promise<void> {
   let currentModel = defaultModel;
 
   // Stats for welcome banner
-  const frameCount = orchestrator.getFrames().count();
-  const sessionCount = orchestrator.getSessions().list().length;
+  const frameCount = (db.getDatabase().prepare('SELECT COUNT(*) as cnt FROM memory_frames').get() as { cnt: number }).cnt;
+  const sessionCount = (db.getDatabase().prepare('SELECT COUNT(*) as cnt FROM sessions').get() as { cnt: number }).cnt;
 
   // Print welcome banner
   console.log('');
@@ -155,6 +156,67 @@ export async function startRepl(options: ReplOptions = {}): Promise<void> {
           console.log('');
           console.log(renderMarkdown(identityCtx));
           console.log('');
+          break;
+        }
+
+        case 'admin': {
+          const adminClient = new AdminClient();
+          const parts = cmd.args.split(/\s+/);
+          const subCmd = parts[0] || '';
+          const teamSlug = parts[1] || '';
+
+          if (!subCmd) {
+            console.log('');
+            console.log(chalk.bold('Admin commands:'));
+            console.log(chalk.dim('  /admin teams              — List teams'));
+            console.log(chalk.dim('  /admin jobs <team-slug>   — List agent jobs'));
+            console.log(chalk.dim('  /admin cron <team-slug>   — List cron schedules'));
+            console.log(chalk.dim('  /admin audit <team-slug>  — List audit log'));
+            console.log(chalk.dim('  /admin stats <team-slug>  — Show usage stats'));
+            console.log('');
+            console.log(chalk.dim('  Set WAGGLE_API_URL and WAGGLE_TOKEN env vars to connect.'));
+            console.log('');
+            break;
+          }
+
+          try {
+            let result: unknown;
+            switch (subCmd) {
+              case 'teams':
+                result = await adminClient.listTeams();
+                break;
+              case 'jobs':
+                if (!teamSlug) { console.log(chalk.red('Usage: /admin jobs <team-slug>')); break; }
+                result = await adminClient.listJobs(teamSlug);
+                break;
+              case 'cron':
+                if (!teamSlug) { console.log(chalk.red('Usage: /admin cron <team-slug>')); break; }
+                result = await adminClient.listCron(teamSlug);
+                break;
+              case 'audit':
+                if (!teamSlug) { console.log(chalk.red('Usage: /admin audit <team-slug>')); break; }
+                result = await adminClient.listAudit(teamSlug);
+                break;
+              case 'stats':
+                if (!teamSlug) { console.log(chalk.red('Usage: /admin stats <team-slug>')); break; }
+                result = await adminClient.getStats(teamSlug);
+                break;
+              default:
+                console.log(chalk.red(`Unknown admin command: ${subCmd}`));
+                console.log(chalk.dim('Type /admin for available commands.'));
+            }
+            if (result !== undefined) {
+              console.log('');
+              if (Array.isArray(result)) {
+                console.log(formatTable(result as Record<string, unknown>[]));
+              } else {
+                console.log(JSON.stringify(result, null, 2));
+              }
+              console.log('');
+            }
+          } catch (err) {
+            console.log(chalk.red(`Admin error: ${(err as Error).message}`));
+          }
           break;
         }
 
