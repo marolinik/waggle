@@ -8,6 +8,7 @@ import authPlugin from './plugins/auth.js';
 import { webhookRoutes } from './routes/webhooks.js';
 import { teamRoutes } from './routes/teams.js';
 import { agentRoutes } from './routes/agents.js';
+import { taskRoutes } from './routes/tasks.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -33,6 +34,7 @@ export async function buildServer(configOverrides?: Partial<ServerConfig>) {
   await server.register(webhookRoutes);
   await server.register(teamRoutes);
   await server.register(agentRoutes);
+  await server.register(taskRoutes);
 
   // Health check
   server.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
