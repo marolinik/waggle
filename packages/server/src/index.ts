@@ -10,6 +10,9 @@ import { teamRoutes } from './routes/teams.js';
 import { agentRoutes } from './routes/agents.js';
 import { taskRoutes } from './routes/tasks.js';
 import { messageRoutes } from './routes/messages.js';
+import { knowledgeRoutes } from './routes/knowledge.js';
+import { resourceRoutes } from './routes/resources.js';
+import { wsGateway } from './ws/gateway.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -37,6 +40,9 @@ export async function buildServer(configOverrides?: Partial<ServerConfig>) {
   await server.register(agentRoutes);
   await server.register(taskRoutes);
   await server.register(messageRoutes);
+  await server.register(knowledgeRoutes);
+  await server.register(resourceRoutes);
+  await server.register(wsGateway);
 
   // Health check
   server.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));

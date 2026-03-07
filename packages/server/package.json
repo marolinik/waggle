@@ -20,6 +20,10 @@
     "drizzle-orm": "^0.44.0",
     "postgres": "^3.4.0",
     "bullmq": "^5.0.0",
-    "ioredis": "^5.4.0"
+    "ioredis": "^5.4.0",
+    "fastify-plugin": "^5.0.0"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.0"
   }
 }
