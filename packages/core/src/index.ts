@@ -17,3 +17,4 @@ export {
   type ScoringWeights,
 } from './mind/scoring.js';
 export type { Embedder } from './mind/embeddings.js';
+export { WaggleConfig, type ProviderEntry } from './config.js';
