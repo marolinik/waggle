@@ -19,7 +19,13 @@
   },
   "license": "MIT",
   "private": true,
-  "keywords": ["ai", "agent", "swarm", "memory", "llm"],
+  "keywords": [
+    "ai",
+    "agent",
+    "swarm",
+    "memory",
+    "llm"
+  ],
   "author": "Marko Markovic",
   "repository": {
     "type": "git",
@@ -28,6 +34,7 @@
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.3.5",
+    "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^4.0.18",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",

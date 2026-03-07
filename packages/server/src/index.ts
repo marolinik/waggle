@@ -16,6 +16,7 @@ import { jobRoutes } from './routes/jobs.js';
 import { cronRoutes } from './routes/cron.js';
 import { suggestionRoutes } from './routes/suggestions.js';
 import { scoutRoutes } from './routes/scout.js';
+import { auditRoutes } from './routes/audit.js';
 import { wsGateway } from './ws/gateway.js';
 import { JobService } from './services/job-service.js';
 
@@ -57,6 +58,7 @@ export async function buildServer(configOverrides?: Partial<ServerConfig>) {
   await server.register(cronRoutes);
   await server.register(suggestionRoutes);
   await server.register(scoutRoutes);
+  await server.register(auditRoutes);
   await server.register(wsGateway);
 
   // Health check
