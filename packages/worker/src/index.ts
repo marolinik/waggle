@@ -64,10 +64,10 @@ export function createWorker(redisUrl = REDIS_URL, databaseUrl = DATABASE_URL) {
 }
 
 // Start if run directly
-const isDirectRun = process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/'));
+const isDirectRun = process.argv[1]?.replace(/\\/g, '/').includes('worker/src/index');
 if (isDirectRun) {
   const { worker } = createWorker();
-  console.log('Waggle agent worker started');
+  console.log('Waggle agent worker started, waiting for jobs...');
 
   worker.on('completed', (job) => {
     console.log(`Job ${job.id} completed`);
