@@ -1,9 +1,11 @@
-import type { MindDB } from '../../src/mind/db.js';
-import { IdentityLayer } from '../../src/mind/identity.js';
-import { AwarenessLayer } from '../../src/mind/awareness.js';
-import { FrameStore } from '../../src/mind/frames.js';
-import { SessionStore } from '../../src/mind/sessions.js';
-import { KnowledgeGraph } from '../../src/mind/knowledge.js';
+import {
+  type MindDB,
+  IdentityLayer,
+  AwarenessLayer,
+  FrameStore,
+  SessionStore,
+  KnowledgeGraph,
+} from '@waggle/core';
 import { AgentSession } from './agent-session.js';
 import { McpManager, type McpServerConfig } from './mcp-manager.js';
 

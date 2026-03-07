@@ -1,5 +1,5 @@
 import { createInterface } from 'readline';
-import { MindDB } from '../../src/mind/db.js';
+import { MindDB } from '@waggle/core';
 import { RpcHandler, type JsonRpcRequest } from './rpc-handler.js';
 import { WeaverScheduler } from './weaver-scheduler.js';
 import path from 'path';

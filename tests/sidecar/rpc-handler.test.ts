@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { RpcHandler } from '../../sidecar/src/rpc-handler.js';
-import { MindDB } from '../../src/mind/db.js';
-import { IdentityLayer } from '../../src/mind/identity.js';
+import { MindDB, IdentityLayer } from '@waggle/core';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';

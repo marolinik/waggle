@@ -8,5 +8,9 @@
     "build": "tsc",
     "start": "node dist/main.js"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@waggle/core": "*",
+    "@waggle/agent": "*",
+    "@waggle/weaver": "*"
+  }
 }
