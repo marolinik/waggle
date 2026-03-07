@@ -12,12 +12,15 @@ import { taskRoutes } from './routes/tasks.js';
 import { messageRoutes } from './routes/messages.js';
 import { knowledgeRoutes } from './routes/knowledge.js';
 import { resourceRoutes } from './routes/resources.js';
+import { jobRoutes } from './routes/jobs.js';
 import { wsGateway } from './ws/gateway.js';
+import { JobService } from './services/job-service.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
     config: ServerConfig;
     db: Db;
+    jobService: JobService;
   }
 }
 
@@ -41,7 +44,13 @@ export async function buildServer(configOverrides?: Partial<ServerConfig>) {
   await server.register(taskRoutes);
   await server.register(messageRoutes);
   await server.register(knowledgeRoutes);
+  // Job service (must be decorated before job routes)
+  const jobService = new JobService(db, config.redisUrl);
+  server.decorate('jobService', jobService);
+  server.addHook('onClose', async () => { await jobService.close(); });
+
   await server.register(resourceRoutes);
+  await server.register(jobRoutes);
   await server.register(wsGateway);
 
   // Health check
