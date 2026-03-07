@@ -5,6 +5,7 @@ import { FrameStore } from '../../src/mind/frames.js';
 import { SessionStore } from '../../src/mind/sessions.js';
 import { KnowledgeGraph } from '../../src/mind/knowledge.js';
 import { AgentSession } from './agent-session.js';
+import { McpManager, type McpServerConfig } from './mcp-manager.js';
 
 export interface JsonRpcRequest {
   jsonrpc: '2.0';
@@ -35,6 +36,7 @@ export class RpcHandler {
   private knowledge: KnowledgeGraph;
   private settings: Settings;
   private agentSession: AgentSession;
+  private mcpManager: McpManager;
 
   constructor(db: MindDB) {
     this.db = db;
@@ -45,6 +47,7 @@ export class RpcHandler {
     this.knowledge = new KnowledgeGraph(db);
     this.settings = { model: 'claude-sonnet-4-6', apiKey: '' };
     this.agentSession = new AgentSession(db);
+    this.mcpManager = new McpManager();
   }
 
   async handle(request: JsonRpcRequest): Promise<JsonRpcResponse> {
@@ -106,6 +109,19 @@ export class RpcHandler {
         (this.settings as Record<string, unknown>)[key] = value;
         return { success: true };
       }
+
+      case 'mcp.list':
+        return this.mcpManager.listServers();
+
+      case 'mcp.add': {
+        const config = params as unknown as McpServerConfig;
+        this.mcpManager.addServer(config);
+        return { success: true };
+      }
+
+      case 'mcp.remove':
+        this.mcpManager.removeServer(params.id as string);
+        return { success: true };
 
       default:
         throw new MethodNotFoundError(method);
