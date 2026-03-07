@@ -64,7 +64,7 @@ describe('BullMQ Worker', () => {
   });
 
   it('tracks job status transitions', async () => {
-    const job = await jobService.createJob(testTeamId, testUserId, 'task', { taskId: 'test-123' });
+    const job = await jobService.createJob(testTeamId, testUserId, 'chat', { message: 'status test' });
 
     // Wait for processing
     await new Promise(r => setTimeout(r, 2000));
