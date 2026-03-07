@@ -1,6 +1,7 @@
 import { createInterface } from 'readline';
 import { MindDB } from '../../src/mind/db.js';
 import { RpcHandler, type JsonRpcRequest } from './rpc-handler.js';
+import { WeaverScheduler } from './weaver-scheduler.js';
 import path from 'path';
 import os from 'os';
 import fs from 'fs';
@@ -14,6 +15,8 @@ if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
 const db = new MindDB(mindPath);
 const handler = new RpcHandler(db);
+const weaver = new WeaverScheduler(db);
+weaver.start();
 
 const rl = createInterface({ input: process.stdin });
 
@@ -33,11 +36,13 @@ rl.on('line', async (line) => {
 });
 
 process.on('SIGTERM', () => {
+  weaver.stop();
   db.close();
   process.exit(0);
 });
 
 process.on('SIGINT', () => {
+  weaver.stop();
   db.close();
   process.exit(0);
 });
