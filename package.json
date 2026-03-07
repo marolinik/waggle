@@ -1,7 +1,7 @@
 {
   "name": "waggle-poc",
   "version": "0.1.0",
-  "description": "Waggle POC - Scientific validation of .mind file, agent loop, and prompt optimization",
+  "description": "Your personal AI agent swarm — persistent memory, model-agnostic, skill-extensible",
   "type": "module",
   "engines": {
     "node": ">=20.0.0"
@@ -19,8 +19,12 @@
   },
   "license": "MIT",
   "private": true,
-  "keywords": [],
-  "author": "",
+  "keywords": ["ai", "agent", "swarm", "memory", "llm"],
+  "author": "Marko Markovic",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/user/waggle.git"
+  },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.3.5",
