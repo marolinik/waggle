@@ -4,6 +4,10 @@ import { agentJobs } from '../../server/src/db/schema.js';
 import { eq } from 'drizzle-orm';
 import { JobProcessor, type JobData } from './job-processor.js';
 import Redis from 'ioredis';
+import { chatHandler } from './handlers/chat-handler.js';
+import { taskHandler } from './handlers/task-handler.js';
+import { waggleHandler } from './handlers/waggle-handler.js';
+import { groupHandler } from './handlers/group-handler.js';
 
 const REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6381';
 const DATABASE_URL = process.env.DATABASE_URL ?? 'postgres://waggle:waggle_dev@localhost:5434/waggle';
@@ -12,11 +16,13 @@ export function createWorker(redisUrl = REDIS_URL, databaseUrl = DATABASE_URL) {
   const db = createDb(databaseUrl);
   const processor = new JobProcessor();
 
-  // Register placeholder handlers (real ones come in Task 3.14)
-  processor.register('chat', async (job) => ({ result: 'chat handler placeholder', input: job.data.input }));
-  processor.register('task', async (job) => ({ result: 'task handler placeholder', input: job.data.input }));
+  // Register job handlers
+  processor.register('chat', chatHandler);
+  processor.register('task', taskHandler);
+  processor.register('waggle', waggleHandler);
+  processor.register('group', groupHandler);
+  // Cron handler placeholder (real implementation in Task 3.16)
   processor.register('cron', async (job) => ({ result: 'cron handler placeholder', input: job.data.input }));
-  processor.register('waggle', async (job) => ({ result: 'waggle handler placeholder', input: job.data.input }));
 
   const url = new URL(redisUrl);
   const worker = new Worker<JobData>('waggle-jobs', async (job) => {
