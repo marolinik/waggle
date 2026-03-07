@@ -1,5 +1,6 @@
 import { eq, and } from 'drizzle-orm';
-import { parseExpression } from 'cron-parser';
+import cronParser from 'cron-parser';
+const { parseExpression } = cronParser;
 import { cronSchedules } from '../db/schema.js';
 import type { Db } from '../db/connection.js';
 

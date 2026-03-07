@@ -68,8 +68,9 @@ export async function buildServer(configOverrides?: Partial<ServerConfig>) {
 }
 
 // Start server if run directly
-const isDirectRun = process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/'));
+const isDirectRun = process.argv[1]?.includes('server/src/index');
 if (isDirectRun) {
   const server = await buildServer();
   await server.listen({ port: server.config.port, host: server.config.host });
+  console.log(`Waggle server listening on ${server.config.host}:${server.config.port}`);
 }
