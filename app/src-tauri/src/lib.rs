@@ -16,6 +16,10 @@ pub fn run() {
             sidecar::send_to_sidecar,
             sidecar::stop_sidecar,
         ])
+        .setup(|app| {
+            tray::setup_tray(app.handle())?;
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
