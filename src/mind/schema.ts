@@ -113,7 +113,6 @@ CREATE INDEX IF NOT EXISTS idx_procedures_name_model ON procedures (name, model)
 
 export const VEC_TABLE_SQL = `
 CREATE VIRTUAL TABLE IF NOT EXISTS memory_frames_vec USING vec0(
-  frame_id INTEGER PRIMARY KEY,
   embedding float[1024]
 );
 `;
