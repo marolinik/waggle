@@ -2,26 +2,29 @@
   "name": "@waggle/server",
   "version": "0.1.0",
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "@waggle/shared": "*",
-    "@waggle/core": "*",
-    "@waggle/agent": "*",
-    "@waggle/waggle-dance": "*",
-    "fastify": "^5.3.0",
-    "@fastify/websocket": "^11.0.0",
-    "@fastify/cors": "^10.0.0",
     "@clerk/fastify": "^2.0.0",
-    "drizzle-orm": "^0.44.0",
-    "postgres": "^3.4.0",
+    "@fastify/cors": "^10.0.0",
+    "@fastify/websocket": "^11.0.0",
+    "@waggle/agent": "*",
+    "@waggle/core": "*",
+    "@waggle/shared": "*",
+    "@waggle/waggle-dance": "*",
     "bullmq": "^5.0.0",
+    "cron-parser": "^4.9.0",
+    "drizzle-orm": "^0.44.0",
+    "fastify": "^5.3.0",
+    "fastify-plugin": "^5.0.0",
     "ioredis": "^5.4.0",
-    "fastify-plugin": "^5.0.0"
+    "postgres": "^3.4.0"
   },
   "devDependencies": {
     "drizzle-kit": "^0.31.0"
