@@ -1,3 +1,3 @@
-// @waggle/waggle-dance
-// Waggle Dance protocol will be built in later tasks
-export {};
+// @waggle/waggle-dance — Waggle Dance protocol and hive query types
+export * from './protocol.js';
+export * from './hive-query.js';
