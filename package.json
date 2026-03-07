@@ -23,6 +23,7 @@
   "author": "",
   "dependencies": {
     "@anthropic-ai/claude-code": "^2.1.71",
+    "@anthropic-ai/sdk": "^0.78.0",
     "@ax-llm/ax": "^19.0.12",
     "better-sqlite3": "^12.6.2",
     "sqlite-vec": "^0.1.7-alpha.2",

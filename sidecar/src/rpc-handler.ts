@@ -4,6 +4,7 @@ import { AwarenessLayer } from '../../src/mind/awareness.js';
 import { FrameStore } from '../../src/mind/frames.js';
 import { SessionStore } from '../../src/mind/sessions.js';
 import { KnowledgeGraph } from '../../src/mind/knowledge.js';
+import { AgentSession } from './agent-session.js';
 
 export interface JsonRpcRequest {
   jsonrpc: '2.0';
@@ -33,6 +34,7 @@ export class RpcHandler {
   private sessions: SessionStore;
   private knowledge: KnowledgeGraph;
   private settings: Settings;
+  private agentSession: AgentSession;
 
   constructor(db: MindDB) {
     this.db = db;
@@ -42,6 +44,7 @@ export class RpcHandler {
     this.sessions = new SessionStore(db);
     this.knowledge = new KnowledgeGraph(db);
     this.settings = { model: 'claude-sonnet-4-6', apiKey: '' };
+    this.agentSession = new AgentSession(db);
   }
 
   async handle(request: JsonRpcRequest): Promise<JsonRpcResponse> {
@@ -75,9 +78,21 @@ export class RpcHandler {
       case 'mind.getAwareness':
         return this.awareness.toContext();
 
-      case 'chat.send':
-        // Stub — real agent session in Task 1.5's agent-session.ts
-        return { acknowledged: true, message: params.message };
+      case 'chat.send': {
+        const message = params.message as string;
+        if (!message) throw new Error('message is required');
+
+        const streamEvents: unknown[] = [];
+        const response = await this.agentSession.sendMessage(
+          message,
+          this.settings.apiKey,
+          this.settings.model,
+          (event) => {
+            streamEvents.push(event);
+          },
+        );
+        return { response, events: streamEvents };
+      }
 
       case 'settings.get':
         return { ...this.settings };
