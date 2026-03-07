@@ -16,7 +16,11 @@ describe('.mind SQLite Schema', () => {
 
   afterEach(() => {
     db.close();
-    if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
+    try {
+      if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
+    } catch {
+      // Windows: file may still be locked briefly after close
+    }
   });
 
   it('creates a single portable file on disk', () => {
