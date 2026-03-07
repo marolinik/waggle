@@ -1,13 +1,17 @@
+import { useState } from 'react';
+import { ChatView } from './components/chat/ChatView';
+import { Sidebar } from './components/layout/Sidebar';
+import { useSidecar } from './hooks/useSidecar';
+
 function App() {
+  const { connected } = useSidecar();
+  const [showSettings, setShowSettings] = useState(false);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[hsl(var(--background))]">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold text-[hsl(var(--foreground))]">
-          Waggle
-        </h1>
-        <p className="mt-2 text-[hsl(var(--muted-foreground))]">
-          Your personal AI agent swarm
-        </p>
+    <div className="flex h-screen">
+      <Sidebar connected={connected} onSettingsClick={() => setShowSettings(!showSettings)} />
+      <div className="flex-1">
+        <ChatView />
       </div>
     </div>
   );
