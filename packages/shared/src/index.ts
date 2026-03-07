@@ -1,3 +1,4 @@
 // @waggle/shared
-// Types, schemas, and constants will be added in Task 3.2
-export {};
+export * from './types.js';
+export * from './schemas.js';
+export * from './constants.js';
