@@ -23,6 +23,7 @@
   "author": "",
   "dependencies": {
     "@anthropic-ai/claude-code": "^2.1.71",
+    "@anthropic-ai/sdk": "^0.78.0",
     "@ax-llm/ax": "^19.0.12",
     "better-sqlite3": "^12.6.2",
     "sqlite-vec": "^0.1.7-alpha.2",
@@ -32,6 +33,7 @@
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.3.5",
     "@vitest/coverage-v8": "^4.0.18",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   }

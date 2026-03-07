@@ -5,3 +5,8 @@ dist/
 .env
 coverage/
 *.tsbuildinfo
+
+# Tauri build artifacts
+app/src-tauri/target/
+app/src-tauri/gen/
+app/src-tauri/.cargo/config.toml
