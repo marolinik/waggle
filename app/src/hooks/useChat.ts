@@ -17,13 +17,14 @@ export function useChat() {
     setIsLoading(true);
 
     try {
-      const response = await ipc.sendMessage(content);
+      const result = await ipc.sendMessage(content);
+      const text = typeof result === 'string'
+        ? result
+        : (result as { response?: string }).response ?? JSON.stringify(result);
       const assistantMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: typeof response === 'string'
-          ? response
-          : JSON.stringify(response),
+        content: text,
         timestamp: Date.now(),
       };
       setMessages(prev => [...prev, assistantMsg]);

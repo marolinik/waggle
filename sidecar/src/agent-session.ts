@@ -60,7 +60,11 @@ export class AgentSession {
       const anthropicTools = tools.map(t => ({
         name: t.name,
         description: t.description,
-        input_schema: t.parameters as Record<string, unknown>,
+        input_schema: {
+          type: 'object' as const,
+          properties: {},
+          ...t.parameters,
+        },
       }));
 
       let messages: Array<{ role: 'user' | 'assistant'; content: string | Array<unknown> }> = [

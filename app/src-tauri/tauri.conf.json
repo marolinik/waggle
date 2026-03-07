@@ -9,6 +9,9 @@
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build"
   },
+  "bundle": {
+    "icon": ["icons/icon.ico"]
+  },
   "app": {
     "windows": [
       {
@@ -25,13 +28,7 @@
   },
   "plugins": {
     "shell": {
-      "scope": [
-        {
-          "name": "node",
-          "cmd": "node",
-          "args": true
-        }
-      ]
+      "open": true
     }
   }
 }
