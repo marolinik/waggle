@@ -1,3 +1,40 @@
-// @waggle/server
-// Fastify server will be built in Task 3.4
-export {};
+import Fastify from 'fastify';
+import cors from '@fastify/cors';
+import websocket from '@fastify/websocket';
+import { loadConfig, type ServerConfig } from './config.js';
+import { createDb, type Db } from './db/connection.js';
+import redisPlugin from './plugins/redis.js';
+
+declare module 'fastify' {
+  interface FastifyInstance {
+    config: ServerConfig;
+    db: Db;
+  }
+}
+
+export async function buildServer(configOverrides?: Partial<ServerConfig>) {
+  const config = { ...loadConfig(), ...configOverrides };
+
+  const server = Fastify({ logger: true });
+
+  server.decorate('config', config);
+
+  const db = createDb(config.databaseUrl);
+  server.decorate('db', db);
+
+  await server.register(cors, { origin: config.corsOrigin });
+  await server.register(websocket);
+  await server.register(redisPlugin);
+
+  // Health check
+  server.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
+
+  return server;
+}
+
+// Start server if run directly
+const isDirectRun = process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/'));
+if (isDirectRun) {
+  const server = await buildServer();
+  await server.listen({ port: server.config.port, host: server.config.host });
+}
