@@ -6,15 +6,15 @@ import { FrameStore } from '../../src/mind/frames.js';
 import { SessionStore } from '../../src/mind/sessions.js';
 import { HybridSearch } from '../../src/mind/search.js';
 import { KnowledgeGraph } from '../../src/mind/knowledge.js';
-import { MemoryWeaver } from '../../src/weaver/consolidation.js';
-import { Orchestrator } from '../../src/agent/orchestrator.js';
+import { MemoryWeaver } from '@waggle/weaver';
+import { Orchestrator } from '@waggle/agent';
 import { MockEmbedder } from '../mind/helpers/mock-embedder.js';
 import {
   PROGRAM_REGISTRY,
   createSummarizer,
   createClassifier,
   createPromptExpander,
-} from '../../src/optimizer/signatures.js';
+} from '@waggle/optimizer';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';

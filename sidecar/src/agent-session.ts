@@ -1,6 +1,5 @@
-import { Orchestrator, type OrchestratorConfig } from '../../src/agent/orchestrator.js';
-import type { MindDB } from '../../src/mind/db.js';
-import type { Embedder } from '../../src/mind/embeddings.js';
+import { Orchestrator, type OrchestratorConfig } from '@waggle/agent';
+import type { MindDB, Embedder } from '@waggle/core';
 
 // Mock embedder for M1 — real embeddings in M2
 const mockEmbedder: Embedder = {

@@ -4,6 +4,8 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "lib": ["ES2022"],
+    "outDir": "dist",
+    "rootDir": "src",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -11,14 +13,12 @@
     "resolveJsonModule": true,
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "composite": true
   },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "tests"],
   "references": [
-    { "path": "packages/core" },
-    { "path": "packages/agent" },
-    { "path": "packages/optimizer" },
-    { "path": "packages/weaver" }
-  ],
-  "include": [],
-  "exclude": ["node_modules", "dist"]
+    { "path": "../core" }
+  ]
 }

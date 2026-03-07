@@ -1,10 +1,12 @@
-import type { MindDB } from '../mind/db.js';
-import type { IdentityLayer } from '../mind/identity.js';
-import type { AwarenessLayer } from '../mind/awareness.js';
-import type { FrameStore } from '../mind/frames.js';
-import type { SessionStore } from '../mind/sessions.js';
-import type { HybridSearch } from '../mind/search.js';
-import type { KnowledgeGraph } from '../mind/knowledge.js';
+import type {
+  MindDB,
+  IdentityLayer,
+  AwarenessLayer,
+  FrameStore,
+  SessionStore,
+  HybridSearch,
+  KnowledgeGraph,
+} from '@waggle/core';
 
 export interface ToolDefinition {
   name: string;

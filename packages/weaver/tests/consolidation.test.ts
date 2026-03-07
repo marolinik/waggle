@@ -1,8 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { MindDB } from '../../src/mind/db.js';
-import { FrameStore, type Importance } from '../../src/mind/frames.js';
-import { SessionStore } from '../../src/mind/sessions.js';
-import { MemoryWeaver } from '../../src/weaver/consolidation.js';
+import { MindDB, FrameStore, type Importance, SessionStore } from '@waggle/core';
+import { MemoryWeaver } from '../src/consolidation.js';
 
 describe('Memory Weaver (Consolidation)', () => {
   let db: MindDB;

@@ -1,11 +1,13 @@
-import type { MindDB } from '../mind/db.js';
-import { IdentityLayer } from '../mind/identity.js';
-import { AwarenessLayer } from '../mind/awareness.js';
-import { FrameStore } from '../mind/frames.js';
-import { SessionStore } from '../mind/sessions.js';
-import { HybridSearch } from '../mind/search.js';
-import { KnowledgeGraph } from '../mind/knowledge.js';
-import type { Embedder } from '../mind/embeddings.js';
+import {
+  type MindDB,
+  IdentityLayer,
+  AwarenessLayer,
+  FrameStore,
+  SessionStore,
+  HybridSearch,
+  KnowledgeGraph,
+  type Embedder,
+} from '@waggle/core';
 import { createMindTools, type ToolDefinition } from './tools.js';
 
 export interface OrchestratorConfig {

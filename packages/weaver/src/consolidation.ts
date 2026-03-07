@@ -1,6 +1,4 @@
-import type { MindDB } from '../mind/db.js';
-import type { FrameStore, MemoryFrame, Importance } from '../mind/frames.js';
-import type { SessionStore } from '../mind/sessions.js';
+import type { MindDB, FrameStore, MemoryFrame, Importance, SessionStore } from '@waggle/core';
 
 const IMPORTANCE_UPGRADE: Record<string, Importance> = {
   temporary: 'normal',

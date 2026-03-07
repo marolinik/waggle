@@ -8,8 +8,8 @@ import {
   createPromptExpander,
   getProgram,
   PROGRAM_REGISTRY,
-} from '../../src/optimizer/signatures.js';
-import { PromptOptimizer } from '../../src/optimizer/optimizer.js';
+} from '../src/signatures.js';
+import { PromptOptimizer } from '../src/optimizer.js';
 import type { AxAIService } from '@ax-llm/ax';
 
 // Convert camelCase to Title Case (what Ax uses in prompts)
