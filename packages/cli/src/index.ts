@@ -16,6 +16,8 @@ Waggle CLI — interactive AI agent with persistent memory
 Usage:
   waggle                  Start interactive REPL
   waggle --model <name>   Start with a specific model
+  waggle --local          Force local mode (no server)
+  waggle --team           Force team mode (requires login)
   waggle --help           Show this help message
 
 Configuration:
@@ -45,7 +47,10 @@ if (modelIdx !== -1 && args[modelIdx + 1]) {
   model = args[modelIdx + 1];
 }
 
-startRepl({ model }).catch((err) => {
+const local = args.includes('--local');
+const team = args.includes('--team');
+
+startRepl({ model, local, team }).catch((err) => {
   console.error('Fatal error:', (err as Error).message);
   process.exit(1);
 });

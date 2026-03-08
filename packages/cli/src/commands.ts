@@ -40,4 +40,8 @@ export const COMMANDS: Record<string, string> = {
   help: '/help          — Show this help message',
   identity: '/identity      — Show agent identity',
   admin: '/admin <cmd>   — Admin commands (teams|jobs|cron|audit|stats)',
+  login: '/login         — Log in via browser (Clerk OAuth)',
+  logout: '/logout        — Log out and clear stored token',
+  whoami: '/whoami        — Show current user and mode',
+  mode: '/mode          — Show current mode (local/team)',
 };
