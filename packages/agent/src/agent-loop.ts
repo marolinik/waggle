@@ -50,12 +50,17 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
   ];
 
   // Build OpenAI-format tool definitions
+  // Ensure all parameter schemas have type: 'object' (required by Anthropic via LiteLLM)
   const openaiTools = tools.map((t) => ({
     type: 'function' as const,
     function: {
       name: t.name,
       description: t.description,
-      parameters: t.parameters,
+      parameters: {
+        type: 'object' as const,
+        properties: {},
+        ...t.parameters,
+      },
     },
   }));
 
