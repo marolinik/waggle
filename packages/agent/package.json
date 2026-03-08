@@ -12,7 +12,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@waggle/core": "*"
+    "@waggle/core": "*",
+    "glob": "^13.0.6"
   },
   "license": "MIT"
 }

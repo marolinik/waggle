@@ -1,5 +1,6 @@
 export { Orchestrator, type OrchestratorConfig } from './orchestrator.js';
 export { createMindTools, type ToolDefinition, type MindToolDeps } from './tools.js';
+export { createSystemTools } from './system-tools.js';
 export {
   ModelRouter,
   type ProviderConfig,
