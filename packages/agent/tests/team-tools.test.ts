@@ -1,0 +1,184 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { createTeamTools, type TeamToolDeps } from '../src/team-tools.js';
+import type { ToolDefinition } from '../src/tools.js';
+
+function makeDeps(fetchMock: ReturnType<typeof vi.fn>): TeamToolDeps {
+  return {
+    serverUrl: 'http://localhost:3000',
+    authToken: 'test-token-123',
+    teamSlug: 'alpha-team',
+    fetch: fetchMock as unknown as typeof globalThis.fetch,
+  };
+}
+
+function okResponse(data: unknown): Response {
+  return {
+    ok: true,
+    status: 200,
+    json: async () => data,
+    text: async () => JSON.stringify(data),
+  } as unknown as Response;
+}
+
+function errorResponse(status: number, message: string): Response {
+  return {
+    ok: false,
+    status,
+    statusText: message,
+    text: async () => message,
+  } as unknown as Response;
+}
+
+describe('createTeamTools', () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  let deps: TeamToolDeps;
+  let tools: ToolDefinition[];
+
+  beforeEach(() => {
+    fetchMock = vi.fn();
+    deps = makeDeps(fetchMock);
+    tools = createTeamTools(deps);
+  });
+
+  function getTool(name: string): ToolDefinition {
+    const tool = tools.find((t) => t.name === name);
+    if (!tool) throw new Error(`Tool "${name}" not found`);
+    return tool;
+  }
+
+  it('creates all 5 team tools', () => {
+    const names = tools.map((t) => t.name);
+    expect(names).toContain('check_hive');
+    expect(names).toContain('share_to_team');
+    expect(names).toContain('create_team_task');
+    expect(names).toContain('claim_team_task');
+    expect(names).toContain('send_waggle_message');
+    expect(tools).toHaveLength(5);
+  });
+
+  describe('check_hive', () => {
+    it('calls knowledge search API with topic', async () => {
+      fetchMock.mockResolvedValueOnce(okResponse([
+        { id: '1', name: 'React patterns', type: 'concept' },
+        { id: '2', name: 'React hooks', type: 'concept' },
+      ]));
+
+      const tool = getTool('check_hive');
+      const result = await tool.execute({ topic: 'React' });
+
+      expect(fetchMock).toHaveBeenCalledOnce();
+      const [url, opts] = fetchMock.mock.calls[0];
+      expect(url).toBe('http://localhost:3000/api/teams/alpha-team/knowledge?search=React');
+      expect(opts.method).toBe('GET');
+      expect(opts.headers['Authorization']).toBe('Bearer test-token-123');
+      expect(result).toContain('React patterns');
+    });
+
+    it('returns message when no knowledge found', async () => {
+      fetchMock.mockResolvedValueOnce(okResponse([]));
+
+      const tool = getTool('check_hive');
+      const result = await tool.execute({ topic: 'quantum computing' });
+      expect(result).toContain('No existing team knowledge found');
+    });
+  });
+
+  describe('share_to_team', () => {
+    it('posts to knowledge API', async () => {
+      fetchMock.mockResolvedValueOnce(okResponse({ id: 'entity-1' }));
+
+      const tool = getTool('share_to_team');
+      const result = await tool.execute({ content: 'Found a great pattern for error handling', type: 'discovery' });
+
+      expect(fetchMock).toHaveBeenCalledOnce();
+      const [url, opts] = fetchMock.mock.calls[0];
+      expect(url).toBe('http://localhost:3000/api/teams/alpha-team/knowledge/entities');
+      expect(opts.method).toBe('POST');
+      const body = JSON.parse(opts.body);
+      expect(body.name).toBe('Found a great pattern for error handling');
+      expect(body.type).toBe('discovery');
+      expect(result).toContain('Shared');
+    });
+
+    it('truncates name to 100 chars', async () => {
+      fetchMock.mockResolvedValueOnce(okResponse({ id: 'entity-2' }));
+
+      const longContent = 'A'.repeat(200);
+      const tool = getTool('share_to_team');
+      await tool.execute({ content: longContent, type: 'insight' });
+
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect(body.name.length).toBe(100);
+    });
+  });
+
+  describe('create_team_task', () => {
+    it('posts to tasks API', async () => {
+      fetchMock.mockResolvedValueOnce(okResponse({ id: 'task-1', title: 'Fix bug' }));
+
+      const tool = getTool('create_team_task');
+      const result = await tool.execute({ title: 'Fix bug', description: 'There is a bug', priority: 'high' });
+
+      expect(fetchMock).toHaveBeenCalledOnce();
+      const [url, opts] = fetchMock.mock.calls[0];
+      expect(url).toBe('http://localhost:3000/api/teams/alpha-team/tasks');
+      expect(opts.method).toBe('POST');
+      const body = JSON.parse(opts.body);
+      expect(body.title).toBe('Fix bug');
+      expect(body.description).toBe('There is a bug');
+      expect(body.priority).toBe('high');
+      expect(result).toContain('task');
+    });
+  });
+
+  describe('claim_team_task', () => {
+    it('patches task status to in_progress', async () => {
+      fetchMock.mockResolvedValueOnce(okResponse({ id: 'task-1', status: 'in_progress' }));
+
+      const tool = getTool('claim_team_task');
+      const result = await tool.execute({ task_id: 'task-42' });
+
+      expect(fetchMock).toHaveBeenCalledOnce();
+      const [url, opts] = fetchMock.mock.calls[0];
+      expect(url).toBe('http://localhost:3000/api/teams/alpha-team/tasks/task-42');
+      expect(opts.method).toBe('PATCH');
+      const body = JSON.parse(opts.body);
+      expect(body.status).toBe('in_progress');
+      expect(result).toContain('Claimed');
+    });
+  });
+
+  describe('send_waggle_message', () => {
+    it('posts message to team', async () => {
+      fetchMock.mockResolvedValueOnce(okResponse({ id: 'msg-1' }));
+
+      const tool = getTool('send_waggle_message');
+      const result = await tool.execute({ message: 'Found relevant docs', type: 'waggle' });
+
+      expect(fetchMock).toHaveBeenCalledOnce();
+      const [url, opts] = fetchMock.mock.calls[0];
+      expect(url).toBe('http://localhost:3000/api/teams/alpha-team/messages');
+      expect(opts.method).toBe('POST');
+      const body = JSON.parse(opts.body);
+      expect(body.content).toBe('Found relevant docs');
+      expect(body.type).toBe('waggle');
+      expect(result).toContain('sent');
+    });
+  });
+
+  describe('error handling', () => {
+    it('throws on API error', async () => {
+      fetchMock.mockResolvedValueOnce(errorResponse(403, 'Forbidden'));
+
+      const tool = getTool('check_hive');
+      await expect(tool.execute({ topic: 'test' })).rejects.toThrow('403');
+    });
+
+    it('throws on network failure', async () => {
+      fetchMock.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+
+      const tool = getTool('share_to_team');
+      await expect(tool.execute({ content: 'test', type: 'note' })).rejects.toThrow('ECONNREFUSED');
+    });
+  });
+});
