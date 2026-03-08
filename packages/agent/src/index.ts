@@ -3,6 +3,7 @@ export { createMindTools, type ToolDefinition, type MindToolDeps } from './tools
 export { createSystemTools } from './system-tools.js';
 export {
   ModelRouter,
+  createLiteLLMRouter,
   type ProviderConfig,
   type ProviderEntry,
   type ResolvedModel,
