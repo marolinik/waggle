@@ -260,3 +260,62 @@ docker compose exec postgres psql -U waggle -d waggle -c "SELECT 1"
 
 ### Clerk authentication failures in development
 For local testing without Clerk, tests override the auth handler via `server._authHandler.fn`. See existing tests for examples.
+
+---
+
+## M3a: CLI → Server + Real LLM
+
+### Prerequisites
+- Docker Desktop running
+- Anthropic API key (or OpenAI API key)
+
+### Setup
+
+1. **Start all services:**
+   ```bash
+   cd waggle-poc
+   docker compose up -d
+   ```
+   This starts PostgreSQL (5434), Redis (6381), and LiteLLM (4000).
+
+2. **Configure API keys:**
+   Create `.env` in `waggle-poc/`:
+   ```
+   ANTHROPIC_API_KEY=sk-ant-...
+   OPENAI_API_KEY=sk-...  # optional
+   LITELLM_MASTER_KEY=sk-waggle-dev
+   ```
+
+3. **Run CLI:**
+   ```bash
+   cd packages/cli
+   npx tsx src/index.ts
+   ```
+
+4. **Login (optional, for team mode):**
+   ```
+   /login
+   ```
+
+### Modes
+- **Local mode:** Direct LiteLLM → LLM (fast, no server needed)
+- **Team mode:** CLI → Server → Worker → LiteLLM → LLM (full team features)
+
+### CLI Flags
+- `--local` — Force local mode
+- `--team` — Force team mode (requires login)
+
+### Available Tools
+- **System tools:** `bash`, `read_file`, `write_file`, `edit_file`, `search_files`, `search_content`
+- **Memory tools:** `save_memory`, `search_memory`, `query_knowledge`, `get_identity`, `get_awareness`, `add_task`
+- **Team tools (team mode only):** `check_hive`, `share_to_team`, `create_team_task`, `claim_team_task`, `send_waggle_message`
+
+### Commands
+- `/model <name>` — Switch model (claude-sonnet, gpt-4o, claude-haiku)
+- `/models` — List available models
+- `/login` — Browser OAuth login
+- `/logout` — Clear stored token
+- `/whoami` — Show user and mode
+- `/mode` — Show current mode
+- `/clear` — Clear conversation
+- `/admin` — Admin commands
