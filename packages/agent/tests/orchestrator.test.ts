@@ -56,8 +56,9 @@ describe('Agent Loop with Custom Tools', () => {
       expect(result).toContain('Personal Assistant');
     });
 
-    it('throws when no identity configured', async () => {
-      await expect(orchestrator.executeTool('get_identity', {})).rejects.toThrow('No identity configured');
+    it('returns message when no identity configured', async () => {
+      const result = await orchestrator.executeTool('get_identity', {});
+      expect(result).toContain('No identity configured');
     });
   });
 

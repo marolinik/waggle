@@ -139,7 +139,11 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
       const tool = toolMap.get(fnName);
       let result: string;
       if (tool) {
-        result = await tool.execute(fnArgs);
+        try {
+          result = await tool.execute(fnArgs);
+        } catch (err) {
+          result = `Error: ${(err as Error).message}`;
+        }
         toolsUsed.push(fnName);
       } else {
         result = `Error: Unknown tool "${fnName}"`;

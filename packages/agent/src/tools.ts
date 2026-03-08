@@ -32,6 +32,7 @@ export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
       description: 'Get the agent identity (who am I, what is my role)',
       parameters: {},
       execute: async () => {
+        if (!deps.identity.exists()) return 'No identity configured yet.';
         return deps.identity.toContext();
       },
     },
