@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ModelRouter, type ProviderConfig } from '../src/model-router.js';
+import { ModelRouter, createLiteLLMRouter, type ProviderConfig } from '../src/model-router.js';
 
 const testConfig: ProviderConfig = {
   providers: {
@@ -68,5 +68,28 @@ describe('ModelRouter', () => {
   it('returns default model name', () => {
     const router = new ModelRouter(testConfig);
     expect(router.getDefaultModel()).toBe('claude-sonnet-4-20250514');
+  });
+});
+
+describe('createLiteLLMRouter', () => {
+  it('creates router with all models pointing to LiteLLM', () => {
+    const router = createLiteLLMRouter({
+      litellmUrl: 'http://localhost:4000/v1',
+      litellmApiKey: 'sk-test',
+    });
+    const resolved = router.resolve('claude-sonnet');
+    expect(resolved.provider).toBe('litellm');
+    expect(resolved.baseUrl).toBe('http://localhost:4000/v1');
+    expect(resolved.apiKey).toBe('sk-test');
+  });
+
+  it('uses custom models list', () => {
+    const router = createLiteLLMRouter({
+      litellmUrl: 'http://localhost:4000/v1',
+      litellmApiKey: 'sk-test',
+      models: ['my-model'],
+      defaultModel: 'my-model',
+    });
+    expect(router.listModels()).toEqual(['my-model']);
   });
 });

@@ -110,4 +110,27 @@ export async function wsGateway(fastify: FastifyInstance) {
       // Ignore malformed messages from Redis
     }
   });
+
+  // Subscribe to job progress channels via pattern matching
+  await fastify.redisSub.psubscribe('job:*:progress');
+
+  // Forward job progress events to WebSocket clients
+  fastify.redisSub.on('pmessage', (_pattern: string, channel: string, data: string) => {
+    const jobMatch = channel.match(/^job:(.+):progress$/);
+    if (!jobMatch) return;
+    try {
+      const parsed = JSON.parse(data);
+      const event: WsServerEvent = {
+        type: 'job_progress',
+        jobId: jobMatch[1],
+        progress: parsed,
+      };
+      // Route to the team that owns this job
+      if (parsed.teamId) {
+        connectionManager.broadcast(parsed.teamId, event);
+      }
+    } catch {
+      // Ignore malformed messages from Redis
+    }
+  });
 }

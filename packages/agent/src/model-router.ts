@@ -75,3 +75,29 @@ export class ModelRouter {
     return this.config.defaultModel;
   }
 }
+
+/**
+ * Factory: create a ModelRouter that routes all models through a LiteLLM proxy.
+ * Every model in the list is registered under a single "litellm" provider
+ * pointing at the given base URL.
+ */
+export function createLiteLLMRouter(config: {
+  litellmUrl: string;
+  litellmApiKey: string;
+  models?: string[];
+  defaultModel?: string;
+}): ModelRouter {
+  const models = config.models ?? ['claude-sonnet', 'gpt-4o', 'claude-haiku'];
+  const defaultModel = config.defaultModel ?? models[0];
+
+  return new ModelRouter({
+    providers: {
+      litellm: {
+        apiKey: config.litellmApiKey,
+        models,
+        baseUrl: config.litellmUrl,
+      },
+    },
+    defaultModel,
+  });
+}

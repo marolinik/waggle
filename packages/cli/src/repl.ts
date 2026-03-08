@@ -2,16 +2,19 @@
  * Interactive REPL for the Waggle CLI.
  *
  * Loads WaggleConfig, MindDB, Orchestrator, ModelRouter.
+ * Uses runAgentLoop() via LiteLLM for all chat interactions.
  * Supports slash commands and multi-model chat with tool use.
  */
 
 import readline from 'node:readline';
 import chalk from 'chalk';
 import { MindDB, WaggleConfig, type Embedder } from '@waggle/core';
-import { Orchestrator, ModelRouter, openaiChat, type ChatMessage } from '@waggle/agent';
+import { Orchestrator, ModelRouter, runAgentLoop, createSystemTools, Workspace } from '@waggle/agent';
 import { parseCommand, COMMANDS } from './commands.js';
 import { renderMarkdown } from './renderer.js';
 import { AdminClient, formatTable } from './commands/admin.js';
+import { AuthManager } from './auth.js';
+import { detectMode, checkServerHealth } from './mode-detector.js';
 
 // Mock embedder — same as sidecar, real embeddings in future milestone
 const mockEmbedder: Embedder = {
@@ -40,6 +43,8 @@ const mockEmbedder: Embedder = {
 
 export interface ReplOptions {
   model?: string;
+  local?: boolean;
+  team?: boolean;
 }
 
 export async function startRepl(options: ReplOptions = {}): Promise<void> {
@@ -64,6 +69,37 @@ export async function startRepl(options: ReplOptions = {}): Promise<void> {
 
   let currentModel = defaultModel;
 
+  // Init workspace
+  const workspace = new Workspace(process.cwd());
+  workspace.init();
+
+  // Detect mode
+  const auth = new AuthManager();
+  const modeResult = await detectMode({
+    hasToken: auth.isLoggedIn(),
+    serverUrl: auth.getServerUrl(),
+    forceLocal: options.local ?? false,
+    forceTeam: options.team ?? false,
+    healthCheck: checkServerHealth,
+  });
+
+  if (modeResult.type === 'error') {
+    console.log(chalk.red(modeResult.error ?? 'Mode detection failed.'));
+    db.close();
+    process.exit(1);
+  }
+
+  // Get LiteLLM config from workspace
+  const wsConfig = workspace.getConfig();
+  const litellmUrl = wsConfig.litellmUrl ?? 'http://localhost:4000/v1';
+  const litellmApiKey = process.env.LITELLM_API_KEY ?? process.env.LITELLM_MASTER_KEY ?? 'sk-waggle-dev';
+
+  // Build system tools
+  const systemTools = createSystemTools(process.cwd());
+
+  // Start session
+  const sessionId = workspace.startSession();
+
   // Stats for welcome banner
   const frameCount = (db.getDatabase().prepare('SELECT COUNT(*) as cnt FROM memory_frames').get() as { cnt: number }).cnt;
   const sessionCount = (db.getDatabase().prepare('SELECT COUNT(*) as cnt FROM sessions').get() as { cnt: number }).cnt;
@@ -72,15 +108,20 @@ export async function startRepl(options: ReplOptions = {}): Promise<void> {
   console.log('');
   console.log(chalk.bold.magenta('  Waggle') + chalk.dim(' — AI agent with persistent memory'));
   console.log(chalk.dim('  ─────────────────────────────────────'));
+  console.log(chalk.dim('  Mode:     ') + chalk.cyan(modeResult.type));
   console.log(chalk.dim('  Model:    ') + chalk.cyan(currentModel));
   console.log(chalk.dim('  Memory:   ') + chalk.cyan(`${frameCount} frames`));
   console.log(chalk.dim('  Sessions: ') + chalk.cyan(`${sessionCount}`));
   console.log(chalk.dim('  Mind:     ') + chalk.cyan(mindPath));
+  console.log(chalk.dim('  Workspace:') + chalk.cyan(` ${process.cwd()}`));
+  if (modeResult.warning) {
+    console.log(chalk.yellow('  ⚠ ' + modeResult.warning));
+  }
   console.log(chalk.dim('  Type /help for commands'));
   console.log('');
 
-  // Conversation history for Anthropic tool loop
-  let conversationHistory: Array<{ role: 'user' | 'assistant'; content: string | Array<unknown> }> = [];
+  // Conversation history for agent loop
+  let conversationHistory: Array<{ role: string; content: string }> = [];
 
   // Setup readline
   const rl = readline.createInterface({
@@ -159,6 +200,40 @@ export async function startRepl(options: ReplOptions = {}): Promise<void> {
           break;
         }
 
+        case 'login': {
+          try {
+            const clerkUrl = process.env.CLERK_URL ?? 'https://waggle.clerk.accounts.dev/sign-in';
+            console.log(chalk.dim('Opening browser for login...'));
+            const { token, email } = await auth.loginWithBrowser(clerkUrl);
+            auth.saveToken(token, email);
+            console.log(chalk.green(`Logged in as ${email}`));
+          } catch (err) {
+            console.log(chalk.red(`Login failed: ${(err as Error).message}`));
+          }
+          break;
+        }
+
+        case 'logout':
+          auth.logout();
+          console.log(chalk.dim('Logged out.'));
+          break;
+
+        case 'whoami': {
+          const email = auth.getEmail();
+          console.log('');
+          console.log(chalk.dim('  User:   ') + (email ? chalk.cyan(email) : chalk.dim('not logged in')));
+          console.log(chalk.dim('  Mode:   ') + chalk.cyan(modeResult.type));
+          console.log(chalk.dim('  Server: ') + chalk.cyan(auth.getServerUrl()));
+          if (modeResult.warning) console.log(chalk.yellow('  ⚠ ' + modeResult.warning));
+          console.log('');
+          break;
+        }
+
+        case 'mode':
+          console.log(chalk.dim(`Current mode: ${modeResult.type}`));
+          if (modeResult.warning) console.log(chalk.yellow(modeResult.warning));
+          break;
+
         case 'admin': {
           const adminClient = new AdminClient();
           const parts = cmd.args.split(/\s+/);
@@ -229,42 +304,40 @@ export async function startRepl(options: ReplOptions = {}): Promise<void> {
       return;
     }
 
-    // Chat message — send to model
+    // Chat message — send to model via runAgentLoop (LiteLLM)
     try {
-      const resolved = router.resolve(currentModel);
+      const tools = [...orchestrator.getTools(), ...systemTools];
 
-      if (resolved.provider === 'anthropic') {
-        // Anthropic SDK with tool loop (same pattern as sidecar agent-session.ts)
-        const response = await sendAnthropicMessage(
-          input,
-          resolved.apiKey,
-          currentModel,
-          orchestrator,
-          conversationHistory,
-        );
-        console.log('');
-        console.log(chalk.bold.blue('waggle > ') + renderMarkdown(response));
-        console.log('');
-      } else {
-        // OpenAI-compatible provider (no tool support yet)
-        const systemPrompt = orchestrator.buildSystemPrompt();
-        const messages: ChatMessage[] = [
-          ...conversationHistory
-            .filter(m => typeof m.content === 'string')
-            .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content as string })),
-          { role: 'user' as const, content: input },
-        ];
+      const systemPrompt = orchestrator.buildSystemPrompt() + '\n\n# System Tools\nYou have system tools: bash, read_file, write_file, edit_file, search_files, search_content.\nUse them to interact with the workspace at ' + process.cwd();
 
-        const chatResponse = await openaiChat(resolved, messages, systemPrompt);
+      conversationHistory.push({ role: 'user', content: input });
 
-        conversationHistory.push({ role: 'user', content: input });
-        conversationHistory.push({ role: 'assistant', content: chatResponse.content });
+      const result = await runAgentLoop({
+        litellmUrl,
+        litellmApiKey,
+        model: currentModel,
+        systemPrompt,
+        tools,
+        messages: conversationHistory,
+        onToken: () => { /* streaming can be added later */ },
+        onToolUse: (name: string, toolInput: Record<string, unknown>) => {
+          console.log(chalk.dim(`  [tool] ${name}`));
+          workspace.logAudit(sessionId, name, toolInput, '');
+        },
+      });
 
-        console.log('');
-        console.log(chalk.bold.blue('waggle > ') + renderMarkdown(chatResponse.content));
-        console.log(chalk.dim(`  [${chatResponse.model} | ${chatResponse.usage.input_tokens}→${chatResponse.usage.output_tokens} tokens]`));
-        console.log('');
-      }
+      // Log the turn
+      workspace.logTurn(sessionId, 'user', input);
+      workspace.logTurn(sessionId, 'agent', result.content, result.toolsUsed);
+
+      // Update conversation history
+      conversationHistory.push({ role: 'assistant', content: result.content });
+
+      // Display
+      console.log('');
+      console.log(chalk.bold.blue('waggle > ') + renderMarkdown(result.content));
+      console.log(chalk.dim(`  [${currentModel} | ${result.usage.inputTokens}→${result.usage.outputTokens} tokens]`));
+      console.log('');
     } catch (err) {
       const errMsg = (err as Error).message;
       if (errMsg.includes('Unknown model')) {
@@ -293,98 +366,4 @@ export async function startRepl(options: ReplOptions = {}): Promise<void> {
     db.close();
     process.exit(0);
   });
-}
-
-/**
- * Send a message using the Anthropic SDK with tool loop.
- * Same pattern as sidecar/src/agent-session.ts.
- */
-async function sendAnthropicMessage(
-  message: string,
-  apiKey: string,
-  model: string,
-  orchestrator: Orchestrator,
-  conversationHistory: Array<{ role: 'user' | 'assistant'; content: string | Array<unknown> }>,
-): Promise<string> {
-  const { default: Anthropic } = await import('@anthropic-ai/sdk');
-  const client = new Anthropic({ apiKey });
-
-  const systemPrompt = orchestrator.buildSystemPrompt();
-  const tools = orchestrator.getTools();
-
-  // Tool schema fix: always include type: 'object' (same fix as M1 Task 1.11)
-  const anthropicTools = tools.map(t => ({
-    name: t.name,
-    description: t.description,
-    input_schema: {
-      type: 'object' as const,
-      properties: {},
-      ...t.parameters,
-    },
-  }));
-
-  // Add user message to history
-  conversationHistory.push({ role: 'user', content: message });
-
-  let messages = [...conversationHistory];
-  let maxTurns = 10;
-
-  while (maxTurns-- > 0) {
-    const response = await client.messages.create({
-      model,
-      max_tokens: 4096,
-      system: systemPrompt,
-      tools: anthropicTools as never,
-      messages: messages as never,
-    });
-
-    const toolBlocks = response.content.filter((b: { type: string }) => b.type === 'tool_use');
-    const textBlocks = response.content.filter((b: { type: string }) => b.type === 'text');
-
-    if (toolBlocks.length === 0) {
-      // No tools — final response
-      const text = textBlocks.map((b: { text: string }) => b.text).join('');
-      conversationHistory.push({ role: 'assistant', content: text });
-      return text;
-    }
-
-    // Execute tools
-    console.log('');
-    const toolResults: Array<unknown> = [];
-    for (const block of toolBlocks) {
-      const tb = block as { id: string; name: string; input: Record<string, unknown> };
-      console.log(chalk.dim(`  [tool] ${tb.name}`));
-
-      try {
-        const result = await orchestrator.executeTool(tb.name, tb.input);
-        console.log(chalk.dim(`  [result] ${result.slice(0, 80)}${result.length > 80 ? '...' : ''}`));
-        toolResults.push({
-          type: 'tool_result',
-          tool_use_id: tb.id,
-          content: result,
-        });
-      } catch (err) {
-        const errMsg = (err as Error).message;
-        console.log(chalk.dim(`  [error] ${errMsg}`));
-        toolResults.push({
-          type: 'tool_result',
-          tool_use_id: tb.id,
-          content: `Error: ${errMsg}`,
-          is_error: true,
-        });
-      }
-    }
-
-    messages = [
-      ...messages,
-      { role: 'assistant', content: response.content as Array<unknown> },
-      { role: 'user', content: toolResults as Array<unknown> },
-    ];
-
-    // Also update conversation history for context persistence
-    conversationHistory.push({ role: 'assistant', content: response.content as Array<unknown> });
-    conversationHistory.push({ role: 'user', content: toolResults as Array<unknown> });
-  }
-
-  return 'Max tool turns reached.';
 }

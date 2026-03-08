@@ -1,7 +1,9 @@
 export { Orchestrator, type OrchestratorConfig } from './orchestrator.js';
 export { createMindTools, type ToolDefinition, type MindToolDeps } from './tools.js';
+export { createSystemTools } from './system-tools.js';
 export {
   ModelRouter,
+  createLiteLLMRouter,
   type ProviderConfig,
   type ProviderEntry,
   type ResolvedModel,
@@ -11,3 +13,6 @@ export {
   type ChatMessage,
   type ChatResponse,
 } from './providers/openai-compat.js';
+export { Workspace, type WorkspaceConfig } from './workspace.js';
+export { runAgentLoop, type AgentLoopConfig, type AgentResponse, type AgentMessage } from './agent-loop.js';
+export { createTeamTools, type TeamToolDeps } from './team-tools.js';
