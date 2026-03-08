@@ -87,7 +87,15 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
       body: JSON.stringify(body),
     });
 
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => 'Unknown error');
+      throw new Error(`LiteLLM error (${response.status}): ${errorBody}`);
+    }
+
     const data = await response.json();
+    if (!data.choices || data.choices.length === 0) {
+      throw new Error(`LiteLLM returned no choices: ${JSON.stringify(data).slice(0, 200)}`);
+    }
     const choice = data.choices[0];
     const assistantMessage = choice.message;
     const usage = data.usage;
