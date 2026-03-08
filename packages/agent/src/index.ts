@@ -13,3 +13,4 @@ export {
   type ChatResponse,
 } from './providers/openai-compat.js';
 export { Workspace, type WorkspaceConfig } from './workspace.js';
+export { runAgentLoop, type AgentLoopConfig, type AgentResponse, type AgentMessage } from './agent-loop.js';
