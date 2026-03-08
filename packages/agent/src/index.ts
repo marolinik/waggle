@@ -12,3 +12,4 @@ export {
   type ChatMessage,
   type ChatResponse,
 } from './providers/openai-compat.js';
+export { Workspace, type WorkspaceConfig } from './workspace.js';
