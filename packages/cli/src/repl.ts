@@ -92,7 +92,9 @@ export async function startRepl(options: ReplOptions = {}): Promise<void> {
   // Get LiteLLM config from workspace
   const wsConfig = workspace.getConfig();
   const litellmUrl = wsConfig.litellmUrl ?? 'http://localhost:4000/v1';
-  const litellmApiKey = process.env.LITELLM_API_KEY ?? process.env.LITELLM_MASTER_KEY ?? 'sk-waggle-dev';
+  // API key priority: env var > waggle config (Anthropic key works as LiteLLM passthrough) > default
+  const configApiKey = providers.anthropic?.apiKey ?? providers[Object.keys(providers)[0]]?.apiKey;
+  const litellmApiKey = process.env.LITELLM_API_KEY ?? process.env.LITELLM_MASTER_KEY ?? configApiKey ?? 'sk-waggle-dev';
 
   // Build system tools
   const systemTools = createSystemTools(process.cwd());
