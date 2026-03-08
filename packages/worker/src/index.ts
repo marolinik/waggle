@@ -15,6 +15,7 @@ const DATABASE_URL = process.env.DATABASE_URL ?? 'postgres://waggle:waggle_dev@l
 export function createWorker(redisUrl = REDIS_URL, databaseUrl = DATABASE_URL) {
   const db = createDb(databaseUrl);
   const processor = new JobProcessor();
+  const redisPub = new Redis(redisUrl);
 
   // Register job handlers
   processor.register('chat', chatHandler);
@@ -39,10 +40,13 @@ export function createWorker(redisUrl = REDIS_URL, databaseUrl = DATABASE_URL) {
         .set({ status: 'completed', completedAt: new Date(), output: result })
         .where(eq(agentJobs.id, job.data.jobId));
 
-      // Publish progress to Redis
-      const redis = new Redis(redisUrl);
-      await redis.publish(`job:${job.data.jobId}:progress`, JSON.stringify({ status: 'completed', output: result }));
-      await redis.quit();
+      // Publish progress to Redis (includes teamId for gateway routing)
+      await redisPub.publish(`job:${job.data.jobId}:progress`, JSON.stringify({
+        status: 'completed',
+        output: result,
+        userId: job.data.userId,
+        teamId: job.data.teamId,
+      }));
 
       return result;
     } catch (error: unknown) {
@@ -60,7 +64,12 @@ export function createWorker(redisUrl = REDIS_URL, databaseUrl = DATABASE_URL) {
     concurrency: 5,
   });
 
-  return { worker, processor, db };
+  // Clean up shared Redis publisher when worker closes
+  worker.on('closed', () => {
+    redisPub.quit().catch(() => {});
+  });
+
+  return { worker, processor, db, redisPub };
 }
 
 // Start if run directly
