@@ -25,6 +25,16 @@ export {
   ApprovalGate,
   getToolStatusColor,
   formatDuration,
+  FileDropZone,
+  categorizeFile,
+  isSupported,
+  validateFileSize,
+  formatDropSummary,
+  getDropMessage,
+  parseCsvLine,
+  parseCsvPreview,
+  SUPPORTED_EXTENSIONS,
+  MAX_FILE_SIZE,
 } from './components/chat/index.js';
 export type {
   ChatAreaProps,
@@ -33,6 +43,9 @@ export type {
   ToolCardProps,
   ToolResultRendererProps,
   ApprovalGateProps,
+  FileDropZoneProps,
+  DroppedFile,
+  FileCategory,
 } from './components/chat/index.js';
 
 // Components — workspace

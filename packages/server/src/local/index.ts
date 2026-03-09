@@ -10,6 +10,7 @@ import { settingsRoutes } from './routes/settings.js';
 import { sessionRoutes } from './routes/sessions.js';
 import { knowledgeRoutes } from './routes/knowledge.js';
 import { litellmRoutes } from './routes/litellm.js';
+import { ingestRoutes } from './routes/ingest.js';
 import { EventEmitter } from 'node:events';
 
 export interface LocalConfig {
@@ -68,6 +69,7 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   await server.register(sessionRoutes);
   await server.register(knowledgeRoutes);
   await server.register(litellmRoutes);
+  await server.register(ingestRoutes);
 
   // Health check
   server.get('/health', async () => ({

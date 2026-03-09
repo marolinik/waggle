@@ -17,3 +17,19 @@ export { ToolResultRenderer } from './ToolResultRenderer.js';
 export type { ToolResultRendererProps } from './ToolResultRenderer.js';
 
 export { getToolStatusColor, formatDuration } from './utils.js';
+
+export { FileDropZone } from './FileDropZone.js';
+export type { FileDropZoneProps } from './FileDropZone.js';
+
+export {
+  categorizeFile,
+  isSupported,
+  validateFileSize,
+  formatDropSummary,
+  getDropMessage,
+  parseCsvLine,
+  parseCsvPreview,
+  SUPPORTED_EXTENSIONS,
+  MAX_FILE_SIZE,
+} from './drop-utils.js';
+export type { DroppedFile, FileCategory } from './drop-utils.js';
