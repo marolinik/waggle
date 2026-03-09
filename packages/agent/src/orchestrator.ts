@@ -9,11 +9,16 @@ import {
   type Embedder,
 } from '@waggle/core';
 import { createMindTools, type ToolDefinition } from './tools.js';
+import { buildSelfAwareness, type AgentCapabilities } from './self-awareness.js';
 
 export interface OrchestratorConfig {
   db: MindDB;
   embedder: Embedder;
   apiKey?: string;
+  model?: string;
+  mode?: 'local' | 'team';
+  version?: string;
+  skills?: string[];
 }
 
 export class Orchestrator {
@@ -25,9 +30,17 @@ export class Orchestrator {
   private search: HybridSearch;
   private knowledge: KnowledgeGraph;
   private tools: ToolDefinition[];
+  private model: string;
+  private mode: 'local' | 'team';
+  private version: string;
+  private skills: string[];
 
   constructor(config: OrchestratorConfig) {
     this.db = config.db;
+    this.model = config.model ?? 'unknown';
+    this.mode = config.mode ?? 'local';
+    this.version = config.version ?? '0.0.0';
+    this.skills = config.skills ?? [];
     this.identity = new IdentityLayer(config.db);
     this.awareness = new AwarenessLayer(config.db);
     this.frames = new FrameStore(config.db);
@@ -46,6 +59,14 @@ export class Orchestrator {
     });
   }
 
+  getMemoryStats(): { frameCount: number; sessionCount: number; entityCount: number } {
+    const raw = this.db.getDatabase();
+    const frameCount = (raw.prepare('SELECT COUNT(*) as cnt FROM memory_frames').get() as { cnt: number }).cnt;
+    const sessionCount = (raw.prepare('SELECT COUNT(*) as cnt FROM sessions').get() as { cnt: number }).cnt;
+    const entityCount = (raw.prepare('SELECT COUNT(*) as cnt FROM knowledge_entities').get() as { cnt: number }).cnt;
+    return { frameCount, sessionCount, entityCount };
+  }
+
   buildSystemPrompt(): string {
     const parts: string[] = [];
 
@@ -58,15 +79,22 @@ export class Orchestrator {
       parts.push('# Current State\n' + awarenessCtx);
     }
 
+    // Self-awareness block before memory tools
+    const caps: AgentCapabilities = {
+      tools: this.tools.map(t => ({ name: t.name, description: t.description })),
+      skills: this.skills,
+      model: this.model,
+      memoryStats: this.getMemoryStats(),
+      mode: this.mode,
+      version: this.version,
+    };
+    parts.push(buildSelfAwareness(caps));
+
     parts.push(
-      '# Available Tools',
-      'You have access to the following .mind tools:',
+      '# Memory Tools',
       ...this.tools.map(t => `- ${t.name}: ${t.description}`),
       '',
-      '# Instructions',
-      'Use your memory tools to recall relevant context before responding.',
-      'Save important observations and decisions as memories.',
-      'Track tasks and pending items in awareness.',
+      'Use search_memory to recall context when relevant. Save important facts with save_memory. Don\'t overuse — only save things worth remembering.',
     );
 
     return parts.join('\n\n');

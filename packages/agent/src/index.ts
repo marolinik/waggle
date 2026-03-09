@@ -17,3 +17,4 @@ export { Workspace, type WorkspaceConfig } from './workspace.js';
 export { runAgentLoop, type AgentLoopConfig, type AgentResponse, type AgentMessage } from './agent-loop.js';
 export { createTeamTools, type TeamToolDeps } from './team-tools.js';
 export { ensureIdentity, type IdentityConfig } from './auto-identity.js';
+export { buildSelfAwareness, type AgentCapabilities } from './self-awareness.js';
