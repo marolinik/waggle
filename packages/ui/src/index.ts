@@ -135,6 +135,12 @@ export {
   getNextStep,
   getPrevStep,
   buildConfigFromOnboarding,
+  SplashScreen,
+  STARTUP_PHASES,
+  getPhaseMessage,
+  getPhaseProgress,
+  isStartupComplete,
+  formatProgress,
 } from './components/onboarding/index.js';
 export type {
   OnboardingWizardProps,
@@ -144,6 +150,8 @@ export type {
   ReadyStepProps,
   OnboardingData,
   OnboardingStepConfig,
+  SplashScreenProps,
+  StartupPhaseConfig,
 } from './components/onboarding/index.js';
 
 // Components — memory

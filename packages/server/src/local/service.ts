@@ -6,11 +6,22 @@ import { needsMigration, migrateToMultiMind, MindDB } from '@waggle/core';
 import { buildLocalServer } from './index.js';
 import { startLiteLLM, stopLiteLLM, type LiteLLMStatus } from './lifecycle.js';
 
+// ── Startup progress types ─────────────────────────────────────────
+
+export type StartupPhase = 'init' | 'migration' | 'creating-mind' | 'litellm' | 'server' | 'ready';
+
+export interface StartupEvent {
+  phase: StartupPhase;
+  message: string;
+  progress: number;
+}
+
 export interface ServiceOptions {
   dataDir?: string;
   port?: number;
   litellmPort?: number;
   skipLiteLLM?: boolean;
+  onProgress?: (event: StartupEvent) => void;
 }
 
 export interface ServiceResult {
@@ -21,6 +32,16 @@ export interface ServiceResult {
 const DEFAULT_PORT = 3333;
 
 /**
+ * Check if this is a fresh install (no personal.mind, no default.mind).
+ */
+export function isFirstRun(dataDir: string): boolean {
+  if (!fs.existsSync(dataDir)) return true;
+  const hasPersonal = fs.existsSync(path.join(dataDir, 'personal.mind'));
+  const hasDefault = fs.existsSync(path.join(dataDir, 'default.mind'));
+  return !hasPersonal && !hasDefault;
+}
+
+/**
  * Start the Waggle agent service.
  *
  * 1. Resolves/creates dataDir (~/.waggle)
@@ -29,29 +50,37 @@ const DEFAULT_PORT = 3333;
  * 4. Starts LiteLLM proxy (unless skipped)
  * 5. Builds & starts local Fastify server
  * 6. Registers graceful shutdown handlers
+ *
+ * Optionally accepts an onProgress callback to emit startup phase events
+ * for UI splash screen display.
  */
 export async function startService(options?: ServiceOptions): Promise<ServiceResult> {
   const dataDir = options?.dataDir ?? path.join(os.homedir(), '.waggle');
   const port = options?.port ?? DEFAULT_PORT;
   const litellmPort = options?.litellmPort ?? 4000;
   const skipLiteLLM = options?.skipLiteLLM ?? false;
+  const emit = options?.onProgress ?? (() => {});
 
   // 1. Ensure dataDir exists
+  emit({ phase: 'init', message: 'Initializing Waggle service...', progress: 0.05 });
   fs.mkdirSync(dataDir, { recursive: true });
 
   // 2. Check/run migration
   if (needsMigration(dataDir)) {
+    emit({ phase: 'migration', message: 'Migrating to multi-mind layout...', progress: 0.15 });
     migrateToMultiMind(dataDir);
   }
 
   // 3. Ensure personal.mind exists
   const personalPath = path.join(dataDir, 'personal.mind');
   if (!fs.existsSync(personalPath)) {
+    emit({ phase: 'creating-mind', message: 'Creating personal memory...', progress: 0.3 });
     const mind = new MindDB(personalPath);
     mind.close();
   }
 
   // 4. Start LiteLLM (unless skipped)
+  emit({ phase: 'litellm', message: skipLiteLLM ? 'Skipping LiteLLM proxy...' : 'Starting LiteLLM proxy...', progress: 0.5 });
   let litellm: LiteLLMStatus;
   if (skipLiteLLM) {
     litellm = { status: 'error', port: litellmPort, error: 'Skipped' };
@@ -60,6 +89,7 @@ export async function startService(options?: ServiceOptions): Promise<ServiceRes
   }
 
   // 5. Build and start local server
+  emit({ phase: 'server', message: 'Starting local server...', progress: 0.75 });
   const server = await buildLocalServer({
     dataDir,
     port,
@@ -78,6 +108,8 @@ export async function startService(options?: ServiceOptions): Promise<ServiceRes
 
   process.on('SIGTERM', shutdown);
   process.on('SIGINT', shutdown);
+
+  emit({ phase: 'ready', message: 'Waggle service is ready!', progress: 1 });
 
   return { server, litellm };
 }
