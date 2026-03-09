@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { assertSafeSegment } from './validate.js';
 
 export interface SessionInfo {
   id: string;
@@ -68,6 +69,7 @@ export const sessionRoutes: FastifyPluginAsync = async (server) => {
     Params: { workspaceId: string };
   }>('/api/workspaces/:workspaceId/sessions', async (request, reply) => {
     const { workspaceId } = request.params;
+    assertSafeSegment(workspaceId, 'workspaceId');
 
     // Verify workspace exists
     const ws = server.workspaceManager.get(workspaceId);
@@ -108,6 +110,7 @@ export const sessionRoutes: FastifyPluginAsync = async (server) => {
     Body: { title?: string };
   }>('/api/workspaces/:workspaceId/sessions', async (request, reply) => {
     const { workspaceId } = request.params;
+    assertSafeSegment(workspaceId, 'workspaceId');
 
     // Verify workspace exists
     const ws = server.workspaceManager.get(workspaceId);
@@ -151,7 +154,9 @@ export const sessionRoutes: FastifyPluginAsync = async (server) => {
     Querystring: { workspace?: string };
   }>('/api/sessions/:sessionId', async (request, reply) => {
     const { sessionId } = request.params;
+    assertSafeSegment(sessionId, 'sessionId');
     const workspaceId = request.query.workspace;
+    if (workspaceId) assertSafeSegment(workspaceId, 'workspace');
     const newTitle = request.body?.title;
 
     if (!newTitle) {
@@ -218,7 +223,9 @@ export const sessionRoutes: FastifyPluginAsync = async (server) => {
     Querystring: { workspace?: string };
   }>('/api/sessions/:sessionId', async (request, reply) => {
     const { sessionId } = request.params;
+    assertSafeSegment(sessionId, 'sessionId');
     const workspaceId = request.query.workspace;
+    if (workspaceId) assertSafeSegment(workspaceId, 'workspace');
 
     // If workspace is provided, look there directly
     if (workspaceId) {

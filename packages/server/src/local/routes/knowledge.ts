@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { KnowledgeGraph, MindDB } from '@waggle/core';
+import { assertSafeSegment } from './validate.js';
 
 export const knowledgeRoutes: FastifyPluginAsync = async (server) => {
   // GET /api/memory/graph?workspace=:id — get knowledge graph entities and relations
@@ -12,6 +13,7 @@ export const knowledgeRoutes: FastifyPluginAsync = async (server) => {
     let mindDb: MindDB;
 
     if (workspaceId) {
+      assertSafeSegment(workspaceId, 'workspace');
       // Use workspace mind
       const ws = server.workspaceManager.get(workspaceId);
       if (!ws) {

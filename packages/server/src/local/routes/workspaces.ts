@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
+import { assertSafeSegment } from './validate.js';
 
 export const workspaceRoutes: FastifyPluginAsync = async (server) => {
   // GET /api/workspaces — list all workspaces
@@ -20,6 +21,7 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
 
   // GET /api/workspaces/:id — get workspace by id
   server.get<{ Params: { id: string } }>('/api/workspaces/:id', async (request, reply) => {
+    assertSafeSegment(request.params.id, 'id');
     const ws = server.workspaceManager.get(request.params.id);
     if (!ws) {
       return reply.status(404).send({ error: 'Workspace not found' });
@@ -32,6 +34,7 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
     Params: { id: string };
     Body: { name?: string; group?: string; icon?: string; model?: string };
   }>('/api/workspaces/:id', async (request, reply) => {
+    assertSafeSegment(request.params.id, 'id');
     const existing = server.workspaceManager.get(request.params.id);
     if (!existing) {
       return reply.status(404).send({ error: 'Workspace not found' });
@@ -42,6 +45,7 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
 
   // DELETE /api/workspaces/:id — delete workspace
   server.delete<{ Params: { id: string } }>('/api/workspaces/:id', async (request, reply) => {
+    assertSafeSegment(request.params.id, 'id');
     const existing = server.workspaceManager.get(request.params.id);
     if (!existing) {
       return reply.status(404).send({ error: 'Workspace not found' });
