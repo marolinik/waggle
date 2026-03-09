@@ -1,0 +1,333 @@
+/**
+ * Settings component tests.
+ *
+ * Tests utility functions and exports only — no jsdom/React Testing Library.
+ * React component rendering is tested in the desktop app's E2E suite.
+ */
+
+import { describe, it, expect } from 'vitest';
+import {
+  SettingsPanel,
+  ApiKeySection,
+  ModelSection,
+  PermissionSection,
+  ThemeSection,
+  AdvancedSection,
+  maskApiKey,
+  getProviderDisplayName,
+  getProviderKeyPrefix,
+  getCostTier,
+  getSpeedTier,
+  validateProviderConfig,
+  mergeGates,
+  SUPPORTED_PROVIDERS,
+  SETTINGS_TABS,
+} from '../../src/index.js';
+
+// ── maskApiKey ──────────────────────────────────────────────────────
+
+describe('maskApiKey', () => {
+  it('masks all but last 4 chars', () => {
+    // 'sk-ant-1234567890abcdef' is 23 chars, mask first 19
+    expect(maskApiKey('sk-ant-1234567890abcdef')).toBe('•••••••••••••••••••cdef');
+  });
+
+  it('returns the key as-is when 4 chars or fewer', () => {
+    expect(maskApiKey('abcd')).toBe('abcd');
+    expect(maskApiKey('abc')).toBe('abc');
+  });
+
+  it('handles empty string', () => {
+    expect(maskApiKey('')).toBe('');
+  });
+
+  it('handles exactly 5 chars', () => {
+    expect(maskApiKey('12345')).toBe('•2345');
+  });
+});
+
+// ── getProviderDisplayName ──────────────────────────────────────────
+
+describe('getProviderDisplayName', () => {
+  it('returns "Anthropic" for anthropic', () => {
+    expect(getProviderDisplayName('anthropic')).toBe('Anthropic');
+  });
+
+  it('returns "OpenAI" for openai', () => {
+    expect(getProviderDisplayName('openai')).toBe('OpenAI');
+  });
+
+  it('returns "Google" for google', () => {
+    expect(getProviderDisplayName('google')).toBe('Google');
+  });
+
+  it('returns "Mistral" for mistral', () => {
+    expect(getProviderDisplayName('mistral')).toBe('Mistral');
+  });
+
+  it('returns "Custom (OpenAI-compatible)" for custom', () => {
+    expect(getProviderDisplayName('custom')).toBe('Custom (OpenAI-compatible)');
+  });
+
+  it('returns raw string for unknown providers', () => {
+    expect(getProviderDisplayName('custom-provider')).toBe('custom-provider');
+  });
+});
+
+// ── getProviderKeyPrefix ────────────────────────────────────────────
+
+describe('getProviderKeyPrefix', () => {
+  it('returns "sk-ant-" for anthropic', () => {
+    expect(getProviderKeyPrefix('anthropic')).toBe('sk-ant-');
+  });
+
+  it('returns "sk-" for openai', () => {
+    expect(getProviderKeyPrefix('openai')).toBe('sk-');
+  });
+
+  it('returns null for custom provider', () => {
+    expect(getProviderKeyPrefix('custom')).toBeNull();
+  });
+
+  it('returns null for unknown providers', () => {
+    expect(getProviderKeyPrefix('custom-provider')).toBeNull();
+  });
+
+  it('returns null for google', () => {
+    expect(getProviderKeyPrefix('google')).toBeNull();
+  });
+
+  it('returns null for mistral', () => {
+    expect(getProviderKeyPrefix('mistral')).toBeNull();
+  });
+});
+
+// ── getCostTier ─────────────────────────────────────────────────────
+
+describe('getCostTier', () => {
+  it('returns $$$ for large models', () => {
+    expect(getCostTier('claude-opus-4-20250514')).toBe('$$$');
+    expect(getCostTier('gpt-4o')).toBe('$$$');
+  });
+
+  it('returns $$ for mid-range models', () => {
+    expect(getCostTier('claude-sonnet-4-20250514')).toBe('$$');
+    expect(getCostTier('gpt-4o-mini')).toBe('$$');
+  });
+
+  it('returns $ for cheap models', () => {
+    expect(getCostTier('claude-haiku-3-20250307')).toBe('$');
+  });
+
+  it('returns $$ as default for unknown models', () => {
+    expect(getCostTier('some-unknown-model')).toBe('$$');
+  });
+});
+
+// ── getSpeedTier ────────────────────────────────────────────────────
+
+describe('getSpeedTier', () => {
+  it('returns slow for large models', () => {
+    expect(getSpeedTier('claude-opus-4-20250514')).toBe('slow');
+    expect(getSpeedTier('gpt-4o')).toBe('slow');
+  });
+
+  it('returns medium for mid-range models', () => {
+    expect(getSpeedTier('claude-sonnet-4-20250514')).toBe('medium');
+    expect(getSpeedTier('gpt-4o-mini')).toBe('medium');
+  });
+
+  it('returns fast for small models', () => {
+    expect(getSpeedTier('claude-haiku-3-20250307')).toBe('fast');
+  });
+
+  it('returns medium as default for unknown models', () => {
+    expect(getSpeedTier('some-unknown-model')).toBe('medium');
+  });
+});
+
+// ── SUPPORTED_PROVIDERS ─────────────────────────────────────────────
+
+describe('SUPPORTED_PROVIDERS', () => {
+  it('is a non-empty array', () => {
+    expect(Array.isArray(SUPPORTED_PROVIDERS)).toBe(true);
+    expect(SUPPORTED_PROVIDERS.length).toBeGreaterThan(0);
+  });
+
+  it('includes anthropic, openai, google, mistral, custom', () => {
+    const ids = SUPPORTED_PROVIDERS.map((p) => p.id);
+    expect(ids).toContain('anthropic');
+    expect(ids).toContain('openai');
+    expect(ids).toContain('google');
+    expect(ids).toContain('mistral');
+    expect(ids).toContain('custom');
+  });
+
+  it('each provider has id, name, and models array', () => {
+    for (const provider of SUPPORTED_PROVIDERS) {
+      expect(typeof provider.id).toBe('string');
+      expect(typeof provider.name).toBe('string');
+      expect(Array.isArray(provider.models)).toBe(true);
+    }
+  });
+
+  it('custom provider has empty models (user-defined)', () => {
+    const custom = SUPPORTED_PROVIDERS.find((p) => p.id === 'custom');
+    expect(custom).toBeDefined();
+    expect(custom!.name).toBe('Custom (OpenAI-compatible)');
+    expect(custom!.keyPrefix).toBeNull();
+    expect(custom!.models).toEqual([]);
+  });
+});
+
+// ── SETTINGS_TABS ───────────────────────────────────────────────────
+
+describe('SETTINGS_TABS', () => {
+  it('is a non-empty array', () => {
+    expect(Array.isArray(SETTINGS_TABS)).toBe(true);
+    expect(SETTINGS_TABS.length).toBeGreaterThan(0);
+  });
+
+  it('has General, API Keys, Models, Permissions, Advanced tabs', () => {
+    const labels = SETTINGS_TABS.map((t) => t.label);
+    expect(labels).toContain('General');
+    expect(labels).toContain('API Keys');
+    expect(labels).toContain('Models');
+    expect(labels).toContain('Permissions');
+    expect(labels).toContain('Advanced');
+  });
+
+  it('each tab has id and label', () => {
+    for (const tab of SETTINGS_TABS) {
+      expect(typeof tab.id).toBe('string');
+      expect(typeof tab.label).toBe('string');
+    }
+  });
+});
+
+// ── validateProviderConfig ──────────────────────────────────────────
+
+describe('validateProviderConfig', () => {
+  it('returns valid for a correct anthropic key', () => {
+    const result = validateProviderConfig('anthropic', 'sk-ant-abc123def456');
+    expect(result.valid).toBe(true);
+    expect(result.error).toBeUndefined();
+  });
+
+  it('returns valid for a correct openai key', () => {
+    const result = validateProviderConfig('openai', 'sk-abc123def456');
+    expect(result.valid).toBe(true);
+  });
+
+  it('returns invalid for empty key', () => {
+    const result = validateProviderConfig('anthropic', '');
+    expect(result.valid).toBe(false);
+    expect(result.error).toBeDefined();
+  });
+
+  it('returns invalid for whitespace-only key', () => {
+    const result = validateProviderConfig('openai', '   ');
+    expect(result.valid).toBe(false);
+    expect(result.error).toBeDefined();
+  });
+
+  it('returns invalid for anthropic key without expected prefix', () => {
+    const result = validateProviderConfig('anthropic', 'sk-wrongprefix123');
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain('sk-ant-');
+  });
+
+  it('returns invalid for openai key without expected prefix', () => {
+    const result = validateProviderConfig('openai', 'wrong-prefix-123');
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain('sk-');
+  });
+
+  it('returns valid for unknown provider with any non-empty key', () => {
+    const result = validateProviderConfig('custom', 'any-key-here');
+    expect(result.valid).toBe(true);
+  });
+
+  it('returns invalid for key shorter than 8 chars', () => {
+    const result = validateProviderConfig('custom', 'short');
+    expect(result.valid).toBe(false);
+    expect(result.error).toBeDefined();
+  });
+});
+
+// ── mergeGates ─────────────────────────────────────────────────────
+
+describe('mergeGates', () => {
+  it('returns global gates when no workspace gates provided', () => {
+    expect(mergeGates(['git push', 'rm -rf'])).toEqual(['git push', 'rm -rf']);
+  });
+
+  it('returns global gates when workspace gates is undefined', () => {
+    expect(mergeGates(['git push'], undefined)).toEqual(['git push']);
+  });
+
+  it('returns global gates when workspace gates is empty', () => {
+    expect(mergeGates(['git push'], [])).toEqual(['git push']);
+  });
+
+  it('merges global and workspace gates', () => {
+    const result = mergeGates(['git push'], ['deploy', 'db migrate']);
+    expect(result).toContain('git push');
+    expect(result).toContain('deploy');
+    expect(result).toContain('db migrate');
+    expect(result).toHaveLength(3);
+  });
+
+  it('deduplicates overlapping gates', () => {
+    const result = mergeGates(['git push', 'rm -rf'], ['git push', 'deploy']);
+    expect(result).toHaveLength(3);
+    expect(result).toContain('git push');
+    expect(result).toContain('rm -rf');
+    expect(result).toContain('deploy');
+  });
+
+  it('handles empty global gates with workspace gates', () => {
+    const result = mergeGates([], ['deploy']);
+    expect(result).toEqual(['deploy']);
+  });
+
+  it('handles both empty', () => {
+    expect(mergeGates([], [])).toEqual([]);
+  });
+});
+
+// ── Component exports ───────────────────────────────────────────────
+
+describe('Settings component exports', () => {
+  it('exports SettingsPanel as a function', () => {
+    expect(typeof SettingsPanel).toBe('function');
+  });
+
+  it('exports ApiKeySection as a function', () => {
+    expect(typeof ApiKeySection).toBe('function');
+  });
+
+  it('exports ModelSection as a function', () => {
+    expect(typeof ModelSection).toBe('function');
+  });
+
+  it('exports PermissionSection as a function', () => {
+    expect(typeof PermissionSection).toBe('function');
+  });
+
+  it('exports ThemeSection as a function', () => {
+    expect(typeof ThemeSection).toBe('function');
+  });
+
+  it('exports AdvancedSection as a function', () => {
+    expect(typeof AdvancedSection).toBe('function');
+  });
+
+  it('exports maskApiKey as a function', () => {
+    expect(typeof maskApiKey).toBe('function');
+  });
+
+  it('exports validateProviderConfig as a function', () => {
+    expect(typeof validateProviderConfig).toBe('function');
+  });
+});

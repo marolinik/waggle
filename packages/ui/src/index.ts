@@ -78,6 +78,36 @@ export type {
   ThemeProviderProps,
 } from './components/common/index.js';
 
+// Components — settings
+export {
+  SettingsPanel,
+  ApiKeySection,
+  ModelSection,
+  PermissionSection,
+  ThemeSection,
+  AdvancedSection,
+  maskApiKey,
+  getProviderDisplayName,
+  getProviderKeyPrefix,
+  getCostTier,
+  getSpeedTier,
+  validateProviderConfig,
+  mergeGates,
+  SUPPORTED_PROVIDERS,
+  SETTINGS_TABS,
+} from './components/settings/index.js';
+export type {
+  SettingsPanelProps,
+  ApiKeySectionProps,
+  ModelSectionProps,
+  PermissionSectionProps,
+  ThemeSectionProps,
+  AdvancedSectionProps,
+  MindFileInfo,
+  ProviderConfig,
+  SettingsTab,
+} from './components/settings/index.js';
+
 // Components — layout
 export { AppShell } from './components/layout/index.js';
 export type { AppShellProps } from './components/layout/index.js';
