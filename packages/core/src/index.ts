@@ -21,3 +21,4 @@ export { createLiteLLMEmbedder, type LiteLLMEmbedderConfig } from './mind/litell
 export { normalizeEntityName, findDuplicates } from './mind/entity-normalizer.js';
 export { Ontology, validateEntity, type EntitySchema, type ValidationResult } from './mind/ontology.js';
 export { WaggleConfig, type ProviderEntry } from './config.js';
+export { MultiMind, type MultiMindSearchResult, type MindSource, type SearchScope } from './multi-mind.js';
