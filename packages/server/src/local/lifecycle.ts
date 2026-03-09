@@ -1,4 +1,10 @@
 import { spawn, type ChildProcess } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export interface LiteLLMStatus {
   status: 'running' | 'started' | 'timeout' | 'error';
@@ -11,6 +17,32 @@ const HEALTH_POLL_INTERVAL = 1000;
 const HEALTH_POLL_MAX = 30;
 
 let litellmProcess: ChildProcess | null = null;
+
+/**
+ * Look for a bundled Python executable in the app's resources directory.
+ * On an installed Tauri app the layout is:
+ *   {exe_dir}/resources/python/python.exe
+ * During development we also check relative to this source file:
+ *   app/src-tauri/resources/python/python.exe
+ *
+ * Returns the absolute path if found, otherwise null (falls back to system PATH).
+ */
+export function getBundledPythonPath(): string | null {
+  // Installed app: next to the running executable
+  const exeDir = path.dirname(process.execPath);
+  const installedPath = path.join(exeDir, 'resources', 'python', 'python.exe');
+  if (existsSync(installedPath)) {
+    return installedPath;
+  }
+
+  // Development: relative to this file → ../../app/src-tauri/resources
+  const devPath = path.resolve(__dirname, '..', '..', '..', 'app', 'src-tauri', 'resources', 'python', 'python.exe');
+  if (existsSync(devPath)) {
+    return devPath;
+  }
+
+  return null;
+}
 
 async function checkHealth(port: number): Promise<boolean> {
   try {
@@ -36,6 +68,7 @@ export async function getLiteLLMStatus(port?: number): Promise<LiteLLMStatus> {
 /**
  * Start LiteLLM proxy. If already running, returns immediately.
  * Otherwise spawns `python -m litellm --port {port}` and polls health.
+ * Prefers the bundled Python from app resources; falls back to system PATH.
  */
 export async function startLiteLLM(port?: number): Promise<LiteLLMStatus> {
   const p = port ?? DEFAULT_PORT;
@@ -45,9 +78,12 @@ export async function startLiteLLM(port?: number): Promise<LiteLLMStatus> {
     return { status: 'running', port: p };
   }
 
+  // Prefer bundled Python, fall back to system 'python'
+  const pythonBin = getBundledPythonPath() ?? 'python';
+
   // Spawn LiteLLM
   try {
-    litellmProcess = spawn('python', ['-m', 'litellm', '--port', String(p)], {
+    litellmProcess = spawn(pythonBin, ['-m', 'litellm', '--port', String(p)], {
       stdio: 'ignore',
       detached: false,
     });

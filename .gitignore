@@ -11,5 +11,8 @@ app/src-tauri/target/
 app/src-tauri/gen/
 app/src-tauri/.cargo/config.toml
 
+# Bundled runtimes (~80MB downloaded binaries)
+app/src-tauri/resources/
+
 # Git worktrees
 .worktrees/
