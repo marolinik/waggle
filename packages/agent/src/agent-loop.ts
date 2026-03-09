@@ -23,6 +23,7 @@ export interface AgentLoopConfig {
   onToken?: (token: string) => void;
   onToolUse?: (name: string, input: Record<string, unknown>) => void;
   maxTurns?: number;
+  stream?: boolean;
   fetch?: typeof globalThis.fetch;
 }
 
@@ -37,6 +38,7 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
     onToken,
     onToolUse,
     maxTurns = 10,
+    stream = false,
     fetch: fetchFn = globalThis.fetch,
   } = config;
 
@@ -82,6 +84,10 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
     if (openaiTools.length > 0) {
       body.tools = openaiTools;
     }
+    if (stream) {
+      body.stream = true;
+      body.stream_options = { include_usage: true };
+    }
 
     const response = await fetchFn(`${litellmUrl}/chat/completions`, {
       method: 'POST',
@@ -97,21 +103,119 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
       throw new Error(`LiteLLM error (${response.status}): ${errorBody}`);
     }
 
-    const data = await response.json();
-    if (!data.choices || data.choices.length === 0) {
-      throw new Error(`LiteLLM returned no choices: ${JSON.stringify(data).slice(0, 200)}`);
-    }
-    const choice = data.choices[0];
-    const assistantMessage = choice.message;
-    const usage = data.usage;
+    let assistantMessage: {
+      content: string | null;
+      tool_calls?: Array<{ id: string; function: { name: string; arguments: string } }>;
+    };
+    let turnInputTokens = 0;
+    let turnOutputTokens = 0;
 
-    totalInputTokens += usage?.prompt_tokens ?? 0;
-    totalOutputTokens += usage?.completion_tokens ?? 0;
+    if (stream) {
+      // Parse SSE stream
+      let accumulatedContent = '';
+      const accumulatedToolCalls = new Map<
+        number,
+        { id: string; function: { name: string; arguments: string } }
+      >();
+
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Process complete SSE events (separated by double newlines)
+        const parts = buffer.split('\n\n');
+        // Last part may be incomplete — keep it in the buffer
+        buffer = parts.pop()!;
+
+        for (const part of parts) {
+          for (const line of part.split('\n')) {
+            if (!line.startsWith('data: ')) continue;
+            const payload = line.slice(6).trim();
+            if (payload === '[DONE]') continue;
+
+            let chunk: any;
+            try {
+              chunk = JSON.parse(payload);
+            } catch {
+              continue;
+            }
+
+            // Extract usage from any chunk that has it
+            if (chunk.usage) {
+              turnInputTokens = chunk.usage.prompt_tokens ?? turnInputTokens;
+              turnOutputTokens = chunk.usage.completion_tokens ?? turnOutputTokens;
+            }
+
+            const delta = chunk.choices?.[0]?.delta;
+            if (!delta) continue;
+
+            // Accumulate content tokens
+            if (delta.content) {
+              accumulatedContent += delta.content;
+              if (onToken) {
+                onToken(delta.content);
+              }
+            }
+
+            // Accumulate tool calls
+            if (delta.tool_calls) {
+              for (const tc of delta.tool_calls) {
+                const idx = tc.index ?? 0;
+                if (!accumulatedToolCalls.has(idx)) {
+                  accumulatedToolCalls.set(idx, {
+                    id: tc.id ?? '',
+                    function: { name: tc.function?.name ?? '', arguments: '' },
+                  });
+                }
+                const existing = accumulatedToolCalls.get(idx)!;
+                if (tc.id) existing.id = tc.id;
+                if (tc.function?.name) existing.function.name = tc.function.name;
+                if (tc.function?.arguments) {
+                  existing.function.arguments += tc.function.arguments;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      const toolCallsArray =
+        accumulatedToolCalls.size > 0
+          ? Array.from(accumulatedToolCalls.values())
+          : undefined;
+
+      assistantMessage = {
+        content: accumulatedContent || null,
+        tool_calls: toolCallsArray,
+      };
+    } else {
+      // Non-streaming path (unchanged)
+      const data = await response.json();
+      if (!data.choices || data.choices.length === 0) {
+        throw new Error(
+          `LiteLLM returned no choices: ${JSON.stringify(data).slice(0, 200)}`
+        );
+      }
+      const choice = data.choices[0];
+      assistantMessage = choice.message;
+      turnInputTokens = data.usage?.prompt_tokens ?? 0;
+      turnOutputTokens = data.usage?.completion_tokens ?? 0;
+    }
+
+    totalInputTokens += turnInputTokens;
+    totalOutputTokens += turnOutputTokens;
 
     // No tool calls — return the final response
     if (!assistantMessage.tool_calls || assistantMessage.tool_calls.length === 0) {
       const content = assistantMessage.content ?? '';
-      if (onToken && content) {
+      // In non-streaming mode, emit the full content as a single token
+      if (!stream && onToken && content) {
         onToken(content);
       }
       return {

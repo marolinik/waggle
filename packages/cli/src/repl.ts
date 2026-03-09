@@ -377,7 +377,8 @@ When asked about current events, products, releases, docs, or anything you're no
         systemPrompt,
         tools,
         messages: conversationHistory,
-        onToken: () => { /* streaming can be added later */ },
+        stream: true,
+        onToken: (token: string) => { process.stdout.write(token); },
         onToolUse: (name: string, toolInput: Record<string, unknown>) => {
           console.log(chalk.dim(`  [tool] ${name}`));
           workspace.logAudit(sessionId, name, toolInput, '');
@@ -391,9 +392,9 @@ When asked about current events, products, releases, docs, or anything you're no
       // Update conversation history
       conversationHistory.push({ role: 'assistant', content: result.content });
 
-      // Display
+      // Display — streaming already wrote tokens to stdout, just add metadata
       console.log('');
-      console.log(chalk.bold.blue('waggle > ') + renderMarkdown(result.content));
+      console.log('');
       console.log(chalk.dim(`  [${currentModel} | ${result.usage.inputTokens}→${result.usage.outputTokens} tokens]`));
       console.log('');
     } catch (err) {
