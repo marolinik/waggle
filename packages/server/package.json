@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./local": "./src/local/index.ts",
+    "./local/service": "./src/local/service.ts",
+    "./local/routes/*": "./src/local/routes/*.ts"
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
