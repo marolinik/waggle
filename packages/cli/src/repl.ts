@@ -11,7 +11,7 @@ import os from 'node:os';
 import path from 'node:path';
 import chalk from 'chalk';
 import { MindDB, WaggleConfig, createLiteLLMEmbedder } from '@waggle/core';
-import { Orchestrator, ModelRouter, runAgentLoop, createSystemTools, Workspace, ensureIdentity, loadSystemPrompt, loadSkills, CostTracker, HookRegistry, loadHooksFromConfig } from '@waggle/agent';
+import { Orchestrator, ModelRouter, runAgentLoop, createSystemTools, createPlanTools, Workspace, ensureIdentity, loadSystemPrompt, loadSkills, CostTracker, HookRegistry, loadHooksFromConfig } from '@waggle/agent';
 import { parseCommand, COMMANDS } from './commands.js';
 import { renderMarkdown } from './renderer.js';
 import { AdminClient, formatTable } from './commands/admin.js';
@@ -107,6 +107,9 @@ export async function startRepl(options: ReplOptions = {}): Promise<void> {
 
   // Build system tools
   const systemTools = createSystemTools(process.cwd());
+
+  // Build plan tools
+  const planTools = createPlanTools();
 
   // Start session
   const sessionId = workspace.startSession();
@@ -251,6 +254,17 @@ export async function startRepl(options: ReplOptions = {}): Promise<void> {
           console.log('');
           break;
 
+        case 'plan': {
+          const showPlan = planTools.find(t => t.name === 'show_plan');
+          if (showPlan) {
+            const output = await showPlan.execute({});
+            console.log('');
+            console.log(output);
+            console.log('');
+          }
+          break;
+        }
+
         case 'admin': {
           const adminClient = new AdminClient();
           const parts = cmd.args.split(/\s+/);
@@ -323,7 +337,7 @@ export async function startRepl(options: ReplOptions = {}): Promise<void> {
 
     // Chat message — send to model via runAgentLoop (LiteLLM)
     try {
-      const tools = [...orchestrator.getTools(), ...systemTools];
+      const tools = [...orchestrator.getTools(), ...systemTools, ...planTools];
 
       let systemPrompt = '';
 
