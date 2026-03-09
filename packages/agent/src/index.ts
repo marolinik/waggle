@@ -24,3 +24,4 @@ export { scanForInjection, type ScanResult } from './injection-scanner.js';
 export { CostTracker, type ModelPricing, type UsageStats } from './cost-tracker.js';
 export { extractEntities, type ExtractedEntity } from './entity-extractor.js';
 export { CognifyPipeline, type CognifyConfig, type CognifyResult } from './cognify.js';
+export { FeedbackHandler } from './feedback-handler.js';

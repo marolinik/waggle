@@ -8,6 +8,7 @@ import type {
   KnowledgeGraph,
 } from '@waggle/core';
 import type { CognifyPipeline } from './cognify.js';
+import type { FeedbackHandler } from './feedback-handler.js';
 
 export interface ToolDefinition {
   name: string;
@@ -25,6 +26,7 @@ export interface MindToolDeps {
   search: HybridSearch;
   knowledge: KnowledgeGraph;
   cognify?: CognifyPipeline;
+  feedback?: FeedbackHandler;
 }
 
 export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
@@ -172,6 +174,46 @@ export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
       execute: async (args) => {
         const item = deps.awareness.add('task', args.content as string, (args.priority as number) ?? 5);
         return `Task added: "${item.content}" (priority: ${item.priority})`;
+      },
+    },
+    {
+      name: 'correct_knowledge',
+      description: 'Correct or invalidate a knowledge entity. Use entity_id from query_knowledge results.',
+      parameters: {
+        type: 'object',
+        properties: {
+          entity_id: { type: 'number', description: 'The entity ID to update' },
+          action: {
+            type: 'string',
+            enum: ['correct', 'invalidate'],
+            description: 'Whether to correct or invalidate the entity',
+          },
+          updates: {
+            type: 'object',
+            description: 'For correct: property updates to merge. For invalidate: { reason: "why it is wrong" }',
+          },
+        },
+        required: ['entity_id', 'action'],
+      },
+      execute: async (args) => {
+        if (!deps.feedback) {
+          return 'Feedback handler not available. Cannot correct knowledge.';
+        }
+
+        const entityId = args.entity_id as number;
+        const action = args.action as string;
+        const updates = (args.updates as Record<string, unknown>) ?? {};
+
+        if (action === 'correct') {
+          deps.feedback.correctEntity(entityId, updates);
+          return `Entity ${entityId} corrected with updates: ${JSON.stringify(updates)}`;
+        } else if (action === 'invalidate') {
+          const reason = (updates.reason as string) ?? 'No reason provided';
+          deps.feedback.invalidateEntity(entityId, reason);
+          return `Entity ${entityId} invalidated. Reason: ${reason}`;
+        }
+
+        return `Unknown action "${action}". Use "correct" or "invalidate".`;
       },
     },
   ];
