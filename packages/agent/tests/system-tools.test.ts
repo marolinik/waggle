@@ -32,7 +32,7 @@ describe('createSystemTools', () => {
     return tool;
   }
 
-  it('creates all 6 tools', () => {
+  it('creates all system tools', () => {
     const names = tools.map((t) => t.name);
     expect(names).toContain('bash');
     expect(names).toContain('read_file');
@@ -40,7 +40,9 @@ describe('createSystemTools', () => {
     expect(names).toContain('edit_file');
     expect(names).toContain('search_files');
     expect(names).toContain('search_content');
-    expect(tools).toHaveLength(6);
+    expect(names).toContain('web_search');
+    expect(names).toContain('web_fetch');
+    expect(tools).toHaveLength(8);
   });
 
   describe('bash', () => {
