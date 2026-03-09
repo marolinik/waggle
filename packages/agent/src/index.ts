@@ -29,3 +29,4 @@ export { checkResponseQuality, type QualityIssue } from './quality-controller.js
 export { HookRegistry, type HookEvent, type HookContext, type HookResult } from './hooks.js';
 export { loadHooksFromConfig } from './hook-loader.js';
 export { Plan, type PlanStep } from './plan.js';
+export { createPlanTools } from './plan-tools.js';
