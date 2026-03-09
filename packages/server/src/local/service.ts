@@ -68,7 +68,14 @@ export async function startService(options?: ServiceOptions): Promise<ServiceRes
   // 2. Check/run migration
   if (needsMigration(dataDir)) {
     emit({ phase: 'migration', message: 'Migrating to multi-mind layout...', progress: 0.15 });
-    migrateToMultiMind(dataDir);
+    try {
+      migrateToMultiMind(dataDir);
+      emit({ phase: 'migration', message: 'Migration complete', progress: 0.2 });
+    } catch (err) {
+      const msg = `Migration failed: ${err instanceof Error ? err.message : String(err)}`;
+      emit({ phase: 'migration', message: msg, progress: 0.2 });
+      throw new Error(msg);
+    }
   }
 
   // 3. Ensure personal.mind exists
@@ -98,8 +105,10 @@ export async function startService(options?: ServiceOptions): Promise<ServiceRes
 
   await server.listen({ port, host: '127.0.0.1' });
 
-  // 6. Register shutdown handlers
+  // 6. Register self-removing shutdown handlers
   const shutdown = async () => {
+    process.off('SIGTERM', shutdown);
+    process.off('SIGINT', shutdown);
     await server.close();
     if (!skipLiteLLM) {
       await stopLiteLLM();
