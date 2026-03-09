@@ -30,3 +30,4 @@ export { HookRegistry, type HookEvent, type HookContext, type HookResult } from 
 export { loadHooksFromConfig } from './hook-loader.js';
 export { Plan, type PlanStep } from './plan.js';
 export { createPlanTools } from './plan-tools.js';
+export { createGitTools } from './git-tools.js';
