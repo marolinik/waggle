@@ -23,18 +23,18 @@ export function getLayoutMode(width: number): LayoutMode {
   return 'compact';
 }
 
-/** Sidebar should be visible when width >= medium breakpoint. */
+/** Sidebar should be visible (collapsed or expanded) when width >= compact breakpoint. */
 export function shouldShowSidebar(width: number): boolean {
-  return width >= BREAKPOINTS.medium;
+  return width >= BREAKPOINTS.compact;
 }
 
-/** Sidebar should collapse (icon-only) when width < medium. */
+/** Sidebar should collapse to icon-only mode (compact range: 800–1023). */
 export function shouldCollapseSidebar(width: number): boolean {
-  return width < BREAKPOINTS.medium;
+  return width >= BREAKPOINTS.compact && width < BREAKPOINTS.medium;
 }
 
 const CONTENT_MAX_WIDTHS: Record<LayoutMode, number> = {
-  compact:   800,
+  compact:   760,
   medium:    720,
   wide:      960,
   ultrawide: 1200,
@@ -46,7 +46,7 @@ export function getContentMaxWidth(mode: LayoutMode): number {
 }
 
 const SIDEBAR_WIDTHS: Record<LayoutMode, number> = {
-  compact:   0,
+  compact:   48,
   medium:    240,
   wide:      280,
   ultrawide: 320,

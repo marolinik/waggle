@@ -142,6 +142,12 @@ describe('hexToRgb', () => {
     expect(hexToRgb('')).toEqual([0, 0, 0]);
   });
 
+  it('returns [0,0,0] for invalid hex chars at valid length', () => {
+    expect(hexToRgb('#zzzzzz')).toEqual([0, 0, 0]);
+    expect(hexToRgb('#gggggg')).toEqual([0, 0, 0]);
+    expect(hexToRgb('#xyz')).toEqual([0, 0, 0]);
+  });
+
   it('parses mixed case', () => {
     expect(hexToRgb('#FF8800')).toEqual([255, 136, 0]);
   });

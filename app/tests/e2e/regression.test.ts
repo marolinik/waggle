@@ -345,7 +345,10 @@ describe('Regression: utility function smoke tests', () => {
   it('truncateContent truncates to N lines', () => {
     const multiline = Array.from({ length: 20 }, (_, i) => `line ${i}`).join('\n');
     const truncated = truncateContent(multiline, 5);
-    expect(truncated.split('\n').length).toBe(5);
+    const lines = truncated.split('\n');
+    expect(lines.length).toBeLessThanOrEqual(6); // allow ellipsis
+    expect(lines[0]).toBe('line 0');
+    expect(lines[4]).toBe('line 4');
   });
 
   it('FRAME_TYPES is a non-empty array', () => {

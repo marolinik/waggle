@@ -62,16 +62,18 @@ describe('getLayoutMode', () => {
 // ── shouldShowSidebar ────────────────────────────────────────────────
 
 describe('shouldShowSidebar', () => {
-  it('hides sidebar below medium breakpoint', () => {
-    expect(shouldShowSidebar(800)).toBe(false);
-    expect(shouldShowSidebar(1023)).toBe(false);
+  it('hides sidebar below compact breakpoint', () => {
+    expect(shouldShowSidebar(640)).toBe(false);
+    expect(shouldShowSidebar(799)).toBe(false);
   });
 
-  it('shows sidebar at medium breakpoint', () => {
+  it('shows sidebar at compact breakpoint (collapsed icon mode)', () => {
+    expect(shouldShowSidebar(800)).toBe(true);
+    expect(shouldShowSidebar(1023)).toBe(true);
+  });
+
+  it('shows sidebar at medium breakpoint and above', () => {
     expect(shouldShowSidebar(1024)).toBe(true);
-  });
-
-  it('shows sidebar above medium breakpoint', () => {
     expect(shouldShowSidebar(1440)).toBe(true);
     expect(shouldShowSidebar(1920)).toBe(true);
   });
@@ -80,12 +82,17 @@ describe('shouldShowSidebar', () => {
 // ── shouldCollapseSidebar ────────────────────────────────────────────
 
 describe('shouldCollapseSidebar', () => {
-  it('collapses below medium', () => {
+  it('does not collapse below compact (sidebar hidden entirely)', () => {
+    expect(shouldCollapseSidebar(640)).toBe(false);
+    expect(shouldCollapseSidebar(799)).toBe(false);
+  });
+
+  it('collapses in compact range (800-1023)', () => {
     expect(shouldCollapseSidebar(800)).toBe(true);
     expect(shouldCollapseSidebar(1023)).toBe(true);
   });
 
-  it('does not collapse at medium', () => {
+  it('does not collapse at medium (fully expanded)', () => {
     expect(shouldCollapseSidebar(1024)).toBe(false);
   });
 
@@ -97,8 +104,8 @@ describe('shouldCollapseSidebar', () => {
 // ── getContentMaxWidth ───────────────────────────────────────────────
 
 describe('getContentMaxWidth', () => {
-  it('returns 800 for compact', () => {
-    expect(getContentMaxWidth('compact')).toBe(800);
+  it('returns 760 for compact', () => {
+    expect(getContentMaxWidth('compact')).toBe(760);
   });
 
   it('returns 720 for medium', () => {
@@ -117,8 +124,8 @@ describe('getContentMaxWidth', () => {
 // ── getSidebarWidth ──────────────────────────────────────────────────
 
 describe('getSidebarWidth', () => {
-  it('returns 0 for compact (sidebar hidden)', () => {
-    expect(getSidebarWidth('compact')).toBe(0);
+  it('returns 48 for compact (icon-only sidebar)', () => {
+    expect(getSidebarWidth('compact')).toBe(48);
   });
 
   it('returns 240 for medium', () => {

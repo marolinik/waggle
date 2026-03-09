@@ -135,18 +135,18 @@ export function getCssVariables(theme: 'dark' | 'light'): string {
  */
 export function hexToRgb(hex: string): [number, number, number] {
   const cleaned = hex.replace('#', '');
-  if (cleaned.length === 3) {
-    return [
-      parseInt(cleaned[0] + cleaned[0], 16),
-      parseInt(cleaned[1] + cleaned[1], 16),
-      parseInt(cleaned[2] + cleaned[2], 16),
-    ];
-  }
-  if (cleaned.length === 6) {
+  if (cleaned.length === 6 && /^[0-9a-fA-F]{6}$/.test(cleaned)) {
     return [
       parseInt(cleaned.slice(0, 2), 16),
       parseInt(cleaned.slice(2, 4), 16),
       parseInt(cleaned.slice(4, 6), 16),
+    ];
+  }
+  if (cleaned.length === 3 && /^[0-9a-fA-F]{3}$/.test(cleaned)) {
+    return [
+      parseInt(cleaned[0] + cleaned[0], 16),
+      parseInt(cleaned[1] + cleaned[1], 16),
+      parseInt(cleaned[2] + cleaned[2], 16),
     ];
   }
   return [0, 0, 0];
