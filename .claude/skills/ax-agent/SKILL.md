@@ -1,7 +1,7 @@
 ---
 name: ax-agent
 description: This skill helps an LLM generate correct AxAgent code using @ax-llm/ax. Use when the user asks about agent(), child agents, namespaced functions, discovery mode, shared fields, llmQuery(...), or RLM code execution.
-version: "19.0.12"
+version: "19.0.13"
 ---
 
 # AxAgent Codegen Rules (@ax-llm/ax)

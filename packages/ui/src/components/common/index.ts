@@ -14,3 +14,21 @@ export { ThemeProvider, ThemeContext, useTheme, getSavedTheme, toggleThemeValue 
 export type { Theme, ThemeContextValue, ThemeProviderProps } from './ThemeProvider.js';
 
 export { formatTokenCount, formatCost } from './utils.js';
+
+export {
+  KEYBOARD_SHORTCUTS,
+  matchesShortcut,
+  formatShortcut,
+  matchesNamedShortcut,
+} from './keyboard-utils.js';
+export type { KeyCombo, ShortcutName, KeyEventLike } from './keyboard-utils.js';
+
+export {
+  THEME_TOKENS,
+  getToken,
+  getCssVariables,
+  hexToRgb,
+  relativeLuminance,
+  getContrastRatio,
+} from './theme-tokens.js';
+export type { ThemeTokenSet } from './theme-tokens.js';

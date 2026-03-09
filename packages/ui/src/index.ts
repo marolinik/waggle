@@ -79,6 +79,16 @@ export {
   toggleThemeValue,
   formatTokenCount,
   formatCost,
+  KEYBOARD_SHORTCUTS,
+  matchesShortcut,
+  formatShortcut,
+  matchesNamedShortcut,
+  THEME_TOKENS,
+  getToken,
+  getCssVariables,
+  hexToRgb,
+  relativeLuminance,
+  getContrastRatio,
 } from './components/common/index.js';
 export type {
   SidebarProps,
@@ -89,6 +99,10 @@ export type {
   Theme,
   ThemeContextValue,
   ThemeProviderProps,
+  KeyCombo,
+  ShortcutName,
+  KeyEventLike,
+  ThemeTokenSet,
 } from './components/common/index.js';
 
 // Components — settings
@@ -248,8 +262,16 @@ export {
 export type { ConversationTab } from './components/tabs/index.js';
 
 // Components — layout
-export { AppShell } from './components/layout/index.js';
-export type { AppShellProps } from './components/layout/index.js';
+export {
+  AppShell,
+  BREAKPOINTS,
+  getLayoutMode,
+  shouldShowSidebar,
+  shouldCollapseSidebar,
+  getContentMaxWidth,
+  getSidebarWidth,
+} from './components/layout/index.js';
+export type { AppShellProps, LayoutMode } from './components/layout/index.js';
 
 // Components — files
 export {
