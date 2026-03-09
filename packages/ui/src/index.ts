@@ -21,6 +21,7 @@ export {
   ChatMessage,
   ChatInput,
   ToolCard,
+  ToolResultRenderer,
   ApprovalGate,
   getToolStatusColor,
   formatDuration,
@@ -30,6 +31,7 @@ export type {
   ChatMessageProps,
   ChatInputProps,
   ToolCardProps,
+  ToolResultRendererProps,
   ApprovalGateProps,
 } from './components/chat/index.js';
 
@@ -86,3 +88,9 @@ export type { UseChatOptions, UseChatReturn } from './hooks/useChat.js';
 
 export { useWorkspaces } from './hooks/useWorkspaces.js';
 export type { UseWorkspacesOptions, UseWorkspacesReturn } from './hooks/useWorkspaces.js';
+
+export { useActiveWorkspace } from './hooks/useActiveWorkspace.js';
+export type { UseActiveWorkspaceOptions, UseActiveWorkspaceReturn } from './hooks/useActiveWorkspace.js';
+
+export { useApprovalGate, isExternalMutation } from './hooks/useApprovalGate.js';
+export type { UseApprovalGateOptions, UseApprovalGateReturn } from './hooks/useApprovalGate.js';

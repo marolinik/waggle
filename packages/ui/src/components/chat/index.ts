@@ -13,4 +13,7 @@ export type { ToolCardProps } from './ToolCard.js';
 export { ApprovalGate } from './ApprovalGate.js';
 export type { ApprovalGateProps } from './ApprovalGate.js';
 
+export { ToolResultRenderer } from './ToolResultRenderer.js';
+export type { ToolResultRendererProps } from './ToolResultRenderer.js';
+
 export { getToolStatusColor, formatDuration } from './utils.js';
