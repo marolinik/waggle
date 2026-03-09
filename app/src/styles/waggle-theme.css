@@ -25,6 +25,8 @@
   --primary-glow: rgba(99, 102, 241, 0.12);
   --accent: #22d3ee;
   --accent-muted: rgba(34, 211, 238, 0.1);
+  --brand: #E8920F;
+  --brand-muted: rgba(232, 146, 15, 0.12);
   --error: #ef4444;
   --warning: #f59e0b;
   --success: #22c55e;
@@ -83,8 +85,8 @@
   background: linear-gradient(
     180deg,
     transparent 0%,
-    var(--primary) 30%,
-    var(--accent) 70%,
+    var(--brand) 30%,
+    var(--primary) 70%,
     transparent 100%
   );
   opacity: 0.3;

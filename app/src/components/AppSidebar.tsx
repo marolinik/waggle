@@ -1,6 +1,6 @@
 /**
  * AppSidebar — Main sidebar with brand, workspace tree, and bottom navigation.
- * Industrial-refined design: hexagon logo, monospace labels, accent indicators.
+ * Uses the official Waggle bee logo (amber on dark).
  */
 
 import type { Workspace } from '@waggle/ui';
@@ -25,26 +25,6 @@ const NAV_ITEMS: { view: AppView; label: string; shortcut: string }[] = [
   { view: 'events', label: 'Events', shortcut: '3' },
   { view: 'settings', label: 'Settings', shortcut: '4' },
 ];
-
-/** SVG hexagon logo mark */
-function WaggleLogo({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <path
-        d="M12 2L21.5 7.5V16.5L12 22L2.5 16.5V7.5L12 2Z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        fill="none"
-      />
-      <path
-        d="M12 6L17 9V15L12 18L7 15V9L12 6Z"
-        fill="currentColor"
-        opacity="0.3"
-      />
-      <circle cx="12" cy="12" r="2" fill="currentColor" opacity="0.8" />
-    </svg>
-  );
-}
 
 /** Indicator dot for nav items */
 function NavDot({ active }: { active: boolean }) {
@@ -159,18 +139,22 @@ export function AppSidebar({
       onToggle={onToggle}
       bottomItems={bottomItems}
     >
+      {/* Brand: logo + WAGGLE + version */}
       {!collapsed && (
         <div className="waggle-brand" style={{
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
-          color: 'var(--text-dim)',
         }}>
-          <WaggleLogo size={14} />
-          <span>WAGGLE</span>
+          <img
+            src="/waggle-logo.svg"
+            alt="Waggle"
+            style={{ width: 18, height: 22, flexShrink: 0 }}
+          />
+          <span style={{ color: '#E8920F', letterSpacing: '0.15em' }}>WAGGLE</span>
           <span style={{
             fontSize: '8px',
-            color: 'var(--accent)',
+            color: 'var(--text-dim)',
             opacity: 0.5,
             letterSpacing: '0.05em',
             marginLeft: 'auto',
@@ -183,12 +167,16 @@ export function AppSidebar({
         <div style={{
           display: 'flex',
           justifyContent: 'center',
-          padding: '4px 0',
-          color: 'var(--text-dim)',
+          padding: '6px 0',
         }}>
-          <WaggleLogo size={16} />
+          <img
+            src="/waggle-logo.svg"
+            alt="W"
+            style={{ width: 20, height: 24 }}
+          />
         </div>
       )}
+
       {workspaces.length > 0 ? (
         <WorkspaceTree
           workspaces={workspaces}
