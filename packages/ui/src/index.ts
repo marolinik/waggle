@@ -108,6 +108,31 @@ export type {
   SettingsTab,
 } from './components/settings/index.js';
 
+// Components — onboarding
+export {
+  OnboardingWizard,
+  NameStep,
+  ApiKeyStep,
+  WorkspaceStep,
+  ReadyStep,
+  validateName,
+  getProviderSignupUrl,
+  ONBOARDING_STEPS,
+  isStepComplete,
+  getNextStep,
+  getPrevStep,
+  buildConfigFromOnboarding,
+} from './components/onboarding/index.js';
+export type {
+  OnboardingWizardProps,
+  NameStepProps,
+  ApiKeyStepProps,
+  WorkspaceStepProps,
+  ReadyStepProps,
+  OnboardingData,
+  OnboardingStepConfig,
+} from './components/onboarding/index.js';
+
 // Components — layout
 export { AppShell } from './components/layout/index.js';
 export type { AppShellProps } from './components/layout/index.js';
@@ -124,3 +149,6 @@ export type { UseActiveWorkspaceOptions, UseActiveWorkspaceReturn } from './hook
 
 export { useApprovalGate, isExternalMutation } from './hooks/useApprovalGate.js';
 export type { UseApprovalGateOptions, UseApprovalGateReturn } from './hooks/useApprovalGate.js';
+
+export { useOnboardingSetup } from './hooks/useOnboardingSetup.js';
+export type { UseOnboardingSetupOptions, UseOnboardingSetupReturn } from './hooks/useOnboardingSetup.js';
