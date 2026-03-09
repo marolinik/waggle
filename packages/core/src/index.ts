@@ -19,4 +19,5 @@ export {
 export type { Embedder } from './mind/embeddings.js';
 export { createLiteLLMEmbedder, type LiteLLMEmbedderConfig } from './mind/litellm-embedder.js';
 export { normalizeEntityName, findDuplicates } from './mind/entity-normalizer.js';
+export { Ontology, validateEntity, type EntitySchema, type ValidationResult } from './mind/ontology.js';
 export { WaggleConfig, type ProviderEntry } from './config.js';
