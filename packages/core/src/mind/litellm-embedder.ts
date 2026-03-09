@@ -31,7 +31,7 @@ export function createLiteLLMEmbedder(config: LiteLLMEmbedderConfig): Embedder {
     litellmUrl,
     litellmApiKey,
     model = 'text-embedding',
-    dimensions = 1536,
+    dimensions = 1024,
     fetch: fetchFn = globalThis.fetch,
     fallbackToMock = false,
   } = config;

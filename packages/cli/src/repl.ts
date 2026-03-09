@@ -26,7 +26,7 @@ function buildEmbedder(litellmUrl: string, litellmApiKey: string) {
     litellmUrl,
     litellmApiKey,
     model: 'text-embedding',
-    dimensions: 1536,
+    dimensions: 1024,
     fallbackToMock: true,
   });
 }

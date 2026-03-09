@@ -21,12 +21,12 @@ describe('createLiteLLMEmbedder', () => {
     expect(embedder.dimensions).toBe(256);
   });
 
-  it('defaults dimensions to 1536', () => {
+  it('defaults dimensions to 1024', () => {
     const embedder = createLiteLLMEmbedder({
       litellmUrl: 'http://localhost:4000/v1',
       fetch: mockFetchOk({}),
     });
-    expect(embedder.dimensions).toBe(1536);
+    expect(embedder.dimensions).toBe(1024);
   });
 
   it('embed() calls the correct endpoint with Bearer auth', async () => {
