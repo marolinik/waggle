@@ -6,9 +6,9 @@ import type { Db } from '../db/connection.js';
 export class JobService {
   private queue: Queue;
 
-  constructor(private db: Db, redisUrl: string) {
+  constructor(private db: Db, redisUrl: string, queueName = 'waggle-jobs') {
     const url = new URL(redisUrl);
-    this.queue = new Queue('waggle-jobs', {
+    this.queue = new Queue(queueName, {
       connection: {
         host: url.hostname,
         port: parseInt(url.port || '6379'),

@@ -50,10 +50,15 @@ export async function wsGateway(fastify: FastifyInstance) {
 
             // Subscribe to Redis channel for this team
             const channel = `team:${teamId}:waggle`;
-            const existingChannels = await fastify.redisSub.call('PUBSUB', 'CHANNELS', channel) as string[];
-            // Only subscribe if not already subscribed (redisSub is shared)
-            if (!existingChannels || !existingChannels.includes(channel)) {
-              await fastify.redisSub.subscribe(channel);
+            try {
+              const existingChannels = await fastify.redisSub.call('PUBSUB', 'CHANNELS', channel) as string[];
+              // Only subscribe if not already subscribed (redisSub is shared)
+              if (!existingChannels || !existingChannels.includes(channel)) {
+                await fastify.redisSub.subscribe(channel);
+              }
+            } catch {
+              // Redis subscribe failure is non-fatal — real-time updates won't work
+              // but join should still succeed
             }
 
             socket.send(JSON.stringify({ type: 'joined_team', teamSlug: event.teamSlug }));

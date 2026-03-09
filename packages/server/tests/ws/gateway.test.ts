@@ -158,6 +158,7 @@ describe('WebSocket Gateway (integration)', () => {
 
   beforeAll(async () => {
     const { buildServer } = await import('../../src/index.js');
+    const { sql: drizzleSql } = await import('drizzle-orm');
     server = await buildServer();
 
     // Override auth to bypass Clerk
@@ -168,20 +169,26 @@ describe('WebSocket Gateway (integration)', () => {
       req.clerkId = 'test';
     };
 
-    // Create test user and team
+    // Clean up leftover data from previous runs
     const { users, teams, teamMembers } = await import('../../src/db/schema.js');
+    await server.db.execute(drizzleSql`DELETE FROM team_members WHERE user_id IN (SELECT id FROM users WHERE clerk_id LIKE 'wstest_%')`);
+    await server.db.execute(drizzleSql`DELETE FROM messages WHERE sender_id IN (SELECT id FROM users WHERE clerk_id LIKE 'wstest_%')`);
+    await server.db.execute(drizzleSql`DELETE FROM teams WHERE slug LIKE 'ws-test-team-%'`);
+    await server.db.execute(drizzleSql`DELETE FROM users WHERE clerk_id LIKE 'wstest_%'`);
 
+    // Create test user and team with unique IDs
+    const suffix = Date.now();
     const [user] = await server.db
       .insert(users)
       .values({
-        clerkId: 'wstest_user1',
+        clerkId: `wstest_user_${suffix}`,
         displayName: 'WS User',
-        email: `wsuser_${Date.now()}@test.com`,
+        email: `wsuser_${suffix}@test.com`,
       })
       .returning();
     userId = user.id;
 
-    teamSlug = `ws-test-team-${Date.now()}`;
+    teamSlug = `ws-test-team-${suffix}`;
     const [team] = await server.db
       .insert(teams)
       .values({ name: 'WS Team', slug: teamSlug, ownerId: userId })
@@ -198,6 +205,7 @@ describe('WebSocket Gateway (integration)', () => {
   });
 
   afterAll(async () => {
+    if (!server) return;
     const { sql } = await import('drizzle-orm');
     await server.db.execute(
       sql`DELETE FROM team_members WHERE user_id IN (SELECT id FROM users WHERE clerk_id LIKE 'wstest_%')`,
@@ -205,7 +213,7 @@ describe('WebSocket Gateway (integration)', () => {
     await server.db.execute(
       sql`DELETE FROM messages WHERE sender_id IN (SELECT id FROM users WHERE clerk_id LIKE 'wstest_%')`,
     );
-    await server.db.execute(sql`DELETE FROM teams WHERE slug = ${teamSlug}`);
+    await server.db.execute(sql`DELETE FROM teams WHERE slug LIKE 'ws-test-team-%'`);
     await server.db.execute(
       sql`DELETE FROM users WHERE clerk_id LIKE 'wstest_%'`,
     );
@@ -229,11 +237,19 @@ describe('WebSocket Gateway (integration)', () => {
     return new Promise((r) => setTimeout(r, ms));
   }
 
+  /** Wait until messages array has at least `count` entries, or timeout. */
+  async function waitForMessages(messages: any[], count: number, timeoutMs = 3000) {
+    const start = Date.now();
+    while (messages.length < count && Date.now() - start < timeoutMs) {
+      await wait(50);
+    }
+  }
+
   it('connects and authenticates via WebSocket', async () => {
     const { ws, messages } = await connectWs();
 
     ws.send(JSON.stringify({ type: 'authenticate', token: userId }));
-    await wait(200);
+    await waitForMessages(messages, 1);
 
     expect(messages).toHaveLength(1);
     expect(messages[0]).toEqual({ type: 'authenticated', userId });
@@ -245,7 +261,7 @@ describe('WebSocket Gateway (integration)', () => {
     const { ws, messages } = await connectWs();
 
     ws.send(JSON.stringify({ type: 'join_team', teamSlug }));
-    await wait(200);
+    await waitForMessages(messages, 1);
 
     expect(messages[0]).toEqual({ type: 'error', message: 'Not authenticated' });
 
@@ -256,10 +272,10 @@ describe('WebSocket Gateway (integration)', () => {
     const { ws, messages } = await connectWs();
 
     ws.send(JSON.stringify({ type: 'authenticate', token: userId }));
-    await wait(150);
+    await waitForMessages(messages, 1);
 
     ws.send(JSON.stringify({ type: 'join_team', teamSlug }));
-    await wait(200);
+    await waitForMessages(messages, 2);
 
     expect(messages[1]).toEqual({ type: 'joined_team', teamSlug });
 
@@ -270,10 +286,10 @@ describe('WebSocket Gateway (integration)', () => {
     const { ws, messages } = await connectWs();
 
     ws.send(JSON.stringify({ type: 'authenticate', token: userId }));
-    await wait(150);
+    await waitForMessages(messages, 1);
 
     ws.send(JSON.stringify({ type: 'join_team', teamSlug: 'does-not-exist' }));
-    await wait(200);
+    await waitForMessages(messages, 2);
 
     expect(messages[1]).toEqual({ type: 'error', message: 'Team not found' });
 
@@ -284,7 +300,7 @@ describe('WebSocket Gateway (integration)', () => {
     const { ws, messages } = await connectWs();
 
     ws.send(JSON.stringify({ type: 'authenticate', token: userId }));
-    await wait(150);
+    await waitForMessages(messages, 1);
 
     ws.send(
       JSON.stringify({
@@ -295,7 +311,7 @@ describe('WebSocket Gateway (integration)', () => {
         content: { text: 'hello' },
       }),
     );
-    await wait(200);
+    await waitForMessages(messages, 2);
 
     expect(messages[1]).toEqual({ type: 'error', message: 'Not in a team' });
 

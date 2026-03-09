@@ -147,9 +147,14 @@ describe('Cron Scheduler (Task 3.16)', () => {
   });
 
   it('CronRunner.tick() picks up due schedule and queues job', async () => {
+    // Snapshot job count before tick
+    const jobsBefore = await server.db.select().from(agentJobs)
+      .where(eq(agentJobs.teamId, teamId));
+    const beforeCount = jobsBefore.length;
+
     // Create a schedule with next_run_at in the past so it's immediately due
     const pastDate = new Date(Date.now() - 60_000);
-    const [schedule] = await server.db.insert(cronSchedules).values({
+    await server.db.insert(cronSchedules).values({
       teamId,
       createdBy: ownerId,
       name: 'Due Now',
@@ -165,13 +170,14 @@ describe('Cron Scheduler (Task 3.16)', () => {
 
     expect(count).toBeGreaterThanOrEqual(1);
 
-    // Verify a job was created
-    const jobs = await server.db.select().from(agentJobs)
+    // Verify our specific job was created
+    const jobsAfter = await server.db.select().from(agentJobs)
       .where(eq(agentJobs.teamId, teamId));
-    const cronJob = jobs.find(j => (j.input as any).prompt === 'Cron runner test');
+    const cronJob = jobsAfter.find(j => (j.input as any).prompt === 'Cron runner test');
     expect(cronJob).toBeTruthy();
     expect(cronJob!.jobType).toBe('task');
     expect(cronJob!.status).toBe('queued');
+    expect(jobsAfter.length).toBeGreaterThan(beforeCount);
   });
 
   it('updates last_run_at and next_run_at after tick', async () => {

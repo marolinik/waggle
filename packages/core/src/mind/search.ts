@@ -103,6 +103,19 @@ export class HybridSearch {
 
   async keywordSearch(query: string, limit: number, gopId?: string): Promise<number[]> {
     const raw = this.db.getDatabase();
+
+    // Sanitize query for FTS5: quote each token to avoid operator interpretation
+    // e.g. "topic-7" becomes '"topic" "7"', not "topic NOT 7"
+    const safeQuery = query.includes('"')
+      ? query // already quoted by caller
+      : query
+          .split(/\s+/)
+          .filter(w => w.length > 0)
+          .map(w => `"${w.replace(/"/g, '')}"`)
+          .join(' ');
+
+    if (!safeQuery) return [];
+
     let sql: string;
     let params: unknown[];
 
@@ -114,7 +127,7 @@ export class HybridSearch {
         ORDER BY rank
         LIMIT ?
       `;
-      params = [query, gopId, limit];
+      params = [safeQuery, gopId, limit];
     } else {
       sql = `
         SELECT rowid as id FROM memory_frames_fts
@@ -122,11 +135,16 @@ export class HybridSearch {
         ORDER BY rank
         LIMIT ?
       `;
-      params = [query, limit];
+      params = [safeQuery, limit];
     }
 
-    const rows = raw.prepare(sql).all(...params) as { id: number }[];
-    return rows.map(r => r.id);
+    try {
+      const rows = raw.prepare(sql).all(...params) as { id: number }[];
+      return rows.map(r => r.id);
+    } catch {
+      // FTS5 parse error — return empty and let LIKE fallback handle it
+      return [];
+    }
   }
 
   async vectorSearch(query: string, limit: number, gopId?: string): Promise<number[]> {

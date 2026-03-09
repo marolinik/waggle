@@ -12,7 +12,7 @@ import { groupHandler } from './handlers/group-handler.js';
 const REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6381';
 const DATABASE_URL = process.env.DATABASE_URL ?? 'postgres://waggle:waggle_dev@localhost:5434/waggle';
 
-export function createWorker(redisUrl = REDIS_URL, databaseUrl = DATABASE_URL) {
+export function createWorker(redisUrl = REDIS_URL, databaseUrl = DATABASE_URL, queueName = 'waggle-jobs') {
   const db = createDb(databaseUrl);
   const processor = new JobProcessor();
   const redisPub = new Redis(redisUrl);
@@ -26,7 +26,7 @@ export function createWorker(redisUrl = REDIS_URL, databaseUrl = DATABASE_URL) {
   processor.register('cron', async (job) => ({ result: 'cron handler placeholder', input: job.data.input }));
 
   const url = new URL(redisUrl);
-  const worker = new Worker<JobData>('waggle-jobs', async (job) => {
+  const worker = new Worker<JobData>(queueName, async (job) => {
     // Update status to running
     await db.update(agentJobs)
       .set({ status: 'running', startedAt: new Date() })
