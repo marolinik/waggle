@@ -43,6 +43,19 @@ import { EventsView } from './views/EventsView';
 
 const adapter = new LocalAdapter({ baseUrl: 'http://127.0.0.1:3333' });
 
+/** Convert raw model IDs to friendly display names */
+function friendlyModelName(model: string): string {
+  if (model.includes('opus')) return 'Claude Opus';
+  if (model.includes('sonnet')) return 'Claude Sonnet';
+  if (model.includes('haiku')) return 'Claude Haiku';
+  if (model.includes('gpt-4o')) return 'GPT-4o';
+  if (model.includes('gpt-4')) return 'GPT-4';
+  if (model.includes('gpt-3')) return 'GPT-3.5';
+  // Return last segment if it's a path-like ID
+  const parts = model.split('/');
+  return parts[parts.length - 1];
+}
+
 type AppView = 'chat' | 'settings' | 'memory' | 'events';
 
 function WaggleApp() {
@@ -363,7 +376,7 @@ function WaggleApp() {
         }
         statusBar={
           <StatusBar
-            model={activeWorkspace?.model ?? config?.defaultModel ?? 'claude-sonnet-4-20250514'}
+            model={friendlyModelName(activeWorkspace?.model ?? config?.defaultModel ?? 'claude-sonnet-4-20250514')}
             workspace={activeWorkspace?.name ?? 'Default'}
             tokens={agentTokens}
             cost={agentCost}

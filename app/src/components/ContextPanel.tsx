@@ -13,15 +13,30 @@ type AppView = 'chat' | 'settings' | 'memory' | 'events';
 
 export interface ContextPanelProps {
   currentView: AppView;
-  // Session props (chat view)
   groupedSessions: Record<string, Session[]>;
   activeSessionId?: string;
   onSelectSession: (id: string) => void;
   onCreateSession: () => void;
   onDeleteSession: (id: string) => void;
   onRenameSession: (id: string, title: string) => void;
-  // Memory props (memory view)
   selectedFrame?: Frame;
+}
+
+function PanelHeader({ label }: { label: string }) {
+  return (
+    <div style={{
+      padding: '10px 12px',
+      borderBottom: '1px solid var(--border)',
+      fontSize: '9px',
+      fontWeight: 600,
+      color: 'var(--text-dim)',
+      textTransform: 'uppercase' as const,
+      letterSpacing: '0.1em',
+      fontFamily: "'JetBrains Mono', monospace",
+    }}>
+      {label}
+    </div>
+  );
 }
 
 export function ContextPanel({
@@ -37,18 +52,7 @@ export function ContextPanel({
   if (currentView === 'chat') {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        <div style={{
-          padding: '12px 16px',
-          borderBottom: '1px solid var(--border)',
-          fontSize: '11px',
-          fontWeight: 600,
-          color: 'var(--text-dim)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.05em',
-          fontFamily: "'JetBrains Mono', 'Cascadia Code', monospace",
-        }}>
-          Sessions
-        </div>
+        <PanelHeader label="Sessions" />
         <div style={{ flex: 1, overflow: 'auto' }}>
           <SessionList
             grouped={groupedSessions}
@@ -66,19 +70,8 @@ export function ContextPanel({
   if (currentView === 'memory' && selectedFrame) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        <div style={{
-          padding: '12px 16px',
-          borderBottom: '1px solid var(--border)',
-          fontSize: '11px',
-          fontWeight: 600,
-          color: 'var(--text-dim)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.05em',
-          fontFamily: "'JetBrains Mono', 'Cascadia Code', monospace",
-        }}>
-          Frame Detail
-        </div>
-        <div style={{ flex: 1, overflow: 'auto', padding: '12px' }}>
+        <PanelHeader label="Frame Detail" />
+        <div style={{ flex: 1, overflow: 'auto', padding: '10px' }}>
           <FrameDetail frame={selectedFrame} />
         </div>
       </div>

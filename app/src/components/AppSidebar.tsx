@@ -1,5 +1,6 @@
 /**
  * AppSidebar — Main sidebar with brand, workspace tree, and bottom navigation.
+ * Industrial-refined design: hexagon logo, monospace labels, accent indicators.
  */
 
 import type { Workspace } from '@waggle/ui';
@@ -18,12 +19,46 @@ export interface AppSidebarProps {
   onCreateWorkspace: () => void;
 }
 
-const NAV_ITEMS: { view: AppView; icon: string; label: string }[] = [
-  { view: 'chat', icon: '\uD83D\uDCAC', label: 'Chat' },
-  { view: 'memory', icon: '\uD83E\uDDE0', label: 'Memory' },
-  { view: 'events', icon: '\uD83D\uDCCB', label: 'Events' },
-  { view: 'settings', icon: '\u2699\uFE0F', label: 'Settings' },
+const NAV_ITEMS: { view: AppView; label: string; shortcut: string }[] = [
+  { view: 'chat', label: 'Chat', shortcut: '1' },
+  { view: 'memory', label: 'Memory', shortcut: '2' },
+  { view: 'events', label: 'Events', shortcut: '3' },
+  { view: 'settings', label: 'Settings', shortcut: '4' },
 ];
+
+/** SVG hexagon logo mark */
+function WaggleLogo({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path
+        d="M12 2L21.5 7.5V16.5L12 22L2.5 16.5V7.5L12 2Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        fill="none"
+      />
+      <path
+        d="M12 6L17 9V15L12 18L7 15V9L12 6Z"
+        fill="currentColor"
+        opacity="0.3"
+      />
+      <circle cx="12" cy="12" r="2" fill="currentColor" opacity="0.8" />
+    </svg>
+  );
+}
+
+/** Indicator dot for nav items */
+function NavDot({ active }: { active: boolean }) {
+  return (
+    <span style={{
+      width: 4,
+      height: 4,
+      borderRadius: '50%',
+      background: active ? 'var(--primary)' : 'transparent',
+      flexShrink: 0,
+      transition: 'background 0.15s',
+    }} />
+  );
+}
 
 export function AppSidebar({
   collapsed,
@@ -37,31 +72,43 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const bottomItems = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', padding: '0 4px' }}>
-      {NAV_ITEMS.map(({ view, icon, label }) => (
+      {NAV_ITEMS.map(({ view, label, shortcut }) => (
         <button
           key={view}
           onClick={() => onViewChange(view)}
-          title={label}
+          title={`${label} (Ctrl+${shortcut})`}
           style={{
-            background: currentView === view ? 'rgba(99, 102, 241, 0.08)' : 'none',
+            background: currentView === view ? 'var(--primary-muted)' : 'none',
             border: 'none',
             borderLeft: currentView === view ? '2px solid var(--primary)' : '2px solid transparent',
             color: currentView === view ? 'var(--primary)' : 'var(--text-muted)',
             cursor: 'pointer',
-            padding: collapsed ? '10px 0' : '7px 14px',
+            padding: collapsed ? '8px 0' : '5px 10px',
             width: '100%',
             textAlign: collapsed ? 'center' : 'left',
-            fontSize: '13px',
+            fontSize: '11px',
+            fontFamily: "'JetBrains Mono', monospace",
             display: 'flex',
             alignItems: 'center',
             justifyContent: collapsed ? 'center' : 'flex-start',
             gap: '8px',
-            borderRadius: '4px',
+            borderRadius: '3px',
             transition: 'all 0.12s',
           }}
         >
-          <span style={{ fontSize: '14px' }}>{icon}</span>
-          {!collapsed && <span>{label}</span>}
+          <NavDot active={currentView === view} />
+          {!collapsed && (
+            <>
+              <span style={{ flex: 1 }}>{label}</span>
+              <span style={{
+                fontSize: '9px',
+                color: 'var(--text-dim)',
+                opacity: currentView === view ? 0.8 : 0.4,
+              }}>
+                ^{shortcut}
+              </span>
+            </>
+          )}
         </button>
       ))}
       <div style={{
@@ -74,23 +121,33 @@ export function AppSidebar({
           title="Create Workspace"
           style={{
             background: 'none',
-            border: 'none',
-            color: 'var(--primary)',
+            border: '1px dashed var(--border)',
+            color: 'var(--text-dim)',
             cursor: 'pointer',
-            padding: collapsed ? '8px 0' : '7px 14px',
+            padding: collapsed ? '6px 0' : '5px 10px',
             width: '100%',
             textAlign: collapsed ? 'center' : 'left',
-            fontSize: '13px',
+            fontSize: '10px',
+            fontFamily: "'JetBrains Mono', monospace",
             display: 'flex',
             alignItems: 'center',
             justifyContent: collapsed ? 'center' : 'flex-start',
-            gap: '8px',
-            borderRadius: '4px',
-            transition: 'all 0.12s',
+            gap: '6px',
+            borderRadius: '3px',
+            transition: 'all 0.15s',
+            letterSpacing: '0.02em',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = 'var(--primary)';
+            e.currentTarget.style.color = 'var(--primary)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = 'var(--border)';
+            e.currentTarget.style.color = 'var(--text-dim)';
           }}
         >
-          <span style={{ fontSize: '16px' }}>+</span>
-          {!collapsed && <span>New Workspace</span>}
+          <span style={{ fontSize: '13px', lineHeight: 1 }}>+</span>
+          {!collapsed && <span>new workspace</span>}
         </button>
       </div>
     </div>
@@ -103,7 +160,34 @@ export function AppSidebar({
       bottomItems={bottomItems}
     >
       {!collapsed && (
-        <div className="waggle-brand">WAGGLE</div>
+        <div className="waggle-brand" style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          color: 'var(--text-dim)',
+        }}>
+          <WaggleLogo size={14} />
+          <span>WAGGLE</span>
+          <span style={{
+            fontSize: '8px',
+            color: 'var(--accent)',
+            opacity: 0.5,
+            letterSpacing: '0.05em',
+            marginLeft: 'auto',
+          }}>
+            v0.4
+          </span>
+        </div>
+      )}
+      {collapsed && (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          padding: '4px 0',
+          color: 'var(--text-dim)',
+        }}>
+          <WaggleLogo size={16} />
+        </div>
       )}
       {workspaces.length > 0 ? (
         <WorkspaceTree
@@ -114,12 +198,19 @@ export function AppSidebar({
       ) : (
         !collapsed && (
           <div style={{
-            padding: '16px 12px',
+            padding: '12px',
             color: 'var(--text-dim)',
-            fontSize: '12px',
-            lineHeight: 1.5,
+            fontSize: '10px',
+            lineHeight: 1.6,
+            fontFamily: "'JetBrains Mono', monospace",
           }}>
-            No workspaces yet. Create one to get started.
+            <div style={{ marginBottom: '8px', opacity: 0.7 }}>
+              no workspaces
+            </div>
+            <div style={{ fontSize: '9px', opacity: 0.4, lineHeight: 1.5 }}>
+              Create one to organize your
+              conversations, memory, and files.
+            </div>
           </div>
         )
       )}

@@ -1,5 +1,6 @@
 /**
  * ChatView — Composes tab bar, ChatArea, and FileDropZone.
+ * Shows a branded empty state when no messages exist.
  */
 
 import type { Message, DroppedFile } from '@waggle/ui';
