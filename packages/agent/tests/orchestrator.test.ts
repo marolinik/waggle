@@ -93,13 +93,7 @@ describe('Agent Loop with Custom Tools', () => {
     it('saved memory is searchable', async () => {
       await orchestrator.executeTool('save_memory', { content: 'The meeting about quantum computing was postponed' });
 
-      // Index the frame for vector search
-      const active = orchestrator.getSessions().getActive();
-      const gopFrames = orchestrator.getFrames().getGopFrames(active[0].gop_id);
-      for (const frame of gopFrames) {
-        await orchestrator.getSearch().indexFrame(frame.id, frame.content);
-      }
-
+      // CognifyPipeline now auto-indexes frames for vector search
       const searchResult = await orchestrator.executeTool('search_memory', { query: 'quantum' });
       expect(searchResult).toContain('quantum computing');
     });
@@ -113,12 +107,8 @@ describe('Agent Loop with Custom Tools', () => {
 
     it('searches with different profiles', async () => {
       await orchestrator.executeTool('save_memory', { content: 'Important meeting notes from today' });
-      const active = orchestrator.getSessions().getActive();
-      const gopFrames = orchestrator.getFrames().getGopFrames(active[0].gop_id);
-      for (const frame of gopFrames) {
-        await orchestrator.getSearch().indexFrame(frame.id, frame.content);
-      }
 
+      // CognifyPipeline now auto-indexes frames for vector search
       const result = await orchestrator.executeTool('search_memory', {
         query: 'meeting',
         profile: 'recent',
@@ -188,7 +178,7 @@ describe('Agent Loop with Custom Tools', () => {
 
     it('builds prompt without identity', () => {
       const prompt = orchestrator.buildSystemPrompt();
-      expect(prompt).toContain('Available Tools');
+      expect(prompt).toContain('Memory Tools');
       expect(prompt).not.toContain('# Identity');
     });
   });

@@ -353,12 +353,7 @@ describe('Full Integration Test', () => {
       await orchestrator.executeTool('save_memory', { content: 'Integration test started successfully', importance: 'normal' });
       await orchestrator.executeTool('save_memory', { content: 'All components initialized', importance: 'important' });
 
-      // Index for search
-      const active = orchestrator.getSessions().getActive();
-      const gopFrames = orchestrator.getFrames().getGopFrames(active[0].gop_id);
-      for (const frame of gopFrames) {
-        await orchestrator.getSearch().indexFrame(frame.id, frame.content);
-      }
+      // CognifyPipeline auto-indexes frames for vector search
 
       // Search via tool
       const searchResult = await orchestrator.executeTool('search_memory', { query: 'Integration' });

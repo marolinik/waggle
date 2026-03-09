@@ -10,6 +10,7 @@ import {
 } from '@waggle/core';
 import { createMindTools, type ToolDefinition } from './tools.js';
 import { buildSelfAwareness, type AgentCapabilities } from './self-awareness.js';
+import { CognifyPipeline } from './cognify.js';
 
 export interface OrchestratorConfig {
   db: MindDB;
@@ -48,6 +49,15 @@ export class Orchestrator {
     this.search = new HybridSearch(config.db, config.embedder);
     this.knowledge = new KnowledgeGraph(config.db);
 
+    const cognify = new CognifyPipeline({
+      db: config.db,
+      embedder: config.embedder,
+      frames: this.frames,
+      sessions: this.sessions,
+      knowledge: this.knowledge,
+      search: this.search,
+    });
+
     this.tools = createMindTools({
       db: this.db,
       identity: this.identity,
@@ -56,6 +66,7 @@ export class Orchestrator {
       sessions: this.sessions,
       search: this.search,
       knowledge: this.knowledge,
+      cognify,
     });
   }
 

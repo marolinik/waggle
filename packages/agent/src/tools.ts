@@ -65,16 +65,39 @@ export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
         required: ['query'],
       },
       execute: async (args) => {
+        const limit = (args.limit as number) ?? 10;
         const results = await deps.search.search(
           args.query as string,
           {
-            limit: (args.limit as number) ?? 10,
+            limit,
             profile: (args.profile as 'balanced') ?? 'balanced',
           }
         );
-        if (results.length === 0) return 'No relevant memories found.';
-        return results.map((r, i) =>
-          `[${i + 1}] (score: ${r.finalScore.toFixed(3)}, type: ${r.frame.frame_type}, importance: ${r.frame.importance})\n${r.frame.content}`
+        if (results.length > 0) {
+          return results.map((r, i) =>
+            `[${i + 1}] (score: ${r.finalScore.toFixed(3)}, type: ${r.frame.frame_type}, importance: ${r.frame.importance})\n${r.frame.content}`
+          ).join('\n\n');
+        }
+        // Fallback: if hybrid search found nothing, do a simple LIKE scan
+        // This catches cases where FTS5 keyword matching is too strict
+        const raw = deps.db.getDatabase();
+        const query = args.query as string;
+        const keywords = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+        let fallbackFrames: Array<{ id: number; content: string; frame_type: string; importance: string }>;
+        if (keywords.length > 0) {
+          const likeClauses = keywords.map(() => 'LOWER(content) LIKE ?').join(' OR ');
+          const likeParams = keywords.map(k => `%${k}%`);
+          fallbackFrames = raw.prepare(
+            `SELECT id, content, frame_type, importance FROM memory_frames WHERE ${likeClauses} ORDER BY id DESC LIMIT ?`
+          ).all(...likeParams, limit) as any[];
+        } else {
+          fallbackFrames = raw.prepare(
+            'SELECT id, content, frame_type, importance FROM memory_frames ORDER BY id DESC LIMIT ?'
+          ).all(limit) as any[];
+        }
+        if (fallbackFrames.length === 0) return 'No relevant memories found.';
+        return fallbackFrames.map((f, i) =>
+          `[${i + 1}] (type: ${f.frame_type}, importance: ${f.importance})\n${f.content}`
         ).join('\n\n');
       },
     },
