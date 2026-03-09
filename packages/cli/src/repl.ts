@@ -7,9 +7,11 @@
  */
 
 import readline from 'node:readline';
+import os from 'node:os';
+import path from 'node:path';
 import chalk from 'chalk';
 import { MindDB, WaggleConfig, createLiteLLMEmbedder } from '@waggle/core';
-import { Orchestrator, ModelRouter, runAgentLoop, createSystemTools, Workspace, ensureIdentity } from '@waggle/agent';
+import { Orchestrator, ModelRouter, runAgentLoop, createSystemTools, Workspace, ensureIdentity, loadSystemPrompt, loadSkills } from '@waggle/agent';
 import { parseCommand, COMMANDS } from './commands.js';
 import { renderMarkdown } from './renderer.js';
 import { AdminClient, formatTable } from './commands/admin.js';
@@ -59,6 +61,11 @@ export async function startRepl(options: ReplOptions = {}): Promise<void> {
   // Init workspace
   const workspace = new Workspace(process.cwd());
   workspace.init();
+
+  // Load user customizations from ~/.waggle/
+  const waggleHome = path.join(os.homedir(), '.waggle');
+  const userSystemPrompt = loadSystemPrompt(waggleHome);
+  const skills = loadSkills(waggleHome);
 
   // Detect mode
   const auth = new AuthManager();
@@ -305,7 +312,14 @@ export async function startRepl(options: ReplOptions = {}): Promise<void> {
     try {
       const tools = [...orchestrator.getTools(), ...systemTools];
 
-      const systemPrompt = orchestrator.buildSystemPrompt() + `
+      let systemPrompt = '';
+
+      // Prepend user's custom system prompt if exists
+      if (userSystemPrompt) {
+        systemPrompt += userSystemPrompt + '\n\n';
+      }
+
+      systemPrompt += orchestrator.buildSystemPrompt() + `
 
 # Who You Are
 You are Waggle — an AI assistant with persistent memory and web access.
@@ -345,6 +359,14 @@ Web: web_search (DuckDuckGo), web_fetch (read any URL)
 Memory: search_memory, save_memory, get_identity, get_awareness, query_knowledge, add_task
 
 When asked about current events, products, releases, docs, or anything you're not 100% certain about — web_search FIRST, answer SECOND.`;
+
+      // Append loaded skills
+      if (skills.length > 0) {
+        systemPrompt += '\n\n# Loaded Skills\n';
+        for (const skill of skills) {
+          systemPrompt += `\n## Skill: ${skill.name}\n${skill.content}\n`;
+        }
+      }
 
       conversationHistory.push({ role: 'user', content: input });
 

@@ -18,3 +18,4 @@ export { runAgentLoop, type AgentLoopConfig, type AgentResponse, type AgentMessa
 export { createTeamTools, type TeamToolDeps } from './team-tools.js';
 export { ensureIdentity, type IdentityConfig } from './auto-identity.js';
 export { buildSelfAwareness, type AgentCapabilities } from './self-awareness.js';
+export { loadSystemPrompt, loadSkills, type LoadedSkill } from './prompt-loader.js';
