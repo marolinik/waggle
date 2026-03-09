@@ -18,4 +18,5 @@ export {
 } from './mind/scoring.js';
 export type { Embedder } from './mind/embeddings.js';
 export { createLiteLLMEmbedder, type LiteLLMEmbedderConfig } from './mind/litellm-embedder.js';
+export { normalizeEntityName, findDuplicates } from './mind/entity-normalizer.js';
 export { WaggleConfig, type ProviderEntry } from './config.js';
