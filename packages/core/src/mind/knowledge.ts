@@ -43,9 +43,20 @@ export class KnowledgeGraph {
 
   // --- Entity operations ---
 
-  createEntity(entityType: string, name: string, properties: Record<string, unknown>): Entity {
+  createEntity(entityType: string, name: string, properties: Record<string, unknown>, temporal?: { valid_from?: string; valid_to?: string }): Entity {
     this.validateEntityProperties(entityType, properties);
     const raw = this.db.getDatabase();
+
+    if (temporal?.valid_from || temporal?.valid_to) {
+      const validFrom = temporal.valid_from ?? new Date().toISOString();
+      const validTo = temporal.valid_to ?? null;
+      const result = raw.prepare(`
+        INSERT INTO knowledge_entities (entity_type, name, properties, valid_from, valid_to)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(entityType, name, JSON.stringify(properties), validFrom, validTo);
+      return raw.prepare('SELECT * FROM knowledge_entities WHERE id = ?').get(result.lastInsertRowid) as Entity;
+    }
+
     const result = raw.prepare(`
       INSERT INTO knowledge_entities (entity_type, name, properties)
       VALUES (?, ?, ?)
