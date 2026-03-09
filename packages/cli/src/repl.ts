@@ -9,7 +9,7 @@
 import readline from 'node:readline';
 import chalk from 'chalk';
 import { MindDB, WaggleConfig, createLiteLLMEmbedder } from '@waggle/core';
-import { Orchestrator, ModelRouter, runAgentLoop, createSystemTools, Workspace } from '@waggle/agent';
+import { Orchestrator, ModelRouter, runAgentLoop, createSystemTools, Workspace, ensureIdentity } from '@waggle/agent';
 import { parseCommand, COMMANDS } from './commands.js';
 import { renderMarkdown } from './renderer.js';
 import { AdminClient, formatTable } from './commands/admin.js';
@@ -87,6 +87,9 @@ export async function startRepl(options: ReplOptions = {}): Promise<void> {
 
   // Build orchestrator
   const orchestrator = new Orchestrator({ db, embedder });
+
+  // Ensure identity exists (first-run wizard)
+  ensureIdentity(orchestrator.getIdentity());
 
   // Build system tools
   const systemTools = createSystemTools(process.cwd());
