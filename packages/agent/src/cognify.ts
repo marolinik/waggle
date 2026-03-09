@@ -8,6 +8,7 @@ import type {
   Embedder,
 } from '@waggle/core';
 import { extractEntities, type ExtractedEntity } from './entity-extractor.js';
+import { MemoryLinker, type MemoryLink } from './memory-linker.js';
 
 export interface CognifyConfig {
   db: MindDB;
@@ -16,12 +17,14 @@ export interface CognifyConfig {
   sessions: SessionStore;
   knowledge: KnowledgeGraph;
   search: HybridSearch;
+  enableLinking?: boolean;
 }
 
 export interface CognifyResult {
   frameId: number;
   entitiesExtracted: number;
   relationsCreated: number;
+  relatedFrames?: MemoryLink[];
 }
 
 export class CognifyPipeline {
@@ -29,12 +32,16 @@ export class CognifyPipeline {
   private sessions: SessionStore;
   private knowledge: KnowledgeGraph;
   private search: HybridSearch;
+  private linker?: MemoryLinker;
 
   constructor(config: CognifyConfig) {
     this.frames = config.frames;
     this.sessions = config.sessions;
     this.knowledge = config.knowledge;
     this.search = config.search;
+    if (config.enableLinking) {
+      this.linker = new MemoryLinker({ search: config.search });
+    }
   }
 
   /**
@@ -66,10 +73,17 @@ export class CognifyPipeline {
     // 6. Index the frame for vector search
     await this.search.indexFrame(frame.id, content);
 
+    // 7. Find related frames if linking is enabled
+    let relatedFrames: MemoryLink[] | undefined;
+    if (this.linker) {
+      relatedFrames = await this.linker.findRelated(content);
+    }
+
     return {
       frameId: frame.id,
       entitiesExtracted: entityIds.length,
       relationsCreated,
+      relatedFrames,
     };
   }
 
