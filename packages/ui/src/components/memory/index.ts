@@ -21,3 +21,18 @@ export {
   sortFrames,
 } from './utils.js';
 export type { FrameFilters, MemoryStats, FrameTypeOption } from './utils.js';
+
+export { KGViewer } from './KGViewer.js';
+export type { KGViewerProps } from './KGViewer.js';
+
+export {
+  getNodeColor,
+  getNodeSize,
+  filterGraph,
+  getNeighborhood,
+  getNodeTypes,
+  getEdgeTypes,
+  getNodeDetail,
+  layoutForceSimple,
+} from './kg-utils.js';
+export type { KGNode, KGEdge, KGData, KGFilters, KGNodeDetail } from './kg-utils.js';

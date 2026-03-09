@@ -147,6 +147,15 @@ export {
   FRAME_TYPES,
   filterFrames,
   sortFrames,
+  KGViewer,
+  getNodeColor,
+  getNodeSize,
+  filterGraph,
+  getNeighborhood,
+  getNodeTypes,
+  getEdgeTypes,
+  getNodeDetail,
+  layoutForceSimple,
 } from './components/memory/index.js';
 export type {
   MemoryBrowserProps,
@@ -156,6 +165,12 @@ export type {
   FrameFilters,
   MemoryStats,
   FrameTypeOption,
+  KGViewerProps,
+  KGNode,
+  KGEdge,
+  KGData,
+  KGFilters,
+  KGNodeDetail,
 } from './components/memory/index.js';
 
 // Components — layout
@@ -180,3 +195,6 @@ export type { UseOnboardingSetupOptions, UseOnboardingSetupReturn } from './hook
 
 export { useMemory, executeMemorySearch } from './hooks/useMemory.js';
 export type { UseMemoryOptions, UseMemoryReturn, MemorySearchResult, MemorySearchError } from './hooks/useMemory.js';
+
+export { useKnowledgeGraph } from './hooks/useKnowledgeGraph.js';
+export type { UseKnowledgeGraphOptions, UseKnowledgeGraphReturn } from './hooks/useKnowledgeGraph.js';
