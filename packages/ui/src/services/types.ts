@@ -121,6 +121,7 @@ export interface WaggleService {
   listSessions(workspace: string): Promise<Session[]>;
   createSession(workspace: string, title?: string): Promise<Session>;
   deleteSession(sessionId: string, workspace: string): Promise<void>;
+  renameSession(sessionId: string, workspace: string, title: string): Promise<void>;
 
   // Approval gates
   approveAction(requestId: string): void;

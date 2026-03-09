@@ -193,6 +193,18 @@ export class LocalAdapter implements WaggleService {
     return res.json() as Promise<Session>;
   }
 
+  async renameSession(sessionId: string, workspace: string, title: string): Promise<void> {
+    const res = await fetch(
+      `${this.baseUrl}/api/workspaces/${workspace}/sessions/${sessionId}`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title }),
+      },
+    );
+    if (!res.ok) throw new Error(`Failed to rename session: ${res.status}`);
+  }
+
   async deleteSession(sessionId: string, workspace: string): Promise<void> {
     const params = new URLSearchParams({ workspace });
     const res = await fetch(

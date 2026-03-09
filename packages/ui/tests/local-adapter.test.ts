@@ -291,6 +291,7 @@ describe('LocalAdapter', () => {
       expect(typeof service.listSessions).toBe('function');
       expect(typeof service.createSession).toBe('function');
       expect(typeof service.deleteSession).toBe('function');
+      expect(typeof service.renameSession).toBe('function');
       expect(typeof service.approveAction).toBe('function');
       expect(typeof service.denyAction).toBe('function');
       expect(typeof service.getAgentStatus).toBe('function');

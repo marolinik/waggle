@@ -196,6 +196,23 @@ export type {
   StepFilter,
 } from './components/events/index.js';
 
+// Components — sessions
+export {
+  SessionList,
+  SessionCard,
+  groupSessionsByTime,
+  getTimeGroup,
+  TIME_GROUPS,
+  formatLastActive,
+  generateSessionTitle,
+  sortSessions,
+  filterSessionsByWorkspace,
+} from './components/sessions/index.js';
+export type {
+  SessionListProps,
+  SessionCardProps,
+} from './components/sessions/index.js';
+
 // Components — layout
 export { AppShell } from './components/layout/index.js';
 export type { AppShellProps } from './components/layout/index.js';
@@ -224,3 +241,6 @@ export type { UseKnowledgeGraphOptions, UseKnowledgeGraphReturn } from './hooks/
 
 export { useEvents } from './hooks/useEvents.js';
 export type { UseEventsOptions, UseEventsReturn } from './hooks/useEvents.js';
+
+export { useSessions } from './hooks/useSessions.js';
+export type { UseSessionsOptions, UseSessionsReturn } from './hooks/useSessions.js';
