@@ -2,11 +2,20 @@ import type { MindDB } from './db.js';
 
 export type AwarenessCategory = 'task' | 'action' | 'pending' | 'flag';
 
+export interface AwarenessMetadata {
+  context?: string;
+  status?: string;
+  result?: string;
+  priority?: string;
+  [key: string]: unknown;
+}
+
 export interface AwarenessItem {
   id: number;
   category: AwarenessCategory;
   content: string;
   priority: number;
+  metadata: string;
   created_at: string;
   expires_at: string | null;
 }
@@ -20,15 +29,31 @@ export class AwarenessLayer {
 
   constructor(db: MindDB) {
     this.db = db;
+    this.ensureMetadataColumn();
   }
 
-  add(category: AwarenessCategory, content: string, priority = 0, expires_at?: string): AwarenessItem {
+  /** Ensure metadata column exists for databases created before this feature */
+  private ensureMetadataColumn(): void {
     const raw = this.db.getDatabase();
+    const columns = raw.prepare("PRAGMA table_info(awareness)").all() as Array<{ name: string }>;
+    const hasMetadata = columns.some(c => c.name === 'metadata');
+    if (!hasMetadata) {
+      raw.exec("ALTER TABLE awareness ADD COLUMN metadata TEXT NOT NULL DEFAULT '{}'");
+    }
+  }
+
+  add(category: AwarenessCategory, content: string, priority = 0, expires_at?: string, metadata?: AwarenessMetadata): AwarenessItem {
+    const raw = this.db.getDatabase();
+    const metadataJson = metadata ? JSON.stringify(metadata) : '{}';
     const result = raw.prepare(`
-      INSERT INTO awareness (category, content, priority, expires_at)
-      VALUES (?, ?, ?, ?)
-    `).run(category, content, priority, expires_at ?? null);
+      INSERT INTO awareness (category, content, priority, expires_at, metadata)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(category, content, priority, expires_at ?? null, metadataJson);
     return raw.prepare('SELECT * FROM awareness WHERE id = ?').get(result.lastInsertRowid) as AwarenessItem;
+  }
+
+  get(id: number): AwarenessItem | undefined {
+    return this.db.getDatabase().prepare('SELECT * FROM awareness WHERE id = ?').get(id) as AwarenessItem | undefined;
   }
 
   remove(id: number): void {
@@ -45,6 +70,43 @@ export class AwarenessLayer {
     const raw = this.db.getDatabase();
     raw.prepare(`UPDATE awareness SET ${sets} WHERE id = ?`).run(...values, id);
     return raw.prepare('SELECT * FROM awareness WHERE id = ?').get(id) as AwarenessItem;
+  }
+
+  updateMetadata(id: number, metadata: AwarenessMetadata): AwarenessItem {
+    const raw = this.db.getDatabase();
+    const existing = raw.prepare('SELECT metadata FROM awareness WHERE id = ?').get(id) as { metadata: string } | undefined;
+    if (!existing) {
+      throw new Error(`Awareness item ${id} not found`);
+    }
+    const current: AwarenessMetadata = JSON.parse(existing.metadata);
+    const merged = { ...current, ...metadata };
+    raw.prepare('UPDATE awareness SET metadata = ? WHERE id = ?').run(JSON.stringify(merged), id);
+    return raw.prepare('SELECT * FROM awareness WHERE id = ?').get(id) as AwarenessItem;
+  }
+
+  getByStatus(status: string): AwarenessItem[] {
+    const raw = this.db.getDatabase();
+    const items = raw.prepare(`
+      SELECT * FROM awareness
+      WHERE (expires_at IS NULL OR expires_at > datetime('now'))
+      ORDER BY priority DESC
+    `).all() as AwarenessItem[];
+    return items.filter(item => {
+      try {
+        const meta: AwarenessMetadata = JSON.parse(item.metadata);
+        return meta.status === status;
+      } catch {
+        return false;
+      }
+    });
+  }
+
+  parseMetadata(item: AwarenessItem): AwarenessMetadata {
+    try {
+      return JSON.parse(item.metadata) as AwarenessMetadata;
+    } catch {
+      return {};
+    }
   }
 
   getAll(): AwarenessItem[] {

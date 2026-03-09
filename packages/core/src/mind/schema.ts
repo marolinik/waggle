@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS awareness (
   category TEXT NOT NULL CHECK (category IN ('task', 'action', 'pending', 'flag')),
   content TEXT NOT NULL,
   priority INTEGER NOT NULL DEFAULT 0,
+  metadata TEXT NOT NULL DEFAULT '{}',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   expires_at TEXT
 );
