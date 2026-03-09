@@ -11,7 +11,7 @@ import os from 'node:os';
 import path from 'node:path';
 import chalk from 'chalk';
 import { MindDB, WaggleConfig, createLiteLLMEmbedder } from '@waggle/core';
-import { Orchestrator, ModelRouter, runAgentLoop, createSystemTools, Workspace, ensureIdentity, loadSystemPrompt, loadSkills } from '@waggle/agent';
+import { Orchestrator, ModelRouter, runAgentLoop, createSystemTools, Workspace, ensureIdentity, loadSystemPrompt, loadSkills, CostTracker } from '@waggle/agent';
 import { parseCommand, COMMANDS } from './commands.js';
 import { renderMarkdown } from './renderer.js';
 import { AdminClient, formatTable } from './commands/admin.js';
@@ -57,6 +57,9 @@ export async function startRepl(options: ReplOptions = {}): Promise<void> {
   });
 
   let currentModel = defaultModel;
+
+  // Token/cost tracker for /cost command
+  const costTracker = new CostTracker({});
 
   // Init workspace
   const workspace = new Workspace(process.cwd());
@@ -238,6 +241,12 @@ export async function startRepl(options: ReplOptions = {}): Promise<void> {
           if (modeResult.warning) console.log(chalk.yellow(modeResult.warning));
           break;
 
+        case 'cost':
+          console.log('');
+          console.log(chalk.dim(costTracker.formatSummary()));
+          console.log('');
+          break;
+
         case 'admin': {
           const adminClient = new AdminClient();
           const parts = cmd.args.split(/\s+/);
@@ -384,6 +393,9 @@ When asked about current events, products, releases, docs, or anything you're no
           workspace.logAudit(sessionId, name, toolInput, '');
         },
       });
+
+      // Track token usage
+      costTracker.addUsage(currentModel, result.usage.inputTokens, result.usage.outputTokens);
 
       // Log the turn
       workspace.logTurn(sessionId, 'user', input);

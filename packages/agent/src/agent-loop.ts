@@ -101,6 +101,15 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
       body: JSON.stringify(body),
     });
 
+    if (response.status === 429) {
+      const retryAfter = parseInt(response.headers.get('retry-after') ?? '5', 10);
+      const waitMs = Math.min(retryAfter * 1000, 60_000);
+      if (onToken) onToken(`\n[Rate limited — waiting ${retryAfter}s...]\n`);
+      await new Promise(r => setTimeout(r, waitMs));
+      turn--; // retry this turn
+      continue;
+    }
+
     if (!response.ok) {
       const errorBody = await response.text().catch(() => 'Unknown error');
       throw new Error(`LiteLLM error (${response.status}): ${errorBody}`);

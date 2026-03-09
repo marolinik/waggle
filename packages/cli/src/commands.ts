@@ -44,4 +44,5 @@ export const COMMANDS: Record<string, string> = {
   logout: '/logout        — Log out and clear stored token',
   whoami: '/whoami        — Show current user and mode',
   mode: '/mode          — Show current mode (local/team)',
+  cost: '/cost          — Show token usage and estimated cost',
 };

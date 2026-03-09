@@ -21,3 +21,4 @@ export { buildSelfAwareness, type AgentCapabilities } from './self-awareness.js'
 export { loadSystemPrompt, loadSkills, type LoadedSkill } from './prompt-loader.js';
 export { LoopGuard, type LoopGuardConfig } from './loop-guard.js';
 export { scanForInjection, type ScanResult } from './injection-scanner.js';
+export { CostTracker, type ModelPricing, type UsageStats } from './cost-tracker.js';
