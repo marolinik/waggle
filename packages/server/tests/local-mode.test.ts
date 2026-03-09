@@ -121,19 +121,30 @@ describe('Local Server Mode', () => {
     });
   });
 
-  // --- Chat stub ---
-  describe('chat stub', () => {
-    it('returns a stub response', async () => {
+  // --- Chat SSE ---
+  describe('chat SSE', () => {
+    it('returns SSE stream when agent runner is set', async () => {
+      // Inject a mock agent runner for this test
+      server.agentRunner = async (config) => {
+        if (config.onToken) config.onToken('Hi');
+        return {
+          content: 'Hi',
+          toolsUsed: [],
+          usage: { inputTokens: 1, outputTokens: 1 },
+        };
+      };
+
       const res = await server.inject({
         method: 'POST',
         url: '/api/chat',
         payload: { message: 'Hello world', workspace: 'test-ws' },
       });
-      expect(res.statusCode).toBe(200);
-      const body = JSON.parse(res.body);
-      expect(body.response).toContain('Hello world');
-      expect(body.workspace).toBe('test-ws');
-      expect(body.timestamp).toBeDefined();
+      expect(res.headers['content-type']).toBe('text/event-stream');
+      expect(res.body).toContain('event: token');
+      expect(res.body).toContain('event: done');
+
+      // Clean up
+      server.agentRunner = undefined;
     });
 
     it('returns 400 without message', async () => {

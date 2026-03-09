@@ -4,7 +4,7 @@ import cors from '@fastify/cors';
 import websocket from '@fastify/websocket';
 import { MultiMind, WorkspaceManager } from '@waggle/core';
 import { workspaceRoutes } from './routes/workspaces.js';
-import { chatRoutes } from './routes/chat.js';
+import { chatRoutes, type AgentRunner } from './routes/chat.js';
 import { memoryRoutes } from './routes/memory.js';
 import { settingsRoutes } from './routes/settings.js';
 import { EventEmitter } from 'node:events';
@@ -22,6 +22,7 @@ declare module 'fastify' {
     multiMind: MultiMind;
     workspaceManager: WorkspaceManager;
     eventBus: EventEmitter;
+    agentRunner?: AgentRunner;
   }
 }
 
