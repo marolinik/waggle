@@ -23,3 +23,4 @@ export { Ontology, validateEntity, type EntitySchema, type ValidationResult } fr
 export { WaggleConfig, type ProviderEntry } from './config.js';
 export { MultiMind, type MultiMindSearchResult, type MindSource, type SearchScope } from './multi-mind.js';
 export { WorkspaceManager, type WorkspaceConfig, type CreateWorkspaceOptions } from './workspace-config.js';
+export { needsMigration, migrateToMultiMind } from './migration.js';
