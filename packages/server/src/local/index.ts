@@ -7,6 +7,8 @@ import { workspaceRoutes } from './routes/workspaces.js';
 import { chatRoutes, type AgentRunner } from './routes/chat.js';
 import { memoryRoutes } from './routes/memory.js';
 import { settingsRoutes } from './routes/settings.js';
+import { sessionRoutes } from './routes/sessions.js';
+import { knowledgeRoutes } from './routes/knowledge.js';
 import { EventEmitter } from 'node:events';
 
 export interface LocalConfig {
@@ -62,6 +64,8 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   await server.register(chatRoutes);
   await server.register(memoryRoutes);
   await server.register(settingsRoutes);
+  await server.register(sessionRoutes);
+  await server.register(knowledgeRoutes);
 
   // Health check
   server.get('/health', async () => ({

@@ -39,4 +39,59 @@ export const settingsRoutes: FastifyPluginAsync = async (server) => {
       mindPath: config.getMindPath(),
     };
   });
+
+  // POST /api/settings/test-key — test an API key by validating its format
+  server.post<{
+    Body: { provider: string; apiKey: string };
+  }>('/api/settings/test-key', async (request, reply) => {
+    const { provider, apiKey } = request.body ?? {};
+
+    if (!provider || !apiKey) {
+      return reply.status(400).send({ error: 'provider and apiKey are required' });
+    }
+
+    // Validate key format per provider
+    const result = validateApiKeyFormat(provider, apiKey);
+    return result;
+  });
 };
+
+/**
+ * Validate API key format without making real API calls.
+ * In production, actual validation would go through LiteLLM.
+ */
+function validateApiKeyFormat(provider: string, apiKey: string): { valid: boolean; error?: string } {
+  switch (provider.toLowerCase()) {
+    case 'openai':
+      if (!apiKey.startsWith('sk-')) {
+        return { valid: false, error: 'OpenAI keys must start with "sk-"' };
+      }
+      if (apiKey.length < 20) {
+        return { valid: false, error: 'API key is too short' };
+      }
+      return { valid: true };
+
+    case 'anthropic':
+      if (!apiKey.startsWith('sk-ant-')) {
+        return { valid: false, error: 'Anthropic keys must start with "sk-ant-"' };
+      }
+      if (apiKey.length < 20) {
+        return { valid: false, error: 'API key is too short' };
+      }
+      return { valid: true };
+
+    case 'google':
+    case 'gemini':
+      if (apiKey.length < 10) {
+        return { valid: false, error: 'API key is too short' };
+      }
+      return { valid: true };
+
+    default:
+      // For unknown providers, just check it's non-empty and reasonable length
+      if (apiKey.length < 8) {
+        return { valid: false, error: 'API key is too short' };
+      }
+      return { valid: true };
+  }
+}
