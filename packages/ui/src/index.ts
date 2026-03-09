@@ -133,6 +133,31 @@ export type {
   OnboardingStepConfig,
 } from './components/onboarding/index.js';
 
+// Components — memory
+export {
+  MemoryBrowser,
+  FrameTimeline,
+  FrameDetail,
+  MemorySearch,
+  getFrameTypeIcon,
+  getFrameTypeLabel,
+  getImportanceBadge,
+  truncateContent,
+  formatTimestamp,
+  FRAME_TYPES,
+  filterFrames,
+  sortFrames,
+} from './components/memory/index.js';
+export type {
+  MemoryBrowserProps,
+  FrameTimelineProps,
+  FrameDetailProps,
+  MemorySearchProps,
+  FrameFilters,
+  MemoryStats,
+  FrameTypeOption,
+} from './components/memory/index.js';
+
 // Components — layout
 export { AppShell } from './components/layout/index.js';
 export type { AppShellProps } from './components/layout/index.js';
@@ -152,3 +177,6 @@ export type { UseApprovalGateOptions, UseApprovalGateReturn } from './hooks/useA
 
 export { useOnboardingSetup } from './hooks/useOnboardingSetup.js';
 export type { UseOnboardingSetupOptions, UseOnboardingSetupReturn } from './hooks/useOnboardingSetup.js';
+
+export { useMemory, executeMemorySearch } from './hooks/useMemory.js';
+export type { UseMemoryOptions, UseMemoryReturn, MemorySearchResult, MemorySearchError } from './hooks/useMemory.js';

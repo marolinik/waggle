@@ -69,6 +69,10 @@ export interface Frame {
   importance: string;
   timestamp: string;
   score?: number;
+  gop?: string;
+  sessionId?: string;
+  entities?: string[];
+  linkedFrames?: number[];
 }
 
 // ── Agent Status ───────────────────────────────────────────────────────
