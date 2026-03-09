@@ -3,6 +3,11 @@ import * as path from 'node:path';
 import { execFile } from 'node:child_process';
 import { glob } from 'glob';
 import type { ToolDefinition } from './tools.js';
+import { SearchCache, RateLimiter } from './web-search-utils.js';
+
+// Module-level instances — shared across all tool invocations
+const searchCache = new SearchCache(300_000); // 5 min TTL
+const searchRateLimiter = new RateLimiter(10, 60_000); // 10 searches per minute
 
 /**
  * Resolve a relative path within a workspace, rejecting traversal outside it.
@@ -217,6 +222,168 @@ export function createSystemTools(workspace: string): ToolDefinition[] {
           return results.join('\n');
         } catch (err: any) {
           return `Error: ${err.message}`;
+        }
+      },
+    },
+
+    // 7. web_search — Search the web via DuckDuckGo HTML
+    {
+      name: 'web_search',
+      description: 'Search the web for current information. Use for recent events, news, product updates, documentation, or anything requiring up-to-date info.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Search query' },
+          max_results: { type: 'number', description: 'Max results (default: 5, max: 10)' },
+        },
+        required: ['query'],
+      },
+      execute: async (args) => {
+        try {
+          const query = args.query as string;
+          const maxResults = Math.min((args.max_results as number) ?? 5, 10);
+
+          // Check cache first
+          const cacheKey = `${query}|${maxResults}`;
+          const cached = searchCache.get(cacheKey);
+          if (cached) return cached;
+
+          // Rate limit check
+          if (!searchRateLimiter.canProceed()) {
+            return 'Search rate limit exceeded. Please wait a moment before searching again.';
+          }
+
+          const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+
+          const response = await fetch(url, {
+            headers: { 'User-Agent': 'Waggle/1.0 (AI Assistant)' },
+          });
+
+          if (!response.ok) {
+            return `Search failed (${response.status}): ${response.statusText}`;
+          }
+
+          const html = await response.text();
+
+          // Parse DuckDuckGo HTML results
+          const results: Array<{ title: string; url: string; snippet: string }> = [];
+          const resultRegex = /<a[^>]+class="result__a"[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<a[^>]+class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g;
+          let match;
+
+          while ((match = resultRegex.exec(html)) !== null && results.length < maxResults) {
+            const rawUrl = match[1];
+            const title = match[2].replace(/<[^>]+>/g, '').trim();
+            const snippet = match[3].replace(/<[^>]+>/g, '').trim();
+
+            // DuckDuckGo wraps URLs in a redirect — extract the real URL
+            let realUrl = rawUrl;
+            const uddgMatch = rawUrl.match(/[?&]uddg=([^&]+)/);
+            if (uddgMatch) {
+              realUrl = decodeURIComponent(uddgMatch[1]);
+            }
+
+            if (title && realUrl) {
+              results.push({ title, url: realUrl, snippet });
+            }
+          }
+
+          if (results.length === 0) return 'No search results found.';
+
+          const output = results
+            .map((r, i) => `[${i + 1}] ${r.title}\n    ${r.url}\n    ${r.snippet}`)
+            .join('\n\n');
+
+          // Cache successful results
+          searchCache.set(cacheKey, output);
+
+          return output;
+        } catch (err: any) {
+          return `Search error: ${err.message}`;
+        }
+      },
+    },
+
+    // 8. web_fetch — Fetch and extract text from a URL
+    {
+      name: 'web_fetch',
+      description: 'Fetch a web page and extract its text content. Use to read documentation, articles, or any web page.',
+      parameters: {
+        type: 'object',
+        properties: {
+          url: { type: 'string', description: 'URL to fetch' },
+          max_length: { type: 'number', description: 'Max characters to return (default: 10000)' },
+        },
+        required: ['url'],
+      },
+      execute: async (args) => {
+        try {
+          const url = args.url as string;
+          const maxLength = (args.max_length as number) ?? 10_000;
+
+          let parsed: URL;
+          try {
+            parsed = new URL(url);
+          } catch {
+            return 'Error: Invalid URL';
+          }
+          if (!['http:', 'https:'].includes(parsed.protocol)) {
+            return 'Error: Only http and https URLs are supported';
+          }
+
+          const ac = new AbortController();
+          const timer = setTimeout(() => ac.abort(), 15_000);
+
+          const response = await fetch(url, {
+            headers: {
+              'User-Agent': 'Waggle/1.0 (AI Assistant)',
+              Accept: 'text/html,application/xhtml+xml,text/plain,application/json',
+            },
+            signal: ac.signal,
+            redirect: 'follow',
+          });
+
+          clearTimeout(timer);
+
+          if (!response.ok) {
+            return `Fetch failed (${response.status}): ${response.statusText}`;
+          }
+
+          const contentType = response.headers.get('content-type') ?? '';
+          const body = await response.text();
+
+          // JSON — return formatted
+          if (contentType.includes('application/json')) {
+            try {
+              return JSON.stringify(JSON.parse(body), null, 2).slice(0, maxLength);
+            } catch {
+              return body.slice(0, maxLength);
+            }
+          }
+
+          // HTML — extract text
+          const text = body
+            .replace(/<script[\s\S]*?<\/script>/gi, '')
+            .replace(/<style[\s\S]*?<\/style>/gi, '')
+            .replace(/<nav[\s\S]*?<\/nav>/gi, '')
+            .replace(/<header[\s\S]*?<\/header>/gi, '')
+            .replace(/<footer[\s\S]*?<\/footer>/gi, '')
+            .replace(/<\/?(p|div|br|h[1-6]|li|tr|blockquote|section|article)[^>]*>/gi, '\n')
+            .replace(/<[^>]+>/g, '')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+            .replace(/&nbsp;/g, ' ')
+            .replace(/[ \t]+/g, ' ')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+
+          if (!text) return 'Page fetched but no text content found.';
+          return text.slice(0, maxLength);
+        } catch (err: any) {
+          if (err.name === 'AbortError') return 'Error: Request timed out (15s)';
+          return `Fetch error: ${err.message}`;
         }
       },
     },
