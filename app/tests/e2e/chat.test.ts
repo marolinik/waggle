@@ -18,9 +18,8 @@ function makeTmpDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'waggle-e2e-'));
 }
 
-function randomPort(): number {
-  return 3333 + Math.floor(Math.random() * 1000);
-}
+// Port 0 lets the OS assign a free port; inject() bypasses the network anyway
+const TEST_PORT = 0;
 
 /**
  * Parse SSE text into structured events.
@@ -71,7 +70,7 @@ describe('Chat E2E', () => {
   it('sends chat message and receives SSE token + done events', async () => {
     const dataDir = makeTmpDir();
     tmpDirs.push(dataDir);
-    const port = randomPort();
+    const port = TEST_PORT;
 
     const { server } = await startService({ dataDir, port, skipLiteLLM: true });
     servers.push(server);
@@ -118,7 +117,7 @@ describe('Chat E2E', () => {
   it('includes tool events in SSE when agentRunner calls onToolUse', async () => {
     const dataDir = makeTmpDir();
     tmpDirs.push(dataDir);
-    const port = randomPort();
+    const port = TEST_PORT;
 
     const { server } = await startService({ dataDir, port, skipLiteLLM: true });
     servers.push(server);
@@ -177,7 +176,7 @@ describe('Chat E2E', () => {
   it('external mutation gate: eventBus blocks and resumes on approval', async () => {
     const dataDir = makeTmpDir();
     tmpDirs.push(dataDir);
-    const port = randomPort();
+    const port = TEST_PORT;
 
     const { server } = await startService({ dataDir, port, skipLiteLLM: true });
     servers.push(server);
@@ -238,8 +237,77 @@ describe('Chat E2E', () => {
     expect(doneData.content).toBe('Executed.');
     expect(doneData.toolsUsed).toEqual(['bash']);
 
-    // Verify gate flow happened
-    expect(gateLog).toContain('request-received');
-    expect(gateLog).toContain('approved');
+    // Verify gate flow happened in correct order
+    expect(gateLog.length).toBe(2);
+    expect(gateLog[0]).toBe('request-received');
+    expect(gateLog[1]).toBe('approved');
+  });
+
+  // Scenario 10b: External mutation gate — denial path
+  it('external mutation gate: eventBus blocks and returns denial', async () => {
+    const dataDir = makeTmpDir();
+    tmpDirs.push(dataDir);
+    const port = TEST_PORT;
+
+    const { server } = await startService({ dataDir, port, skipLiteLLM: true });
+    servers.push(server);
+
+    const gateLog: string[] = [];
+
+    const mockRunner: AgentRunner = async (config) => {
+      if (config.onToolUse) {
+        config.onToolUse('bash', { command: 'rm -rf /important' });
+      }
+
+      // Emit gate request and wait for response
+      const approved = await new Promise<boolean>((resolve) => {
+        server.eventBus.once('gate:response', (response: { approved: boolean }) => {
+          gateLog.push(response.approved ? 'approved' : 'denied');
+          resolve(response.approved);
+        });
+        server.eventBus.emit('gate:request', {
+          tool: 'bash',
+          input: { command: 'rm -rf /important' },
+          requestId: 'gate-002',
+        });
+      });
+
+      if (config.onToken) {
+        config.onToken(approved ? 'Executed.' : 'Blocked.');
+      }
+
+      return {
+        content: approved ? 'Executed.' : 'Blocked.',
+        usage: { inputTokens: 15, outputTokens: 3 },
+        toolsUsed: approved ? ['bash'] : [],
+      };
+    };
+    server.agentRunner = mockRunner;
+
+    // Listen for gate requests and auto-DENY
+    server.eventBus.on('gate:request', (req: { requestId: string }) => {
+      gateLog.push('request-received');
+      // Simulate user clicking "Deny" in the UI
+      server.eventBus.emit('gate:response', { requestId: req.requestId, approved: false });
+    });
+
+    const res = await server.inject({
+      method: 'POST',
+      url: '/api/chat',
+      payload: { message: 'Delete the folder' },
+    });
+
+    const events = parseSSE(res.payload);
+    const doneEvents = events.filter(e => e.event === 'done');
+    expect(doneEvents.length).toBe(1);
+
+    const doneData = doneEvents[0].data as { content: string; toolsUsed: string[] };
+    expect(doneData.content).toBe('Blocked.');
+    expect(doneData.toolsUsed).toEqual([]);
+
+    // Verify gate flow happened in correct order with denial
+    expect(gateLog.length).toBe(2);
+    expect(gateLog[0]).toBe('request-received');
+    expect(gateLog[1]).toBe('denied');
   });
 });

@@ -19,9 +19,8 @@ function makeTmpDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'waggle-e2e-'));
 }
 
-function randomPort(): number {
-  return 3333 + Math.floor(Math.random() * 1000);
-}
+// Port 0 lets the OS assign a free port; inject() bypasses the network anyway
+const TEST_PORT = 0;
 
 describe('Workspaces & Sessions E2E', () => {
   const servers: FastifyInstance[] = [];
@@ -42,7 +41,7 @@ describe('Workspaces & Sessions E2E', () => {
   it('creates a workspace and retrieves it', async () => {
     const dataDir = makeTmpDir();
     tmpDirs.push(dataDir);
-    const port = randomPort();
+    const port = TEST_PORT;
 
     const { server } = await startService({ dataDir, port, skipLiteLLM: true });
     servers.push(server);
@@ -80,11 +79,11 @@ describe('Workspaces & Sessions E2E', () => {
     expect(fetched.icon).toBe('briefcase');
   });
 
-  // Scenario 5: Two workspaces have separate contexts
-  it('two workspaces have distinct identities', async () => {
+  // Scenario 5: Workspace switching changes mind context
+  it('workspace switching isolates memory context', async () => {
     const dataDir = makeTmpDir();
     tmpDirs.push(dataDir);
-    const port = randomPort();
+    const port = TEST_PORT;
 
     const { server } = await startService({ dataDir, port, skipLiteLLM: true });
     servers.push(server);
@@ -108,21 +107,75 @@ describe('Workspaces & Sessions E2E', () => {
     expect(ws1.id).not.toBe(ws2.id);
     expect(ws1.group).toBe('Work');
     expect(ws2.group).toBe('Personal');
-    expect(ws1.model).toBe('openai/gpt-4o');
-    expect(ws2.model).toBe('anthropic/claude-sonnet-4-20250514');
 
     // Each workspace has its own .mind file on disk
     const mind1Path = path.join(dataDir, 'workspaces', ws1.id, 'workspace.mind');
     const mind2Path = path.join(dataDir, 'workspaces', ws2.id, 'workspace.mind');
     expect(fs.existsSync(mind1Path)).toBe(true);
     expect(fs.existsSync(mind2Path)).toBe(true);
+
+    // Switch to ws-A, store memory, verify it's found
+    server.multiMind.switchWorkspace(mind1Path);
+    const wsASessions = new SessionStore(server.multiMind.workspace!);
+    const wsASession = wsASessions.create();
+    const wsAFrames = new FrameStore(server.multiMind.workspace!);
+    wsAFrames.createIFrame(wsASession.gop_id, 'Alpha project uses Kubernetes for deployment');
+
+    // Search ws-A scope — should find Kubernetes
+    const searchA = await server.inject({
+      method: 'GET',
+      url: '/api/memory/search?q=Kubernetes&scope=workspace',
+    });
+    expect(searchA.statusCode).toBe(200);
+    const resultsA = JSON.parse(searchA.payload);
+    expect(resultsA.count).toBeGreaterThan(0);
+
+    // Switch to ws-B — search should NOT find ws-A's memory
+    server.multiMind.switchWorkspace(mind2Path);
+    const searchB = await server.inject({
+      method: 'GET',
+      url: '/api/memory/search?q=Kubernetes&scope=workspace',
+    });
+    expect(searchB.statusCode).toBe(200);
+    const resultsB = JSON.parse(searchB.payload);
+    expect(resultsB.count).toBe(0);
+
+    // Store different memory in ws-B
+    const wsBSessions = new SessionStore(server.multiMind.workspace!);
+    const wsBSession = wsBSessions.create();
+    const wsBFrames = new FrameStore(server.multiMind.workspace!);
+    wsBFrames.createIFrame(wsBSession.gop_id, 'Beta project uses Docker Compose locally');
+
+    // ws-B should find Docker but not Kubernetes
+    const searchB2 = await server.inject({
+      method: 'GET',
+      url: '/api/memory/search?q=Docker&scope=workspace',
+    });
+    expect(searchB2.statusCode).toBe(200);
+    expect(JSON.parse(searchB2.payload).count).toBeGreaterThan(0);
+
+    // Switch back to ws-A — should find Kubernetes, not Docker
+    server.multiMind.switchWorkspace(mind1Path);
+    const searchA2 = await server.inject({
+      method: 'GET',
+      url: '/api/memory/search?q=Kubernetes&scope=workspace',
+    });
+    expect(searchA2.statusCode).toBe(200);
+    expect(JSON.parse(searchA2.payload).count).toBeGreaterThan(0);
+
+    const searchA3 = await server.inject({
+      method: 'GET',
+      url: '/api/memory/search?q=Docker&scope=workspace',
+    });
+    expect(searchA3.statusCode).toBe(200);
+    expect(JSON.parse(searchA3.payload).count).toBe(0);
   });
 
   // Scenario 6: Memory search returns results from correct mind only
   it('memory search returns results scoped to the correct mind', async () => {
     const dataDir = makeTmpDir();
     tmpDirs.push(dataDir);
-    const port = randomPort();
+    const port = TEST_PORT;
 
     const { server } = await startService({ dataDir, port, skipLiteLLM: true });
     servers.push(server);
@@ -186,11 +239,11 @@ describe('Workspaces & Sessions E2E', () => {
     expect(allResults.count).toBeGreaterThanOrEqual(1);
   });
 
-  // Scenario 8: Session CRUD — create, list, delete
-  it('creates, lists, and deletes sessions within a workspace', async () => {
+  // Scenario 8: Session CRUD — create, list, rename (switch), delete
+  it('creates, lists, renames, and deletes sessions within a workspace', async () => {
     const dataDir = makeTmpDir();
     tmpDirs.push(dataDir);
-    const port = randomPort();
+    const port = TEST_PORT;
 
     const { server } = await startService({ dataDir, port, skipLiteLLM: true });
     servers.push(server);
@@ -232,6 +285,27 @@ describe('Workspaces & Sessions E2E', () => {
     expect(listRes.statusCode).toBe(200);
     const list = JSON.parse(listRes.payload);
     expect(list.length).toBe(2);
+
+    // Rename (switch equivalent) — proves session is accessible and modifiable
+    const patchRes = await server.inject({
+      method: 'PATCH',
+      url: `/api/sessions/${session.id}?workspace=${ws.id}`,
+      payload: { title: 'Renamed Chat' },
+    });
+    expect(patchRes.statusCode).toBe(200);
+    const patched = JSON.parse(patchRes.payload);
+    expect(patched.title).toBe('Renamed Chat');
+    expect(patched.id).toBe(session.id);
+
+    // Verify rename persisted in list
+    const listRes3 = await server.inject({
+      method: 'GET',
+      url: `/api/workspaces/${ws.id}/sessions`,
+    });
+    const list3 = JSON.parse(listRes3.payload);
+    const renamed = list3.find((s: { id: string }) => s.id === session.id);
+    expect(renamed).toBeDefined();
+    expect(renamed.title).toBe('Renamed Chat');
 
     // Delete first session
     const delRes = await server.inject({

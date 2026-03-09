@@ -144,6 +144,73 @@ export const sessionRoutes: FastifyPluginAsync = async (server) => {
     return reply.status(201).send(session);
   });
 
+  // PATCH /api/sessions/:sessionId — rename/update a session
+  server.patch<{
+    Params: { sessionId: string };
+    Body: { title?: string };
+    Querystring: { workspace?: string };
+  }>('/api/sessions/:sessionId', async (request, reply) => {
+    const { sessionId } = request.params;
+    const workspaceId = request.query.workspace;
+    const newTitle = request.body?.title;
+
+    if (!newTitle) {
+      return reply.status(400).send({ error: 'title is required' });
+    }
+
+    // Find session file
+    let filePath: string | null = null;
+
+    if (workspaceId) {
+      const candidate = path.join(
+        server.localConfig.dataDir, 'workspaces', workspaceId, 'sessions', `${sessionId}.jsonl`
+      );
+      if (fs.existsSync(candidate)) filePath = candidate;
+    } else {
+      const workspacesDir = path.join(server.localConfig.dataDir, 'workspaces');
+      if (fs.existsSync(workspacesDir)) {
+        const entries = fs.readdirSync(workspacesDir, { withFileTypes: true });
+        for (const entry of entries) {
+          if (!entry.isDirectory()) continue;
+          const candidate = path.join(workspacesDir, entry.name, 'sessions', `${sessionId}.jsonl`);
+          if (fs.existsSync(candidate)) {
+            filePath = candidate;
+            break;
+          }
+        }
+      }
+    }
+
+    if (!filePath) {
+      return reply.status(404).send({ error: 'Session not found' });
+    }
+
+    // Read existing content, update meta line
+    const content = fs.readFileSync(filePath, 'utf-8').trim();
+    const lines = content ? content.split('\n') : [];
+
+    if (lines.length > 0) {
+      try {
+        const first = JSON.parse(lines[0]);
+        if (first.type === 'meta') {
+          first.title = newTitle;
+          lines[0] = JSON.stringify(first);
+        } else {
+          // No meta line — prepend one
+          lines.unshift(JSON.stringify({ type: 'meta', title: newTitle, created: new Date().toISOString() }));
+        }
+      } catch {
+        lines.unshift(JSON.stringify({ type: 'meta', title: newTitle, created: new Date().toISOString() }));
+      }
+    } else {
+      lines.push(JSON.stringify({ type: 'meta', title: newTitle, created: new Date().toISOString() }));
+    }
+
+    fs.writeFileSync(filePath, lines.join('\n') + '\n', 'utf-8');
+
+    return { id: sessionId, title: newTitle };
+  });
+
   // DELETE /api/sessions/:sessionId — delete a session
   // Need to find the session file across workspaces
   server.delete<{

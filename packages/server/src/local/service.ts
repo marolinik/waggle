@@ -103,10 +103,18 @@ export async function startService(options?: ServiceOptions): Promise<ServiceRes
     litellmUrl: `http://localhost:${litellmPort}`,
   });
 
+  // 6. Register self-removing shutdown handlers (must add hook before listen)
+  let shutdown: () => Promise<void>;
+
+  // Deregister signal handlers when server closes normally (e.g. in tests)
+  server.addHook('onClose', async () => {
+    process.off('SIGTERM', shutdown);
+    process.off('SIGINT', shutdown);
+  });
+
   await server.listen({ port, host: '127.0.0.1' });
 
-  // 6. Register self-removing shutdown handlers
-  const shutdown = async () => {
+  shutdown = async () => {
     process.off('SIGTERM', shutdown);
     process.off('SIGINT', shutdown);
     await server.close();

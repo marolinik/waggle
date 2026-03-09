@@ -17,9 +17,8 @@ function makeTmpDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'waggle-e2e-'));
 }
 
-function randomPort(): number {
-  return 3333 + Math.floor(Math.random() * 1000);
-}
+// Port 0 lets the OS assign a free port; inject() bypasses the network anyway
+const TEST_PORT = 0;
 
 describe('Startup & Settings E2E', () => {
   const servers: FastifyInstance[] = [];
@@ -40,7 +39,7 @@ describe('Startup & Settings E2E', () => {
   it('health check returns 200 with status ok and mode local', async () => {
     const dataDir = makeTmpDir();
     tmpDirs.push(dataDir);
-    const port = randomPort();
+    const port = TEST_PORT;
 
     const { server } = await startService({ dataDir, port, skipLiteLLM: true });
     servers.push(server);
@@ -58,7 +57,7 @@ describe('Startup & Settings E2E', () => {
   it('onboarding: saves and loads config via settings API', async () => {
     const dataDir = makeTmpDir();
     tmpDirs.push(dataDir);
-    const port = randomPort();
+    const port = TEST_PORT;
 
     const { server } = await startService({ dataDir, port, skipLiteLLM: true });
     servers.push(server);
@@ -95,11 +94,11 @@ describe('Startup & Settings E2E', () => {
     tmpDirs.push(dataDir);
 
     // --- First server: save settings ---
-    const port1 = randomPort();
+    const port1 = TEST_PORT;
     const { server: server1 } = await startService({ dataDir, port: port1, skipLiteLLM: true });
     servers.push(server1);
 
-    await server1.inject({
+    const putRes = await server1.inject({
       method: 'PUT',
       url: '/api/settings',
       payload: {
@@ -109,12 +108,13 @@ describe('Startup & Settings E2E', () => {
         },
       },
     });
+    expect(putRes.statusCode).toBe(200);
 
     await server1.close();
     servers.pop();
 
     // --- Second server: read settings back ---
-    const port2 = randomPort();
+    const port2 = TEST_PORT;
     const { server: server2 } = await startService({ dataDir, port: port2, skipLiteLLM: true });
     servers.push(server2);
 
