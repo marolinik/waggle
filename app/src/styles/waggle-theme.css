@@ -44,6 +44,75 @@
   --waggle-border: var(--border);
 }
 
+/* ── Light theme override ─────────────────────────────────────────────── */
+:root[data-theme="light"] {
+  --bg: #f5f5f7;
+  --bg-elevated: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f0f0f3;
+  --surface-3: #e8e8ed;
+  --surface-hover: #e2e2ea;
+  --border: #d4d4dc;
+  --border-subtle: #e0e0e8;
+  --border-active: #6366f1;
+  --text: #1a1a2e;
+  --text-bright: #0d0d1a;
+  --text-muted: #6b6b80;
+  --text-dim: #9b9bb0;
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
+  --primary-muted: rgba(99, 102, 241, 0.08);
+  --primary-glow: rgba(99, 102, 241, 0.12);
+  --accent: #0891b2;
+  --accent-muted: rgba(8, 145, 178, 0.08);
+  --brand: #D4800E;
+  --brand-muted: rgba(212, 128, 14, 0.08);
+  --error: #dc2626;
+  --warning: #d97706;
+  --success: #16a34a;
+  --user-bubble: #eef2ff;
+  --assistant-bubble: #f8f8fc;
+
+  --waggle-bg: var(--bg);
+  --waggle-surface: var(--surface);
+  --waggle-sidebar-bg: var(--surface);
+  --waggle-tabs-bg: var(--surface);
+  --waggle-statusbar-bg: #eaeaef;
+  --waggle-text: var(--text);
+  --waggle-text-muted: var(--text-muted);
+  --waggle-border: var(--border);
+}
+
+/* Light theme: invert scrollbar */
+:root[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.2);
+}
+:root[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.35);
+}
+
+/* Light theme: user message bubble border */
+:root[data-theme="light"] .chat-message--user > div {
+  border-color: rgba(99, 102, 241, 0.15) !important;
+}
+
+/* Light theme: status bar text */
+:root[data-theme="light"] .waggle-statusbar {
+  color: var(--text-muted) !important;
+  background: var(--waggle-statusbar-bg) !important;
+  border-top-color: var(--border) !important;
+}
+
+/* Light theme: sidebar accent gradient with inverted opacity */
+:root[data-theme="light"] .waggle-sidebar::after {
+  opacity: 0.2;
+}
+
+/* Light theme: noise overlay invisible */
+:root[data-theme="light"] .waggle-content::before {
+  opacity: 0;
+}
+
 /* ── App Shell ────────────────────────────────────────────────────────── */
 .waggle-app-shell {
   background: var(--bg) !important;

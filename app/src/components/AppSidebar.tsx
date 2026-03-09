@@ -149,9 +149,9 @@ export function AppSidebar({
           <img
             src="/waggle-logo.svg"
             alt="Waggle"
-            style={{ width: 18, height: 22, flexShrink: 0 }}
+            style={{ width: 24, height: 30, flexShrink: 0 }}
           />
-          <span style={{ color: '#E8920F', letterSpacing: '0.15em' }}>WAGGLE</span>
+          <span style={{ color: '#E8920F', letterSpacing: '0.15em', fontSize: '11px' }}>WAGGLE</span>
           <span style={{
             fontSize: '8px',
             color: 'var(--text-dim)',
@@ -172,7 +172,7 @@ export function AppSidebar({
           <img
             src="/waggle-logo.svg"
             alt="W"
-            style={{ width: 20, height: 24 }}
+            style={{ width: 26, height: 32 }}
           />
         </div>
       )}

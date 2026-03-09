@@ -16,6 +16,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { Message, WaggleConfig, Frame, OnboardingData, FileEntry, DroppedFile } from '@waggle/ui';
 import {
   ThemeProvider,
+  useTheme,
   AppShell,
   StatusBar,
   CreateWorkspaceDialog,
@@ -60,6 +61,7 @@ type AppView = 'chat' | 'settings' | 'memory' | 'events';
 
 function WaggleApp() {
   const service = useService();
+  const { toggleTheme } = useTheme();
 
   // ── View state ────────────────────────────────────────────────────
   const [currentView, setCurrentView] = useState<AppView>('chat');
@@ -182,7 +184,11 @@ function WaggleApp() {
   const handleConfigUpdate = useCallback(async (updates: Partial<WaggleConfig>) => {
     await service.updateConfig(updates);
     setConfig((prev) => prev ? { ...prev, ...updates } : null);
-  }, [service]);
+    // If theme changed, toggle the ThemeProvider context too
+    if (updates.theme) {
+      toggleTheme();
+    }
+  }, [service, toggleTheme]);
 
   // ── Keyboard shortcuts ────────────────────────────────────────────
   useEffect(() => {
