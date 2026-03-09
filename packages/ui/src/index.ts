@@ -173,6 +173,29 @@ export type {
   KGNodeDetail,
 } from './components/memory/index.js';
 
+// Components — events
+export {
+  EventStream,
+  StepCard,
+  getStepIcon,
+  getStepColor,
+  getStepTypeColor,
+  formatStepDuration,
+  formatStepTimestamp,
+  categorizeStep,
+  mergeStep,
+  STEP_ICONS,
+  STEP_COLORS,
+  STEP_TYPE_COLORS,
+  filterSteps,
+} from './components/events/index.js';
+export type {
+  EventStreamProps,
+  StepCardProps,
+  AgentStep,
+  StepFilter,
+} from './components/events/index.js';
+
 // Components — layout
 export { AppShell } from './components/layout/index.js';
 export type { AppShellProps } from './components/layout/index.js';
@@ -198,3 +221,6 @@ export type { UseMemoryOptions, UseMemoryReturn, MemorySearchResult, MemorySearc
 
 export { useKnowledgeGraph } from './hooks/useKnowledgeGraph.js';
 export type { UseKnowledgeGraphOptions, UseKnowledgeGraphReturn } from './hooks/useKnowledgeGraph.js';
+
+export { useEvents } from './hooks/useEvents.js';
+export type { UseEventsOptions, UseEventsReturn } from './hooks/useEvents.js';
