@@ -1,0 +1,964 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Waggle Desktop Theme — Industrial-refined dark
+ * VS Code density meets Linear polish.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Design tokens (CSS custom properties) ─────────────────────────────── */
+:root {
+  --bg: #0a0a0f;
+  --surface: #12121a;
+  --surface-2: #1a1a26;
+  --surface-3: #222233;
+  --border: #2a2a3a;
+  --border-active: #6366f1;
+  --text: #e4e4ef;
+  --text-muted: #6b6b80;
+  --text-dim: #44445a;
+  --primary: #6366f1;
+  --primary-hover: #818cf8;
+  --accent: #22d3ee;
+  --error: #ef4444;
+  --warning: #f59e0b;
+  --success: #22c55e;
+  --user-bubble: #1e3a5f;
+  --assistant-bubble: #1a1a26;
+
+  /* Map to waggle component variables */
+  --waggle-bg: var(--bg);
+  --waggle-surface: var(--surface);
+  --waggle-sidebar-bg: var(--surface-2);
+  --waggle-tabs-bg: var(--surface);
+  --waggle-statusbar-bg: #08080d;
+  --waggle-text: var(--text);
+  --waggle-text-muted: var(--text-muted);
+  --waggle-border: var(--border);
+}
+
+/* ── App Shell ─────────────────────────────────────────────────────────── */
+.waggle-app-shell {
+  background: var(--bg) !important;
+  color: var(--text) !important;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+}
+
+/* ── Sidebar ───────────────────────────────────────────────────────────── */
+.waggle-sidebar {
+  background: var(--surface-2) !important;
+  border-right-color: var(--border) !important;
+  width: 220px !important;
+  min-width: 220px !important;
+}
+
+/* When sidebar parent has collapsed state, CSS adjusts */
+.waggle-sidebar[style*="width: 48"] {
+  width: 48px !important;
+  min-width: 48px !important;
+}
+
+.waggle-sidebar-toggle {
+  color: var(--text-dim) !important;
+  padding: 10px 16px !important;
+  font-size: 10px !important;
+  letter-spacing: 0.05em;
+  transition: color 0.15s;
+  opacity: 0.5;
+}
+.waggle-sidebar-toggle:hover {
+  color: var(--text) !important;
+  opacity: 1;
+}
+
+.waggle-sidebar-bottom {
+  border-top-color: var(--border) !important;
+  padding: 6px 0 !important;
+}
+
+/* Sidebar nav buttons */
+.waggle-sidebar-bottom button {
+  background: none !important;
+  border: none !important;
+  color: var(--text-muted) !important;
+  cursor: pointer;
+  padding: 7px 14px !important;
+  width: 100%;
+  text-align: left;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 4px;
+  transition: all 0.15s;
+  border-left: 2px solid transparent !important;
+  margin: 0 4px;
+  width: calc(100% - 8px) !important;
+}
+.waggle-sidebar-bottom button:hover {
+  background: var(--surface-3) !important;
+  color: var(--text) !important;
+}
+.waggle-sidebar-bottom button[style*="rgba(59, 130, 246"],
+.waggle-sidebar-bottom button.nav-active {
+  background: rgba(99, 102, 241, 0.08) !important;
+  color: var(--primary) !important;
+  border-left-color: var(--primary) !important;
+}
+
+/* ── Brand mark ────────────────────────────────────────────────────────── */
+.waggle-brand {
+  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  color: var(--text-dim);
+  padding: 16px 16px 8px;
+  text-transform: uppercase;
+}
+
+/* ── Workspace tree ────────────────────────────────────────────────────── */
+.workspace-tree {
+  padding: 4px 6px;
+}
+
+.group-header {
+  color: var(--text-muted) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  padding: 6px 10px !important;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+.group-header:hover {
+  color: var(--text) !important;
+}
+.group-header__chevron {
+  font-size: 8px !important;
+  color: var(--text-dim);
+}
+.group-header__count {
+  color: var(--text-dim) !important;
+  font-size: 10px !important;
+}
+
+.workspace-card {
+  padding: 5px 10px 5px 20px !important;
+  font-size: 13px !important;
+  border-radius: 4px !important;
+  color: var(--text-muted) !important;
+  transition: all 0.12s !important;
+  background: transparent !important;
+}
+.workspace-card:hover {
+  background: var(--surface-3) !important;
+  color: var(--text) !important;
+}
+.workspace-card__icon {
+  font-size: 14px !important;
+  opacity: 0.7;
+}
+.workspace-card__name {
+  font-size: 13px;
+}
+
+/* Active workspace card */
+button.workspace-card[class*="bg-blue"] {
+  background: rgba(99, 102, 241, 0.1) !important;
+  color: var(--primary) !important;
+}
+
+/* ── Tabs bar ──────────────────────────────────────────────────────────── */
+.waggle-tabs {
+  background: var(--surface) !important;
+  border-bottom-color: var(--border) !important;
+  height: 36px !important;
+}
+
+.waggle-tab {
+  background: transparent !important;
+  color: var(--text-muted) !important;
+  border-right-color: var(--border) !important;
+  font-size: 12px !important;
+  transition: all 0.12s;
+  padding: 0 14px !important;
+}
+.waggle-tab:hover {
+  color: var(--text) !important;
+  background: var(--surface-3) !important;
+}
+.waggle-tab--active {
+  background: var(--bg) !important;
+  color: var(--text) !important;
+  border-bottom: 2px solid var(--primary) !important;
+}
+
+.waggle-tab-close {
+  opacity: 0;
+  transition: opacity 0.1s;
+  color: var(--text-muted) !important;
+}
+.waggle-tab:hover .waggle-tab-close {
+  opacity: 1;
+}
+.waggle-tab-close:hover {
+  color: var(--error) !important;
+}
+
+.waggle-tab-add {
+  color: var(--text-dim) !important;
+  font-size: 16px !important;
+  transition: color 0.15s;
+}
+.waggle-tab-add:hover {
+  color: var(--text) !important;
+}
+
+/* ── Chat area ─────────────────────────────────────────────────────────── */
+.chat-area {
+  background: var(--bg) !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Ensure FileDropZone wrapper fills its container */
+.chat-area > div[style*="position: relative"],
+div[style*="position: relative"]:has(> .chat-area) {
+  height: 100%;
+}
+
+/* The direct parent of ChatArea from FileDropZone must fill height */
+div[style="position: relative"] {
+  height: 100% !important;
+}
+
+.chat-area__messages {
+  padding: 16px 24px !important;
+  scrollbar-gutter: stable;
+}
+
+.chat-area__empty {
+  color: var(--text-dim) !important;
+  font-size: 15px;
+  font-weight: 300;
+  letter-spacing: 0.01em;
+}
+
+.chat-area__loading {
+  padding: 4px 0;
+}
+.chat-area__loading > div {
+  background: var(--surface) !important;
+  color: var(--text-muted) !important;
+  border-radius: 12px !important;
+  padding: 10px 16px !important;
+  font-size: 13px;
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* ── Chat messages ─────────────────────────────────────────────────────── */
+.chat-message {
+  margin-bottom: 4px;
+}
+
+/* User message */
+.chat-message--user > div {
+  background: var(--user-bubble) !important;
+  color: var(--text) !important;
+  border-radius: 16px 16px 4px 16px !important;
+  padding: 10px 16px !important;
+  max-width: 75% !important;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Assistant message */
+.chat-message--assistant > div {
+  background: var(--assistant-bubble) !important;
+  color: var(--text) !important;
+  border-radius: 16px 16px 16px 4px !important;
+  padding: 10px 16px !important;
+  max-width: 85% !important;
+  border: 1px solid var(--border);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.chat-message__content {
+  word-break: break-word;
+}
+
+.chat-message__time {
+  font-size: 10px !important;
+  color: var(--text-dim) !important;
+  margin-top: 4px !important;
+  font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+}
+
+/* ── Chat input ────────────────────────────────────────────────────────── */
+.chat-input {
+  background: var(--surface) !important;
+  border-top: 1px solid var(--border) !important;
+  padding: 12px 16px !important;
+  gap: 10px !important;
+}
+
+.chat-input__textarea {
+  background: var(--surface-2) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  padding: 8px 14px !important;
+  font-size: 13px !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  line-height: 1.5 !important;
+  resize: none !important;
+  transition: border-color 0.15s;
+}
+.chat-input__textarea:focus {
+  border-color: var(--border-active) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15) !important;
+}
+.chat-input__textarea::placeholder {
+  color: var(--text-dim) !important;
+}
+
+.chat-input__send {
+  background: var(--primary) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 8px 20px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.chat-input__send:hover:not(:disabled) {
+  background: var(--primary-hover) !important;
+}
+.chat-input__send:disabled {
+  opacity: 0.4 !important;
+  cursor: not-allowed;
+}
+
+/* ── Tool cards ────────────────────────────────────────────────────────── */
+.tool-card {
+  border-radius: 6px !important;
+  margin-top: 6px;
+  font-size: 12px;
+  overflow: hidden;
+}
+.tool-card__header {
+  background: transparent !important;
+  border: none !important;
+  padding: 6px 10px !important;
+  cursor: pointer;
+}
+.tool-card__name {
+  font-family: 'JetBrains Mono', 'Cascadia Code', monospace !important;
+  font-size: 11px !important;
+}
+.tool-card__badge {
+  font-size: 10px !important;
+  border-radius: 3px !important;
+  padding: 1px 6px !important;
+}
+.tool-card__duration {
+  font-family: 'JetBrains Mono', 'Cascadia Code', monospace !important;
+  font-size: 10px !important;
+  color: var(--text-dim) !important;
+}
+.tool-card__body {
+  border-top-color: var(--border) !important;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 8px 10px !important;
+}
+.tool-card__input,
+.tool-card__output {
+  font-family: 'JetBrains Mono', 'Cascadia Code', monospace !important;
+  font-size: 11px !important;
+  color: var(--text-muted) !important;
+}
+
+/* ── Approval gate ─────────────────────────────────────────────────────── */
+.approval-gate {
+  border-color: var(--warning) !important;
+  background: rgba(245, 158, 11, 0.08) !important;
+  border-radius: 8px !important;
+  padding: 12px 16px !important;
+}
+.approval-gate__actions button {
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  padding: 6px 16px !important;
+  font-weight: 500;
+  transition: background 0.15s;
+}
+
+/* ── Status bar ────────────────────────────────────────────────────────── */
+.waggle-statusbar {
+  background: #08080d !important;
+  color: var(--text-dim) !important;
+  border-top-color: var(--border) !important;
+  height: 28px !important;
+  font-family: 'JetBrains Mono', 'Cascadia Code', monospace !important;
+  font-size: 11px !important;
+  padding: 0 16px !important;
+}
+.waggle-statusbar span {
+  font-family: inherit;
+}
+
+/* ── Context panel (right) ─────────────────────────────────────────────── */
+.waggle-context-panel {
+  background: var(--surface-2) !important;
+  border-left-color: var(--border) !important;
+  width: 260px !important;
+  min-width: 260px !important;
+}
+
+/* ── Session list ──────────────────────────────────────────────────────── */
+.session-list {
+  padding: 4px;
+}
+
+.session-list__new {
+  color: var(--primary) !important;
+  font-size: 12px !important;
+  padding: 8px 12px !important;
+  border-radius: 4px;
+  transition: background 0.12s;
+}
+.session-list__new:hover {
+  background: var(--surface-3) !important;
+}
+
+.session-list__group-header {
+  color: var(--text-dim) !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.08em !important;
+  padding: 10px 12px 4px !important;
+  text-transform: uppercase !important;
+}
+
+.session-card__button {
+  font-size: 12px !important;
+  padding: 6px 12px !important;
+  border-radius: 4px !important;
+  color: var(--text-muted) !important;
+  transition: all 0.12s !important;
+  background: transparent !important;
+}
+.session-card__button:hover {
+  background: var(--surface-3) !important;
+  color: var(--text) !important;
+}
+
+/* Active session */
+button.session-card__button[class*="bg-blue"] {
+  background: rgba(99, 102, 241, 0.1) !important;
+  color: var(--primary) !important;
+}
+
+.session-card__title {
+  font-size: 12px;
+}
+.session-card__meta {
+  color: var(--text-dim) !important;
+  font-size: 10px !important;
+}
+
+.session-card__menu {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  border-radius: 6px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+}
+.session-card__menu-item {
+  color: var(--text-muted) !important;
+  font-size: 12px !important;
+  transition: background 0.1s;
+}
+.session-card__menu-item:hover {
+  background: var(--surface-3) !important;
+  color: var(--text) !important;
+}
+
+/* ── Settings panel ────────────────────────────────────────────────────── */
+.settings-panel {
+  background: var(--bg) !important;
+  color: var(--text) !important;
+}
+
+.settings-panel__tabs {
+  border-bottom-color: var(--border) !important;
+  background: var(--surface) !important;
+  padding: 0 16px !important;
+}
+
+.settings-panel__tab {
+  color: var(--text-muted) !important;
+  font-size: 12px !important;
+  padding: 10px 16px !important;
+  transition: color 0.15s;
+  border-bottom: 2px solid transparent;
+}
+.settings-panel__tab:hover {
+  color: var(--text) !important;
+}
+/* Active settings tab */
+.settings-panel__tab[class*="border-blue"] {
+  border-bottom-color: var(--primary) !important;
+  color: var(--primary) !important;
+}
+
+.settings-panel__content {
+  padding: 24px !important;
+}
+
+/* Settings form elements */
+.settings-panel input[type="text"],
+.settings-panel input[type="password"],
+.settings-panel select,
+.settings-panel textarea {
+  background: var(--surface-2) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 6px !important;
+  padding: 8px 12px !important;
+  font-size: 13px !important;
+  transition: border-color 0.15s;
+}
+.settings-panel input:focus,
+.settings-panel select:focus,
+.settings-panel textarea:focus {
+  border-color: var(--border-active) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15) !important;
+}
+
+.settings-panel label {
+  color: var(--text-muted) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+}
+
+/* Settings buttons */
+.settings-panel button[class*="bg-blue"] {
+  background: var(--primary) !important;
+  color: #fff !important;
+  border-radius: 6px !important;
+  transition: background 0.15s;
+}
+.settings-panel button[class*="bg-blue"]:hover {
+  background: var(--primary-hover) !important;
+}
+
+/* ── Memory browser ────────────────────────────────────────────────────── */
+.memory-browser {
+  background: var(--bg) !important;
+}
+
+.memory-browser__search {
+  border-bottom-color: var(--border) !important;
+  padding: 12px 16px !important;
+}
+
+.memory-browser__search input {
+  background: var(--surface-2) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 6px !important;
+  padding: 8px 12px !important;
+  font-size: 13px !important;
+  width: 100%;
+}
+.memory-browser__search input:focus {
+  border-color: var(--border-active) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15) !important;
+}
+
+.memory-browser__filters {
+  border-bottom-color: var(--border) !important;
+  padding: 8px 16px !important;
+}
+.memory-browser__filters button {
+  border-radius: 4px !important;
+  font-size: 11px !important;
+  padding: 3px 8px !important;
+  transition: all 0.12s;
+}
+.memory-browser__filters button[class*="bg-blue"] {
+  background: var(--primary) !important;
+  color: #fff !important;
+}
+.memory-browser__filters button[class*="bg-gray"] {
+  background: var(--surface-3) !important;
+  color: var(--text-muted) !important;
+}
+.memory-browser__filters button[class*="bg-gray"]:hover {
+  background: var(--surface-3) !important;
+  color: var(--text) !important;
+}
+
+.memory-browser__filters select {
+  background: var(--surface-3) !important;
+  color: var(--text-muted) !important;
+  border: none !important;
+  border-radius: 4px !important;
+  font-size: 11px !important;
+  padding: 3px 8px !important;
+}
+
+.memory-browser__timeline {
+  border-right-color: var(--border) !important;
+}
+
+.memory-browser__stats {
+  border-top-color: var(--border) !important;
+  color: var(--text-dim) !important;
+  font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+  font-size: 10px !important;
+  padding: 4px 16px !important;
+}
+
+/* ── Event stream ──────────────────────────────────────────────────────── */
+.event-stream {
+  background: var(--bg) !important;
+}
+
+.event-stream__toolbar {
+  border-bottom-color: var(--border) !important;
+  background: var(--surface) !important;
+  padding: 8px 16px !important;
+}
+.event-stream__toolbar span {
+  color: var(--text-muted) !important;
+}
+.event-stream__toolbar button[class*="bg-blue"] {
+  background: var(--primary) !important;
+  color: #fff !important;
+}
+.event-stream__toolbar button[class*="bg-gray"] {
+  background: var(--surface-3) !important;
+  color: var(--text-muted) !important;
+}
+
+.event-stream__list {
+  padding: 8px 12px !important;
+}
+
+/* ── Step cards ────────────────────────────────────────────────────────── */
+.step-card {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 6px !important;
+  margin-bottom: 6px;
+  overflow: hidden;
+}
+
+/* ── Modal ─────────────────────────────────────────────────────────────── */
+.waggle-modal-backdrop {
+  background: rgba(0, 0, 0, 0.7) !important;
+  backdrop-filter: blur(4px);
+}
+
+.waggle-modal-card {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5) !important;
+}
+
+.waggle-modal-header {
+  border-bottom-color: var(--border) !important;
+  padding: 14px 20px !important;
+}
+.waggle-modal-header h2 {
+  color: var(--text) !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+}
+
+.waggle-modal-body {
+  padding: 20px !important;
+  color: var(--text) !important;
+}
+
+/* ── Create workspace dialog ───────────────────────────────────────────── */
+.create-workspace-dialog > div {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5) !important;
+}
+
+.create-workspace-dialog h2 {
+  color: var(--text) !important;
+}
+
+.create-workspace-dialog label {
+  color: var(--text-muted) !important;
+}
+
+.create-workspace-dialog input,
+.create-workspace-dialog select,
+.create-workspace-dialog textarea {
+  background: var(--surface-2) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 6px !important;
+}
+.create-workspace-dialog input:focus,
+.create-workspace-dialog select:focus,
+.create-workspace-dialog textarea:focus {
+  border-color: var(--border-active) !important;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15) !important;
+  outline: none !important;
+}
+
+.create-workspace-dialog button[type="submit"] {
+  background: var(--primary) !important;
+  border-radius: 6px !important;
+  transition: background 0.15s;
+}
+.create-workspace-dialog button[type="submit"]:hover {
+  background: var(--primary-hover) !important;
+}
+
+/* ── Onboarding wizard ─────────────────────────────────────────────────── */
+.onboarding-wizard {
+  background: var(--bg) !important;
+}
+
+.onboarding-wizard h1,
+.onboarding-wizard h2 {
+  color: var(--text) !important;
+}
+
+.onboarding-wizard p {
+  color: var(--text-muted) !important;
+}
+
+.onboarding-wizard input {
+  background: var(--surface-2) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 6px !important;
+}
+.onboarding-wizard input:focus {
+  border-color: var(--border-active) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15) !important;
+}
+
+/* Progress dots */
+.onboarding-wizard > div:first-child > div[class*="bg-blue"] {
+  background: var(--primary) !important;
+}
+.onboarding-wizard > div:first-child > div[class*="bg-gray"] {
+  background: var(--surface-3) !important;
+}
+
+/* Onboarding buttons */
+.onboarding-wizard button[class*="bg-blue"] {
+  background: var(--primary) !important;
+  color: #fff !important;
+  border-radius: 6px !important;
+  transition: background 0.15s;
+}
+.onboarding-wizard button[class*="bg-blue"]:hover {
+  background: var(--primary-hover) !important;
+}
+
+/* ── File preview ──────────────────────────────────────────────────────── */
+.code-preview {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  font-family: 'JetBrains Mono', 'Cascadia Code', monospace !important;
+  font-size: 12px !important;
+  line-height: 1.6;
+  border-radius: 6px;
+}
+
+.diff-viewer {
+  background: var(--surface) !important;
+  font-family: 'JetBrains Mono', 'Cascadia Code', monospace !important;
+  font-size: 12px !important;
+}
+
+/* ── File drop zone ────────────────────────────────────────────────────── */
+.file-drop-overlay {
+  border-color: var(--primary) !important;
+}
+
+/* ── KG Viewer ─────────────────────────────────────────────────────────── */
+.kg-viewer {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px;
+}
+
+/* ── Frame detail ──────────────────────────────────────────────────────── */
+.frame-detail {
+  color: var(--text) !important;
+}
+.frame-detail h3 {
+  color: var(--text) !important;
+  font-size: 14px;
+  font-weight: 600;
+}
+.frame-detail__meta {
+  color: var(--text-dim) !important;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+}
+
+/* ── Frame timeline cards ──────────────────────────────────────────────── */
+.frame-card {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 6px !important;
+  padding: 10px 12px !important;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.frame-card:hover {
+  border-color: var(--border-active) !important;
+  background: var(--surface-2) !important;
+}
+.frame-card--selected {
+  border-color: var(--primary) !important;
+  background: rgba(99, 102, 241, 0.06) !important;
+}
+
+/* ── Tailwind override: force dark backgrounds ─────────────────────────── */
+.bg-gray-900 { background-color: var(--bg) !important; }
+.bg-gray-950 { background-color: var(--bg) !important; }
+.bg-gray-800 { background-color: var(--surface-2) !important; }
+.bg-gray-700 { background-color: var(--surface-3) !important; }
+.border-gray-700 { border-color: var(--border) !important; }
+.border-gray-600 { border-color: var(--border) !important; }
+.text-gray-100 { color: var(--text) !important; }
+.text-gray-200 { color: var(--text) !important; }
+.text-gray-300 { color: var(--text-muted) !important; }
+.text-gray-400 { color: var(--text-muted) !important; }
+.text-gray-500 { color: var(--text-dim) !important; }
+.text-gray-600 { color: var(--text-dim) !important; }
+.placeholder-gray-500::placeholder { color: var(--text-dim) !important; }
+
+.bg-blue-600 { background-color: var(--primary) !important; }
+.bg-blue-500 { background-color: var(--primary-hover) !important; }
+.bg-blue-600\/20 { background-color: rgba(99, 102, 241, 0.1) !important; }
+.text-blue-300 { color: var(--primary) !important; }
+.text-blue-400 { color: var(--primary) !important; }
+.text-blue-500 { color: var(--primary) !important; }
+.border-blue-500 { border-color: var(--border-active) !important; }
+.focus\:border-blue-500:focus { border-color: var(--border-active) !important; }
+.hover\:bg-blue-500:hover { background-color: var(--primary-hover) !important; }
+.hover\:bg-gray-800:hover { background-color: var(--surface-3) !important; }
+.hover\:bg-gray-700:hover { background-color: var(--surface-3) !important; }
+.hover\:text-gray-200:hover { color: var(--text) !important; }
+.hover\:text-gray-300:hover { color: var(--text) !important; }
+
+.text-red-400 { color: var(--error) !important; }
+.text-yellow-200 { color: var(--warning) !important; }
+.text-yellow-300 { color: var(--warning) !important; }
+.text-yellow-400 { color: var(--warning) !important; }
+.text-green-100 { color: var(--success) !important; }
+
+.bg-green-600 { background-color: var(--success) !important; }
+.bg-green-700 { background-color: #16a34a !important; }
+.bg-green-950 { background-color: rgba(34, 197, 94, 0.08) !important; }
+.border-green-600 { border-color: var(--success) !important; }
+
+.bg-red-600 { background-color: var(--error) !important; }
+.bg-red-700 { background-color: #dc2626 !important; }
+.bg-red-950 { background-color: rgba(239, 68, 68, 0.08) !important; }
+.border-red-600 { border-color: var(--error) !important; }
+
+.bg-yellow-600 { background-color: var(--warning) !important; }
+.bg-yellow-700 { background-color: #d97706 !important; }
+.bg-yellow-950 { background-color: rgba(245, 158, 11, 0.08) !important; }
+.border-yellow-600 { border-color: var(--warning) !important; }
+
+/* ── Utility: spin animation ───────────────────────────────────────────── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Settings cards ────────────────────────────────────────────────────── */
+.theme-section .rounded-lg {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+}
+.theme-section h2 {
+  color: var(--text) !important;
+}
+.theme-section h3 {
+  color: var(--text) !important;
+}
+
+/* ── Toggle switches in settings ───────────────────────────────────────── */
+.settings-panel button[class*="rounded-full"][class*="bg-blue"] {
+  background: var(--primary) !important;
+}
+.settings-panel button[class*="rounded-full"][class*="bg-gray"] {
+  background: var(--surface-3) !important;
+}
+
+/* ── Frame timeline cards ──────────────────────────────────────────────── */
+.frame-timeline__card {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  border-radius: 6px !important;
+  transition: all 0.12s;
+}
+.frame-timeline__card:hover {
+  background: var(--surface-2) !important;
+  border-color: var(--text-dim) !important;
+}
+.frame-timeline__card[class*="bg-blue"] {
+  background: rgba(99, 102, 241, 0.06) !important;
+  border-color: rgba(99, 102, 241, 0.3) !important;
+}
+
+.frame-timeline__empty {
+  color: var(--text-dim) !important;
+}
+
+/* ── Memory search ─────────────────────────────────────────────────────── */
+.memory-search__input {
+  background: var(--surface-2) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 6px !important;
+}
+.memory-search__input:focus {
+  border-color: var(--border-active) !important;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15) !important;
+}
+.memory-search__button {
+  background: var(--primary) !important;
+  color: #fff !important;
+  border-radius: 6px !important;
+}
+.memory-search__button:hover:not(:disabled) {
+  background: var(--primary-hover) !important;
+}
+
+/* ── Selection color ───────────────────────────────────────────────────── */
+::selection {
+  background: rgba(99, 102, 241, 0.3);
+  color: var(--text);
+}

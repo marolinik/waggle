@@ -17,20 +17,11 @@ import type { Message, WaggleConfig, Frame, OnboardingData, FileEntry, DroppedFi
 import {
   ThemeProvider,
   AppShell,
-  Sidebar,
   StatusBar,
-  ChatArea,
-  WorkspaceTree,
   CreateWorkspaceDialog,
-  Tabs,
   Modal,
-  SettingsPanel,
   OnboardingWizard,
-  MemoryBrowser,
-  EventStream,
-  SessionList,
   FilePreview,
-  FileDropZone,
   LocalAdapter,
   useChat,
   useWorkspaces,
@@ -43,6 +34,12 @@ import {
   matchesNamedShortcut,
 } from '@waggle/ui';
 import { ServiceProvider, useService } from './providers/ServiceProvider';
+import { AppSidebar } from './components/AppSidebar';
+import { ContextPanel } from './components/ContextPanel';
+import { ChatView } from './views/ChatView';
+import { SettingsView } from './views/SettingsView';
+import { MemoryView } from './views/MemoryView';
+import { EventsView } from './views/EventsView';
 
 const adapter = new LocalAdapter({ baseUrl: 'http://127.0.0.1:3333' });
 
@@ -56,6 +53,7 @@ function WaggleApp() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showCreateWorkspace, setShowCreateWorkspace] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [contextPanelOpen] = useState(true);
   const [previewFile, setPreviewFile] = useState<FileEntry | null>(null);
   const [config, setConfig] = useState<WaggleConfig | null>(null);
 
@@ -97,7 +95,7 @@ function WaggleApp() {
     setMessages(chatMessages);
   }, [chatMessages]);
 
-  // ── Approval gate (side-effect: listens for approval_required events) ──
+  // ── Approval gate ──
   const _approvalGate = useApprovalGate({
     service,
     setMessages,
@@ -145,14 +143,12 @@ function WaggleApp() {
     service.getConfig()
       .then((cfg) => {
         setConfig(cfg);
-        // If no providers configured, show onboarding
         const hasProviders = cfg.providers && Object.keys(cfg.providers).length > 0;
         if (!hasProviders) {
           setShowOnboarding(true);
         }
       })
       .catch(() => {
-        // If config fetch fails, show onboarding
         setShowOnboarding(true);
       });
   }, [service]);
@@ -161,7 +157,6 @@ function WaggleApp() {
     const result = await performSetup(data);
     if (result.success) {
       setShowOnboarding(false);
-      // Reload config
       try {
         const cfg = await service.getConfig();
         setConfig(cfg);
@@ -221,7 +216,6 @@ function WaggleApp() {
 
   // ── File drop ─────────────────────────────────────────────────────
   const handleFileDrop = useCallback((files: DroppedFile[]) => {
-    // Include dropped file names in the next message
     const summary = files.map((f) => `[File: ${f.name}]`).join(', ');
     sendMessage(`I've dropped these files: ${summary}`);
   }, [sendMessage]);
@@ -237,172 +231,21 @@ function WaggleApp() {
     setShowCreateWorkspace(false);
   }, [createWorkspace]);
 
-  // ── Navigation icons for sidebar bottom ───────────────────────────
-  const navIconStyle = (view: AppView) => ({
-    background: currentView === view ? 'rgba(59, 130, 246, 0.2)' : 'none',
-    border: 'none',
-    color: currentView === view ? '#60a5fa' : 'var(--waggle-text, #e0e0e0)',
-    cursor: 'pointer' as const,
-    padding: sidebarCollapsed ? '10px 0' : '8px 12px',
-    width: '100%',
-    textAlign: 'left' as const,
-    fontSize: '13px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    borderRadius: '4px',
-    transition: 'background 0.15s',
-  });
-
-  const sidebarBottomItems = (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', padding: '0 4px' }}>
-      <button
-        style={navIconStyle('chat')}
-        onClick={() => setCurrentView('chat')}
-        title="Chat"
-      >
-        {sidebarCollapsed ? '\uD83D\uDCAC' : '\uD83D\uDCAC Chat'}
-      </button>
-      <button
-        style={navIconStyle('memory')}
-        onClick={() => setCurrentView('memory')}
-        title="Memory"
-      >
-        {sidebarCollapsed ? '\uD83E\uDDE0' : '\uD83E\uDDE0 Memory'}
-      </button>
-      <button
-        style={navIconStyle('events')}
-        onClick={() => setCurrentView('events')}
-        title="Events"
-      >
-        {sidebarCollapsed ? '\uD83D\uDCCB' : '\uD83D\uDCCB Events'}
-      </button>
-      <button
-        style={navIconStyle('settings')}
-        onClick={() => setCurrentView('settings')}
-        title="Settings"
-      >
-        {sidebarCollapsed ? '\u2699\uFE0F' : '\u2699\uFE0F Settings'}
-      </button>
-      <button
-        style={{
-          ...navIconStyle('chat'),
-          background: 'none',
-          color: '#60a5fa',
-          marginTop: '4px',
-          borderTop: '1px solid var(--waggle-border, #333)',
-          paddingTop: '8px',
-        }}
-        onClick={() => setShowCreateWorkspace(true)}
-        title="Create Workspace"
-      >
-        {sidebarCollapsed ? '+' : '+ New Workspace'}
-      </button>
-    </div>
-  );
-
-  // ── Session context panel (right side, visible in chat view) ───────
-  const sessionContextPanel = currentView === 'chat' ? (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{
-        padding: '12px',
-        borderBottom: '1px solid var(--waggle-border, #333)',
-        fontSize: '13px',
-        fontWeight: 600,
-        color: 'var(--waggle-text, #e0e0e0)',
-      }}>
-        Sessions
-      </div>
-      <div style={{ flex: 1, overflow: 'auto' }}>
-        <SessionList
-          grouped={groupedSessions}
-          activeSessionId={activeSessionId ?? undefined}
-          onSelectSession={(id) => {
-            selectSession(id);
-            if (activeWorkspace) {
-              openTab(id, activeWorkspace.id, 'Session');
-            }
-          }}
-          onCreateSession={() => {
-            createSession().then((s) => {
-              if (activeWorkspace) {
-                openTab(s.id, activeWorkspace.id, s.title ?? 'New Chat');
-              }
-            });
-          }}
-          onDeleteSession={deleteSession}
-          onRenameSession={renameSession}
-        />
-      </div>
-    </div>
-  ) : undefined;
-
-  // ── Main content area ─────────────────────────────────────────────
-  const renderContent = () => {
-    switch (currentView) {
-      case 'chat':
-        return (
-          <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            {/* Tab bar */}
-            {tabs.length > 0 && (
-              <Tabs
-                tabs={tabs.map((t) => ({ id: t.id, label: t.title, icon: t.workspaceIcon }))}
-                activeId={activeTabId ?? ''}
-                onSelect={handleTabSelect}
-                onClose={handleTabClose}
-                onAdd={handleNewTab}
-              />
-            )}
-            {/* Chat with file drop zone */}
-            <div style={{ flex: 1, overflow: 'hidden' }}>
-              <FileDropZone onDrop={handleFileDrop} disabled={isLoading}>
-                <ChatArea
-                  messages={messages}
-                  isLoading={isLoading}
-                  onSendMessage={sendMessage}
-                />
-              </FileDropZone>
-            </div>
-          </div>
-        );
-
-      case 'settings':
-        return config ? (
-          <SettingsPanel
-            config={config}
-            onConfigUpdate={handleConfigUpdate}
-            onTestApiKey={(provider, key) => service.testApiKey(provider, key)}
-          />
-        ) : (
-          <div style={{ padding: 24, color: '#999' }}>Loading settings...</div>
-        );
-
-      case 'memory':
-        return (
-          <MemoryBrowser
-            frames={frames}
-            selectedFrame={selectedFrame}
-            onSelectFrame={setSelectedFrame}
-            onSearch={memorySearch}
-            filters={memoryFilters}
-            onFiltersChange={setMemoryFilters}
-            stats={memoryStats ?? undefined}
-            loading={memoryLoading}
-          />
-        );
-
-      case 'events':
-        return (
-          <EventStream
-            steps={steps}
-            autoScroll={autoScroll}
-            onToggleAutoScroll={toggleAutoScroll}
-            filter={eventFilter}
-            onFilterChange={setEventFilter}
-          />
-        );
+  // ── Session selection from context panel ──────────────────────────
+  const handleSessionSelect = useCallback((id: string) => {
+    selectSession(id);
+    if (activeWorkspace) {
+      openTab(id, activeWorkspace.id, 'Session');
     }
-  };
+  }, [selectSession, activeWorkspace, openTab]);
+
+  const handleCreateSessionFromPanel = useCallback(() => {
+    createSession().then((s) => {
+      if (activeWorkspace) {
+        openTab(s.id, activeWorkspace.id, s.title ?? 'New Chat');
+      }
+    });
+  }, [createSession, activeWorkspace, openTab]);
 
   // ── Agent status for status bar ───────────────────────────────────
   const [agentTokens, setAgentTokens] = useState(0);
@@ -420,27 +263,107 @@ function WaggleApp() {
     return () => clearInterval(poll);
   }, [service]);
 
+  // ── Should context panel show? ────────────────────────────────────
+  const showContextPanel = contextPanelOpen && (
+    currentView === 'chat' ||
+    (currentView === 'memory' && selectedFrame !== undefined)
+  );
+
+  // ── Render ────────────────────────────────────────────────────────
+
+  if (showOnboarding) {
+    return (
+      <div style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 1000,
+        background: 'var(--bg)',
+      }}>
+        <OnboardingWizard
+          onComplete={handleOnboardingComplete}
+          onTestApiKey={(provider, key) => service.testApiKey(provider, key)}
+        />
+      </div>
+    );
+  }
+
   return (
     <>
       <AppShell
         sidebar={
-          <Sidebar
+          <AppSidebar
             collapsed={sidebarCollapsed}
             onToggle={() => setSidebarCollapsed((prev) => !prev)}
-            bottomItems={sidebarBottomItems}
-          >
-            <WorkspaceTree
-              workspaces={workspaces}
-              activeId={activeWorkspace?.id}
-              onSelect={setActiveWorkspace}
-            />
-          </Sidebar>
+            workspaces={workspaces}
+            activeWorkspaceId={activeWorkspace?.id}
+            onSelectWorkspace={setActiveWorkspace}
+            currentView={currentView}
+            onViewChange={setCurrentView}
+            onCreateWorkspace={() => setShowCreateWorkspace(true)}
+          />
         }
-        content={renderContent()}
-        contextPanel={sessionContextPanel}
+        content={
+          <>
+            {currentView === 'chat' && (
+              <ChatView
+                tabs={tabs.map((t) => ({ id: t.id, label: t.title, icon: t.workspaceIcon }))}
+                activeTabId={activeTabId}
+                onTabSelect={handleTabSelect}
+                onTabClose={handleTabClose}
+                onTabAdd={handleNewTab}
+                messages={messages}
+                isLoading={isLoading}
+                onSendMessage={sendMessage}
+                onFileDrop={handleFileDrop}
+              />
+            )}
+            {currentView === 'settings' && (
+              <SettingsView
+                config={config}
+                onConfigUpdate={handleConfigUpdate}
+                onTestApiKey={(provider, key) => service.testApiKey(provider, key)}
+              />
+            )}
+            {currentView === 'memory' && (
+              <MemoryView
+                frames={frames}
+                selectedFrame={selectedFrame}
+                onSelectFrame={setSelectedFrame}
+                onSearch={memorySearch}
+                filters={memoryFilters}
+                onFiltersChange={setMemoryFilters}
+                stats={memoryStats ?? undefined}
+                loading={memoryLoading}
+              />
+            )}
+            {currentView === 'events' && (
+              <EventsView
+                steps={steps}
+                autoScroll={autoScroll}
+                onToggleAutoScroll={toggleAutoScroll}
+                filter={eventFilter}
+                onFilterChange={setEventFilter}
+              />
+            )}
+          </>
+        }
+        contextPanel={
+          showContextPanel ? (
+            <ContextPanel
+              currentView={currentView}
+              groupedSessions={groupedSessions}
+              activeSessionId={activeSessionId ?? undefined}
+              onSelectSession={handleSessionSelect}
+              onCreateSession={handleCreateSessionFromPanel}
+              onDeleteSession={deleteSession}
+              onRenameSession={renameSession}
+              selectedFrame={selectedFrame}
+            />
+          ) : undefined
+        }
         statusBar={
           <StatusBar
-            model={activeWorkspace?.model ?? 'claude-sonnet-4-20250514'}
+            model={activeWorkspace?.model ?? config?.defaultModel ?? 'claude-sonnet-4-20250514'}
             workspace={activeWorkspace?.name ?? 'Default'}
             tokens={agentTokens}
             cost={agentCost}
@@ -448,21 +371,6 @@ function WaggleApp() {
           />
         }
       />
-
-      {/* Onboarding overlay */}
-      {showOnboarding && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 1000,
-          background: '#0a0a1a',
-        }}>
-          <OnboardingWizard
-            onComplete={handleOnboardingComplete}
-            onTestApiKey={(provider, key) => service.testApiKey(provider, key)}
-          />
-        </div>
-      )}
 
       {/* Create workspace modal */}
       <CreateWorkspaceDialog
