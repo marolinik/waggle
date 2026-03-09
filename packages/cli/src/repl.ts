@@ -11,7 +11,7 @@ import os from 'node:os';
 import path from 'node:path';
 import chalk from 'chalk';
 import { MindDB, WaggleConfig, createLiteLLMEmbedder } from '@waggle/core';
-import { Orchestrator, ModelRouter, runAgentLoop, createSystemTools, createPlanTools, createGitTools, Workspace, ensureIdentity, loadSystemPrompt, loadSkills, CostTracker, HookRegistry, loadHooksFromConfig } from '@waggle/agent';
+import { Orchestrator, ModelRouter, runAgentLoop, createSystemTools, createPlanTools, createGitTools, Workspace, ensureIdentity, loadSystemPrompt, loadSkills, CostTracker, HookRegistry, loadHooksFromConfig, needsConfirmation } from '@waggle/agent';
 import { parseCommand, COMMANDS } from './commands.js';
 import { renderMarkdown } from './renderer.js';
 import { AdminClient, formatTable } from './commands/admin.js';
@@ -145,6 +145,23 @@ export async function startRepl(options: ReplOptions = {}): Promise<void> {
     input: process.stdin,
     output: process.stdout,
     prompt: chalk.green('you > '),
+  });
+
+  // Register confirmation gate as pre:tool hook
+  hookRegistry.on('pre:tool', async (ctx) => {
+    if (!ctx.toolName || !needsConfirmation(ctx.toolName)) return;
+
+    // Ask user for confirmation via readline
+    const answer = await new Promise<string>((resolve) => {
+      rl.question(
+        chalk.yellow(`  ⚠ Allow ${ctx.toolName}? [Y/n] `),
+        (ans) => resolve(ans.trim().toLowerCase()),
+      );
+    });
+
+    if (answer === 'n' || answer === 'no') {
+      return { cancel: true, reason: `User denied ${ctx.toolName}` };
+    }
   });
 
   rl.prompt();
