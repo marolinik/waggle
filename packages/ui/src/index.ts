@@ -213,6 +213,19 @@ export type {
   SessionCardProps,
 } from './components/sessions/index.js';
 
+// Components — tabs
+export {
+  createTab,
+  reorderTabs,
+  MAX_VISIBLE_TABS,
+  canAddTab,
+  findTabBySession,
+  removeTab,
+  getNextActiveTab,
+  updateTabState,
+} from './components/tabs/index.js';
+export type { ConversationTab } from './components/tabs/index.js';
+
 // Components — layout
 export { AppShell } from './components/layout/index.js';
 export type { AppShellProps } from './components/layout/index.js';
@@ -244,3 +257,6 @@ export type { UseEventsOptions, UseEventsReturn } from './hooks/useEvents.js';
 
 export { useSessions } from './hooks/useSessions.js';
 export type { UseSessionsOptions, UseSessionsReturn } from './hooks/useSessions.js';
+
+export { useTabs } from './hooks/useTabs.js';
+export type { UseTabsOptions, UseTabsReturn } from './hooks/useTabs.js';
