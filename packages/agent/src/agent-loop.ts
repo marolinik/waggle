@@ -1,5 +1,6 @@
 import type { ToolDefinition } from './tools.js';
 import { LoopGuard } from './loop-guard.js';
+import { scanForInjection } from './injection-scanner.js';
 
 export interface AgentMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
@@ -255,6 +256,11 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
         toolsUsed.push(fnName);
       } else {
         result = `Error: Unknown tool "${fnName}"`;
+      }
+
+      const scanResult = scanForInjection(result, 'tool_output');
+      if (!scanResult.safe) {
+        result = `[SECURITY] Tool output flagged (${scanResult.flags.join(', ')}). Content sanitized.`;
       }
 
       messages.push({
