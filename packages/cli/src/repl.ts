@@ -11,7 +11,7 @@ import os from 'node:os';
 import path from 'node:path';
 import chalk from 'chalk';
 import { MindDB, WaggleConfig, createLiteLLMEmbedder } from '@waggle/core';
-import { Orchestrator, ModelRouter, runAgentLoop, createSystemTools, createPlanTools, Workspace, ensureIdentity, loadSystemPrompt, loadSkills, CostTracker, HookRegistry, loadHooksFromConfig } from '@waggle/agent';
+import { Orchestrator, ModelRouter, runAgentLoop, createSystemTools, createPlanTools, createGitTools, Workspace, ensureIdentity, loadSystemPrompt, loadSkills, CostTracker, HookRegistry, loadHooksFromConfig } from '@waggle/agent';
 import { parseCommand, COMMANDS } from './commands.js';
 import { renderMarkdown } from './renderer.js';
 import { AdminClient, formatTable } from './commands/admin.js';
@@ -110,6 +110,9 @@ export async function startRepl(options: ReplOptions = {}): Promise<void> {
 
   // Build plan tools
   const planTools = createPlanTools();
+
+  // Build git tools
+  const gitTools = createGitTools(process.cwd());
 
   // Start session
   const sessionId = workspace.startSession();
@@ -265,6 +268,17 @@ export async function startRepl(options: ReplOptions = {}): Promise<void> {
           break;
         }
 
+        case 'git': {
+          const gitStatus = gitTools.find(t => t.name === 'git_status');
+          if (gitStatus) {
+            const output = await gitStatus.execute({});
+            console.log('');
+            console.log(output);
+            console.log('');
+          }
+          break;
+        }
+
         case 'admin': {
           const adminClient = new AdminClient();
           const parts = cmd.args.split(/\s+/);
@@ -337,7 +351,7 @@ export async function startRepl(options: ReplOptions = {}): Promise<void> {
 
     // Chat message — send to model via runAgentLoop (LiteLLM)
     try {
-      const tools = [...orchestrator.getTools(), ...systemTools, ...planTools];
+      const tools = [...orchestrator.getTools(), ...systemTools, ...planTools, ...gitTools];
 
       let systemPrompt = '';
 

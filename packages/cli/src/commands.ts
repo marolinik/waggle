@@ -46,4 +46,5 @@ export const COMMANDS: Record<string, string> = {
   mode: '/mode          — Show current mode (local/team)',
   cost: '/cost          — Show token usage and estimated cost',
   plan: '/plan          — Show current execution plan',
+  git: '/git           — Show git status for workspace',
 };
