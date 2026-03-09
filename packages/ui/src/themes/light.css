@@ -1,0 +1,20 @@
+/**
+ * Waggle Light Theme
+ */
+[data-theme='light'] {
+  --waggle-bg: #f5f7fa;
+  --waggle-surface: #ffffff;
+  --waggle-sidebar-bg: #eef1f6;
+  --waggle-tabs-bg: #eef1f6;
+  --waggle-statusbar-bg: #e2e6ed;
+  --waggle-text: #1a1a2e;
+  --waggle-text-muted: #666666;
+  --waggle-border: #d0d4db;
+  --waggle-accent: #e94560;
+  --waggle-accent-hover: #c73a52;
+  --waggle-input-bg: #ffffff;
+  --waggle-input-border: #c0c4cb;
+  --waggle-success: #27ae60;
+  --waggle-warning: #e67e22;
+  --waggle-error: #c0392b;
+}

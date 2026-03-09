@@ -51,6 +51,35 @@ export type {
   CreateWorkspaceDialogProps,
 } from './components/workspace/index.js';
 
+// Components — common
+export {
+  Sidebar,
+  Tabs,
+  StatusBar,
+  Modal,
+  ThemeProvider,
+  ThemeContext,
+  useTheme,
+  getSavedTheme,
+  toggleThemeValue,
+  formatTokenCount,
+  formatCost,
+} from './components/common/index.js';
+export type {
+  SidebarProps,
+  Tab,
+  TabsProps,
+  StatusBarProps,
+  ModalProps,
+  Theme,
+  ThemeContextValue,
+  ThemeProviderProps,
+} from './components/common/index.js';
+
+// Components — layout
+export { AppShell } from './components/layout/index.js';
+export type { AppShellProps } from './components/layout/index.js';
+
 // Hooks
 export { useChat, processStreamEvent } from './hooks/useChat.js';
 export type { UseChatOptions, UseChatReturn } from './hooks/useChat.js';
