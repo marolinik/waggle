@@ -230,6 +230,35 @@ export type { ConversationTab } from './components/tabs/index.js';
 export { AppShell } from './components/layout/index.js';
 export type { AppShellProps } from './components/layout/index.js';
 
+// Components — files
+export {
+  FilePreview,
+  CodePreview,
+  DiffViewer,
+  ImagePreview,
+  getFileIcon,
+  getLanguageFromExtension,
+  isImageFile,
+  isCodeFile,
+  computeUnifiedDiff,
+  truncateFilePath,
+  getFileExtension,
+  formatFileSize,
+  FILE_ICONS,
+  CODE_EXTENSIONS,
+  IMAGE_EXTENSIONS,
+} from './components/files/index.js';
+export type {
+  FilePreviewProps,
+  CodePreviewProps,
+  DiffViewerProps,
+  ImagePreviewProps,
+  FileEntry,
+  DiffEntry,
+  DiffViewMode,
+  DiffLine,
+} from './components/files/index.js';
+
 // Hooks
 export { useChat, processStreamEvent } from './hooks/useChat.js';
 export type { UseChatOptions, UseChatReturn } from './hooks/useChat.js';
