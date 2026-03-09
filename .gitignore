@@ -10,3 +10,6 @@ coverage/
 app/src-tauri/target/
 app/src-tauri/gen/
 app/src-tauri/.cargo/config.toml
+
+# Git worktrees
+.worktrees/
