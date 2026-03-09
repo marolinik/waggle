@@ -6,7 +6,7 @@ import type { HookRegistry } from './hooks.js';
 export interface AgentMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: string | null;
-  tool_calls?: Array<{ id: string; function: { name: string; arguments: string } }>;
+  tool_calls?: Array<{ id: string; type: 'function'; function: { name: string; arguments: string } }>;
   tool_call_id?: string;
 }
 
@@ -120,7 +120,7 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
 
     let assistantMessage: {
       content: string | null;
-      tool_calls?: Array<{ id: string; function: { name: string; arguments: string } }>;
+      tool_calls?: Array<{ id: string; type: 'function'; function: { name: string; arguments: string } }>;
     };
     let turnInputTokens = 0;
     let turnOutputTokens = 0;
@@ -130,7 +130,7 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
       let accumulatedContent = '';
       const accumulatedToolCalls = new Map<
         number,
-        { id: string; function: { name: string; arguments: string } }
+        { id: string; type: 'function'; function: { name: string; arguments: string } }
       >();
 
       const reader = response.body!.getReader();
@@ -185,6 +185,7 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
                 if (!accumulatedToolCalls.has(idx)) {
                   accumulatedToolCalls.set(idx, {
                     id: tc.id ?? '',
+                    type: 'function' as const,
                     function: { name: tc.function?.name ?? '', arguments: '' },
                   });
                 }
@@ -206,7 +207,9 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
           : undefined;
 
       assistantMessage = {
-        content: accumulatedContent || null,
+        // Use empty string (not null) when there are tool_calls — some LLM proxies
+        // (LiteLLM→Anthropic) mishandle null content alongside tool_use blocks
+        content: accumulatedContent || (toolCallsArray ? '' : null),
         tool_calls: toolCallsArray,
       };
     } else {
@@ -241,9 +244,10 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
     }
 
     // Has tool calls — execute them and continue the loop
+    // Ensure content is never null when tool_calls are present (LiteLLM→Anthropic compat)
     messages.push({
       role: 'assistant',
-      content: assistantMessage.content,
+      content: assistantMessage.content ?? '',
       tool_calls: assistantMessage.tool_calls,
     });
 
