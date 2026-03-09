@@ -11,7 +11,7 @@ import os from 'node:os';
 import path from 'node:path';
 import chalk from 'chalk';
 import { MindDB, WaggleConfig, createLiteLLMEmbedder } from '@waggle/core';
-import { Orchestrator, ModelRouter, runAgentLoop, createSystemTools, Workspace, ensureIdentity, loadSystemPrompt, loadSkills, CostTracker } from '@waggle/agent';
+import { Orchestrator, ModelRouter, runAgentLoop, createSystemTools, Workspace, ensureIdentity, loadSystemPrompt, loadSkills, CostTracker, HookRegistry, loadHooksFromConfig } from '@waggle/agent';
 import { parseCommand, COMMANDS } from './commands.js';
 import { renderMarkdown } from './renderer.js';
 import { AdminClient, formatTable } from './commands/admin.js';
@@ -69,6 +69,10 @@ export async function startRepl(options: ReplOptions = {}): Promise<void> {
   const waggleHome = path.join(os.homedir(), '.waggle');
   const userSystemPrompt = loadSystemPrompt(waggleHome);
   const skills = loadSkills(waggleHome);
+
+  // Load user-configurable hooks from ~/.waggle/hooks.json
+  const hookRegistry = new HookRegistry();
+  await loadHooksFromConfig(path.join(waggleHome, 'hooks.json'), hookRegistry);
 
   // Detect mode
   const auth = new AuthManager();
@@ -387,6 +391,7 @@ When asked about current events, products, releases, docs, or anything you're no
         tools,
         messages: conversationHistory,
         stream: true,
+        hooks: hookRegistry,
         onToken: (token: string) => { process.stdout.write(token); },
         onToolUse: (name: string, toolInput: Record<string, unknown>) => {
           console.log(chalk.dim(`  [tool] ${name}`));
