@@ -25,3 +25,4 @@ export { CostTracker, type ModelPricing, type UsageStats } from './cost-tracker.
 export { extractEntities, type ExtractedEntity } from './entity-extractor.js';
 export { CognifyPipeline, type CognifyConfig, type CognifyResult } from './cognify.js';
 export { FeedbackHandler } from './feedback-handler.js';
+export { checkResponseQuality, type QualityIssue } from './quality-controller.js';
