@@ -1,14 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
-import { startSidecar, stopSidecar, ipc } from '../lib/ipc';
+import { ensureService, stopService, api } from '../lib/ipc';
 
+/**
+ * Hook to manage the local agent service connection.
+ * Named useSidecar for backward compat — delegates to localhost:3333 service.
+ */
 export function useSidecar() {
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const connect = useCallback(async () => {
     try {
-      await startSidecar();
-      await ipc.ping();
+      await ensureService();
+      await api.ping();
       setConnected(true);
       setError(null);
     } catch (err) {
@@ -18,7 +22,7 @@ export function useSidecar() {
   }, []);
 
   const disconnect = useCallback(async () => {
-    try { await stopSidecar(); } catch { /* window may be closing */ }
+    try { await stopService(); } catch { /* window may be closing */ }
     setConnected(false);
   }, []);
 
