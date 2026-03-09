@@ -33,3 +33,4 @@ export { createPlanTools } from './plan-tools.js';
 export { createGitTools } from './git-tools.js';
 export { PermissionManager, READONLY_TOOLS } from './permissions.js';
 export { filterToolsForContext, type ToolContext, type ToolFilterConfig } from './tool-filter.js';
+export { needsConfirmation, ConfirmationGate, type ConfirmationGateConfig } from './confirmation.js';
