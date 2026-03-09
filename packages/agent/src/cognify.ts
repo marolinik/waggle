@@ -1,0 +1,132 @@
+import type {
+  MindDB,
+  FrameStore,
+  SessionStore,
+  KnowledgeGraph,
+  HybridSearch,
+  Importance,
+  Embedder,
+} from '@waggle/core';
+import { extractEntities, type ExtractedEntity } from './entity-extractor.js';
+
+export interface CognifyConfig {
+  db: MindDB;
+  embedder: Embedder;
+  frames: FrameStore;
+  sessions: SessionStore;
+  knowledge: KnowledgeGraph;
+  search: HybridSearch;
+}
+
+export interface CognifyResult {
+  frameId: number;
+  entitiesExtracted: number;
+  relationsCreated: number;
+}
+
+export class CognifyPipeline {
+  private frames: FrameStore;
+  private sessions: SessionStore;
+  private knowledge: KnowledgeGraph;
+  private search: HybridSearch;
+
+  constructor(config: CognifyConfig) {
+    this.frames = config.frames;
+    this.sessions = config.sessions;
+    this.knowledge = config.knowledge;
+    this.search = config.search;
+  }
+
+  /**
+   * Full cognify pipeline: save frame -> extract entities -> enrich graph -> index for search.
+   */
+  async cognify(
+    content: string,
+    importance: Importance = 'normal',
+    gopId?: string,
+  ): Promise<CognifyResult> {
+    // 1. Ensure a session exists
+    const resolvedGopId = gopId ?? this.ensureSession();
+
+    // 2. Save a frame (I-frame if none exists, P-frame otherwise)
+    const latestI = this.frames.getLatestIFrame(resolvedGopId);
+    const frame = latestI
+      ? this.frames.createPFrame(resolvedGopId, content, latestI.id, importance)
+      : this.frames.createIFrame(resolvedGopId, content, importance);
+
+    // 3. Extract entities from content
+    const extracted = extractEntities(content);
+
+    // 4. Upsert entities into KnowledgeGraph
+    const entityIds = this.upsertEntities(extracted);
+
+    // 5. Create co-occurrence relations between entities found in same text
+    const relationsCreated = this.createCoOccurrenceRelations(entityIds);
+
+    // 6. Index the frame for vector search
+    await this.search.indexFrame(frame.id, content);
+
+    return {
+      frameId: frame.id,
+      entitiesExtracted: entityIds.length,
+      relationsCreated,
+    };
+  }
+
+  private ensureSession(): string {
+    const active = this.sessions.getActive();
+    if (active.length > 0) {
+      return active[0].gop_id;
+    }
+    const session = this.sessions.create();
+    return session.gop_id;
+  }
+
+  /**
+   * Upsert entities: if an entity with the same type+name exists, skip it;
+   * otherwise create it. Returns the entity IDs (existing or new).
+   */
+  private upsertEntities(extracted: ExtractedEntity[]): number[] {
+    const ids: number[] = [];
+    for (const e of extracted) {
+      const existing = this.knowledge.getEntitiesByType(e.type)
+        .find(ent => ent.name.toLowerCase() === e.name.toLowerCase());
+      if (existing) {
+        ids.push(existing.id);
+      } else {
+        const created = this.knowledge.createEntity(e.type, e.name, {
+          confidence: e.confidence,
+          source: 'cognify',
+        });
+        ids.push(created.id);
+      }
+    }
+    return ids;
+  }
+
+  /**
+   * Create co-occurrence relations between all pairs of entities found
+   * in the same text. Uses "co_occurs_with" relation type.
+   * Returns the number of new relations created.
+   */
+  private createCoOccurrenceRelations(entityIds: number[]): number {
+    let count = 0;
+    for (let i = 0; i < entityIds.length; i++) {
+      for (let j = i + 1; j < entityIds.length; j++) {
+        const sourceId = entityIds[i];
+        const targetId = entityIds[j];
+
+        // Check if relation already exists
+        const existingRels = this.knowledge.getRelationsFrom(sourceId, 'co_occurs_with');
+        const alreadyExists = existingRels.some(r => r.target_id === targetId);
+        if (!alreadyExists) {
+          this.knowledge.createRelation(sourceId, targetId, 'co_occurs_with', 0.8, {
+            source: 'cognify',
+          });
+          count++;
+        }
+      }
+    }
+    return count;
+  }
+}

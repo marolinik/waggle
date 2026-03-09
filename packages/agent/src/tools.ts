@@ -7,6 +7,7 @@ import type {
   HybridSearch,
   KnowledgeGraph,
 } from '@waggle/core';
+import type { CognifyPipeline } from './cognify.js';
 
 export interface ToolDefinition {
   name: string;
@@ -23,6 +24,7 @@ export interface MindToolDeps {
   sessions: SessionStore;
   search: HybridSearch;
   knowledge: KnowledgeGraph;
+  cognify?: CognifyPipeline;
 }
 
 export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
@@ -90,6 +92,16 @@ export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
         required: ['content'],
       },
       execute: async (args) => {
+        const importance = (args.importance as string) ?? 'normal';
+        const content = args.content as string;
+
+        // Use cognify pipeline if available (extracts entities + indexes for search)
+        if (deps.cognify) {
+          const result = await deps.cognify.cognify(content, importance as any);
+          return `Memory saved (importance: ${importance}, entities: ${result.entitiesExtracted}, relations: ${result.relationsCreated}).`;
+        }
+
+        // Fallback: raw frame creation (no entity extraction or vector indexing)
         const active = deps.sessions.getActive();
         let gopId: string;
         if (active.length === 0) {
@@ -99,11 +111,10 @@ export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
           gopId = active[0].gop_id;
         }
         const latestI = deps.frames.getLatestIFrame(gopId);
-        const importance = (args.importance as string) ?? 'normal';
         if (latestI) {
-          deps.frames.createPFrame(gopId, args.content as string, latestI.id, importance as any);
+          deps.frames.createPFrame(gopId, content, latestI.id, importance as any);
         } else {
-          deps.frames.createIFrame(gopId, args.content as string, importance as any);
+          deps.frames.createIFrame(gopId, content, importance as any);
         }
         return `Memory saved (importance: ${importance}).`;
       },
