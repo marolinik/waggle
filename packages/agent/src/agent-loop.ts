@@ -1,4 +1,5 @@
 import type { ToolDefinition } from './tools.js';
+import { LoopGuard } from './loop-guard.js';
 
 export interface AgentMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
@@ -75,6 +76,7 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
   const toolsUsed: string[] = [];
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
+  const guard = new LoopGuard();
 
   for (let turn = 0; turn < maxTurns; turn++) {
     const body: Record<string, unknown> = {
@@ -242,7 +244,9 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
 
       const tool = toolMap.get(fnName);
       let result: string;
-      if (tool) {
+      if (!guard.check(fnName, fnArgs)) {
+        result = `Error: Loop detected — called ${fnName} with identical arguments too many times. Try a different approach.`;
+      } else if (tool) {
         try {
           result = await tool.execute(fnArgs);
         } catch (err) {
