@@ -26,3 +26,4 @@ export { extractEntities, type ExtractedEntity } from './entity-extractor.js';
 export { CognifyPipeline, type CognifyConfig, type CognifyResult } from './cognify.js';
 export { FeedbackHandler } from './feedback-handler.js';
 export { checkResponseQuality, type QualityIssue } from './quality-controller.js';
+export { HookRegistry, type HookEvent, type HookContext, type HookResult } from './hooks.js';
