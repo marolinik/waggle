@@ -8,7 +8,7 @@
 
 import readline from 'node:readline';
 import chalk from 'chalk';
-import { MindDB, WaggleConfig, type Embedder } from '@waggle/core';
+import { MindDB, WaggleConfig, createLiteLLMEmbedder } from '@waggle/core';
 import { Orchestrator, ModelRouter, runAgentLoop, createSystemTools, Workspace } from '@waggle/agent';
 import { parseCommand, COMMANDS } from './commands.js';
 import { renderMarkdown } from './renderer.js';
@@ -16,30 +16,20 @@ import { AdminClient, formatTable } from './commands/admin.js';
 import { AuthManager } from './auth.js';
 import { detectMode, checkServerHealth } from './mode-detector.js';
 
-// Mock embedder — same as sidecar, real embeddings in future milestone
-const mockEmbedder: Embedder = {
-  embed: async (text: string) => {
-    const arr = new Float32Array(1024);
-    const bytes = new TextEncoder().encode(text);
-    for (let i = 0; i < Math.min(bytes.length, 1024); i++) {
-      arr[i] = (bytes[i] - 128) / 128;
-    }
-    return arr;
-  },
-  embedBatch: async (texts: string[]) => {
-    const results: Float32Array[] = [];
-    for (const text of texts) {
-      const arr = new Float32Array(1024);
-      const bytes = new TextEncoder().encode(text);
-      for (let i = 0; i < Math.min(bytes.length, 1024); i++) {
-        arr[i] = (bytes[i] - 128) / 128;
-      }
-      results.push(arr);
-    }
-    return results;
-  },
-  dimensions: 1024,
-};
+/**
+ * Build an embedder backed by LiteLLM's /embeddings endpoint.
+ * Falls back to a deterministic mock (text→Float32Array hash) if the API is unavailable,
+ * so the CLI always works even without a running LiteLLM proxy.
+ */
+function buildEmbedder(litellmUrl: string, litellmApiKey: string) {
+  return createLiteLLMEmbedder({
+    litellmUrl,
+    litellmApiKey,
+    model: 'text-embedding',
+    dimensions: 1536,
+    fallbackToMock: true,
+  });
+}
 
 export interface ReplOptions {
   model?: string;
@@ -54,9 +44,6 @@ export async function startRepl(options: ReplOptions = {}): Promise<void> {
 
   // Open (or create) .mind database
   const db = new MindDB(mindPath);
-
-  // Build orchestrator
-  const orchestrator = new Orchestrator({ db, embedder: mockEmbedder });
 
   // Build model router from config
   const providers = config.getProviders();
@@ -94,6 +81,12 @@ export async function startRepl(options: ReplOptions = {}): Promise<void> {
   const litellmUrl = wsConfig.litellmUrl ?? 'http://localhost:4000/v1';
   // LiteLLM master key for proxy auth (NOT the provider API key — LiteLLM reads that from its own env)
   const litellmApiKey = process.env.LITELLM_API_KEY ?? process.env.LITELLM_MASTER_KEY ?? 'sk-waggle-dev';
+
+  // Build embedder backed by LiteLLM (falls back to mock if API unavailable)
+  const embedder = buildEmbedder(litellmUrl, litellmApiKey);
+
+  // Build orchestrator
+  const orchestrator = new Orchestrator({ db, embedder });
 
   // Build system tools
   const systemTools = createSystemTools(process.cwd());
@@ -309,7 +302,46 @@ export async function startRepl(options: ReplOptions = {}): Promise<void> {
     try {
       const tools = [...orchestrator.getTools(), ...systemTools];
 
-      const systemPrompt = orchestrator.buildSystemPrompt() + '\n\n# System Tools\nYou have system tools: bash, read_file, write_file, edit_file, search_files, search_content.\nUse them to interact with the workspace at ' + process.cwd();
+      const systemPrompt = orchestrator.buildSystemPrompt() + `
+
+# Who You Are
+You are Waggle — an AI assistant with persistent memory and web access.
+Your key strength: you remember past conversations through your .mind memory system.
+
+# CRITICAL RULES — FOLLOW THESE EXACTLY
+
+## ABSOLUTE RULE: Never guess, never assume, never use "likely" or "probably"
+- If you don't know a FACT, you have two choices: (1) say "I don't know", or (2) use web_search to find out.
+- There is NO third option. You CANNOT guess and present it as information.
+- The words "likely", "probably", "I believe", "I think" before a factual claim = YOU ARE GUESSING. Stop. Search instead.
+- This is ESPECIALLY important for comparisons. If someone asks "how do you compare to X", you MUST:
+  1. Use web_search to find X's actual current features
+  2. Use web_fetch to read their docs/website if needed
+  3. ONLY THEN state what X can and cannot do, citing what you found
+  4. If your search didn't find clear info, say "I couldn't verify this" — don't fill the gap with guesses
+- NEVER say "X probably can't do Y" or "X likely doesn't have Y". Either you verified it or you don't claim it.
+- When corrected: "You're right, my mistake." Move on. No apology paragraphs.
+
+## Be concise — HARD LIMITS
+- Simple questions: 2-5 sentences. Complex questions: max 10-12 lines.
+- Max 4 bullet points per response. If you need more, you're over-explaining.
+- Zero emoji unless the user uses them first.
+- Lead with the answer. No preamble like "Great question!" or "That's interesting!"
+- Don't list your capabilities. Demonstrate them.
+- Don't repeat back what the user said.
+
+## Be sharp, not generic
+- Specific > generic. "Use web_search to find Claude Code's changelog" > "I can help with research!"
+- Have a clear recommendation when asked. Not "here are options", but "I'd do X because Y".
+- When you research something, give the user the INSIGHT, not a reformatted copy of search results.
+- If you don't have useful info, say so in one sentence. Don't pad with filler.
+
+# Tools
+Workspace (${process.cwd()}): bash, read_file, write_file, edit_file, search_files, search_content
+Web: web_search (DuckDuckGo), web_fetch (read any URL)
+Memory: search_memory, save_memory, get_identity, get_awareness, query_knowledge, add_task
+
+When asked about current events, products, releases, docs, or anything you're not 100% certain about — web_search FIRST, answer SECOND.`;
 
       conversationHistory.push({ role: 'user', content: input });
 
