@@ -1,6 +1,7 @@
 import type { ToolDefinition } from './tools.js';
 import { LoopGuard } from './loop-guard.js';
 import { scanForInjection } from './injection-scanner.js';
+import type { HookRegistry } from './hooks.js';
 
 export interface AgentMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
@@ -27,6 +28,7 @@ export interface AgentLoopConfig {
   maxTurns?: number;
   stream?: boolean;
   fetch?: typeof globalThis.fetch;
+  hooks?: HookRegistry;
 }
 
 export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentResponse> {
@@ -42,6 +44,7 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
     maxTurns = 10,
     stream = false,
     fetch: fetchFn = globalThis.fetch,
+    hooks,
   } = config;
 
   // Build messages array with system prompt + input messages
@@ -252,8 +255,23 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
         onToolUse(fnName, fnArgs);
       }
 
-      const tool = toolMap.get(fnName);
+      // Fire pre:tool hook — may cancel execution
       let result: string;
+      if (hooks) {
+        const hookResult = await hooks.fire('pre:tool', { toolName: fnName, args: fnArgs });
+        if (hookResult.cancelled) {
+          result = `[BLOCKED] ${hookResult.reason ?? 'No reason given'}`;
+
+          messages.push({
+            role: 'tool',
+            content: result,
+            tool_call_id: toolCall.id,
+          });
+          continue;
+        }
+      }
+
+      const tool = toolMap.get(fnName);
       if (!guard.check(fnName, fnArgs)) {
         result = `Error: Loop detected — called ${fnName} with identical arguments too many times. Try a different approach.`;
       } else if (tool) {
@@ -265,6 +283,11 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
         toolsUsed.push(fnName);
       } else {
         result = `Error: Unknown tool "${fnName}"`;
+      }
+
+      // Fire post:tool hook
+      if (hooks) {
+        await hooks.fire('post:tool', { toolName: fnName, args: fnArgs, result });
       }
 
       const scanResult = scanForInjection(result, 'tool_output');
