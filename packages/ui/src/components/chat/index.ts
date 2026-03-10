@@ -4,8 +4,8 @@ export type { ChatAreaProps } from './ChatArea.js';
 export { ChatMessage } from './ChatMessage.js';
 export type { ChatMessageProps } from './ChatMessage.js';
 
-export { ChatInput } from './ChatInput.js';
-export type { ChatInputProps } from './ChatInput.js';
+export { ChatInput, BUILTIN_COMMANDS } from './ChatInput.js';
+export type { ChatInputProps, SlashCommand } from './ChatInput.js';
 
 export { ToolCard } from './ToolCard.js';
 export type { ToolCardProps } from './ToolCard.js';

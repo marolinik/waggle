@@ -1,9 +1,10 @@
 /**
  * ChatView — Composes tab bar, ChatArea, and FileDropZone.
  * Shows a branded empty state when no messages exist.
+ * Supports slash commands.
  */
 
-import type { Message, DroppedFile } from '@waggle/ui';
+import type { Message, DroppedFile, ToolUseEvent } from '@waggle/ui';
 import { ChatArea, FileDropZone, Tabs } from '@waggle/ui';
 import type { Tab } from '@waggle/ui';
 
@@ -16,7 +17,10 @@ export interface ChatViewProps {
   messages: Message[];
   isLoading: boolean;
   onSendMessage: (text: string) => void;
+  onSlashCommand?: (command: string, args: string) => void;
   onFileDrop: (files: DroppedFile[]) => void;
+  onToolApprove?: (tool: ToolUseEvent) => void;
+  onToolDeny?: (tool: ToolUseEvent, reason?: string) => void;
 }
 
 export function ChatView({
@@ -28,7 +32,10 @@ export function ChatView({
   messages,
   isLoading,
   onSendMessage,
+  onSlashCommand,
   onFileDrop,
+  onToolApprove,
+  onToolDeny,
 }: ChatViewProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -47,6 +54,9 @@ export function ChatView({
             messages={messages}
             isLoading={isLoading}
             onSendMessage={onSendMessage}
+            onSlashCommand={onSlashCommand}
+            onToolApprove={onToolApprove}
+            onToolDeny={onToolDeny}
           />
         </FileDropZone>
       </div>

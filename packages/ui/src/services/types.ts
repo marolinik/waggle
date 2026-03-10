@@ -6,12 +6,14 @@
 // ── Stream Events ──────────────────────────────────────────────────────
 
 export interface StreamEvent {
-  type: 'token' | 'tool' | 'tool_result' | 'step' | 'done' | 'error';
+  type: 'token' | 'tool' | 'tool_result' | 'step' | 'done' | 'error' | 'approval_required';
   content?: string;
   name?: string;
   input?: Record<string, unknown>;
   result?: unknown;
   usage?: { inputTokens: number; outputTokens: number };
+  requestId?: string;
+  toolName?: string;
 }
 
 // ── Messages ───────────────────────────────────────────────────────────
@@ -22,6 +24,7 @@ export interface Message {
   content: string;
   timestamp: string;
   toolUse?: ToolUseEvent[];
+  steps?: string[];
 }
 
 export interface ToolUseEvent {
@@ -31,6 +34,7 @@ export interface ToolUseEvent {
   duration?: number;
   approved?: boolean;
   requiresApproval: boolean;
+  requestId?: string;
 }
 
 // ── Workspaces ─────────────────────────────────────────────────────────

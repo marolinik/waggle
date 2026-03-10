@@ -1014,3 +1014,93 @@ button.session-card__button[class*="bg-blue"] {
   from { opacity: 0; transform: translateY(2px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ── Markdown prose styles for chat messages ─────────────────────────── */
+.chat-message__content.prose {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text);
+}
+.chat-message__content.prose h1,
+.chat-message__content.prose h2,
+.chat-message__content.prose h3 {
+  color: var(--text-bright);
+  margin-top: 1em;
+  margin-bottom: 0.4em;
+  font-weight: 600;
+}
+.chat-message__content.prose h1 { font-size: 1.2em; }
+.chat-message__content.prose h2 { font-size: 1.1em; }
+.chat-message__content.prose h3 { font-size: 1em; }
+.chat-message__content.prose p {
+  margin: 0.4em 0;
+}
+.chat-message__content.prose code {
+  background: var(--surface-2);
+  padding: 0.15em 0.35em;
+  border-radius: 3px;
+  font-size: 0.9em;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--accent);
+}
+.chat-message__content.prose pre {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.75em 1em;
+  overflow-x: auto;
+  margin: 0.5em 0;
+}
+.chat-message__content.prose pre code {
+  background: none;
+  padding: 0;
+  color: var(--text);
+}
+.chat-message__content.prose ul,
+.chat-message__content.prose ol {
+  margin: 0.4em 0;
+  padding-left: 1.5em;
+}
+.chat-message__content.prose li {
+  margin: 0.15em 0;
+}
+.chat-message__content.prose strong {
+  color: var(--text-bright);
+  font-weight: 600;
+}
+.chat-message__content.prose a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.chat-message__content.prose a:hover {
+  color: var(--primary-hover);
+}
+.chat-message__content.prose blockquote {
+  border-left: 2px solid var(--border-active);
+  padding-left: 0.75em;
+  margin: 0.5em 0;
+  color: var(--text-muted);
+}
+.chat-message__content.prose table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.5em 0;
+  font-size: 0.9em;
+}
+.chat-message__content.prose th,
+.chat-message__content.prose td {
+  border: 1px solid var(--border);
+  padding: 0.3em 0.6em;
+  text-align: left;
+}
+.chat-message__content.prose th {
+  background: var(--surface-2);
+  color: var(--text-bright);
+  font-weight: 600;
+}
+.chat-message__content.prose hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0.75em 0;
+}

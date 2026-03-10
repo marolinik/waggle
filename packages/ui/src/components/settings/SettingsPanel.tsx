@@ -12,6 +12,7 @@ import { ModelSection } from './ModelSection.js';
 import { PermissionSection } from './PermissionSection.js';
 import { ThemeSection } from './ThemeSection.js';
 import { AdvancedSection } from './AdvancedSection.js';
+import { SkillsSection } from './SkillsSection.js';
 
 export interface SettingsPanelProps {
   activeTab?: string;
@@ -73,6 +74,9 @@ export function SettingsPanel({
         )}
         {activeTab === 'models' && (
           <ModelSection config={config} onConfigUpdate={onConfigUpdate} />
+        )}
+        {activeTab === 'skills' && (
+          <SkillsSection />
         )}
         {activeTab === 'permissions' && (
           <PermissionSection

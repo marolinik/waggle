@@ -3,14 +3,18 @@
  *
  * Collapsed by default. Click to expand and see input/output.
  * Color-coded: green (success), red (denied/error), yellow (pending approval).
+ * Shows inline approval gate when a tool requires user confirmation.
  */
 
 import React, { useState } from 'react';
 import type { ToolUseEvent } from '../../services/types.js';
 import { getToolStatusColor, formatDuration } from './utils.js';
+import { ApprovalGate } from './ApprovalGate.js';
 
 export interface ToolCardProps {
   tool: ToolUseEvent;
+  onApprove?: (tool: ToolUseEvent) => void;
+  onDeny?: (tool: ToolUseEvent, reason?: string) => void;
 }
 
 const COLOR_CLASSES: Record<string, string> = {
@@ -31,9 +35,10 @@ function getStatusLabel(tool: ToolUseEvent): string {
   return 'Done';
 }
 
-export function ToolCard({ tool }: ToolCardProps) {
+export function ToolCard({ tool, onApprove, onDeny }: ToolCardProps) {
   const [expanded, setExpanded] = useState(false);
   const color = getToolStatusColor(tool);
+  const isPendingApproval = tool.requiresApproval && tool.approved === undefined;
 
   return (
     <div
@@ -63,6 +68,17 @@ export function ToolCard({ tool }: ToolCardProps) {
           </span>
         )}
       </button>
+
+      {/* Inline approval gate — shown when tool needs confirmation */}
+      {isPendingApproval && onApprove && onDeny && (
+        <div className="tool-card__approval px-3 py-2">
+          <ApprovalGate
+            tool={tool}
+            onApprove={() => onApprove(tool)}
+            onDeny={(reason) => onDeny(tool, reason)}
+          />
+        </div>
+      )}
 
       {/* Body — visible when expanded */}
       {expanded && (

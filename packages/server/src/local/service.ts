@@ -134,7 +134,8 @@ export async function startService(options?: ServiceOptions): Promise<ServiceRes
 // Main entry point when run directly
 const isMain = process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/'));
 if (isMain) {
-  startService()
+  const skipLiteLLM = process.argv.includes('--skip-litellm') || process.env.WAGGLE_SKIP_LITELLM === '1';
+  startService({ skipLiteLLM })
     .then(({ server, litellm }) => {
       const addr = server.server.address();
       const port = typeof addr === 'object' && addr ? addr.port : '?';

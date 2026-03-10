@@ -91,7 +91,7 @@ describe('formatDuration', () => {
 // ── processStreamEvent ──────────────────────────────────────────────
 
 describe('processStreamEvent', () => {
-  const empty = { content: '', tools: [] as ToolUseEvent[] };
+  const empty = { content: '', tools: [] as ToolUseEvent[], steps: [] as string[] };
 
   it('appends token content', () => {
     const event: StreamEvent = { type: 'token', content: 'Hello' };
@@ -143,13 +143,13 @@ describe('processStreamEvent', () => {
 
   it('does not modify content for step events', () => {
     const event: StreamEvent = { type: 'step' };
-    const result = processStreamEvent(event, { content: 'existing', tools: [] });
+    const result = processStreamEvent(event, { content: 'existing', tools: [], steps: [] });
     expect(result.content).toBe('existing');
   });
 
   it('does not modify content for done events', () => {
     const event: StreamEvent = { type: 'done' };
-    const result = processStreamEvent(event, { content: 'existing', tools: [] });
+    const result = processStreamEvent(event, { content: 'existing', tools: [], steps: [] });
     expect(result.content).toBe('existing');
   });
 

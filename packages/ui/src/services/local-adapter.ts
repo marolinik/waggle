@@ -81,11 +81,12 @@ export class LocalAdapter implements WaggleService {
     workspace: string,
     message: string,
     session?: string,
+    model?: string,
   ): AsyncGenerator<StreamEvent> {
     const res = await fetch(`${this.baseUrl}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, workspace, session }),
+      body: JSON.stringify({ message, workspace, session, model }),
     });
 
     if (!res.ok) {
@@ -219,27 +220,103 @@ export class LocalAdapter implements WaggleService {
   // ── Approval gates ─────────────────────────────────────────────────
 
   approveAction(requestId: string): void {
-    this.emit('approval', { requestId, approved: true });
-    // In the future this would POST to an approval endpoint
+    fetch(`${this.baseUrl}/api/approval/${requestId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ approved: true }),
+    }).catch(() => {});
   }
 
   denyAction(requestId: string, reason?: string): void {
-    this.emit('approval', { requestId, approved: false, reason });
+    fetch(`${this.baseUrl}/api/approval/${requestId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ approved: false, reason }),
+    }).catch(() => {});
   }
 
   // ── Agent ──────────────────────────────────────────────────────────
 
   async getAgentStatus(): Promise<AgentStatus> {
-    const res = await fetch(`${this.baseUrl}/api/agent/status`);
-    if (!res.ok) {
-      return {
-        running: false,
-        model: 'unknown',
-        tokensUsed: 0,
-        estimatedCost: 0,
-      };
+    try {
+      const res = await fetch(`${this.baseUrl}/api/agent/status`);
+      if (!res.ok) {
+        return { running: false, model: 'unknown', tokensUsed: 0, estimatedCost: 0 };
+      }
+      return res.json() as Promise<AgentStatus>;
+    } catch {
+      return { running: false, model: 'unknown', tokensUsed: 0, estimatedCost: 0 };
     }
-    return res.json() as Promise<AgentStatus>;
+  }
+
+  // ── Model management ────────────────────────────────────────────────
+
+  async getModel(): Promise<string> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/agent/model`);
+      if (!res.ok) return 'claude-sonnet-4-6';
+      const data = await res.json() as { model: string };
+      return data.model;
+    } catch {
+      return 'claude-sonnet-4-6';
+    }
+  }
+
+  async setModel(model: string): Promise<void> {
+    await fetch(`${this.baseUrl}/api/agent/model`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model }),
+    });
+  }
+
+  // ── Cost tracking ───────────────────────────────────────────────────
+
+  async getCost(): Promise<{ summary: string; totalInputTokens: number; totalOutputTokens: number; estimatedCost: number; turns: number }> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/agent/cost`);
+      if (!res.ok) return { summary: 'No data', totalInputTokens: 0, totalOutputTokens: 0, estimatedCost: 0, turns: 0 };
+      return res.json() as Promise<any>;
+    } catch {
+      return { summary: 'No data', totalInputTokens: 0, totalOutputTokens: 0, estimatedCost: 0, turns: 0 };
+    }
+  }
+
+  // ── Mind ─────────────────────────────────────────────────────────────
+
+  async getIdentity(): Promise<string> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/mind/identity`);
+      if (!res.ok) return '';
+      const data = await res.json() as { identity: string };
+      return data.identity;
+    } catch {
+      return '';
+    }
+  }
+
+  async getAwareness(): Promise<string> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/mind/awareness`);
+      if (!res.ok) return '';
+      const data = await res.json() as { awareness: string };
+      return data.awareness;
+    } catch {
+      return '';
+    }
+  }
+
+  // ── Skills ──────────────────────────────────────────────────────────
+
+  async getSkills(): Promise<Array<{ name: string; length: number }>> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/mind/skills`);
+      if (!res.ok) return [];
+      const data = await res.json() as { skills: Array<{ name: string; length: number }> };
+      return data.skills;
+    } catch {
+      return [];
+    }
   }
 
   // ── Settings ───────────────────────────────────────────────────────

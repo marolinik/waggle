@@ -110,12 +110,164 @@ function WaggleApp() {
     setMessages(chatMessages);
   }, [chatMessages]);
 
-  // ── Approval gate ──
-  const _approvalGate = useApprovalGate({
-    service,
-    setMessages,
-  });
-  void _approvalGate;
+  // ── Approval gate (listens for WebSocket-based approval events) ──
+  useApprovalGate({ service, setMessages });
+
+  const handleToolApprove = useCallback((tool: { requestId?: string }) => {
+    if (tool.requestId) {
+      service.approveAction(tool.requestId);
+      // Update message UI to reflect approval
+      setMessages(prev => prev.map(msg => {
+        if (!msg.toolUse) return msg;
+        return {
+          ...msg,
+          toolUse: msg.toolUse.map(t =>
+            t.requestId === tool.requestId ? { ...t, approved: true } : t
+          ),
+        };
+      }));
+    }
+  }, [service, setMessages]);
+
+  const handleToolDeny = useCallback((tool: { requestId?: string }, reason?: string) => {
+    if (tool.requestId) {
+      service.denyAction(tool.requestId, reason);
+      // Update message UI to reflect denial
+      setMessages(prev => prev.map(msg => {
+        if (!msg.toolUse) return msg;
+        return {
+          ...msg,
+          toolUse: msg.toolUse.map(t =>
+            t.requestId === tool.requestId
+              ? { ...t, approved: false, result: reason ? `Denied: ${reason}` : 'Denied by user' }
+              : t
+          ),
+        };
+      }));
+    }
+  }, [service, setMessages]);
+
+  // ── Agent status for status bar (declared early for slash commands) ──
+  const [agentTokens, setAgentTokens] = useState(0);
+  const [agentCost, setAgentCost] = useState(0);
+  const [agentModel, setAgentModel] = useState('claude-sonnet-4-6');
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+
+  // ── Slash commands ──────────────────────────────────────────────
+  const addSystemMessage = useCallback((content: string) => {
+    const msg: Message = {
+      id: `sys-${Date.now()}`,
+      role: 'system',
+      content,
+      timestamp: new Date().toISOString(),
+    };
+    setMessages(prev => [...prev, msg]);
+  }, []);
+
+  const handleSlashCommand = useCallback(async (command: string, args: string) => {
+    const baseUrl = 'http://127.0.0.1:3333';
+    try {
+      switch (command) {
+        case '/model': {
+          if (!args) {
+            addSystemMessage(`Current model: **${agentModel}**`);
+          } else {
+            await fetch(`${baseUrl}/api/agent/model`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ model: args }),
+            });
+            setAgentModel(args);
+            addSystemMessage(`Switched to model: **${args}**`);
+          }
+          break;
+        }
+        case '/models': {
+          const res = await fetch(`${baseUrl}/api/litellm/models`);
+          if (res.ok) {
+            const data = await res.json() as { models: string[] };
+            const list = data.models.length > 0
+              ? data.models.map(m => `- ${m}${m === agentModel ? ' **(active)**' : ''}`).join('\n')
+              : 'No models available. Check LiteLLM configuration.';
+            addSystemMessage(`**Available Models:**\n${list}`);
+          } else {
+            addSystemMessage('Failed to fetch models. Is LiteLLM running?');
+          }
+          break;
+        }
+        case '/cost': {
+          const res = await fetch(`${baseUrl}/api/agent/cost`);
+          if (res.ok) {
+            const data = await res.json() as { summary: string };
+            addSystemMessage(`**Cost:** ${data.summary}`);
+          }
+          break;
+        }
+        case '/clear': {
+          setMessages([]);
+          const sessionId = activeSessionId ?? activeWorkspace?.id ?? 'default';
+          await fetch(`${baseUrl}/api/chat/history?session=${sessionId}`, { method: 'DELETE' });
+          addSystemMessage('Conversation cleared.');
+          break;
+        }
+        case '/identity': {
+          const res = await fetch(`${baseUrl}/api/mind/identity`);
+          if (res.ok) {
+            const data = await res.json() as { identity: string };
+            addSystemMessage(`**Identity:**\n${data.identity}`);
+          }
+          break;
+        }
+        case '/awareness': {
+          const res = await fetch(`${baseUrl}/api/mind/awareness`);
+          if (res.ok) {
+            const data = await res.json() as { awareness: string };
+            addSystemMessage(`**Awareness:**\n${data.awareness}`);
+          }
+          break;
+        }
+        case '/skills': {
+          const res = await fetch(`${baseUrl}/api/skills`);
+          if (res.ok) {
+            const data = await res.json() as { skills: Array<{ name: string; length: number }>; count: number; directory: string };
+            if (data.count === 0) {
+              addSystemMessage(`No skills loaded. Add .md files to ${data.directory}`);
+            } else {
+              const list = data.skills.map(s => `- **${s.name}** (${s.length} chars)`).join('\n');
+              addSystemMessage(`**Loaded Skills (${data.count}):**\n${list}\n\nDirectory: ${data.directory}`);
+            }
+          }
+          break;
+        }
+        case '/plan': {
+          addSystemMessage('Plan tools are available via the agent. Ask the agent to show the plan.');
+          break;
+        }
+        case '/git': {
+          addSystemMessage('Git tools are available via the agent. Ask the agent to check git status.');
+          break;
+        }
+        case '/help': {
+          addSystemMessage(
+            '**Commands:**\n' +
+            '- `/model <name>` — Switch AI model\n' +
+            '- `/models` — List available models\n' +
+            '- `/cost` — Show token usage and cost\n' +
+            '- `/clear` — Clear conversation\n' +
+            '- `/identity` — Show agent identity\n' +
+            '- `/awareness` — Show agent awareness\n' +
+            '- `/skills` — List loaded skills\n' +
+            '- `/help` — Show this help'
+          );
+          break;
+        }
+        default:
+          addSystemMessage(`Unknown command: ${command}. Type /help for available commands.`);
+      }
+    } catch (err) {
+      addSystemMessage(`Command failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  }, [agentModel, activeSessionId, activeWorkspace?.id, addSystemMessage]);
 
   // ── Tabs ──────────────────────────────────────────────────────────
   const {
@@ -266,21 +418,47 @@ function WaggleApp() {
     });
   }, [createSession, activeWorkspace, openTab]);
 
-  // ── Agent status for status bar ───────────────────────────────────
-  const [agentTokens, setAgentTokens] = useState(0);
-  const [agentCost, setAgentCost] = useState(0);
-
+  // ── Agent status polling ─────────────────────────────────────────
   useEffect(() => {
+    // Initial fetch
+    service.getAgentStatus().then((status) => {
+      setAgentTokens(status.tokensUsed);
+      setAgentCost(status.estimatedCost);
+      setAgentModel(status.model);
+    }).catch(() => {});
+
+    // Fetch available models for the picker
+    fetch('http://127.0.0.1:3333/api/litellm/models')
+      .then(r => r.ok ? r.json() as Promise<{ models: string[] }> : null)
+      .then(data => { if (data?.models) setAvailableModels(data.models); })
+      .catch(() => {});
+
     const poll = setInterval(() => {
       service.getAgentStatus().then((status) => {
         setAgentTokens(status.tokensUsed);
         setAgentCost(status.estimatedCost);
+        setAgentModel(status.model);
       }).catch(() => {
         // Ignore status poll errors
       });
     }, 5000);
     return () => clearInterval(poll);
   }, [service]);
+
+  // ── Model selection ──────────────────────────────────────────────
+  const handleModelSelect = useCallback(async (newModel: string) => {
+    try {
+      await fetch('http://127.0.0.1:3333/api/agent/model', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: newModel }),
+      });
+      setAgentModel(newModel);
+      addSystemMessage(`Switched to model: **${newModel}**`);
+    } catch {
+      addSystemMessage('Failed to switch model.');
+    }
+  }, [addSystemMessage]);
 
   // ── Should context panel show? ────────────────────────────────────
   const showContextPanel = contextPanelOpen && (
@@ -333,7 +511,10 @@ function WaggleApp() {
                 messages={messages}
                 isLoading={isLoading}
                 onSendMessage={sendMessage}
+                onSlashCommand={handleSlashCommand}
                 onFileDrop={handleFileDrop}
+                onToolApprove={handleToolApprove}
+                onToolDeny={handleToolDeny}
               />
             )}
             {currentView === 'settings' && (
@@ -382,11 +563,13 @@ function WaggleApp() {
         }
         statusBar={
           <StatusBar
-            model={friendlyModelName(activeWorkspace?.model ?? config?.defaultModel ?? 'claude-sonnet-4-20250514')}
+            model={friendlyModelName(agentModel)}
             workspace={activeWorkspace?.name ?? 'Default'}
             tokens={agentTokens}
             cost={agentCost}
             mode="local"
+            availableModels={availableModels}
+            onModelSelect={handleModelSelect}
           />
         }
       />

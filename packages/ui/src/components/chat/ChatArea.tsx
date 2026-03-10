@@ -2,11 +2,11 @@
  * ChatArea — main chat container component.
  *
  * Renders a scrollable list of ChatMessage components with a ChatInput at the bottom.
- * Auto-scrolls to bottom on new messages.
+ * Auto-scrolls to bottom on new messages. Supports slash commands.
  */
 
 import React, { useRef, useEffect } from 'react';
-import type { Message } from '../../services/types.js';
+import type { Message, ToolUseEvent } from '../../services/types.js';
 import { ChatMessage } from './ChatMessage.js';
 import { ChatInput } from './ChatInput.js';
 
@@ -14,9 +14,12 @@ export interface ChatAreaProps {
   messages: Message[];
   isLoading: boolean;
   onSendMessage: (text: string) => void;
+  onSlashCommand?: (command: string, args: string) => void;
+  onToolApprove?: (tool: ToolUseEvent) => void;
+  onToolDeny?: (tool: ToolUseEvent, reason?: string) => void;
 }
 
-export function ChatArea({ messages, isLoading, onSendMessage }: ChatAreaProps) {
+export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, onToolApprove, onToolDeny }: ChatAreaProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when messages change
@@ -40,7 +43,12 @@ export function ChatArea({ messages, isLoading, onSendMessage }: ChatAreaProps) 
           </div>
         )}
         {messages.map((msg) => (
-          <ChatMessage key={msg.id} message={msg} />
+          <ChatMessage
+            key={msg.id}
+            message={msg}
+            onToolApprove={onToolApprove}
+            onToolDeny={onToolDeny}
+          />
         ))}
         {isLoading && (
           <div className="chat-area__loading flex justify-start">
@@ -54,8 +62,9 @@ export function ChatArea({ messages, isLoading, onSendMessage }: ChatAreaProps) 
       {/* Input */}
       <ChatInput
         onSubmit={onSendMessage}
+        onSlashCommand={onSlashCommand}
         disabled={isLoading}
-        placeholder="Type a message..."
+        placeholder="Type a message... (/ for commands)"
       />
     </div>
   );

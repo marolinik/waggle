@@ -16,6 +16,9 @@ export type { ThemeSectionProps } from './ThemeSection.js';
 export { AdvancedSection } from './AdvancedSection.js';
 export type { AdvancedSectionProps, MindFileInfo } from './AdvancedSection.js';
 
+export { SkillsSection } from './SkillsSection.js';
+export type { SkillsSectionProps, SkillInfo, PluginInfo } from './SkillsSection.js';
+
 export {
   maskApiKey,
   getProviderDisplayName,

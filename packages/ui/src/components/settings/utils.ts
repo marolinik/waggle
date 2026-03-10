@@ -59,6 +59,7 @@ export const SETTINGS_TABS: SettingsTab[] = [
   { id: 'general', label: 'General' },
   { id: 'api-keys', label: 'API Keys' },
   { id: 'models', label: 'Models' },
+  { id: 'skills', label: 'Skills & Plugins' },
   { id: 'permissions', label: 'Permissions' },
   { id: 'advanced', label: 'Advanced' },
 ];

@@ -5,7 +5,7 @@
  * Handles streaming responses and accumulating tokens into messages.
  */
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type { WaggleService, Message, ToolUseEvent, StreamEvent } from '../services/types.js';
 
 export interface UseChatOptions {
@@ -32,13 +32,19 @@ function nextId(): string {
  */
 export function processStreamEvent(
   event: StreamEvent,
-  current: { content: string; tools: ToolUseEvent[] },
-): { content: string; tools: ToolUseEvent[] } {
-  const result = { content: current.content, tools: [...current.tools] };
+  current: { content: string; tools: ToolUseEvent[]; steps: string[] },
+): { content: string; tools: ToolUseEvent[]; steps: string[] } {
+  const result = { content: current.content, tools: [...current.tools], steps: [...current.steps] };
 
   switch (event.type) {
     case 'token':
       result.content += event.content ?? '';
+      break;
+    case 'step':
+      // Human-readable reasoning step (e.g., "Searching the web for...")
+      if (event.content) {
+        result.steps.push(event.content);
+      }
       break;
     case 'tool': {
       const toolEvent: ToolUseEvent = {
@@ -59,10 +65,30 @@ export function processStreamEvent(
       }
       break;
     }
+    case 'approval_required': {
+      // Mark the matching tool (or last tool) as requiring approval
+      const targetName = event.toolName ?? event.name;
+      let toolToMark: ToolUseEvent | undefined;
+      if (targetName) {
+        // Find the last tool with matching name that hasn't been approved/denied yet
+        for (let i = result.tools.length - 1; i >= 0; i--) {
+          if (result.tools[i].name === targetName && result.tools[i].approved === undefined) {
+            toolToMark = result.tools[i];
+            break;
+          }
+        }
+      } else {
+        toolToMark = result.tools[result.tools.length - 1];
+      }
+      if (toolToMark) {
+        toolToMark.requiresApproval = true;
+        toolToMark.requestId = event.requestId;
+      }
+      break;
+    }
     case 'error':
       result.content += `\n[Error: ${event.content ?? 'Unknown error'}]`;
       break;
-    // 'step' and 'done' don't modify content
   }
 
   return result;
@@ -72,6 +98,12 @@ export function useChat({ service, workspace, session }: UseChatOptions): UseCha
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const abortRef = useRef(false);
+
+  // Clear messages when session or workspace changes
+  useEffect(() => {
+    setMessages([]);
+    abortRef.current = true; // abort any in-flight stream
+  }, [session, workspace]);
 
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || isLoading) return;
@@ -89,7 +121,7 @@ export function useChat({ service, workspace, session }: UseChatOptions): UseCha
 
     // Create placeholder assistant message
     const assistantId = nextId();
-    let accumulated = { content: '', tools: [] as ToolUseEvent[] };
+    let accumulated = { content: '', tools: [] as ToolUseEvent[], steps: [] as string[] };
 
     try {
       const stream = service.sendMessage(workspace, text, session);
@@ -106,6 +138,7 @@ export function useChat({ service, workspace, session }: UseChatOptions): UseCha
           content: accumulated.content,
           timestamp: new Date().toISOString(),
           toolUse: accumulated.tools.length > 0 ? accumulated.tools : undefined,
+          steps: accumulated.steps.length > 0 ? accumulated.steps : undefined,
         };
 
         setMessages((prev) => {
