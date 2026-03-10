@@ -339,74 +339,112 @@ button.workspace-card[class*="bg-blue"] {
   min-height: 0;
 }
 
-/* FileDropZone wrapper must fill its parent */
-div[style="position: relative"],
-div[style*="position: relative"] {
-  height: 100% !important;
+/* ChatInput needs position:relative for popup but must NOT get height:100% */
+.chat-input {
+  height: auto !important;
 }
 
 .chat-area__messages {
-  padding: 20px 28px !important;
+  padding: 20px 24px !important;
   scrollbar-gutter: stable;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 /* ── Chat empty state ─────────────────────────────────────────────────── */
 .chat-area__empty {
-  color: var(--text-dim) !important;
-  font-size: 12px;
-  font-weight: 400;
-  letter-spacing: 0.02em;
+  display: flex !important;
   flex-direction: column !important;
-  gap: 16px;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 100% !important;
+  gap: 12px;
+  user-select: none;
 }
-
-/* Loading indicator */
-.chat-area__loading > div {
-  background: var(--surface) !important;
+.chat-area__empty-icon {
+  color: var(--text-dim);
+  opacity: 0.5;
+  margin-bottom: 4px;
+}
+.chat-area__empty-title {
+  color: var(--text-muted) !important;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.chat-area__empty-hint {
   color: var(--text-dim) !important;
-  border-radius: 8px !important;
-  padding: 8px 14px !important;
   font-size: 11px;
-  border: 1px solid var(--border);
-  animation: pulse-glow 2s ease-in-out infinite;
+  letter-spacing: 0.02em;
+}
+.chat-area__empty-hint span {
+  color: var(--brand);
+  font-weight: 600;
 }
 
-@keyframes pulse-glow {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
+/* Loading indicator — animated dots */
+.chat-area__loading {
+  display: flex;
+  justify-content: flex-start;
+  padding: 4px 0;
+}
+.chat-area__loading-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px 12px 12px 2px;
+  padding: 10px 16px;
+}
+.chat-area__loading-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  animation: dot-bounce 1.4s ease-in-out infinite;
+}
+.chat-area__loading-dot:nth-child(2) { animation-delay: 0.16s; }
+.chat-area__loading-dot:nth-child(3) { animation-delay: 0.32s; }
+
+@keyframes dot-bounce {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1.1); }
 }
 
 /* ── Chat messages ────────────────────────────────────────────────────── */
 .chat-message {
-  margin-bottom: 2px;
+  margin-bottom: 0;
 }
 
 .chat-message--user > div {
   background: var(--user-bubble) !important;
-  color: var(--text) !important;
-  border-radius: 12px 12px 2px 12px !important;
-  padding: 8px 14px !important;
-  max-width: 70% !important;
-  font-size: 12px;
+  color: var(--text-bright) !important;
+  border-radius: 14px 14px 4px 14px !important;
+  padding: 10px 16px !important;
+  max-width: 65% !important;
+  font-size: 13px;
   line-height: 1.55;
-  border: 1px solid rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.15);
 }
 
 .chat-message--assistant > div {
   background: var(--assistant-bubble) !important;
   color: var(--text) !important;
-  border-radius: 12px 12px 12px 2px !important;
-  padding: 8px 14px !important;
-  max-width: 80% !important;
+  border-radius: 14px 14px 14px 4px !important;
+  padding: 12px 16px !important;
+  max-width: 85% !important;
   border: 1px solid var(--border);
-  font-size: 12px;
-  line-height: 1.55;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .chat-message__time {
   font-size: 9px !important;
   color: var(--text-dim) !important;
-  margin-top: 2px !important;
+  margin-top: 4px !important;
+  opacity: 0.7 !important;
 }
 
 /* ── Chat input ───────────────────────────────────────────────────────── */
@@ -415,6 +453,7 @@ div[style*="position: relative"] {
   border-top: 1px solid var(--border) !important;
   padding: 10px 16px !important;
   gap: 8px !important;
+  flex: 0 0 auto !important;
 }
 
 .chat-input__textarea {

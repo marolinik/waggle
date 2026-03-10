@@ -74,7 +74,7 @@ export const FileDropZone: React.FC<FileDropZoneProps> = ({ onDrop, disabled, ch
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
-      style={{ position: 'relative' }}
+      style={{ position: 'relative', height: '100%' }}
     >
       {children}
       {dragActive && (

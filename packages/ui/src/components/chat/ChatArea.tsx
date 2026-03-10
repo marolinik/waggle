@@ -31,15 +31,23 @@ export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, o
   }, [messages]);
 
   return (
-    <div className="chat-area flex h-full flex-col bg-gray-900">
+    <div className="chat-area">
       {/* Messages list */}
       <div
         ref={scrollRef}
-        className="chat-area__messages flex-1 overflow-y-auto p-4 space-y-3"
+        className="chat-area__messages"
       >
         {messages.length === 0 && (
-          <div className="chat-area__empty flex h-full items-center justify-center text-gray-500">
-            Start a conversation...
+          <div className="chat-area__empty">
+            <div className="chat-area__empty-icon">
+              <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                <path d="M24 4L6 14v20l18 10 18-10V14L24 4z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" opacity="0.3"/>
+                <path d="M24 14l-10 6v12l10 6 10-6V20l-10-6z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" opacity="0.6"/>
+                <circle cx="24" cy="26" r="3" fill="currentColor" opacity="0.4"/>
+              </svg>
+            </div>
+            <div className="chat-area__empty-title">What can I help you with?</div>
+            <div className="chat-area__empty-hint">Type a message or use <span>/help</span> for commands</div>
           </div>
         )}
         {messages.map((msg) => (
@@ -51,9 +59,11 @@ export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, o
           />
         ))}
         {isLoading && (
-          <div className="chat-area__loading flex justify-start">
-            <div className="rounded-lg bg-gray-800 px-4 py-2 text-gray-400">
-              Thinking...
+          <div className="chat-area__loading">
+            <div className="chat-area__loading-indicator">
+              <span className="chat-area__loading-dot" />
+              <span className="chat-area__loading-dot" />
+              <span className="chat-area__loading-dot" />
             </div>
           </div>
         )}
