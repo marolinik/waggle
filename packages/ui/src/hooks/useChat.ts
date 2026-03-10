@@ -16,6 +16,7 @@ export interface UseChatOptions {
 
 export interface UseChatReturn {
   messages: Message[];
+  setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   isLoading: boolean;
   sendMessage: (text: string) => Promise<void>;
   clearMessages: () => void;
@@ -47,12 +48,22 @@ export function processStreamEvent(
       }
       break;
     case 'tool': {
-      const toolEvent: ToolUseEvent = {
-        name: event.name ?? 'unknown',
-        input: event.input ?? {},
-        requiresApproval: false,
-      };
-      result.tools.push(toolEvent);
+      const toolName = event.name ?? 'unknown';
+      // Check if this tool was already created by an earlier approval_required event
+      const existing = result.tools.find(
+        t => t.name === toolName && t.requiresApproval && t.approved === undefined && !t.result,
+      );
+      if (existing) {
+        // Update input if the tool event has more detail
+        if (event.input) existing.input = event.input;
+      } else {
+        const toolEvent: ToolUseEvent = {
+          name: toolName,
+          input: event.input ?? {},
+          requiresApproval: false,
+        };
+        result.tools.push(toolEvent);
+      }
       break;
     }
     case 'tool_result': {
@@ -80,7 +91,16 @@ export function processStreamEvent(
       } else {
         toolToMark = result.tools[result.tools.length - 1];
       }
-      if (toolToMark) {
+      if (!toolToMark) {
+        // approval_required arrived before tool event — create the tool entry
+        toolToMark = {
+          name: targetName ?? 'unknown',
+          input: event.input ?? {},
+          requiresApproval: true,
+          requestId: event.requestId,
+        };
+        result.tools.push(toolToMark);
+      } else {
         toolToMark.requiresApproval = true;
         toolToMark.requestId = event.requestId;
       }
@@ -145,6 +165,16 @@ export function useChat({ service, workspace, session }: UseChatOptions): UseCha
           const existing = prev.findIndex((m) => m.id === assistantId);
           if (existing >= 0) {
             const updated = [...prev];
+            // Preserve approval state set by handleToolApprove/handleToolDeny
+            const existingTools = updated[existing].toolUse;
+            if (existingTools && assistantMsg.toolUse) {
+              for (const tool of assistantMsg.toolUse) {
+                const prev = existingTools.find(t => t.requestId && t.requestId === tool.requestId);
+                if (prev && prev.approved !== undefined) {
+                  tool.approved = prev.approved;
+                }
+              }
+            }
             updated[existing] = assistantMsg;
             return updated;
           }
@@ -177,5 +207,5 @@ export function useChat({ service, workspace, session }: UseChatOptions): UseCha
     setMessages([]);
   }, []);
 
-  return { messages, isLoading, sendMessage, clearMessages };
+  return { messages, setMessages, isLoading, sendMessage, clearMessages };
 }

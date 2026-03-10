@@ -69,9 +69,9 @@ export const chatRoutes: FastifyPluginAsync = async (server) => {
     skills,
     userSystemPrompt,
     sessionHistories,
-    litellmApiKey,
   } = server.agentState;
-  const litellmUrl = server.localConfig.litellmUrl;
+  // Read dynamically — may be updated to built-in proxy at runtime
+  const getLitellmUrl = () => server.localConfig.litellmUrl;
 
   // Build the rich system prompt (matches CLI's quality)
   function buildSystemPrompt(): string {
@@ -184,7 +184,7 @@ When asked about current events, products, releases, docs, or anything you're no
       let litellmAvailable = hasCustomRunner; // trust injected runners
       if (!hasCustomRunner) {
         try {
-          const healthRes = await fetch(`${litellmUrl}/health/liveliness`, {
+          const healthRes = await fetch(`${getLitellmUrl()}/health/liveliness`, {
             signal: AbortSignal.timeout(3000),
           });
           litellmAvailable = healthRes.ok;
@@ -263,8 +263,8 @@ When asked about current events, products, releases, docs, or anything you're no
 
         // Build agent loop config — with FULL conversation history + hooks
         const agentConfig: AgentLoopConfig = {
-          litellmUrl,
-          litellmApiKey,
+          litellmUrl: getLitellmUrl(),
+          litellmApiKey: server.agentState.litellmApiKey,
           model: resolvedModel,
           systemPrompt,
           tools: hasCustomRunner ? [] : allTools,

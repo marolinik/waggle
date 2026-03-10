@@ -30,6 +30,7 @@ import { mindRoutes } from './routes/mind.js';
 import { agentRoutes } from './routes/agent.js';
 import { skillRoutes } from './routes/skills.js';
 import { approvalRoutes } from './routes/approval.js';
+import { anthropicProxyRoutes } from './routes/anthropic-proxy.js';
 import { EventEmitter } from 'node:events';
 
 export interface LocalConfig {
@@ -183,6 +184,52 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   await server.register(agentRoutes);
   await server.register(skillRoutes);
   await server.register(approvalRoutes);
+  await server.register(anthropicProxyRoutes);
+
+  // WebSocket endpoint — event bus relay to frontend
+  server.get('/ws', { websocket: true }, (socket) => {
+    // Relay eventBus events to connected clients
+    const onEvent = (event: string, data: unknown) => {
+      try {
+        socket.send(JSON.stringify({ event, data }));
+      } catch {
+        // Client disconnected
+      }
+    };
+
+    // Forward approval events and agent events to the WebSocket client
+    const handlers = ['approval_required', 'step', 'tool', 'done', 'error'] as const;
+    for (const evt of handlers) {
+      eventBus.on(evt, (data: unknown) => onEvent(evt, data));
+    }
+
+    socket.on('message', (raw: Buffer) => {
+      try {
+        const msg = JSON.parse(raw.toString()) as { type: string; requestId?: string; reason?: string };
+        if (msg.type === 'approve' && msg.requestId) {
+          const pending = server.agentState.pendingApprovals.get(msg.requestId);
+          if (pending) {
+            server.agentState.pendingApprovals.delete(msg.requestId);
+            pending.resolve(true);
+          }
+        } else if (msg.type === 'deny' && msg.requestId) {
+          const pending = server.agentState.pendingApprovals.get(msg.requestId);
+          if (pending) {
+            server.agentState.pendingApprovals.delete(msg.requestId);
+            pending.resolve(false);
+          }
+        }
+      } catch {
+        // Ignore malformed messages
+      }
+    });
+
+    socket.on('close', () => {
+      for (const evt of handlers) {
+        eventBus.removeAllListeners(evt);
+      }
+    });
+  });
 
   // Health check
   server.get('/health', async () => ({

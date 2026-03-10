@@ -418,12 +418,15 @@ button.workspace-card[class*="bg-blue"] {
   margin-bottom: 0;
 }
 
+.chat-message--user {
+  padding-right: 8px;
+}
 .chat-message--user > div {
   background: var(--user-bubble) !important;
   color: var(--text-bright) !important;
   border-radius: 14px 14px 4px 14px !important;
   padding: 10px 16px !important;
-  max-width: 65% !important;
+  max-width: 60% !important;
   font-size: 13px;
   line-height: 1.55;
   border: 1px solid rgba(99, 102, 241, 0.15);
@@ -581,8 +584,8 @@ button.workspace-card[class*="bg-blue"] {
 .waggle-context-panel {
   background: var(--surface) !important;
   border-left: 1px solid var(--border) !important;
-  width: 240px !important;
-  min-width: 240px !important;
+  width: 220px !important;
+  min-width: 220px !important;
 }
 
 /* ── Session list ─────────────────────────────────────────────────────── */

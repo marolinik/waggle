@@ -94,9 +94,9 @@ function WaggleApp() {
   });
 
   // ── Chat ──────────────────────────────────────────────────────────
-  const [messages, setMessages] = useState<Message[]>([]);
   const {
-    messages: chatMessages,
+    messages,
+    setMessages,
     isLoading,
     sendMessage,
   } = useChat({
@@ -104,11 +104,6 @@ function WaggleApp() {
     workspace: activeWorkspace?.id ?? 'default',
     session: activeSessionId ?? undefined,
   });
-
-  // Sync chatMessages into local state for approval gate
-  useEffect(() => {
-    setMessages(chatMessages);
-  }, [chatMessages]);
 
   // ── Approval gate (listens for WebSocket-based approval events) ──
   useApprovalGate({ service, setMessages });

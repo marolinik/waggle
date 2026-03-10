@@ -114,6 +114,20 @@ export async function startService(options?: ServiceOptions): Promise<ServiceRes
 
   await server.listen({ port, host: '127.0.0.1' });
 
+  // Check if external LiteLLM is available; if not, use built-in Anthropic proxy
+  try {
+    const healthRes = await fetch(`http://localhost:${litellmPort}/health/liveliness`, {
+      signal: AbortSignal.timeout(2000),
+    });
+    if (!healthRes.ok) throw new Error('unhealthy');
+  } catch {
+    // LiteLLM not running — redirect to built-in proxy
+    const selfUrl = `http://127.0.0.1:${port}/v1`;
+    server.agentState.litellmApiKey = 'built-in';
+    (server.localConfig as any).litellmUrl = selfUrl;
+    emit({ phase: 'ready', message: 'Using built-in Anthropic proxy (no LiteLLM)', progress: 0.9 });
+  }
+
   shutdown = async () => {
     process.off('SIGTERM', shutdown);
     process.off('SIGINT', shutdown);
