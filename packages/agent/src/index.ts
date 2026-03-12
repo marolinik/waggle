@@ -41,3 +41,4 @@ export { SkillRecommender, type SkillRecommendation, type SkillRecommenderDeps }
 export { createSubAgentTools, type SubAgentToolsDeps, type SubAgentDef, type SubAgentResult } from './subagent-tools.js';
 export { MemoryLinker, type MemoryLink } from './memory-linker.js';
 export { CapabilityRouter, type CapabilityRoute, type CapabilitySource, type CapabilityRouterDeps } from './capability-router.js';
+export { SubagentOrchestrator, type WorkerState, type WorkerStatus, type WorkflowStep, type WorkflowTemplate, type OrchestratorConfig as SubagentOrchestratorConfig } from './subagent-orchestrator.js';

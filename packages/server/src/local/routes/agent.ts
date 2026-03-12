@@ -56,6 +56,19 @@ export const agentRoutes: FastifyPluginAsync = async (server) => {
     return { ok: true, model };
   });
 
+  // GET /api/agents/active — current sub-agent orchestrator state
+  // Returns active and completed workers from the orchestrator, or empty array if no workflow running
+  server.get('/api/agents/active', async () => {
+    const orchestrator = (server as any)._subagentOrchestrator;
+    if (!orchestrator) {
+      return { workers: [], active: [] };
+    }
+    return {
+      workers: orchestrator.getWorkers(),
+      active: orchestrator.getActiveWorkers(),
+    };
+  });
+
   // GET /api/agent/history — get conversation history for a session
   // Loads from disk (.jsonl files) if not in RAM, ensuring persistence across restarts
   server.get<{
