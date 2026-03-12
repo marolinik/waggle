@@ -39,3 +39,4 @@ export { createDocumentTools } from './document-tools.js';
 export { createSkillTools, type SkillToolsDeps } from './skill-tools.js';
 export { createSubAgentTools, type SubAgentToolsDeps, type SubAgentDef, type SubAgentResult } from './subagent-tools.js';
 export { MemoryLinker, type MemoryLink } from './memory-linker.js';
+export { CapabilityRouter, type CapabilityRoute, type CapabilitySource, type CapabilityRouterDeps } from './capability-router.js';

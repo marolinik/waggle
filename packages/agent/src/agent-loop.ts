@@ -2,6 +2,7 @@ import type { ToolDefinition } from './tools.js';
 import { LoopGuard } from './loop-guard.js';
 import { scanForInjection } from './injection-scanner.js';
 import type { HookRegistry } from './hooks.js';
+import type { CapabilityRouter } from './capability-router.js';
 
 export interface AgentMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
@@ -30,6 +31,7 @@ export interface AgentLoopConfig {
   stream?: boolean;
   fetch?: typeof globalThis.fetch;
   hooks?: HookRegistry;
+  capabilityRouter?: CapabilityRouter;
 }
 
 export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentResponse> {
@@ -304,6 +306,10 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
           result = `Error executing ${fnName}: ${(err as Error).message}`;
         }
         toolsUsed.push(fnName);
+      } else if (config.capabilityRouter) {
+        const routes = config.capabilityRouter.resolve(fnName);
+        const routeInfo = routes.map(r => `- [${r.source}] ${r.name}: ${r.description} (${r.available ? 'available' : 'not wired yet'})`).join('\n');
+        result = `Tool "${fnName}" not found. Here are alternatives:\n${routeInfo}\n\nAvailable tools: ${Array.from(toolMap.keys()).join(', ')}`;
       } else {
         result = `Error: Unknown tool "${fnName}". Available tools: ${Array.from(toolMap.keys()).join(', ')}`;
       }
