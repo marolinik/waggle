@@ -13,7 +13,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import type { Message, WaggleConfig, Frame, OnboardingData, FileEntry, DroppedFile } from '@waggle/ui';
+import type { Message, WaggleConfig, WorkspaceContext, Frame, OnboardingData, FileEntry, DroppedFile } from '@waggle/ui';
 import {
   ThemeProvider,
   useTheme,
@@ -33,6 +33,7 @@ import {
   useOnboardingSetup,
   useApprovalGate,
   matchesNamedShortcut,
+  categorizeFile,
 } from '@waggle/ui';
 import { ServiceProvider, useService } from './providers/ServiceProvider';
 import { AppSidebar } from './components/AppSidebar';
@@ -43,6 +44,15 @@ import { MemoryView } from './views/MemoryView';
 import { EventsView } from './views/EventsView';
 
 const adapter = new LocalAdapter({ baseUrl: 'http://127.0.0.1:3333' });
+
+/** Derive a stable hue (0-360) from a workspace name for visual identity */
+function workspaceHue(name: string): number {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return ((hash % 360) + 360) % 360;
+}
 
 /** Convert raw model IDs to friendly display names */
 function friendlyModelName(model: string): string {
@@ -88,12 +98,47 @@ function WaggleApp() {
     createSession,
     deleteSession,
     renameSession,
+    searchResults,
+    searchLoading,
+    searchSessions: doSearchSessions,
+    clearSearch,
+    exportSession,
   } = useSessions({
     service,
     workspaceId: activeWorkspace?.id ?? 'default',
   });
 
-  // ── Chat ──────────────────────────────────────────────────────────
+  // ── Workspace context (catch-up / return reward) ────────────────
+  const [workspaceContext, setWorkspaceContext] = useState<WorkspaceContext | null>(null);
+  useEffect(() => {
+    if (!activeWorkspace?.id) {
+      setWorkspaceContext(null);
+      return;
+    }
+    // Fetch workspace context whenever workspace changes
+    service.getWorkspaceContext(activeWorkspace.id)
+      .then(setWorkspaceContext)
+      .catch(() => setWorkspaceContext(null));
+  }, [activeWorkspace?.id, service]);
+
+  // ── Chat (with workspace directory and file preview) ──────────────
+  const handleFileCreated = useCallback((filePath: string, action: 'write' | 'edit' | 'generate') => {
+    // Auto-show file preview when agent creates/writes files
+    const wsDir = activeWorkspace?.directory;
+    const fullPath = wsDir ? `${wsDir}/${filePath}` : filePath;
+    const parts = fullPath.replace(/\\/g, '/').split('/');
+    const fileName = parts[parts.length - 1] || fullPath;
+    const ext = fileName.includes('.') ? fileName.slice(fileName.lastIndexOf('.') + 1) : '';
+    setPreviewFile({
+      path: fullPath,
+      name: fileName,
+      extension: ext,
+      content: `File ${action === 'generate' ? 'generated' : action === 'edit' ? 'edited' : 'written'}: ${fullPath}`,
+      action: action === 'edit' ? 'edit' : 'write',
+      timestamp: new Date().toISOString(),
+    });
+  }, [activeWorkspace?.directory]);
+
   const {
     messages,
     setMessages,
@@ -103,10 +148,44 @@ function WaggleApp() {
     service,
     workspace: activeWorkspace?.id ?? 'default',
     session: activeSessionId ?? undefined,
+    workspacePath: activeWorkspace?.directory,
+    onFileCreated: handleFileCreated,
   });
 
   // ── Approval gate (listens for WebSocket-based approval events) ──
   useApprovalGate({ service, setMessages });
+
+  // C2: Check for pending approvals on startup (reconnection scenario)
+  useEffect(() => {
+    const checkPending = async () => {
+      try {
+        const res = await fetch('http://127.0.0.1:3333/api/approval/pending');
+        if (res.ok) {
+          const data = await res.json() as { pending: Array<{ requestId: string; toolName: string; input: Record<string, unknown> }> };
+          if (data.pending?.length > 0) {
+            // Surface pending approvals as tool cards
+            for (const p of data.pending) {
+              setMessages(prev => [
+                ...prev,
+                {
+                  id: `approval-${p.requestId}`,
+                  role: 'assistant' as const,
+                  content: '',
+                  toolUse: [{
+                    name: p.toolName,
+                    input: p.input,
+                    status: 'pending_approval' as const,
+                    requestId: p.requestId,
+                  }],
+                },
+              ]);
+            }
+          }
+        }
+      } catch { /* server not ready yet */ }
+    };
+    checkPending();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleToolApprove = useCallback((tool: { requestId?: string }) => {
     if (tool.requestId) {
@@ -325,6 +404,22 @@ function WaggleApp() {
       } catch {
         // Config will be loaded next time
       }
+
+      // B4: Save basic personal style preferences to personal mind via a chat message
+      // This seeds the personal memory so draft-from-context has style data from day 1
+      try {
+        const userName = (data as Record<string, unknown>).name ?? (data as Record<string, unknown>).displayName;
+        if (userName) {
+          await fetch('http://127.0.0.1:3333/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: `My name is ${userName}. I prefer concise, direct responses. Save this to my personal memory.`,
+              workspace: 'default',
+            }),
+          });
+        }
+      } catch { /* non-blocking */ }
     }
   }, [performSetup, service]);
 
@@ -355,10 +450,18 @@ function WaggleApp() {
         e.preventDefault();
         handleNewTab();
       }
+      // G2: Ctrl+1-9 quick-switch workspaces
+      if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key >= '1' && e.key <= '9') {
+        const idx = parseInt(e.key, 10) - 1;
+        if (idx < workspaces.length) {
+          e.preventDefault();
+          setActiveWorkspace(workspaces[idx]);
+        }
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [previewFile, showCreateWorkspace]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [previewFile, showCreateWorkspace, workspaces, setActiveWorkspace]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Tab management ────────────────────────────────────────────────
   const handleNewTab = useCallback(() => {
@@ -380,11 +483,114 @@ function WaggleApp() {
     closeTab(tabId);
   }, [closeTab]);
 
-  // ── File drop ─────────────────────────────────────────────────────
-  const handleFileDrop = useCallback((files: DroppedFile[]) => {
-    const summary = files.map((f) => `[File: ${f.name}]`).join(', ');
-    sendMessage(`I've dropped these files: ${summary}`);
+  // ── File drop — read, upload to ingest API, send context to agent ──
+  const handleFileDrop = useCallback(async (files: DroppedFile[]) => {
+    // Files with content can be ingested via the API
+    const filesWithContent = files.filter((f) => f.content);
+    if (filesWithContent.length === 0) {
+      // Fallback: no content read, just send names
+      const summary = files.map((f) => `[File: ${f.name}]`).join(', ');
+      sendMessage(`I've dropped these files: ${summary}`);
+      return;
+    }
+
+    try {
+      const response = await fetch('http://127.0.0.1:3333/api/ingest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          files: filesWithContent.map((f) => ({ name: f.name, content: f.content })),
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: 'Upload failed' }));
+        sendMessage(`File upload failed: ${(err as any).error ?? 'Unknown error'}`);
+        return;
+      }
+
+      const data = await response.json() as {
+        files: Array<{ name: string; type: string; summary: string; content?: string }>;
+      };
+
+      // Build a rich context message for the agent with file contents
+      const parts = data.files.map((f) => {
+        if ((f.type === 'text' || f.type === 'document' || f.type === 'spreadsheet') && f.content) {
+          const preview = f.content.length > 4000
+            ? f.content.slice(0, 4000) + '\n... (truncated)'
+            : f.content;
+          const lang = f.type === 'spreadsheet' ? 'csv' : '';
+          return `**${f.name}** (${f.summary}):\n\`\`\`${lang}\n${preview}\n\`\`\``;
+        }
+        if (f.type === 'csv' && f.content) {
+          const preview = f.content.length > 4000
+            ? f.content.slice(0, 4000) + '\n... (truncated)'
+            : f.content;
+          return `**${f.name}** (${f.summary}):\n\`\`\`csv\n${preview}\n\`\`\``;
+        }
+        if (f.type === 'image' && f.content) {
+          // C5: Pass full data URI for vision-capable models, not truncated
+          // The agent loop handles token counting; the model needs the full image
+          return `**${f.name}** — ${f.summary}\n![${f.name}](${f.content})`;
+        }
+        if (f.type === 'archive' && f.content) {
+          return `**${f.name}** (${f.summary}):\n\`\`\`\n${f.content}\n\`\`\``;
+        }
+        return `**${f.name}** — ${f.summary}`;
+      });
+
+      // Also set the first text-like file as preview in context panel
+      const textFile = data.files.find((f) =>
+        (f.type === 'text' || f.type === 'csv' || f.type === 'document' || f.type === 'spreadsheet') && f.content
+      );
+      if (textFile && textFile.content) {
+        const tfName = textFile.name;
+        const tfExt = tfName.includes('.') ? tfName.slice(tfName.lastIndexOf('.') + 1) : '';
+        setPreviewFile({
+          path: tfName,
+          name: tfName,
+          extension: tfExt,
+          content: textFile.content,
+          action: 'read',
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      sendMessage(
+        `I've uploaded ${data.files.length} file(s). Here's the content:\n\n` +
+        parts.join('\n\n')
+      );
+    } catch (err) {
+      sendMessage(`File upload error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
   }, [sendMessage]);
+
+  // ── File select via + button — convert raw File[] to DroppedFile[] and reuse handleFileDrop ──
+  const handleFileSelect = useCallback(async (files: File[]) => {
+    const droppedFiles: DroppedFile[] = [];
+    for (const file of files) {
+      const df = categorizeFile(file.name, file.size);
+      // Read as base64
+      const b64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          // Strip the data:...;base64, prefix
+          const base64 = result.includes(',') ? result.split(',')[1] : result;
+          resolve(base64);
+        };
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(file);
+      });
+      if (b64) {
+        df.content = b64;
+        droppedFiles.push(df);
+      }
+    }
+    if (droppedFiles.length > 0) {
+      handleFileDrop(droppedFiles);
+    }
+  }, [handleFileDrop]);
 
   // ── Workspace creation ────────────────────────────────────────────
   const handleCreateWorkspace = useCallback(async (wsConfig: {
@@ -392,6 +598,7 @@ function WaggleApp() {
     group: string;
     model?: string;
     personality?: string;
+    directory?: string;
   }) => {
     await createWorkspace(wsConfig);
     setShowCreateWorkspace(false);
@@ -495,7 +702,11 @@ function WaggleApp() {
           />
         }
         content={
-          <>
+          <div
+            key={activeWorkspace?.id ?? 'none'}
+            className="workspace-transition"
+            style={{ '--workspace-hue': activeWorkspace ? workspaceHue(activeWorkspace.name) : 220 } as React.CSSProperties}
+          >
             {currentView === 'chat' && (
               <ChatView
                 tabs={tabs.map((t) => ({ id: t.id, label: t.title, icon: t.workspaceIcon }))}
@@ -508,8 +719,11 @@ function WaggleApp() {
                 onSendMessage={sendMessage}
                 onSlashCommand={handleSlashCommand}
                 onFileDrop={handleFileDrop}
+                onFileSelect={handleFileSelect}
                 onToolApprove={handleToolApprove}
                 onToolDeny={handleToolDeny}
+                workspaceContext={workspaceContext}
+                onThreadSelect={handleSessionSelect}
               />
             )}
             {currentView === 'settings' && (
@@ -540,7 +754,7 @@ function WaggleApp() {
                 onFilterChange={setEventFilter}
               />
             )}
-          </>
+          </div>
         }
         contextPanel={
           showContextPanel ? (
@@ -553,6 +767,14 @@ function WaggleApp() {
               onDeleteSession={deleteSession}
               onRenameSession={renameSession}
               selectedFrame={selectedFrame}
+              previewFile={previewFile}
+              onClosePreview={() => setPreviewFile(null)}
+              recentMemories={workspaceContext?.recentMemories}
+              onExportSession={exportSession}
+              onSearchSessions={doSearchSessions}
+              searchResults={searchResults}
+              searchLoading={searchLoading}
+              onClearSearch={clearSearch}
             />
           ) : undefined
         }
@@ -576,14 +798,35 @@ function WaggleApp() {
         onSubmit={handleCreateWorkspace}
       />
 
-      {/* File preview modal */}
+      {/* File preview modal — B6: with "Open" button via Tauri shell */}
       {previewFile && (
         <Modal
           isOpen={true}
           onClose={() => setPreviewFile(null)}
           title={previewFile.path}
         >
-          <FilePreview file={previewFile} />
+          <FilePreview
+            file={previewFile}
+            onOpenInApp={async (filePath) => {
+              try {
+                const mod = '@tauri-apps/' + 'plugin-opener';
+                const { open } = await import(/* @vite-ignore */ mod);
+                await open(filePath);
+              } catch {
+                // Fallback: try to open via shell command
+                try {
+                  const { invoke } = await import('@tauri-apps/api/core');
+                  await invoke('open_path', { path: filePath });
+                } catch {
+                  // Last resort: copy path to clipboard
+                  navigator.clipboard?.writeText(filePath);
+                }
+              }
+            }}
+            onCopyPath={(filePath) => {
+              navigator.clipboard?.writeText(filePath);
+            }}
+          />
         </Modal>
       )}
     </>

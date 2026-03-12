@@ -175,11 +175,9 @@ describe('Comprehensive CLI E2E Test', () => {
     const prompt = orchestrator.buildSystemPrompt();
     expect(prompt).toContain('TestBot');
     expect(prompt).toContain('Run integration tests');
-    expect(prompt).toContain('search_memory');
-    expect(prompt).toContain('save_memory');
-    expect(prompt).toContain('query_knowledge');
-    expect(prompt).toContain('add_task');
-    expect(prompt).toContain('correct_knowledge');
+    // System prompt includes self-awareness block with tool summary
+    expect(prompt).toContain('# Self-Awareness');
+    expect(prompt).toContain('tools available');
   });
 
   // ─── Test 7: Tool Definitions ───
@@ -264,12 +262,27 @@ describe('Comprehensive CLI E2E Test', () => {
 
   // ─── Test 13: Confirmation Gate ───
   it('T13: Confirmation gate identifies sensitive tools', () => {
-    expect(needsConfirmation('bash')).toBe(true);
+    // Non-bash tools
     expect(needsConfirmation('write_file')).toBe(true);
     expect(needsConfirmation('edit_file')).toBe(true);
     expect(needsConfirmation('git_commit')).toBe(true);
     expect(needsConfirmation('read_file')).toBe(false);
     expect(needsConfirmation('search_memory')).toBe(false);
+
+    // Bash without args = unknown command = confirm
+    expect(needsConfirmation('bash')).toBe(true);
+
+    // Safe bash commands (read-only)
+    expect(needsConfirmation('bash', { command: 'date' })).toBe(false);
+    expect(needsConfirmation('bash', { command: 'ls -la' })).toBe(false);
+    expect(needsConfirmation('bash', { command: 'git status' })).toBe(false);
+    expect(needsConfirmation('bash', { command: 'git log --oneline' })).toBe(false);
+    expect(needsConfirmation('bash', { command: 'whoami' })).toBe(false);
+
+    // Destructive bash commands
+    expect(needsConfirmation('bash', { command: 'rm -rf /tmp/foo' })).toBe(true);
+    expect(needsConfirmation('bash', { command: 'git push origin main' })).toBe(true);
+    expect(needsConfirmation('bash', { command: 'sudo apt install foo' })).toBe(true);
   });
 
   // ─── Test 14: Memory Stats ───

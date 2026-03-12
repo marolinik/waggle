@@ -10,42 +10,34 @@ export interface AgentCapabilities {
 export function buildSelfAwareness(caps: AgentCapabilities): string {
   const lines: string[] = [];
 
-  lines.push('# Self-Awareness (auto-generated — do NOT web search for this)');
+  lines.push('# Self-Awareness');
   lines.push('');
-  lines.push(`Version: ${caps.version}`);
-  lines.push(`Mode: ${caps.mode}`);
-  lines.push(`Current model: ${caps.model}`);
+  lines.push(`You are Waggle v${caps.version}, running in ${caps.mode} mode.`);
+  lines.push(`Model: ${caps.model}`);
 
-  lines.push('');
-  lines.push('## Available Tools');
-  if (caps.tools.length === 0) {
-    lines.push('No tools loaded.');
+  // Memory stats — helps agent understand its own knowledge depth
+  const { frameCount, sessionCount, entityCount } = caps.memoryStats;
+  if (frameCount > 0) {
+    lines.push(`Memory: ${frameCount} memories across ${sessionCount} sessions, ${entityCount} knowledge entities.`);
+    lines.push('You have prior context. Use search_memory to recall relevant information before responding.');
   } else {
-    for (const tool of caps.tools) {
-      lines.push(`- ${tool.name}: ${tool.description}`);
-    }
+    lines.push('Memory: empty — this appears to be a fresh start. Learn the user\'s preferences and save important context.');
+  }
+
+  // Tools — grouped by category for clarity
+  lines.push('');
+  lines.push('## Your Capabilities');
+  const toolCount = caps.tools.length;
+  lines.push(`${toolCount} tools available. You can search the web, read/write files, run commands, manage git, create plans, and access your persistent memory.`);
+
+  // Skills
+  if (caps.skills.length > 0) {
+    lines.push('');
+    lines.push(`## Active Skills: ${caps.skills.join(', ')}`);
   }
 
   lines.push('');
-  lines.push('## Installed Skills');
-  if (caps.skills.length === 0) {
-    lines.push('No skills installed.');
-  } else {
-    for (const skill of caps.skills) {
-      lines.push(`- ${skill}`);
-    }
-  }
-
-  lines.push('');
-  lines.push('## Memory');
-  lines.push(
-    `${caps.memoryStats.frameCount} memories across ${caps.memoryStats.sessionCount} sessions, ${caps.memoryStats.entityCount} knowledge entities.`
-  );
-
-  lines.push('');
-  lines.push(
-    'When asked "what can you do?" or "who are you?" — answer from this section. Do NOT search the web about yourself.'
-  );
+  lines.push('When asked "what can you do?" or "who are you?" — answer from this section and demonstrate by doing, not listing.');
 
   return lines.join('\n');
 }

@@ -88,6 +88,11 @@ export function SessionCard({
           {session.title || 'Untitled Session'}
         </span>
       )}
+      {session.summary && (
+        <span className="session-card__summary block text-xs text-gray-400 truncate mt-0.5">
+          {session.summary}
+        </span>
+      )}
       <span className="session-card__meta block text-xs text-gray-500">
         {session.messageCount} messages · {formatLastActive(session.lastActive)}
       </span>

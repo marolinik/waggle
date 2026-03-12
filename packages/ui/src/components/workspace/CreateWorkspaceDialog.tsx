@@ -15,6 +15,7 @@ export interface CreateWorkspaceDialogProps {
     group: string;
     model?: string;
     personality?: string;
+    directory?: string;
   }) => void;
 }
 
@@ -25,6 +26,7 @@ export function CreateWorkspaceDialog({ isOpen, onClose, onSubmit }: CreateWorks
   const [group, setGroup] = useState('Personal');
   const [model, setModel] = useState('');
   const [personality, setPersonality] = useState('');
+  const [directory, setDirectory] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
@@ -41,12 +43,14 @@ export function CreateWorkspaceDialog({ isOpen, onClose, onSubmit }: CreateWorks
       group,
       model: model.trim() || undefined,
       personality: personality.trim() || undefined,
+      directory: directory.trim() || undefined,
     });
     // Reset form
     setName('');
     setGroup('Personal');
     setModel('');
     setPersonality('');
+    setDirectory('');
     setError(null);
   };
 
@@ -88,6 +92,22 @@ export function CreateWorkspaceDialog({ isOpen, onClose, onSubmit }: CreateWorks
                 <option key={g} value={g}>{g}</option>
               ))}
             </select>
+          </div>
+
+          {/* Directory */}
+          <div>
+            <label className="mb-1 block text-sm text-gray-400" htmlFor="ws-directory">
+              Working Directory <span className="text-gray-600">(where files are generated)</span>
+            </label>
+            <input
+              id="ws-directory"
+              type="text"
+              value={directory}
+              onChange={(e) => setDirectory(e.target.value)}
+              className="w-full rounded bg-gray-800 px-3 py-2 text-sm text-gray-100 outline-none focus:ring-1 focus:ring-blue-500"
+              placeholder="C:\Users\You\Documents\my-project"
+            />
+            <p className="mt-1 text-xs text-gray-500">Agent reads/writes files here. Leave empty to use home directory.</p>
           </div>
 
           {/* Model */}

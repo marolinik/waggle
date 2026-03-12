@@ -3,12 +3,17 @@ import path from 'node:path';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import websocket from '@fastify/websocket';
-import { MultiMind, WorkspaceManager, createLiteLLMEmbedder } from '@waggle/core';
+import { MindDB, MultiMind, WorkspaceManager, createLiteLLMEmbedder, FrameStore, SessionStore } from '@waggle/core';
+import { MemoryWeaver } from '@waggle/weaver';
 import {
   Orchestrator,
   createSystemTools,
   createPlanTools,
   createGitTools,
+  createDocumentTools,
+  createSkillTools,
+  createSubAgentTools,
+  runAgentLoop,
   ensureIdentity,
   loadSystemPrompt,
   loadSkills,
@@ -22,7 +27,7 @@ import { workspaceRoutes } from './routes/workspaces.js';
 import { chatRoutes, type AgentRunner } from './routes/chat.js';
 import { memoryRoutes } from './routes/memory.js';
 import { settingsRoutes } from './routes/settings.js';
-import { sessionRoutes } from './routes/sessions.js';
+import { sessionRoutes, findUndistilledSessions, markSessionDistilled } from './routes/sessions.js';
 import { knowledgeRoutes } from './routes/knowledge.js';
 import { litellmRoutes } from './routes/litellm.js';
 import { ingestRoutes } from './routes/ingest.js';
@@ -63,6 +68,12 @@ export interface AgentState {
   currentModel: string;
   litellmApiKey: string;
   pendingApprovals: Map<string, PendingApproval>;
+  /** Rebuild workspace-scoped tools (system, git, document) for a given directory */
+  buildToolsForWorkspace: (workspacePath: string) => ToolDefinition[];
+  /** Activate workspace mind for the given workspace ID. Returns true if switched. */
+  activateWorkspaceMind: (workspaceId: string) => boolean;
+  /** Currently active workspace ID (null = personal only) */
+  activeWorkspaceId: string | null;
 }
 
 declare module 'fastify' {
@@ -125,15 +136,42 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   });
   ensureIdentity(orchestrator.getIdentity());
 
-  // Build all tools (same pattern as CLI)
+  // Build tools — use a default workspace (homedir), but tools are rebuilt
+  // per-request when a workspace directory is specified in chat.
+  const defaultWorkspace = os.homedir();
+  const waggleHome = path.join(os.homedir(), '.waggle');
   const mindTools = orchestrator.getTools();
-  const systemTools = createSystemTools(os.homedir());
+  const systemTools = createSystemTools(defaultWorkspace);
   const planTools = createPlanTools();
-  const gitTools = createGitTools(os.homedir());
-  const allTools = [...mindTools, ...systemTools, ...planTools, ...gitTools];
+  const gitTools = createGitTools(defaultWorkspace);
+  const documentTools = createDocumentTools(defaultWorkspace);
+
+  // Skill management tools — let the agent discover, install, create skills
+  const skillTools = createSkillTools({
+    waggleHome,
+    onSkillsChanged: () => {
+      // Hot-reload skills into agent state
+      const fresh = loadSkills(waggleHome);
+      // Will be set after agentState is created (see below)
+      reloadSkills?.(fresh);
+    },
+  });
+
+  // Collect all non-subagent tools first (sub-agent tools need the full list)
+  const baseTools = [...mindTools, ...systemTools, ...planTools, ...gitTools, ...documentTools, ...skillTools];
+
+  // Sub-agent tools — let the main agent spawn specialist sub-agents
+  const subAgentTools = createSubAgentTools({
+    availableTools: baseTools,
+    runLoop: runAgentLoop,
+    litellmUrl: fullConfig.litellmUrl,
+    litellmApiKey: litellmApiKey,
+    defaultModel: 'claude-sonnet-4-6',
+  });
+
+  const allTools = [...baseTools, ...subAgentTools];
 
   // Load user customizations from ~/.waggle/
-  const waggleHome = path.join(os.homedir(), '.waggle');
   const userSystemPrompt = loadSystemPrompt(waggleHome);
   const skills = loadSkills(waggleHome);
 
@@ -153,6 +191,143 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   // Pending approvals map for confirmation gates
   const pendingApprovals = new Map<string, PendingApproval>();
 
+  // Skill hot-reload callback (set after agentState is created)
+  let reloadSkills: ((fresh: LoadedSkill[]) => void) | undefined;
+
+  // Factory to rebuild workspace-scoped tools for a given directory
+  const buildToolsForWorkspace = (wsPath: string): ToolDefinition[] => {
+    const wsBase = [
+      ...mindTools,
+      ...createSystemTools(wsPath),
+      ...createPlanTools(),
+      ...createGitTools(wsPath),
+      ...createDocumentTools(wsPath),
+      ...skillTools,
+    ];
+    const wsSub = createSubAgentTools({
+      availableTools: wsBase,
+      runLoop: runAgentLoop,
+      litellmUrl: fullConfig.litellmUrl,
+      litellmApiKey: litellmApiKey,
+      defaultModel: 'claude-sonnet-4-6',
+    });
+    return [...wsBase, ...wsSub];
+  };
+
+  // ── Workspace mind cache ─────────────────────────────────────────
+  // Open workspace .mind files on demand and keep them cached.
+  // Closed on server shutdown via onClose hook.
+  const workspaceMindCache = new Map<string, MindDB>();
+  let activeWorkspaceId: string | null = null;
+
+  /**
+   * Activate a workspace's .mind file on the orchestrator.
+   * Opens the mind if not cached, then calls setWorkspaceMind().
+   */
+  const activateWorkspaceMind = (workspaceId: string): boolean => {
+    if (activeWorkspaceId === workspaceId) return true; // already active
+
+    const mindPath = wsManager.getMindPath(workspaceId);
+    if (!mindPath) return false;
+
+    let wsDb = workspaceMindCache.get(workspaceId);
+    if (!wsDb) {
+      try {
+        wsDb = new MindDB(mindPath);
+        workspaceMindCache.set(workspaceId, wsDb);
+      } catch {
+        return false;
+      }
+    }
+
+    orchestrator.setWorkspaceMind(wsDb);
+    activeWorkspaceId = workspaceId;
+    return true;
+  };
+
+  // ── Memory Weaver — background consolidation & decay (A1 fix) ────
+  // Runs on the personal mind at startup. Workspace minds get weavers when activated.
+  const personalFrames = new FrameStore(multiMind.personal);
+  const personalSessions = new SessionStore(multiMind.personal);
+  const personalWeaver = new MemoryWeaver(multiMind.personal, personalFrames, personalSessions);
+  const weaverTimers: NodeJS.Timeout[] = [];
+  const workspaceWeavers = new Map<string, { weaver: MemoryWeaver; timers: NodeJS.Timeout[] }>();
+
+  // Run personal mind weaver on intervals
+  const runPersonalConsolidation = () => {
+    try {
+      const active = personalSessions.getActive();
+      for (const s of active) personalWeaver.consolidateGop(s.gop_id);
+    } catch { /* non-blocking */ }
+  };
+  const runPersonalDecay = () => {
+    try {
+      personalWeaver.decayFrames();
+      personalWeaver.strengthenFrames();
+    } catch { /* non-blocking */ }
+  };
+  weaverTimers.push(setInterval(runPersonalConsolidation, 60 * 60 * 1000)); // hourly
+  weaverTimers.push(setInterval(runPersonalDecay, 24 * 60 * 60 * 1000));    // daily
+
+  // Extend activateWorkspaceMind to also start a weaver for the workspace
+  // and distill any undistilled sessions into durable memory frames.
+  const baseActivateWorkspaceMind = activateWorkspaceMind;
+  const activateWorkspaceMindWithWeaver = (workspaceId: string): boolean => {
+    const result = baseActivateWorkspaceMind(workspaceId);
+
+    // E4: Track workspace topic in personal mind (runs on every activation, deduped by content)
+    if (result) {
+      try {
+        const wsConfig = wsManager.get(workspaceId);
+        if (wsConfig) {
+          const topicContent = `Workspace topic: ${wsConfig.name} (${wsConfig.group || 'General'})`;
+          const personalRaw = multiMind.personal.getDatabase();
+          const existing = personalRaw.prepare(
+            `SELECT id FROM memory_frames WHERE content = ? LIMIT 1`
+          ).get(topicContent) as { id: number } | undefined;
+          if (!existing) {
+            personalFrames.createIFrame(
+              personalSessions.getActive()[0]?.gop_id ?? personalSessions.create('personal').gop_id,
+              topicContent,
+              'normal'
+            );
+          }
+        }
+      } catch { /* non-blocking */ }
+    }
+
+    if (result && !workspaceWeavers.has(workspaceId)) {
+      const wsDb = workspaceMindCache.get(workspaceId);
+      if (wsDb) {
+        const wsFrames = new FrameStore(wsDb);
+        const wsSessions = new SessionStore(wsDb);
+        const wsWeaver = new MemoryWeaver(wsDb, wsFrames, wsSessions);
+        const timers: NodeJS.Timeout[] = [];
+        timers.push(setInterval(() => {
+          try {
+            const active = wsSessions.getActive();
+            for (const s of active) wsWeaver.consolidateGop(s.gop_id);
+          } catch { /* non-blocking */ }
+        }, 60 * 60 * 1000));
+        timers.push(setInterval(() => {
+          try { wsWeaver.decayFrames(); wsWeaver.strengthenFrames(); } catch { /* non-blocking */ }
+        }, 24 * 60 * 60 * 1000));
+        workspaceWeavers.set(workspaceId, { weaver: wsWeaver, timers });
+
+        // E2: Distill undistilled sessions into durable memory frames on activation
+        try {
+          const sessionsDir = path.join(fullConfig.dataDir, 'workspaces', workspaceId, 'sessions');
+          const undistilled = findUndistilledSessions(sessionsDir);
+          for (const session of undistilled) {
+            wsWeaver.distillSessionContent(session.date, session.summary, session.keyPoints);
+            markSessionDistilled(session.filePath);
+          }
+        } catch { /* non-blocking — distillation failure should never break workspace activation */ }
+      }
+    }
+    return result;
+  };
+
   // Decorate with shared agent state
   server.decorate('agentState', {
     orchestrator,
@@ -165,7 +340,16 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
     currentModel,
     litellmApiKey,
     pendingApprovals,
+    buildToolsForWorkspace,
+    activateWorkspaceMind: activateWorkspaceMindWithWeaver,
+    activeWorkspaceId,
   });
+
+  // Wire up skill hot-reload callback
+  reloadSkills = (fresh: LoadedSkill[]) => {
+    server.agentState.skills.length = 0;
+    server.agentState.skills.push(...fresh);
+  };
 
   // Plugins
   await server.register(cors, { origin: true });
@@ -240,6 +424,18 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
 
   // Cleanup on close
   server.addHook('onClose', async () => {
+    // Stop weaver timers
+    for (const t of weaverTimers) clearInterval(t);
+    for (const [, ww] of workspaceWeavers) {
+      for (const t of ww.timers) clearInterval(t);
+    }
+    workspaceWeavers.clear();
+
+    // Close all cached workspace minds
+    for (const [, wsDb] of workspaceMindCache) {
+      try { wsDb.close(); } catch { /* already closed */ }
+    }
+    workspaceMindCache.clear();
     multiMind.close();
   });
 

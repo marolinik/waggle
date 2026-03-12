@@ -5,7 +5,7 @@ mod service;
 mod tray;
 
 use service::ServiceState;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -15,7 +15,6 @@ pub fn run() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec!["--minimized"]),
         ))
-        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .manage(ServiceState::new(3333))
         .invoke_handler(tauri::generate_handler![
             service::ensure_service,
@@ -26,12 +25,12 @@ pub fn run() {
             tray::setup_tray(app.handle())?;
 
             // Register global hotkey: Ctrl+Shift+W to toggle window visibility
-            use tauri_plugin_global_shortcut::GlobalShortcutExt;
+            use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
             let app_handle = app.handle().clone();
             app.handle().plugin(
                 tauri_plugin_global_shortcut::Builder::new()
-                    .with_handler(move |_app, shortcut, event| {
-                        if event == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                    .with_handler(move |_app, _shortcut, event| {
+                        if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
                             if let Some(window) = app_handle.get_webview_window("main") {
                                 if window.is_visible().unwrap_or(false) {
                                     let _ = window.hide();
@@ -45,8 +44,6 @@ pub fn run() {
                     .build(),
             )?;
 
-            // Register Ctrl+Shift+W
-            use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut};
             let shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyW);
             app.global_shortcut().register(shortcut)?;
 
@@ -55,7 +52,6 @@ pub fn run() {
         // Window management: close minimizes to tray instead of quitting
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                // Don't close — minimize to tray instead
                 api.prevent_close();
                 let _ = window.hide();
             }

@@ -72,7 +72,7 @@ export function useApprovalGate({
           if (!msg.toolUse) return msg;
           const updatedTools = msg.toolUse.map((tool) => {
             if (tool.name === event.toolName && tool.approved === undefined) {
-              return { ...tool, requiresApproval: true };
+              return { ...tool, requiresApproval: true, status: 'pending_approval' as const };
             }
             return tool;
           });
@@ -92,7 +92,7 @@ export function useApprovalGate({
         if (!msg.toolUse) return msg;
         const updatedTools = msg.toolUse.map((tool) => {
           if (tool.requiresApproval && tool.approved === undefined) {
-            return { ...tool, approved: true };
+            return { ...tool, approved: true, status: 'running' as const };
           }
           return tool;
         });
@@ -109,7 +109,7 @@ export function useApprovalGate({
         if (!msg.toolUse) return msg;
         const updatedTools = msg.toolUse.map((tool) => {
           if (tool.requiresApproval && tool.approved === undefined) {
-            return { ...tool, approved: false, result: reason ? `Denied: ${reason}` : 'Denied by user' };
+            return { ...tool, approved: false, status: 'denied' as const, result: reason ? `Denied: ${reason}` : 'Denied by user' };
           }
           return tool;
         });

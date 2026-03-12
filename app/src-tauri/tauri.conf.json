@@ -11,17 +11,15 @@
   },
   "bundle": {
     "icon": ["icons/icon.ico"],
-    "resources": [
-      "resources/node/**",
-      "resources/python/**"
-    ],
+    "active": true,
+    "targets": ["nsis"],
     "windows": {
       "nsis": {
-        "displayLanguageSelector": false,
+        "template": "nsis/installer.nsi",
         "installerIcon": "icons/icon.ico",
-        "license": null,
-        "shortDescription": "Waggle — Your AI Agent Swarm",
-        "template": "nsis/installer.nsi"
+        "installMode": "currentUser",
+        "languages": ["English"],
+        "displayLanguageSelector": false
       }
     }
   },
@@ -32,11 +30,12 @@
         "width": 1200,
         "height": 800,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "decorations": true
       }
     ],
     "security": {
-      "csp": "default-src 'self'; connect-src 'self' http://localhost:* ws://localhost:*; style-src 'self' 'unsafe-inline'; script-src 'self'"
+      "csp": "default-src 'self'; connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*; style-src 'self' 'unsafe-inline'; script-src 'self'"
     }
   },
   "plugins": {

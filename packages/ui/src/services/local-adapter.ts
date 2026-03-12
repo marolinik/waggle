@@ -8,7 +8,9 @@ import type {
   StreamEvent,
   Message,
   Workspace,
+  WorkspaceContext,
   Session,
+  SessionSearchResult,
   Frame,
   AgentStatus,
   WaggleConfig,
@@ -82,11 +84,12 @@ export class LocalAdapter implements WaggleService {
     message: string,
     session?: string,
     model?: string,
+    workspacePath?: string,
   ): AsyncGenerator<StreamEvent> {
     const res = await fetch(`${this.baseUrl}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, workspace, session, model }),
+      body: JSON.stringify({ message, workspace, session, model, workspacePath }),
     });
 
     if (!res.ok) {
@@ -138,6 +141,12 @@ export class LocalAdapter implements WaggleService {
       const err = await res.json().catch(() => ({}));
       throw new Error((err as Record<string, string>).error ?? `Failed to update workspace: ${res.status}`);
     }
+  }
+
+  async getWorkspaceContext(id: string): Promise<WorkspaceContext> {
+    const res = await fetch(`${this.baseUrl}/api/workspaces/${id}/context`);
+    if (!res.ok) throw new Error(`Failed to get workspace context: ${res.status}`);
+    return res.json() as Promise<WorkspaceContext>;
   }
 
   async deleteWorkspace(id: string): Promise<void> {
@@ -215,6 +224,30 @@ export class LocalAdapter implements WaggleService {
     if (!res.ok && res.status !== 204) {
       throw new Error(`Failed to delete session: ${res.status}`);
     }
+  }
+
+  async searchSessions(workspace: string, query: string): Promise<SessionSearchResult[]> {
+    const params = new URLSearchParams({ q: query });
+    const res = await fetch(
+      `${this.baseUrl}/api/workspaces/${workspace}/sessions/search?${params}`,
+    );
+    if (!res.ok) return [];
+    return res.json() as Promise<SessionSearchResult[]>;
+  }
+
+  async exportSession(workspace: string, sessionId: string): Promise<string> {
+    const res = await fetch(
+      `${this.baseUrl}/api/workspaces/${workspace}/sessions/${sessionId}/export`,
+    );
+    if (!res.ok) throw new Error('Export failed');
+    return res.text();
+  }
+
+  async listFiles(workspace: string): Promise<import('./types.js').FileRegistryEntry[]> {
+    const res = await fetch(`${this.baseUrl}/api/workspaces/${workspace}/files`);
+    if (!res.ok) return [];
+    const data = await res.json() as { files: import('./types.js').FileRegistryEntry[] };
+    return data.files;
   }
 
   // ── Approval gates ─────────────────────────────────────────────────

@@ -24,6 +24,8 @@ export interface UseWorkspacesReturn {
   loading: boolean;
 }
 
+const LAST_WORKSPACE_KEY = 'waggle:lastWorkspaceId';
+
 export function useWorkspaces({ service }: UseWorkspacesOptions): UseWorkspacesReturn {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -36,9 +38,18 @@ export function useWorkspaces({ service }: UseWorkspacesOptions): UseWorkspacesR
     service.listWorkspaces().then((list) => {
       if (!cancelled) {
         setWorkspaces(list);
-        // Auto-select first workspace if none active
+        // Restore last workspace from localStorage, fall back to first
         if (!activeId && list.length > 0) {
-          setActiveId(list[0].id);
+          let restoredId: string | null = null;
+          try {
+            const stored = localStorage.getItem(LAST_WORKSPACE_KEY);
+            if (stored && list.some((ws) => ws.id === stored)) {
+              restoredId = stored;
+            }
+          } catch {
+            // localStorage unavailable — ignore
+          }
+          setActiveId(restoredId ?? list[0].id);
         }
         setLoading(false);
       }
@@ -57,6 +68,11 @@ export function useWorkspaces({ service }: UseWorkspacesOptions): UseWorkspacesR
 
   const setActiveWorkspace = useCallback((id: string) => {
     setActiveId(id);
+    try {
+      localStorage.setItem(LAST_WORKSPACE_KEY, id);
+    } catch {
+      // localStorage unavailable — ignore
+    }
   }, []);
 
   const createWorkspace = useCallback(async (config: Partial<Workspace>): Promise<Workspace> => {

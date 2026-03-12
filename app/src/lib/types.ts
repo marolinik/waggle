@@ -8,7 +8,7 @@ export interface ChatMessage {
 
 export interface ToolUseEvent {
   name: string;
-  status: 'running' | 'done' | 'error';
+  status: 'running' | 'done' | 'error' | 'denied' | 'pending_approval';
   result?: string;
 }
 

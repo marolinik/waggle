@@ -28,8 +28,8 @@ describe('SUPPORTED_EXTENSIONS', () => {
     }
   });
 
-  it('maps pdf to pdf', () => {
-    expect(SUPPORTED_EXTENSIONS['pdf']).toBe('pdf');
+  it('maps pdf to document', () => {
+    expect(SUPPORTED_EXTENSIONS['pdf']).toBe('document');
   });
 
   it('maps csv to csv', () => {
@@ -66,8 +66,8 @@ describe('isSupported', () => {
 
   it('returns false for unsupported extensions', () => {
     expect(isSupported('exe')).toBe(false);
-    expect(isSupported('zip')).toBe(false);
     expect(isSupported('mp4')).toBe(false);
+    expect(isSupported('avi')).toBe(false);
   });
 });
 
@@ -87,7 +87,7 @@ describe('categorizeFile', () => {
 
   it('categorizes a PDF', () => {
     const f = categorizeFile('report.pdf', 200000);
-    expect(f.category).toBe('pdf');
+    expect(f.category).toBe('document');
     expect(f.extension).toBe('pdf');
   });
 
@@ -102,9 +102,13 @@ describe('categorizeFile', () => {
     expect(categorizeFile('config.yaml', 300).category).toBe('text');
   });
 
+  it('categorizes zip as archive', () => {
+    expect(categorizeFile('archive.zip', 1000).category).toBe('archive');
+  });
+
   it('marks unknown extensions as unsupported', () => {
-    expect(categorizeFile('archive.zip', 1000).category).toBe('unsupported');
     expect(categorizeFile('video.mp4', 9999).category).toBe('unsupported');
+    expect(categorizeFile('app.exe', 5000).category).toBe('unsupported');
   });
 
   it('handles files with no extension', () => {

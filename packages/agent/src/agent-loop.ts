@@ -25,6 +25,7 @@ export interface AgentLoopConfig {
   messages: Array<{ role: string; content: string }>;
   onToken?: (token: string) => void;
   onToolUse?: (name: string, input: Record<string, unknown>) => void;
+  onToolResult?: (name: string, input: Record<string, unknown>, result: string) => void;
   maxTurns?: number;
   stream?: boolean;
   fetch?: typeof globalThis.fetch;
@@ -41,6 +42,7 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
     messages: inputMessages,
     onToken,
     onToolUse,
+    onToolResult,
     maxTurns = 10,
     stream = false,
     fetch: fetchFn = globalThis.fetch,
@@ -115,7 +117,15 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
 
     if (!response.ok) {
       const errorBody = await response.text().catch(() => 'Unknown error');
-      throw new Error(`LiteLLM error (${response.status}): ${errorBody}`);
+      // Retry on transient server errors (502, 503, 504)
+      if ([502, 503, 504].includes(response.status) && turn < maxTurns - 1) {
+        const waitMs = Math.min(2000 * (turn + 1), 10_000);
+        if (onToken) onToken(`\n[Server error ${response.status} — retrying in ${waitMs / 1000}s...]\n`);
+        await new Promise(r => setTimeout(r, waitMs));
+        turn--; // retry this turn
+        continue;
+      }
+      throw new Error(`LLM error (${response.status}): ${errorBody}`);
     }
 
     let assistantMessage: {
@@ -253,7 +263,16 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
 
     for (const toolCall of assistantMessage.tool_calls) {
       const fnName = toolCall.function.name;
-      const fnArgs = JSON.parse(toolCall.function.arguments);
+
+      // Safely parse tool arguments — malformed JSON shouldn't crash the loop
+      let fnArgs: Record<string, unknown>;
+      try {
+        fnArgs = JSON.parse(toolCall.function.arguments || '{}');
+      } catch {
+        const result = `Error: Invalid arguments for ${fnName}. The arguments were not valid JSON.`;
+        messages.push({ role: 'tool', content: result, tool_call_id: toolCall.id });
+        continue;
+      }
 
       if (onToolUse) {
         onToolUse(fnName, fnArgs);
@@ -282,11 +301,16 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
         try {
           result = await tool.execute(fnArgs);
         } catch (err) {
-          result = `Error: ${(err as Error).message}`;
+          result = `Error executing ${fnName}: ${(err as Error).message}`;
         }
         toolsUsed.push(fnName);
       } else {
-        result = `Error: Unknown tool "${fnName}"`;
+        result = `Error: Unknown tool "${fnName}". Available tools: ${Array.from(toolMap.keys()).join(', ')}`;
+      }
+
+      // Notify on tool completion
+      if (onToolResult) {
+        onToolResult(fnName, fnArgs, result);
       }
 
       // Fire post:tool hook

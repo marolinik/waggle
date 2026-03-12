@@ -27,6 +27,7 @@ export const BUILTIN_COMMANDS: SlashCommand[] = [
 export interface ChatInputProps {
   onSubmit: (text: string) => void;
   onSlashCommand?: (command: string, args: string) => void;
+  onFileSelect?: (files: File[]) => void;
   disabled?: boolean;
   placeholder?: string;
 }
@@ -34,6 +35,7 @@ export interface ChatInputProps {
 export function ChatInput({
   onSubmit,
   onSlashCommand,
+  onFileSelect,
   disabled = false,
   placeholder = 'Type a message... (/ for commands)',
 }: ChatInputProps) {
@@ -42,6 +44,7 @@ export function ChatInput({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const commandsRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-focus on mount
   useEffect(() => {
@@ -195,7 +198,47 @@ export function ChatInput({
         </div>
       )}
 
+      {/* Hidden file input for the attachment button */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const files = e.target.files;
+          if (files && files.length > 0 && onFileSelect) {
+            onFileSelect(Array.from(files));
+          }
+          // Reset so the same file can be selected again
+          e.target.value = '';
+        }}
+      />
+
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+        {/* Attachment button */}
+        {onFileSelect && (
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={disabled}
+            title="Attach files"
+            className="chat-input__attach-btn"
+            style={{
+              borderRadius: 8,
+              border: '1px solid var(--border, #444)',
+              background: 'var(--bg-input, #1a1a2e)',
+              color: disabled ? 'var(--text-dim, #555)' : 'var(--text-muted, #888)',
+              padding: '10px 12px',
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              fontSize: 18,
+              lineHeight: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            +
+          </button>
+        )}
         <textarea
           ref={textareaRef}
           value={text}

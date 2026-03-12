@@ -85,16 +85,16 @@ describe('POST /api/ingest', () => {
 
   // ── PDF processing ──────────────────────────────────────────────
 
-  it('processes a PDF and returns placeholder summary', async () => {
+  it('processes a PDF and returns document type', async () => {
+    // Fake PDF data won't parse — should gracefully handle extraction failure
     const content = Buffer.from('fake-pdf').toString('base64');
     const res = await server.inject({
       method: 'POST', url: '/api/ingest',
       payload: { files: [{ name: 'report.pdf', content }] },
     });
     const body = JSON.parse(res.body);
-    expect(body.files[0].type).toBe('pdf');
-    expect(body.files[0].summary).toContain('pending');
-    expect(body.files[0].content).toBeUndefined();
+    expect(body.files[0].type).toBe('document');
+    expect(body.files[0].summary).toContain('PDF');
   });
 
   // ── CSV processing ──────────────────────────────────────────────
@@ -140,13 +140,25 @@ describe('POST /api/ingest', () => {
     expect(body.files[0].content).toContain('const x');
   });
 
+  // ── Archive files ───────────────────────────────────────────────
+
+  it('processes a ZIP and returns archive type', async () => {
+    const content = Buffer.from('fake-zip-data').toString('base64');
+    const res = await server.inject({
+      method: 'POST', url: '/api/ingest',
+      payload: { files: [{ name: 'archive.zip', content }] },
+    });
+    const body = JSON.parse(res.body);
+    expect(body.files[0].type).toBe('archive');
+  });
+
   // ── Unsupported files ───────────────────────────────────────────
 
   it('returns unsupported for unknown extensions', async () => {
     const content = Buffer.from('binary').toString('base64');
     const res = await server.inject({
       method: 'POST', url: '/api/ingest',
-      payload: { files: [{ name: 'archive.zip', content }] },
+      payload: { files: [{ name: 'data.xyz', content }] },
     });
     const body = JSON.parse(res.body);
     expect(body.files[0].type).toBe('unsupported');
@@ -221,6 +233,84 @@ describe('POST /api/ingest', () => {
     });
     const body = JSON.parse(res.body);
     expect(body.files[0].summary).toBe('TXT file — 3 lines');
+  });
+
+  // ── DOCX processing ─────────────────────────────────────────────
+
+  it('processes DOCX and returns document type', async () => {
+    const content = Buffer.from('fake-docx').toString('base64');
+    const res = await server.inject({
+      method: 'POST', url: '/api/ingest',
+      payload: { files: [{ name: 'report.docx', content }] },
+    });
+    const body = JSON.parse(res.body);
+    expect(body.files[0].type).toBe('document');
+    expect(body.files[0].summary).toContain('DOCX');
+  });
+
+  // ── XLSX processing ────────────────────────────────────────────
+
+  it('processes XLSX and returns spreadsheet type', async () => {
+    const content = Buffer.from('fake-xlsx').toString('base64');
+    const res = await server.inject({
+      method: 'POST', url: '/api/ingest',
+      payload: { files: [{ name: 'data.xlsx', content }] },
+    });
+    const body = JSON.parse(res.body);
+    expect(body.files[0].type).toBe('spreadsheet');
+  });
+
+  // ── New text extensions ────────────────────────────────────────
+
+  it('processes HTML files as text', async () => {
+    const html = '<html><body>Hello</body></html>';
+    const content = Buffer.from(html).toString('base64');
+    const res = await server.inject({
+      method: 'POST', url: '/api/ingest',
+      payload: { files: [{ name: 'page.html', content }] },
+    });
+    const body = JSON.parse(res.body);
+    expect(body.files[0].type).toBe('text');
+    expect(body.files[0].content).toContain('<html>');
+  });
+
+  it('processes SQL files as text', async () => {
+    const sql = 'SELECT * FROM users WHERE id = 1;';
+    const content = Buffer.from(sql).toString('base64');
+    const res = await server.inject({
+      method: 'POST', url: '/api/ingest',
+      payload: { files: [{ name: 'query.sql', content }] },
+    });
+    const body = JSON.parse(res.body);
+    expect(body.files[0].type).toBe('text');
+    expect(body.files[0].content).toContain('SELECT');
+  });
+
+  // ── SVG as image ──────────────────────────────────────────────
+
+  it('processes SVG as image', async () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg"><circle r="10"/></svg>';
+    const content = Buffer.from(svg).toString('base64');
+    const res = await server.inject({
+      method: 'POST', url: '/api/ingest',
+      payload: { files: [{ name: 'icon.svg', content }] },
+    });
+    const body = JSON.parse(res.body);
+    expect(body.files[0].type).toBe('image');
+    expect(body.files[0].content).toMatch(/^data:image\/svg\+xml;base64,/);
+  });
+
+  // ── PPTX processing ───────────────────────────────────────────
+
+  it('processes PPTX and returns document type', async () => {
+    const content = Buffer.from('fake-pptx').toString('base64');
+    const res = await server.inject({
+      method: 'POST', url: '/api/ingest',
+      payload: { files: [{ name: 'slides.pptx', content }] },
+    });
+    const body = JSON.parse(res.body);
+    expect(body.files[0].type).toBe('document');
+    expect(body.files[0].summary).toContain('PPTX');
   });
 
   // ── workspaceId ─────────────────────────────────────────────────

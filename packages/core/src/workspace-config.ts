@@ -11,6 +11,8 @@ export interface WorkspaceConfig {
   tools?: string[];
   skills?: string[];
   team?: string | null;
+  /** Filesystem directory where agent operates and generates files. */
+  directory?: string;
   created: string; // ISO 8601
 }
 
@@ -23,6 +25,8 @@ export interface CreateWorkspaceOptions {
   tools?: string[];
   skills?: string[];
   team?: string | null;
+  /** Filesystem directory where agent operates and generates files. */
+  directory?: string;
 }
 
 interface WorkspacesMeta {
@@ -72,6 +76,7 @@ export class WorkspaceManager {
       ...(options.tools !== undefined && { tools: options.tools }),
       ...(options.skills !== undefined && { skills: options.skills }),
       ...(options.team !== undefined && { team: options.team }),
+      ...(options.directory !== undefined && { directory: options.directory }),
       created: new Date().toISOString(),
     };
 

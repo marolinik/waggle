@@ -1,10 +1,10 @@
 /**
  * ApprovalGate — inline approval dialog for external mutation tools.
  *
- * Displayed when a tool requires user approval before execution.
+ * C1: Shows human-readable descriptions instead of raw JSON.
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import type { ToolUseEvent } from '../../services/types.js';
 
 export interface ApprovalGateProps {
@@ -13,7 +13,53 @@ export interface ApprovalGateProps {
   onDeny: (reason?: string) => void;
 }
 
+/** C1: Generate a human-readable description of what the tool wants to do */
+function describeApproval(name: string, input: Record<string, unknown>): { title: string; detail: string } {
+  switch (name) {
+    case 'bash':
+      return {
+        title: 'Run a shell command',
+        detail: String(input.command ?? ''),
+      };
+    case 'write_file':
+      return {
+        title: `Create/overwrite file: ${input.path ?? ''}`,
+        detail: String(input.content ?? '').slice(0, 200) + (String(input.content ?? '').length > 200 ? '...' : ''),
+      };
+    case 'edit_file':
+      return {
+        title: `Edit file: ${input.path ?? ''}`,
+        detail: `Replace: "${String(input.old_string ?? '').slice(0, 80)}" → "${String(input.new_string ?? '').slice(0, 80)}"`,
+      };
+    case 'git_commit':
+      return {
+        title: 'Create a git commit',
+        detail: String(input.message ?? ''),
+      };
+    case 'generate_docx':
+      return {
+        title: `Generate document: ${input.path ?? ''}`,
+        detail: `Title: ${input.title ?? 'untitled'}`,
+      };
+    case 'delete_skill':
+      return {
+        title: `Delete skill: ${input.name ?? ''}`,
+        detail: 'This will permanently remove the skill file.',
+      };
+    default:
+      return {
+        title: `Execute: ${name.replace(/_/g, ' ')}`,
+        detail: Object.entries(input).map(([k, v]) =>
+          `${k}: ${typeof v === 'string' ? v.slice(0, 100) : JSON.stringify(v)}`
+        ).join('\n'),
+      };
+  }
+}
+
 export function ApprovalGate({ tool, onApprove, onDeny }: ApprovalGateProps) {
+  const [showRaw, setShowRaw] = useState(false);
+  const { title, detail } = describeApproval(tool.name, tool.input);
+
   return (
     <div className="approval-gate rounded-lg border border-yellow-600 bg-yellow-950 p-3">
       {/* Header */}
@@ -24,17 +70,27 @@ export function ApprovalGate({ tool, onApprove, onDeny }: ApprovalGateProps) {
         </span>
       </div>
 
-      {/* Tool info */}
+      {/* Tool info — human-readable */}
       <div className="approval-gate__info mb-3">
-        <div className="text-sm text-gray-300">
-          <span className="font-mono font-medium text-yellow-300">
-            {tool.name}
-          </span>{' '}
-          wants to execute:
+        <div className="text-sm font-medium text-gray-200 mb-1">
+          {title}
         </div>
-        <pre className="mt-1 overflow-x-auto rounded bg-gray-900 px-3 py-2 text-xs text-gray-300">
-          {JSON.stringify(tool.input, null, 2)}
+        <pre className="mt-1 overflow-x-auto rounded bg-gray-900 px-3 py-2 text-xs text-gray-300 whitespace-pre-wrap">
+          {detail}
         </pre>
+        {/* Toggle for raw JSON */}
+        <button
+          onClick={() => setShowRaw(!showRaw)}
+          className="mt-1 text-[10px] text-gray-500 hover:text-gray-300"
+          type="button"
+        >
+          {showRaw ? 'Hide raw data' : 'Show raw data'}
+        </button>
+        {showRaw && (
+          <pre className="mt-1 overflow-x-auto rounded bg-gray-950 px-3 py-2 text-[10px] text-gray-500">
+            {JSON.stringify(tool.input, null, 2)}
+          </pre>
+        )}
       </div>
 
       {/* Actions */}

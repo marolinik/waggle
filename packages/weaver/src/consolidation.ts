@@ -199,6 +199,30 @@ export class MemoryWeaver {
     return created;
   }
 
+  /**
+   * Distill session content into a durable memory frame.
+   * Takes pre-extracted session summary and key points, creates an important frame
+   * that persists across consolidation cycles.
+   */
+  distillSessionContent(sessionDate: string, summary: string, keyPoints: string[]): MemoryFrame {
+    const parts = [`Session (${sessionDate}): ${summary}`];
+    if (keyPoints.length > 0) {
+      parts.push('Key points: ' + keyPoints.join('; '));
+    }
+    const content = parts.join('. ');
+
+    // Create a session for the distilled content (or reuse an active one)
+    const active = this.sessions.getActive();
+    let gopId: string;
+    if (active.length > 0) {
+      gopId = active[0].gop_id;
+    } else {
+      gopId = this.sessions.create('distilled').gop_id;
+    }
+
+    return this.frames.createIFrame(gopId, content, 'important');
+  }
+
   consolidateProject(projectId: string): MemoryFrame | null {
     const projectSessions = this.sessions.getByProject(projectId);
     const closedSessions = projectSessions.filter(s => s.status === 'closed' || s.status === 'archived');

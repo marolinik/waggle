@@ -1,0 +1,249 @@
+/**
+ * Skill discovery, installation, and management tools for the agent.
+ *
+ * These tools let the agent dynamically discover capabilities it needs,
+ * install skills from the local filesystem or by creating them on the fly,
+ * and manage the active skill set — closing the gap to Claude Code's ecosystem.
+ */
+
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import type { ToolDefinition } from './tools.js';
+
+export interface SkillToolsDeps {
+  /** Path to ~/.waggle directory */
+  waggleHome: string;
+  /** Callback to reload skills into agent state after changes */
+  onSkillsChanged?: () => void;
+}
+
+export function createSkillTools(deps: SkillToolsDeps): ToolDefinition[] {
+  const { waggleHome, onSkillsChanged } = deps;
+  const skillsDir = path.join(waggleHome, 'skills');
+  const pluginsDir = path.join(waggleHome, 'plugins');
+
+  // Ensure directories exist
+  if (!fs.existsSync(skillsDir)) fs.mkdirSync(skillsDir, { recursive: true });
+  if (!fs.existsSync(pluginsDir)) fs.mkdirSync(pluginsDir, { recursive: true });
+
+  return [
+    // 1. list_skills — Show all installed skills and plugins
+    {
+      name: 'list_skills',
+      description: 'List all installed skills and plugins. Skills extend your capabilities. Use this to check what you already have before searching for new ones.',
+      parameters: {
+        type: 'object',
+        properties: {
+          verbose: { type: 'boolean', description: 'Show full skill content (default: false, shows preview only)' },
+        },
+      },
+      execute: async (args) => {
+        const verbose = args.verbose as boolean ?? false;
+
+        // List skills
+        const skillFiles = fs.existsSync(skillsDir)
+          ? fs.readdirSync(skillsDir).filter(f => f.endsWith('.md'))
+          : [];
+
+        const skills = skillFiles.map(f => {
+          const name = f.replace(/\.md$/, '');
+          const content = fs.readFileSync(path.join(skillsDir, f), 'utf-8').trim();
+          return {
+            name,
+            type: 'skill' as const,
+            preview: verbose ? content : content.slice(0, 150) + (content.length > 150 ? '...' : ''),
+            size: content.length,
+          };
+        });
+
+        // List plugins
+        const pluginEntries = fs.existsSync(pluginsDir)
+          ? fs.readdirSync(pluginsDir, { withFileTypes: true }).filter(d => d.isDirectory())
+          : [];
+
+        const plugins = pluginEntries.map(d => {
+          const manifestPath = path.join(pluginsDir, d.name, 'manifest.json');
+          let manifest: Record<string, unknown> = {};
+          if (fs.existsSync(manifestPath)) {
+            try { manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')); } catch { /* ignore */ }
+          }
+          return {
+            name: d.name,
+            type: 'plugin' as const,
+            description: (manifest.description as string) ?? 'No description',
+            version: (manifest.version as string) ?? 'unknown',
+          };
+        });
+
+        if (skills.length === 0 && plugins.length === 0) {
+          return 'No skills or plugins installed.\n\nYou can create a new skill with create_skill or search for existing ones with search_skills.';
+        }
+
+        let output = '';
+        if (skills.length > 0) {
+          output += `## Installed Skills (${skills.length})\n\n`;
+          for (const s of skills) {
+            output += `- **${s.name}** (${s.size} chars)\n  ${s.preview}\n\n`;
+          }
+        }
+        if (plugins.length > 0) {
+          output += `## Installed Plugins (${plugins.length})\n\n`;
+          for (const p of plugins) {
+            output += `- **${p.name}** v${p.version} — ${p.description}\n`;
+          }
+        }
+        return output;
+      },
+    },
+
+    // 2. create_skill — Create a new skill on the fly
+    {
+      name: 'create_skill',
+      description: 'Create a new skill (markdown file) that extends your capabilities. Skills are loaded into your system prompt and persist across sessions. Use this when you need a reusable instruction set for a domain (e.g., code review guidelines, writing style, project conventions).',
+      parameters: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'Skill name (alphanumeric + hyphens, no spaces)' },
+          content: { type: 'string', description: 'Skill content in markdown. Should include clear instructions for how you should behave when this skill applies.' },
+        },
+        required: ['name', 'content'],
+      },
+      execute: async (args) => {
+        const name = args.name as string;
+        const content = args.content as string;
+
+        // Validate name
+        if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
+          return 'Error: Skill name must contain only letters, numbers, hyphens, and underscores.';
+        }
+
+        const filePath = path.join(skillsDir, `${name}.md`);
+        const exists = fs.existsSync(filePath);
+
+        fs.writeFileSync(filePath, content, 'utf-8');
+        onSkillsChanged?.();
+
+        return `${exists ? 'Updated' : 'Created'} skill "${name}" (${content.length} chars).\nLocation: ${filePath}\n\nThe skill is now active and will be included in your system prompt for all future messages.`;
+      },
+    },
+
+    // 3. delete_skill — Remove a skill
+    {
+      name: 'delete_skill',
+      description: 'Delete an installed skill by name.',
+      parameters: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'Name of the skill to delete' },
+        },
+        required: ['name'],
+      },
+      execute: async (args) => {
+        const name = args.name as string;
+        if (name.includes('..') || name.includes('/') || name.includes('\\')) {
+          return 'Error: Invalid skill name.';
+        }
+        const filePath = path.join(skillsDir, `${name}.md`);
+        if (!fs.existsSync(filePath)) {
+          return `Error: Skill "${name}" not found.`;
+        }
+        fs.unlinkSync(filePath);
+        onSkillsChanged?.();
+        return `Deleted skill "${name}".`;
+      },
+    },
+
+    // 4. read_skill — Read full content of a skill
+    {
+      name: 'read_skill',
+      description: 'Read the full content of an installed skill.',
+      parameters: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'Name of the skill to read' },
+        },
+        required: ['name'],
+      },
+      execute: async (args) => {
+        const name = args.name as string;
+        if (name.includes('..') || name.includes('/') || name.includes('\\')) {
+          return 'Error: Invalid skill name.';
+        }
+        const filePath = path.join(skillsDir, `${name}.md`);
+        if (!fs.existsSync(filePath)) {
+          return `Error: Skill "${name}" not found.`;
+        }
+        return fs.readFileSync(filePath, 'utf-8');
+      },
+    },
+
+    // 5. search_skills — Search for skills/tools by description
+    {
+      name: 'search_skills',
+      description: 'Search for skills and tools you might need. Searches installed skills by content/name, and suggests built-in capabilities. Use when the user asks you to do something and you want to check if you have the right tool.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'What capability are you looking for? (e.g., "generate PDF", "code review", "data analysis")' },
+        },
+        required: ['query'],
+      },
+      execute: async (args) => {
+        const query = (args.query as string).toLowerCase();
+
+        // Search installed skills
+        const skillFiles = fs.existsSync(skillsDir)
+          ? fs.readdirSync(skillsDir).filter(f => f.endsWith('.md'))
+          : [];
+
+        const matchingSkills = skillFiles
+          .map(f => {
+            const name = f.replace(/\.md$/, '');
+            const content = fs.readFileSync(path.join(skillsDir, f), 'utf-8');
+            const nameMatch = name.toLowerCase().includes(query);
+            const contentMatch = content.toLowerCase().includes(query);
+            return { name, content, match: nameMatch || contentMatch, nameMatch };
+          })
+          .filter(s => s.match)
+          .map(s => `- **${s.name}** (installed skill) — ${s.content.slice(0, 100)}...`);
+
+        // Built-in capability suggestions based on query keywords
+        const suggestions: string[] = [];
+        const builtins: Array<{ keywords: string[]; desc: string }> = [
+          { keywords: ['document', 'docx', 'word', 'report'], desc: 'generate_docx — Create formatted Word documents from markdown' },
+          { keywords: ['plan', 'planning', 'steps', 'strategy'], desc: 'create_plan — Create structured multi-step plans' },
+          { keywords: ['git', 'commit', 'version', 'branch'], desc: 'git_status/git_diff/git_log/git_commit — Version control tools' },
+          { keywords: ['memory', 'remember', 'recall', 'history'], desc: 'search_memory/save_memory — Persistent memory across sessions' },
+          { keywords: ['web', 'search', 'internet', 'browse', 'fetch'], desc: 'web_search/web_fetch — Search and read web pages' },
+          { keywords: ['file', 'read', 'write', 'edit', 'code'], desc: 'read_file/write_file/edit_file — File system operations' },
+          { keywords: ['bash', 'command', 'terminal', 'shell', 'run'], desc: 'bash — Execute shell commands' },
+          { keywords: ['knowledge', 'graph', 'entity', 'relation'], desc: 'query_knowledge/correct_knowledge — Knowledge graph operations' },
+          { keywords: ['search', 'find', 'grep', 'pattern'], desc: 'search_files/search_content — Find files and search contents' },
+        ];
+
+        for (const b of builtins) {
+          if (b.keywords.some(k => query.includes(k))) {
+            suggestions.push(`- ${b.desc} (built-in tool)`);
+          }
+        }
+
+        let output = '';
+        if (matchingSkills.length > 0) {
+          output += `## Matching Installed Skills\n${matchingSkills.join('\n')}\n\n`;
+        }
+        if (suggestions.length > 0) {
+          output += `## Relevant Built-in Tools\n${suggestions.join('\n')}\n\n`;
+        }
+        if (matchingSkills.length === 0 && suggestions.length === 0) {
+          output += `No installed skills or built-in tools match "${query}".\n\n`;
+          output += '**Suggestions:**\n';
+          output += '- Use `create_skill` to create a custom skill for this domain\n';
+          output += '- Use `web_search` to find instructions or templates online\n';
+          output += '- Use `bash` to check if relevant CLI tools are installed on the system\n';
+        }
+
+        return output;
+      },
+    },
+  ];
+}

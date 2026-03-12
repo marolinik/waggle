@@ -172,13 +172,13 @@ describe('Agent Loop with Custom Tools', () => {
       const prompt = orchestrator.buildSystemPrompt();
       expect(prompt).toContain('Waggle');
       expect(prompt).toContain('Check emails');
-      expect(prompt).toContain('search_memory');
-      expect(prompt).toContain('save_memory');
+      // Self-awareness section present
+      expect(prompt).toContain('# Self-Awareness');
     });
 
     it('builds prompt without identity', () => {
       const prompt = orchestrator.buildSystemPrompt();
-      expect(prompt).toContain('Memory Tools');
+      expect(prompt).toContain('# Self-Awareness');
       expect(prompt).not.toContain('# Identity');
     });
   });
@@ -186,6 +186,59 @@ describe('Agent Loop with Custom Tools', () => {
   describe('Unknown tool handling', () => {
     it('throws for unknown tool name', async () => {
       await expect(orchestrator.executeTool('nonexistent', {})).rejects.toThrow('Unknown tool: nonexistent');
+    });
+  });
+
+  describe('E4: Auto-save style detection', () => {
+    it('saves explicit user preferences to personal mind', async () => {
+      const saved = await orchestrator.autoSaveFromExchange(
+        'I prefer bullet-point summaries for everything',
+        'Got it! I will use bullet points going forward.'
+      );
+      expect(saved.length).toBeGreaterThan(0);
+      expect(saved[0]).toContain('User preference');
+
+      // Verify it was saved in memory
+      const searchResult = await orchestrator.executeTool('search_memory', { query: 'preference' });
+      expect(searchResult).toContain('bullet');
+    });
+
+    it('detects implicit style signals from user messages', async () => {
+      // Use phrasing that triggers implicit style detection, not explicit preference patterns
+      const saved = await orchestrator.autoSaveFromExchange(
+        'Can you present this data in a table format with columns for each category?',
+        'Here is the table: ...'
+      );
+      expect(saved.length).toBeGreaterThan(0);
+      expect(saved.some(s => s.includes('Style note'))).toBe(true);
+    });
+
+    it('does not duplicate style notes on repeated detection', async () => {
+      await orchestrator.autoSaveFromExchange(
+        'Just show me the code examples please',
+        'Here is the code: ...'
+      );
+      const saved2 = await orchestrator.autoSaveFromExchange(
+        'Can you just show me the code for the other function too?',
+        'Here is the other code: ...'
+      );
+      // Second save should not duplicate the style note
+      const styleNotes = saved2.filter(s => s.includes('Style note'));
+      expect(styleNotes.length).toBe(0);
+    });
+  });
+
+  describe('E4: Personal preferences in context', () => {
+    it('includes personal preferences in loadRecentContext when workspace is active', async () => {
+      // Save a preference first
+      await orchestrator.autoSaveFromExchange(
+        'I always want concise answers from now on',
+        'Understood, I will keep things concise.'
+      );
+
+      // Without workspace, loadRecentContext just shows personal frames
+      const ctx = orchestrator.loadRecentContext();
+      expect(ctx).toContain('preference');
     });
   });
 });

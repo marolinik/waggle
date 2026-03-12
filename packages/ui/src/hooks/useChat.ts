@@ -6,12 +6,16 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type { WaggleService, Message, ToolUseEvent, StreamEvent } from '../services/types.js';
+import type { WaggleService, Message, ToolUseEvent, StreamEvent, ToolStatus } from '../services/types.js';
 
 export interface UseChatOptions {
   service: WaggleService;
   workspace: string;
   session?: string;
+  /** Filesystem directory for agent file operations */
+  workspacePath?: string;
+  /** Called when agent creates/writes a file */
+  onFileCreated?: (filePath: string, action: 'write' | 'edit' | 'generate') => void;
 }
 
 export interface UseChatReturn {
@@ -56,23 +60,42 @@ export function processStreamEvent(
       if (existing) {
         // Update input if the tool event has more detail
         if (event.input) existing.input = event.input;
+        existing.status = 'running';
       } else {
         const toolEvent: ToolUseEvent = {
           name: toolName,
           input: event.input ?? {},
           requiresApproval: false,
+          status: 'running',
         };
         result.tools.push(toolEvent);
       }
       break;
     }
     case 'tool_result': {
-      // Update the last tool with its result
-      const lastTool = result.tools[result.tools.length - 1];
-      if (lastTool) {
-        lastTool.result = typeof event.result === 'string'
+      // Find the matching tool by name (last one with that name still running)
+      const targetName = event.name;
+      let targetTool: ToolUseEvent | undefined;
+      if (targetName) {
+        for (let i = result.tools.length - 1; i >= 0; i--) {
+          if (result.tools[i].name === targetName && result.tools[i].status === 'running') {
+            targetTool = result.tools[i];
+            break;
+          }
+        }
+      }
+      // Fallback to last tool
+      if (!targetTool) {
+        targetTool = result.tools[result.tools.length - 1];
+      }
+      if (targetTool) {
+        targetTool.result = typeof event.result === 'string'
           ? event.result
           : JSON.stringify(event.result);
+        if (event.duration !== undefined) {
+          targetTool.duration = event.duration;
+        }
+        targetTool.status = event.isError ? 'error' : 'done';
       }
       break;
     }
@@ -98,14 +121,19 @@ export function processStreamEvent(
           input: event.input ?? {},
           requiresApproval: true,
           requestId: event.requestId,
+          status: 'pending_approval',
         };
         result.tools.push(toolToMark);
       } else {
         toolToMark.requiresApproval = true;
         toolToMark.requestId = event.requestId;
+        toolToMark.status = 'pending_approval';
       }
       break;
     }
+    case 'file_created':
+      // Handled externally via onFileCreated callback — nothing to accumulate
+      break;
     case 'error':
       result.content += `\n[Error: ${event.content ?? 'Unknown error'}]`;
       break;
@@ -114,16 +142,33 @@ export function processStreamEvent(
   return result;
 }
 
-export function useChat({ service, workspace, session }: UseChatOptions): UseChatReturn {
+export function useChat({ service, workspace, session, workspacePath, onFileCreated }: UseChatOptions): UseChatReturn {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const abortRef = useRef(false);
 
-  // Clear messages when session or workspace changes
+  // Load history when session or workspace changes
   useEffect(() => {
-    setMessages([]);
     abortRef.current = true; // abort any in-flight stream
-  }, [session, workspace]);
+    setMessages([]); // clear immediately for fast UI response
+
+    // Then load saved history from server
+    if (session || workspace) {
+      service.getHistory(workspace, session).then((data) => {
+        const history = (data as any)?.messages;
+        if (Array.isArray(history) && history.length > 0) {
+          setMessages(history.map((m: any) => ({
+            id: m.id ?? `hist-${Math.random().toString(36).slice(2)}`,
+            role: m.role,
+            content: m.content,
+            timestamp: m.timestamp ?? new Date().toISOString(),
+          })));
+        }
+      }).catch(() => {
+        // History load failed — start fresh
+      });
+    }
+  }, [session, workspace, service]);
 
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || isLoading) return;
@@ -144,10 +189,15 @@ export function useChat({ service, workspace, session }: UseChatOptions): UseCha
     let accumulated = { content: '', tools: [] as ToolUseEvent[], steps: [] as string[] };
 
     try {
-      const stream = service.sendMessage(workspace, text, session);
+      const stream = service.sendMessage(workspace, text, session, undefined, workspacePath);
 
       for await (const event of stream) {
         if (abortRef.current) break;
+
+        // Notify on file creation events
+        if (event.type === 'file_created' && event.filePath && onFileCreated) {
+          onFileCreated(event.filePath, event.fileAction ?? 'write');
+        }
 
         accumulated = processStreamEvent(event, accumulated);
 
@@ -201,7 +251,7 @@ export function useChat({ service, workspace, session }: UseChatOptions): UseCha
     } finally {
       setIsLoading(false);
     }
-  }, [service, workspace, session, isLoading]);
+  }, [service, workspace, session, workspacePath, isLoading, onFileCreated]);
 
   const clearMessages = useCallback(() => {
     setMessages([]);

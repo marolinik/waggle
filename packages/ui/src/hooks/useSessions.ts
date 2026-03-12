@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import type { WaggleService, Session } from '../services/types.js';
+import type { WaggleService, Session, SessionSearchResult } from '../services/types.js';
 import { groupSessionsByTime, sortSessions } from '../components/sessions/utils.js';
 
 export interface UseSessionsOptions {
@@ -25,6 +25,16 @@ export interface UseSessionsReturn {
   deleteSession: (id: string) => Promise<void>;
   renameSession: (id: string, title: string) => Promise<void>;
   refresh: () => Promise<void>;
+  searchQuery: string;
+  searchResults: SessionSearchResult[] | null;
+  searchLoading: boolean;
+  searchSessions: (query: string) => Promise<void>;
+  clearSearch: () => void;
+  exportSession: (id: string) => Promise<void>;
+}
+
+function lastSessionKey(wsId: string): string {
+  return `waggle:lastSession:${wsId}`;
 }
 
 export function useSessions({ service, workspaceId }: UseSessionsOptions): UseSessionsReturn {
@@ -32,6 +42,9 @@ export function useSessions({ service, workspaceId }: UseSessionsOptions): UseSe
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SessionSearchResult[] | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   const loadSessions = useCallback(async () => {
     setLoading(true);
@@ -40,8 +53,21 @@ export function useSessions({ service, workspaceId }: UseSessionsOptions): UseSe
       const list = await service.listSessions(workspaceId);
       const sorted = sortSessions(list);
       setSessions(sorted);
-      // Auto-select first session if none active
-      setActiveSessionId((prev) => (prev === null && sorted.length > 0 ? sorted[0].id : prev));
+      // Restore last session from localStorage, fall back to first
+      if (sorted.length > 0) {
+        let restoredId: string | null = null;
+        try {
+          const stored = localStorage.getItem(lastSessionKey(workspaceId));
+          if (stored && sorted.some((s) => s.id === stored)) {
+            restoredId = stored;
+          }
+        } catch {
+          // localStorage unavailable — ignore
+        }
+        setActiveSessionId(restoredId ?? sorted[0].id);
+      } else {
+        setActiveSessionId(null);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load sessions');
     } finally {
@@ -52,7 +78,6 @@ export function useSessions({ service, workspaceId }: UseSessionsOptions): UseSe
   // Load sessions on mount and when workspace changes
   useEffect(() => {
     let cancelled = false;
-    setActiveSessionId(null);
     loadSessions().then(() => {
       if (cancelled) return;
     });
@@ -63,12 +88,22 @@ export function useSessions({ service, workspaceId }: UseSessionsOptions): UseSe
 
   const selectSession = useCallback((id: string) => {
     setActiveSessionId(id);
-  }, []);
+    try {
+      localStorage.setItem(lastSessionKey(workspaceId), id);
+    } catch {
+      // localStorage unavailable — ignore
+    }
+  }, [workspaceId]);
 
   const createSession = useCallback(async (title?: string): Promise<Session> => {
     const session = await service.createSession(workspaceId, title);
     setSessions((prev) => sortSessions([session, ...prev]));
     setActiveSessionId(session.id);
+    try {
+      localStorage.setItem(lastSessionKey(workspaceId), session.id);
+    } catch {
+      // localStorage unavailable — ignore
+    }
     return session;
   }, [service, workspaceId]);
 
@@ -91,6 +126,45 @@ export function useSessions({ service, workspaceId }: UseSessionsOptions): UseSe
     await loadSessions();
   }, [loadSessions]);
 
+  const doSearch = useCallback(async (query: string) => {
+    setSearchQuery(query);
+    if (!query || query.length < 2) {
+      setSearchResults(null);
+      return;
+    }
+    setSearchLoading(true);
+    try {
+      const results = await service.searchSessions(workspaceId, query);
+      setSearchResults(results);
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  }, [service, workspaceId]);
+
+  const clearSearch = useCallback(() => {
+    setSearchQuery('');
+    setSearchResults(null);
+  }, []);
+
+  const exportSession = useCallback(async (id: string) => {
+    try {
+      const markdown = await service.exportSession(workspaceId, id);
+      const session = sessions.find(s => s.id === id);
+      const filename = (session?.title ?? id).replace(/[^a-zA-Z0-9-_ ]/g, '').slice(0, 50) + '.md';
+      const blob = new Blob([markdown], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // Silent fail — could add error state later
+    }
+  }, [service, workspaceId, sessions]);
+
   return {
     sessions,
     grouped,
@@ -102,5 +176,11 @@ export function useSessions({ service, workspaceId }: UseSessionsOptions): UseSe
     deleteSession,
     renameSession,
     refresh,
+    searchQuery,
+    searchResults,
+    searchLoading,
+    searchSessions: doSearch,
+    clearSearch,
+    exportSession,
   };
 }

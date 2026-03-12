@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import type { FastifyPluginAsync } from 'fastify';
 
 /**
@@ -55,11 +57,50 @@ export const agentRoutes: FastifyPluginAsync = async (server) => {
   });
 
   // GET /api/agent/history — get conversation history for a session
+  // Loads from disk (.jsonl files) if not in RAM, ensuring persistence across restarts
   server.get<{
     Querystring: { session?: string; workspace?: string };
   }>('/api/history', async (request) => {
     const sessionId = request.query.session ?? request.query.workspace ?? 'default';
-    const history = server.agentState.sessionHistories.get(sessionId) ?? [];
+    const workspaceId = request.query.workspace ?? 'default';
+
+    // Try in-memory first
+    let history = server.agentState.sessionHistories.get(sessionId);
+
+    // If not in RAM, load from disk
+    if (!history || history.length === 0) {
+      const filePath = path.join(
+        server.localConfig.dataDir, 'workspaces', workspaceId, 'sessions', `${sessionId}.jsonl`
+      );
+      if (fs.existsSync(filePath)) {
+        const content = fs.readFileSync(filePath, 'utf-8').trim();
+        const messages: Array<{ role: string; content: string; timestamp?: string }> = [];
+        for (const line of content.split('\n')) {
+          if (!line.trim()) continue;
+          try {
+            const parsed = JSON.parse(line);
+            if (parsed.type === 'meta') continue;
+            if (parsed.role && parsed.content !== undefined) {
+              messages.push({ role: parsed.role, content: parsed.content, timestamp: parsed.timestamp });
+            }
+          } catch { /* skip */ }
+        }
+        // Cache in RAM for subsequent requests
+        server.agentState.sessionHistories.set(sessionId, messages.map(m => ({ role: m.role, content: m.content })));
+        return {
+          sessionId,
+          messages: messages.map((m, i) => ({
+            id: `hist-${i}`,
+            role: m.role,
+            content: m.content,
+            timestamp: m.timestamp ?? new Date().toISOString(),
+          })),
+          count: messages.length,
+        };
+      }
+      history = [];
+    }
+
     return {
       sessionId,
       messages: history.map((m, i) => ({

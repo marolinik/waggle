@@ -18,31 +18,26 @@ describe('Self-Awareness', () => {
     const result = buildSelfAwareness(caps);
 
     // Header
-    expect(result).toContain('# Self-Awareness (auto-generated');
-    expect(result).toContain('do NOT web search');
+    expect(result).toContain('# Self-Awareness');
 
     // Version, mode, model
-    expect(result).toContain('Version: 0.3.0');
-    expect(result).toContain('Mode: local');
-    expect(result).toContain('Current model: claude-sonnet-4-20250514');
+    expect(result).toContain('v0.3.0');
+    expect(result).toContain('local');
+    expect(result).toContain('claude-sonnet-4-20250514');
 
-    // Tools section
-    expect(result).toContain('## Available Tools');
-    expect(result).toContain('- search_memory: Search saved memories');
-    expect(result).toContain('- save_memory: Save a new memory');
+    // Tools — now summarized, not listed individually
+    expect(result).toContain('2 tools available');
 
-    // Skills section
-    expect(result).toContain('## Installed Skills');
-    expect(result).toContain('- code-review');
-    expect(result).toContain('- summarize');
+    // Skills
+    expect(result).toContain('code-review');
+    expect(result).toContain('summarize');
 
-    // Memory section
-    expect(result).toContain('## Memory');
-    expect(result).toContain('42 memories across 5 sessions, 10 knowledge entities.');
+    // Memory stats
+    expect(result).toContain('42 memories across 5 sessions, 10 knowledge entities');
+    expect(result).toContain('search_memory');
 
     // Footer
-    expect(result).toContain('When asked "what can you do?" or "who are you?"');
-    expect(result).toContain('Do NOT search the web about yourself.');
+    expect(result).toContain('what can you do?');
   });
 
   it('includes skills when present', () => {
@@ -57,11 +52,10 @@ describe('Self-Awareness', () => {
 
     const result = buildSelfAwareness(caps);
 
-    expect(result).toContain('## Installed Skills');
-    expect(result).toContain('- data-analysis');
-    expect(result).toContain('- translation');
-    expect(result).toContain('- code-gen');
-    expect(result).not.toContain('No skills installed.');
+    expect(result).toContain('Active Skills');
+    expect(result).toContain('data-analysis');
+    expect(result).toContain('translation');
+    expect(result).toContain('code-gen');
   });
 
   it('handles empty state gracefully', () => {
@@ -76,8 +70,8 @@ describe('Self-Awareness', () => {
 
     const result = buildSelfAwareness(caps);
 
-    expect(result).toContain('No tools loaded.');
-    expect(result).toContain('No skills installed.');
-    expect(result).toContain('0 memories across 0 sessions, 0 knowledge entities.');
+    expect(result).toContain('0 tools available');
+    expect(result).toContain('empty');
+    expect(result).toContain('fresh start');
   });
 });

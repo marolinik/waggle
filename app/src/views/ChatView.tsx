@@ -1,10 +1,10 @@
 /**
  * ChatView — Composes tab bar, ChatArea, and FileDropZone.
- * Shows a branded empty state when no messages exist.
+ * Shows workspace home with catch-up prompts when no messages exist.
  * Supports slash commands.
  */
 
-import type { Message, DroppedFile, ToolUseEvent } from '@waggle/ui';
+import type { Message, DroppedFile, ToolUseEvent, WorkspaceContext } from '@waggle/ui';
 import { ChatArea, FileDropZone, Tabs } from '@waggle/ui';
 import type { Tab } from '@waggle/ui';
 
@@ -19,8 +19,11 @@ export interface ChatViewProps {
   onSendMessage: (text: string) => void;
   onSlashCommand?: (command: string, args: string) => void;
   onFileDrop: (files: DroppedFile[]) => void;
+  onFileSelect?: (files: File[]) => void;
   onToolApprove?: (tool: ToolUseEvent) => void;
   onToolDeny?: (tool: ToolUseEvent, reason?: string) => void;
+  workspaceContext?: WorkspaceContext | null;
+  onThreadSelect?: (sessionId: string) => void;
 }
 
 export function ChatView({
@@ -34,8 +37,11 @@ export function ChatView({
   onSendMessage,
   onSlashCommand,
   onFileDrop,
+  onFileSelect,
   onToolApprove,
   onToolDeny,
+  workspaceContext,
+  onThreadSelect,
 }: ChatViewProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -55,8 +61,11 @@ export function ChatView({
             isLoading={isLoading}
             onSendMessage={onSendMessage}
             onSlashCommand={onSlashCommand}
+            onFileSelect={onFileSelect}
             onToolApprove={onToolApprove}
             onToolDeny={onToolDeny}
+            workspaceContext={workspaceContext}
+            onThreadSelect={onThreadSelect}
           />
         </FileDropZone>
       </div>

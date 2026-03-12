@@ -191,4 +191,49 @@ describe('Memory Weaver (Consolidation)', () => {
       expect(merged).toBeNull();
     });
   });
+
+  describe('Session distillation', () => {
+    it('creates a durable memory frame from session summary and key points', () => {
+      const frame = weaver.distillSessionContent(
+        '2026-03-10',
+        'Discussed Q2 marketing strategy',
+        ['decided to focus on social media', 'agreed on $50k budget']
+      );
+
+      expect(frame).toBeDefined();
+      expect(frame.frame_type).toBe('I');
+      expect(frame.importance).toBe('important');
+      expect(frame.content).toContain('Session (2026-03-10)');
+      expect(frame.content).toContain('Discussed Q2 marketing strategy');
+      expect(frame.content).toContain('decided to focus on social media');
+      expect(frame.content).toContain('agreed on $50k budget');
+    });
+
+    it('creates a frame even without key points', () => {
+      const frame = weaver.distillSessionContent(
+        '2026-03-11',
+        'Quick check-in about project status',
+        []
+      );
+
+      expect(frame).toBeDefined();
+      expect(frame.content).toContain('Session (2026-03-11)');
+      expect(frame.content).toContain('Quick check-in about project status');
+      expect(frame.content).not.toContain('Key points');
+    });
+
+    it('distilled frames are marked important (survive decay)', () => {
+      const frame = weaver.distillSessionContent(
+        '2026-03-10',
+        'Important strategic discussion',
+        ['decided to pivot to enterprise']
+      );
+
+      // Run decay — important frames should NOT be affected
+      weaver.decayByAge(0, 0); // aggressive decay
+      const afterDecay = frames.getById(frame.id);
+      expect(afterDecay).toBeDefined();
+      expect(afterDecay!.importance).toBe('important');
+    });
+  });
 });

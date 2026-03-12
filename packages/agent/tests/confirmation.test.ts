@@ -37,9 +37,18 @@ describe('ConfirmationGate', () => {
   it('calls promptFn for tools needing confirmation', async () => {
     const promptFn = vi.fn().mockResolvedValue(false);
     const gate = new ConfirmationGate({ promptFn });
-    const result = await gate.confirm('bash', { command: 'ls' });
+    // Use a destructive command that requires confirmation
+    const result = await gate.confirm('bash', { command: 'rm -rf /tmp/foo' });
     expect(result).toBe(false);
-    expect(promptFn).toHaveBeenCalledWith('bash', { command: 'ls' });
+    expect(promptFn).toHaveBeenCalledWith('bash', { command: 'rm -rf /tmp/foo' });
+  });
+
+  it('auto-approves safe bash commands without calling promptFn', async () => {
+    const promptFn = vi.fn().mockResolvedValue(false);
+    const gate = new ConfirmationGate({ promptFn });
+    const result = await gate.confirm('bash', { command: 'ls -la' });
+    expect(result).toBe(true);
+    expect(promptFn).not.toHaveBeenCalled();
   });
 
   it('auto-approves tools that do not need confirmation', async () => {

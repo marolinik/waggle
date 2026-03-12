@@ -27,6 +27,7 @@ describe('getToolStatusColor', () => {
       name: 'read_file',
       input: { path: '/foo' },
       requiresApproval: false,
+      status: 'done',
     };
     expect(getToolStatusColor(tool)).toBe('green');
   });
@@ -37,6 +38,7 @@ describe('getToolStatusColor', () => {
       input: { path: '/foo' },
       requiresApproval: true,
       approved: true,
+      status: 'done',
     };
     expect(getToolStatusColor(tool)).toBe('green');
   });
@@ -46,7 +48,7 @@ describe('getToolStatusColor', () => {
       name: 'bash',
       input: { command: 'rm -rf /' },
       requiresApproval: true,
-      // approved is undefined
+      status: 'pending_approval',
     };
     expect(getToolStatusColor(tool)).toBe('yellow');
   });
@@ -57,17 +59,49 @@ describe('getToolStatusColor', () => {
       input: { command: 'rm -rf /' },
       requiresApproval: true,
       approved: false,
+      status: 'denied',
     };
     expect(getToolStatusColor(tool)).toBe('red');
   });
 
-  it('returns red when approved is false even without requiresApproval', () => {
+  it('returns red for an errored tool', () => {
     const tool: ToolUseEvent = {
       name: 'bash',
       input: {},
       requiresApproval: false,
-      approved: false,
+      status: 'error',
     };
+    expect(getToolStatusColor(tool)).toBe('red');
+  });
+
+  it('returns blue for a running tool', () => {
+    const tool: ToolUseEvent = {
+      name: 'bash',
+      input: {},
+      requiresApproval: false,
+      status: 'running',
+    };
+    expect(getToolStatusColor(tool)).toBe('blue');
+  });
+
+  it('falls back to legacy logic when status is missing', () => {
+    // Legacy: no status field (cast to bypass TS)
+    const tool = {
+      name: 'bash',
+      input: {},
+      requiresApproval: true,
+      // approved is undefined
+    } as ToolUseEvent;
+    expect(getToolStatusColor(tool)).toBe('yellow');
+  });
+
+  it('returns red when approved is false via legacy fallback', () => {
+    const tool = {
+      name: 'bash',
+      input: {},
+      requiresApproval: false,
+      approved: false,
+    } as ToolUseEvent;
     expect(getToolStatusColor(tool)).toBe('red');
   });
 });
@@ -111,7 +145,7 @@ describe('processStreamEvent', () => {
     expect(state2.content).toBe('Hello world');
   });
 
-  it('adds a tool on tool event', () => {
+  it('adds a tool on tool event with running status', () => {
     const event: StreamEvent = {
       type: 'tool',
       name: 'read_file',
@@ -121,18 +155,56 @@ describe('processStreamEvent', () => {
     expect(result.tools).toHaveLength(1);
     expect(result.tools[0].name).toBe('read_file');
     expect(result.tools[0].input).toEqual({ path: '/foo.ts' });
+    expect(result.tools[0].status).toBe('running');
   });
 
-  it('updates last tool with result on tool_result event', () => {
+  it('updates tool with result and done status on tool_result event', () => {
     const withTool = processStreamEvent(
       { type: 'tool', name: 'bash', input: { command: 'ls' } },
       empty,
     );
     const result = processStreamEvent(
-      { type: 'tool_result', result: 'file1.ts\nfile2.ts' },
+      { type: 'tool_result', name: 'bash', result: 'file1.ts\nfile2.ts', duration: 150 },
       withTool,
     );
     expect(result.tools[0].result).toBe('file1.ts\nfile2.ts');
+    expect(result.tools[0].status).toBe('done');
+    expect(result.tools[0].duration).toBe(150);
+  });
+
+  it('sets error status when tool_result has isError flag', () => {
+    const withTool = processStreamEvent(
+      { type: 'tool', name: 'bash', input: { command: 'fail' } },
+      empty,
+    );
+    const result = processStreamEvent(
+      { type: 'tool_result', name: 'bash', result: 'Error: command failed', isError: true },
+      withTool,
+    );
+    expect(result.tools[0].status).toBe('error');
+  });
+
+  it('matches tool_result to correct running tool by name', () => {
+    let state = processStreamEvent(
+      { type: 'tool', name: 'read_file', input: { path: 'a.ts' } },
+      empty,
+    );
+    state = processStreamEvent(
+      { type: 'tool_result', name: 'read_file', result: 'content a', duration: 50 },
+      state,
+    );
+    state = processStreamEvent(
+      { type: 'tool', name: 'read_file', input: { path: 'b.ts' } },
+      state,
+    );
+    state = processStreamEvent(
+      { type: 'tool_result', name: 'read_file', result: 'content b', duration: 75 },
+      state,
+    );
+    expect(state.tools[0].status).toBe('done');
+    expect(state.tools[0].result).toBe('content a');
+    expect(state.tools[1].status).toBe('done');
+    expect(state.tools[1].result).toBe('content b');
   });
 
   it('appends error content on error event', () => {
@@ -147,6 +219,12 @@ describe('processStreamEvent', () => {
     expect(result.content).toBe('existing');
   });
 
+  it('pushes step content to steps array', () => {
+    const event: StreamEvent = { type: 'step', content: 'Searching memory...' };
+    const result = processStreamEvent(event, empty);
+    expect(result.steps).toEqual(['Searching memory...']);
+  });
+
   it('does not modify content for done events', () => {
     const event: StreamEvent = { type: 'done' };
     const result = processStreamEvent(event, { content: 'existing', tools: [], steps: [] });
@@ -158,6 +236,43 @@ describe('processStreamEvent', () => {
     const result = processStreamEvent(event, empty);
     // Should not crash, tools array remains empty
     expect(result.tools).toHaveLength(0);
+  });
+
+  it('sets pending_approval status on approval_required event', () => {
+    const withTool = processStreamEvent(
+      { type: 'tool', name: 'bash', input: { command: 'rm file' } },
+      empty,
+    );
+    const result = processStreamEvent(
+      { type: 'approval_required', toolName: 'bash', requestId: 'req-1' },
+      withTool,
+    );
+    expect(result.tools[0].status).toBe('pending_approval');
+    expect(result.tools[0].requiresApproval).toBe(true);
+    expect(result.tools[0].requestId).toBe('req-1');
+  });
+
+  it('creates tool entry if approval_required arrives before tool event', () => {
+    const result = processStreamEvent(
+      { type: 'approval_required', toolName: 'bash', requestId: 'req-2', input: { command: 'dangerous' } },
+      empty,
+    );
+    expect(result.tools).toHaveLength(1);
+    expect(result.tools[0].name).toBe('bash');
+    expect(result.tools[0].status).toBe('pending_approval');
+  });
+
+  it('falls back to last tool when tool_result has no name', () => {
+    const withTool = processStreamEvent(
+      { type: 'tool', name: 'bash', input: { command: 'ls' } },
+      empty,
+    );
+    const result = processStreamEvent(
+      { type: 'tool_result', result: 'output' },
+      withTool,
+    );
+    expect(result.tools[0].result).toBe('output');
+    expect(result.tools[0].status).toBe('done');
   });
 });
 

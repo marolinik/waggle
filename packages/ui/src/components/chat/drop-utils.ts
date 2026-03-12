@@ -7,7 +7,7 @@
 
 // ── Types ───────────────────────────────────────────────────────────
 
-export type FileCategory = 'image' | 'pdf' | 'csv' | 'text' | 'unsupported';
+export type FileCategory = 'image' | 'document' | 'spreadsheet' | 'csv' | 'text' | 'archive' | 'unsupported';
 
 export interface DroppedFile {
   name: string;
@@ -15,17 +15,35 @@ export interface DroppedFile {
   size: number;
   extension: string;
   category: FileCategory;
+  /** Base64-encoded file content (set when FileDropZone reads the file). */
+  content?: string;
 }
 
 // ── Constants ───────────────────────────────────────────────────────
 
 /** Mapping from file extension → category. */
 export const SUPPORTED_EXTENSIONS: Record<string, FileCategory> = {
+  // Images
   png: 'image', jpg: 'image', jpeg: 'image', gif: 'image', webp: 'image',
-  pdf: 'pdf',
+  svg: 'image', bmp: 'image', ico: 'image', tiff: 'image', tif: 'image',
+  // Documents (text extracted server-side)
+  pdf: 'document', docx: 'document', pptx: 'document',
+  // Spreadsheets
+  xlsx: 'spreadsheet', xls: 'spreadsheet',
   csv: 'csv',
+  // Text / Code / Config
   md: 'text', txt: 'text', json: 'text', xml: 'text', yaml: 'text', yml: 'text',
-  ts: 'text', js: 'text', py: 'text', rs: 'text', go: 'text',
+  html: 'text', htm: 'text', css: 'text', scss: 'text', less: 'text',
+  ts: 'text', js: 'text', jsx: 'text', tsx: 'text',
+  py: 'text', rs: 'text', go: 'text', java: 'text',
+  c: 'text', cpp: 'text', h: 'text', hpp: 'text',
+  rb: 'text', php: 'text', sh: 'text', bat: 'text', ps1: 'text',
+  sql: 'text', r: 'text', swift: 'text', kt: 'text', scala: 'text',
+  lua: 'text', pl: 'text', dart: 'text',
+  toml: 'text', ini: 'text', cfg: 'text', conf: 'text', env: 'text',
+  log: 'text',
+  // Archives
+  zip: 'archive',
 };
 
 /** Maximum allowed file size in bytes (10 MB). */
@@ -67,9 +85,11 @@ export function formatDropSummary(files: DroppedFile[]): string {
   const counts: Record<string, number> = {};
   for (const f of files) {
     const label = f.category === 'image' ? 'image'
-      : f.category === 'pdf' ? 'PDF'
+      : f.category === 'document' ? 'document'
+      : f.category === 'spreadsheet' ? 'spreadsheet'
       : f.category === 'csv' ? 'CSV'
       : f.category === 'text' ? 'text file'
+      : f.category === 'archive' ? 'archive'
       : 'unsupported file';
     counts[label] = (counts[label] ?? 0) + 1;
   }

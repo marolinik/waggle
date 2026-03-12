@@ -2,18 +2,33 @@
  * FileDropZone — visual overlay when files are dragged over the chat input.
  *
  * Wraps children and activates a translucent drop indicator on dragover.
- * Calls `onDrop` with categorized DroppedFile[] on drop.
+ * Reads file contents and calls `onDrop` with categorized DroppedFile[] (including base64 content).
  */
 
 import React, { useState, useCallback, useRef } from 'react';
 import { categorizeFile, type DroppedFile } from './drop-utils.js';
 
 export interface FileDropZoneProps {
-  /** Called with categorized files when user drops files. */
+  /** Called with categorized files (including base64 content) when user drops files. */
   onDrop: (files: DroppedFile[]) => void;
   /** Disable the drop zone (e.g. while agent is thinking). */
   disabled?: boolean;
   children?: React.ReactNode;
+}
+
+/** Read a File as base64 (without the data: prefix). */
+function readAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      // Strip data:...;base64, prefix
+      const base64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
+      resolve(base64);
+    };
+    reader.onerror = () => reject(new Error(`Failed to read ${file.name}`));
+    reader.readAsDataURL(file);
+  });
 }
 
 export const FileDropZone: React.FC<FileDropZoneProps> = ({ onDrop, disabled, children }) => {
@@ -48,7 +63,7 @@ export const FileDropZone: React.FC<FileDropZoneProps> = ({ onDrop, disabled, ch
   }, []);
 
   const handleDrop = useCallback(
-    (e: React.DragEvent) => {
+    async (e: React.DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
       setDragActive(false);
@@ -61,7 +76,13 @@ export const FileDropZone: React.FC<FileDropZoneProps> = ({ onDrop, disabled, ch
       const dropped: DroppedFile[] = [];
       for (let i = 0; i < fileList.length; i++) {
         const f = fileList[i];
-        dropped.push(categorizeFile(f.name, f.size));
+        const info = categorizeFile(f.name, f.size);
+        try {
+          const base64 = await readAsBase64(f);
+          dropped.push({ ...info, content: base64 });
+        } catch {
+          dropped.push(info);
+        }
       }
       onDrop(dropped);
     },
