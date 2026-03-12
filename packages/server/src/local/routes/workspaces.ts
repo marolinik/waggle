@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import type { FastifyPluginAsync } from 'fastify';
 import { MindDB } from '@waggle/core';
@@ -84,6 +85,22 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
       name, group, icon, model, directory,
       teamId, teamServerUrl, teamRole, teamUserId,
     });
+
+    // Auto-install starter skills on first workspace creation
+    try {
+      const waggleHome = path.join(os.homedir(), '.waggle');
+      const skillsDir = path.join(waggleHome, 'skills');
+      const existingSkills = fs.existsSync(skillsDir)
+        ? fs.readdirSync(skillsDir).filter(f => f.endsWith('.md'))
+        : [];
+      if (existingSkills.length < 5) {
+        const { installStarterSkills } = await import('@waggle/sdk');
+        installStarterSkills(skillsDir);
+      }
+    } catch {
+      // Non-blocking — starter skill installation failure shouldn't block workspace creation
+    }
+
     return reply.status(201).send(ws);
   });
 

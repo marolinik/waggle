@@ -65,6 +65,27 @@ function loadSessionMessages(
 
 export type AgentRunner = (config: AgentLoopConfig) => Promise<AgentResponse>;
 
+/**
+ * Build the skill-awareness section of the system prompt.
+ * Exported for testability.
+ */
+export function buildSkillPromptSection(skills: Array<{ name: string; content: string }>): string {
+  if (skills.length === 0) return '';
+  let section = '\n\n# Active Skills\n\n';
+  section += 'You have specialized skills loaded. **When a user request matches a loaded skill, follow that skill\'s instructions** instead of generic behavior. Skills represent curated, high-quality workflows.\n\n';
+  section += '## Skill-Aware Routing\n';
+  section += 'Before responding to any substantial user request:\n';
+  section += '1. Check if any loaded skill matches the request (catch-up → catch-up skill, draft → draft-memo skill, etc.)\n';
+  section += '2. If a skill matches, follow its structured workflow — it produces better output than ad-hoc responses\n';
+  section += '3. If no skill matches but one could help, mention it: "I have a [skill-name] skill that could help with this"\n';
+  section += '4. Use suggest_skill to find relevant skills when unsure\n\n';
+  section += `## Loaded Skills (${skills.length})\n`;
+  for (const skill of skills) {
+    section += `\n### ${skill.name}\n${skill.content}\n`;
+  }
+  return section;
+}
+
 /** Generate a human-readable description of what a tool is doing */
 function describeToolUse(name: string, input: Record<string, unknown>): string {
   switch (name) {
@@ -391,6 +412,7 @@ Tools:
 - delete_skill: Remove an installed skill.
 - read_skill: Read the full content of a skill.
 - search_skills: Search for capabilities — checks installed skills and suggests built-in tools.
+- suggest_skill: Get contextual skill recommendations based on what the user is asking. Use this to discover which loaded skills can help.
 
 When the user asks you to do something and you're unsure if you have the right capability:
 1. Use search_skills to check what's available.
@@ -407,13 +429,8 @@ When the user asks you to do something and you're unsure if you have the right c
 ## Planning (structured multi-step work)
 - create_plan, add_plan_step, execute_step, show_plan`;
 
-    // Append loaded skills
-    if (skills.length > 0) {
-      prompt += '\n\n# Loaded Skills\n';
-      for (const skill of skills) {
-        prompt += `\n## Skill: ${skill.name}\n${skill.content}\n`;
-      }
-    }
+    // Append loaded skills with active integration instructions
+    prompt += buildSkillPromptSection(skills);
 
     // C3: Cache the built prompt
     systemPromptCache.set(cacheKey, { prompt, workspace: workspacePath, skillCount: skills.length });
