@@ -105,7 +105,7 @@ export class CapabilityRouter {
         routes.push({
           source: 'mcp',
           name: server,
-          confidence: 0.5,
+          confidence: 0.45,
           description: `MCP server "${server}" may provide this capability`,
           available: true,
         });

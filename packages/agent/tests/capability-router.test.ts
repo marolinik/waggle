@@ -79,7 +79,7 @@ describe('CapabilityRouter', () => {
     expect(routes[0]).toMatchObject({
       source: 'mcp',
       name: 'github-mcp',
-      confidence: 0.5,
+      confidence: 0.45,
     });
   });
 
@@ -129,7 +129,7 @@ describe('CapabilityRouter', () => {
     }));
     const routes = router.resolve('research');
     const sources = routes.map(r => r.source);
-    // Native partial match (0.8) > skill name match (0.7) > plugin (0.6) > mcp (0.5) > subagent (0.4)
+    // Native partial match (0.8) > skill name match (0.7) > plugin (0.6) > mcp (0.45) > subagent (0.4)
     expect(sources).toEqual(['native', 'skill', 'plugin', 'mcp', 'subagent']);
   });
 

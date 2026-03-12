@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { runAgentLoop, type AgentLoopConfig } from '../src/agent-loop.js';
 import type { ToolDefinition } from '../src/tools.js';
+import { CapabilityRouter } from '../src/capability-router.js';
 
 /**
  * Helper: create a mock fetch that returns predefined OpenAI-format responses in sequence.
@@ -175,5 +176,44 @@ describe('runAgentLoop', () => {
 
     expect(result.content).toBe('Max tool turns reached.');
     expect(fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it('returns alternative routes via capabilityRouter when tool not found', async () => {
+    const capabilityRouter = new CapabilityRouter({
+      toolNames: ['search_memory'],
+      skills: [{ name: 'summarize', content: 'Creates summaries of text' }],
+      plugins: [],
+      mcpServers: ['github-mcp'],
+      subAgentRoles: ['researcher'],
+    });
+
+    const fetch = mockFetch([
+      {
+        content: null,
+        tool_calls: [
+          { id: 'call_missing', function: { name: 'research', arguments: '{}' } },
+        ],
+      },
+      { content: 'Got it, using alternatives.' },
+    ]);
+
+    const result = await runAgentLoop(
+      makeConfig({ fetch, capabilityRouter })
+    );
+
+    expect(result.content).toBe('Got it, using alternatives.');
+    expect(fetch).toHaveBeenCalledTimes(2);
+
+    // Verify the tool result message sent back to the LLM contains route suggestions
+    const secondBody = JSON.parse(fetch.mock.calls[1][1].body);
+    const toolResultMsg = secondBody.messages.find(
+      (m: any) => m.role === 'tool' && m.tool_call_id === 'call_missing'
+    );
+    expect(toolResultMsg).toBeDefined();
+    expect(toolResultMsg.content).toContain('Tool "research" not found');
+    expect(toolResultMsg.content).toContain('alternatives');
+    // Should contain the sub-agent researcher route (keyword match on "research")
+    expect(toolResultMsg.content).toContain('subagent');
+    expect(toolResultMsg.content).toContain('researcher');
   });
 });
