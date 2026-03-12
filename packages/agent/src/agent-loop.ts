@@ -4,6 +4,11 @@ import { scanForInjection } from './injection-scanner.js';
 import type { HookRegistry } from './hooks.js';
 import type { CapabilityRouter } from './capability-router.js';
 
+/** Minimal interface for plugin runtime integration (from @waggle/sdk) */
+export interface PluginToolProvider {
+  getAllTools(): Array<{ name: string; description: string; parameters: Record<string, unknown>; execute: (args: Record<string, unknown>) => Promise<string> }>;
+}
+
 export interface AgentMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: string | null;
@@ -32,6 +37,8 @@ export interface AgentLoopConfig {
   fetch?: typeof globalThis.fetch;
   hooks?: HookRegistry;
   capabilityRouter?: CapabilityRouter;
+  /** Optional plugin tool provider — merges active plugin tools into the agent's toolset */
+  pluginTools?: PluginToolProvider;
 }
 
 export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentResponse> {
@@ -40,7 +47,7 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
     litellmApiKey,
     model,
     systemPrompt,
-    tools,
+    tools: configTools,
     messages: inputMessages,
     onToken,
     onToolUse,
@@ -49,7 +56,13 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
     stream = false,
     fetch: fetchFn = globalThis.fetch,
     hooks,
+    pluginTools: pluginToolProvider,
   } = config;
+
+  // Merge plugin tools (if any) into the base tool set
+  const tools: ToolDefinition[] = pluginToolProvider
+    ? [...configTools, ...pluginToolProvider.getAllTools()]
+    : configTools;
 
   // Build messages array with system prompt + input messages
   const messages: AgentMessage[] = [

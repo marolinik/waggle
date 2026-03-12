@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { runAgentLoop, type AgentLoopConfig } from '../src/agent-loop.js';
+import { runAgentLoop, type AgentLoopConfig, type PluginToolProvider } from '../src/agent-loop.js';
 import type { ToolDefinition } from '../src/tools.js';
 import { CapabilityRouter } from '../src/capability-router.js';
 
@@ -215,5 +215,75 @@ describe('runAgentLoop', () => {
     // Should contain the sub-agent researcher route (keyword match on "research")
     expect(toolResultMsg.content).toContain('subagent');
     expect(toolResultMsg.content).toContain('researcher');
+  });
+
+  it('merges plugin tools into the agent toolset via pluginTools provider', async () => {
+    const pluginExecute = vi.fn(async () => 'plugin-result');
+    const pluginToolProvider: PluginToolProvider = {
+      getAllTools: () => [
+        {
+          name: 'plugin_search',
+          description: 'Search via plugin',
+          parameters: { type: 'object', properties: { query: { type: 'string' } } },
+          execute: pluginExecute,
+        },
+      ],
+    };
+
+    const fetch = mockFetch([
+      {
+        content: null,
+        tool_calls: [
+          { id: 'call_p1', function: { name: 'plugin_search', arguments: '{"query":"test"}' } },
+        ],
+      },
+      { content: 'Found via plugin.' },
+    ]);
+
+    const result = await runAgentLoop(
+      makeConfig({ fetch, pluginTools: pluginToolProvider })
+    );
+
+    expect(result.content).toBe('Found via plugin.');
+    expect(result.toolsUsed).toEqual(['plugin_search']);
+    expect(pluginExecute).toHaveBeenCalledWith({ query: 'test' });
+
+    // Verify plugin tool was included in the tools sent to the LLM
+    const firstBody = JSON.parse(fetch.mock.calls[0][1].body);
+    const toolNames = firstBody.tools.map((t: any) => t.function.name);
+    expect(toolNames).toContain('plugin_search');
+  });
+
+  it('works with both config tools and plugin tools combined', async () => {
+    const baseTool: ToolDefinition = {
+      name: 'base_tool',
+      description: 'A base tool',
+      parameters: { type: 'object', properties: {} },
+      execute: async () => 'base-result',
+    };
+
+    const pluginToolProvider: PluginToolProvider = {
+      getAllTools: () => [
+        {
+          name: 'plugin_tool',
+          description: 'A plugin tool',
+          parameters: { type: 'object', properties: {} },
+          execute: async () => 'plugin-result',
+        },
+      ],
+    };
+
+    const fetch = mockFetch([{ content: 'All good.' }]);
+
+    await runAgentLoop(
+      makeConfig({ fetch, tools: [baseTool], pluginTools: pluginToolProvider })
+    );
+
+    // Both tools should appear in the LLM request
+    const body = JSON.parse(fetch.mock.calls[0][1].body);
+    const toolNames = body.tools.map((t: any) => t.function.name);
+    expect(toolNames).toContain('base_tool');
+    expect(toolNames).toContain('plugin_tool');
+    expect(toolNames).toHaveLength(2);
   });
 });

@@ -6,6 +6,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { type PluginManifest, validatePluginManifest } from './plugin-manifest.js';
+import { PluginRuntimeManager } from './plugin-runtime.js';
 
 interface PluginRegistry {
   plugins: Record<string, PluginManifest>;
@@ -77,6 +78,18 @@ export class PluginManager {
     // Update registry
     delete registry.plugins[name];
     this.writeRegistry(registry);
+  }
+
+  /**
+   * Create a PluginRuntimeManager seeded with all installed plugins.
+   * Each plugin is registered in the 'installed' state — call enable() to activate.
+   */
+  toRuntimeManager(): PluginRuntimeManager {
+    const manager = new PluginRuntimeManager();
+    for (const manifest of this.list()) {
+      manager.register(manifest);
+    }
+    return manager;
   }
 
   private ensurePluginsDir(): void {
