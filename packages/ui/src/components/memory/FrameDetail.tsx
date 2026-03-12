@@ -39,12 +39,17 @@ export function FrameDetail({ frame }: FrameDetailProps) {
       </div>
 
       {/* Metadata */}
-      <div className="frame-detail__meta flex gap-4 text-xs text-gray-500">
+      <div className="frame-detail__meta flex flex-wrap gap-4 text-xs text-gray-500">
         <span>ID: {frame.id}</span>
         <span>{formatTimestamp(frame.timestamp)}</span>
         <span className="capitalize">{frame.source}</span>
         {frame.score !== undefined && (
           <span>Score: {frame.score.toFixed(2)}</span>
+        )}
+        {frame.authorName && (
+          <span className="frame-detail__author text-blue-400">
+            Added by {frame.authorName}
+          </span>
         )}
       </div>
 

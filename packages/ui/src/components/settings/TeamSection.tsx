@@ -1,0 +1,149 @@
+/**
+ * TeamSection — Team connection settings.
+ *
+ * Allows users to connect to a team server by entering the server URL and auth token.
+ * Shows connection status and user identity when connected.
+ * Phase 5 basic: manual token entry. Phase 7+ will add full OAuth flow.
+ */
+
+import React, { useState, useEffect } from 'react';
+import type { TeamConnection } from '../../services/types.js';
+
+export interface TeamSectionProps {
+  teamConnection: TeamConnection | null;
+  onConnect: (serverUrl: string, token: string) => Promise<void>;
+  onDisconnect: () => Promise<void>;
+}
+
+export function TeamSection({ teamConnection, onConnect, onDisconnect }: TeamSectionProps) {
+  const [serverUrl, setServerUrl] = useState('');
+  const [token, setToken] = useState('');
+  const [connecting, setConnecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (teamConnection) {
+      setServerUrl(teamConnection.serverUrl);
+    }
+  }, [teamConnection]);
+
+  const handleConnect = async () => {
+    if (!serverUrl.trim() || !token.trim()) {
+      setError('Both server URL and token are required');
+      return;
+    }
+
+    setConnecting(true);
+    setError(null);
+
+    try {
+      await onConnect(serverUrl.trim(), token.trim());
+      setToken(''); // Clear token from form after successful connect
+    } catch (err: any) {
+      setError(err.message || 'Failed to connect to team server');
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    try {
+      await onDisconnect();
+      setServerUrl('');
+      setToken('');
+      setError(null);
+    } catch (err: any) {
+      setError(err.message || 'Failed to disconnect');
+    }
+  };
+
+  if (teamConnection) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-medium text-gray-100">Team Connection</h3>
+          <p className="mt-1 text-sm text-gray-400">Connected to team server.</p>
+        </div>
+
+        <div className="rounded-lg border border-green-800 bg-green-900/20 p-4">
+          <div className="flex items-center gap-3">
+            <div className="h-3 w-3 rounded-full bg-green-400" />
+            <span className="font-medium text-green-300">Connected</span>
+          </div>
+          <div className="mt-3 space-y-1 text-sm text-gray-300">
+            <p><span className="text-gray-500">Server:</span> {teamConnection.serverUrl}</p>
+            <p><span className="text-gray-500">User:</span> {teamConnection.displayName}</p>
+            {teamConnection.teamSlug && (
+              <p><span className="text-gray-500">Team:</span> {teamConnection.teamSlug}</p>
+            )}
+          </div>
+        </div>
+
+        <button
+          onClick={handleDisconnect}
+          className="rounded-md border border-red-700 px-4 py-2 text-sm text-red-400 hover:bg-red-900/30 transition-colors"
+        >
+          Disconnect
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-medium text-gray-100">Team Connection</h3>
+        <p className="mt-1 text-sm text-gray-400">
+          Connect to a team server to share workspaces and collaborate with your team.
+        </p>
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <label htmlFor="team-server-url" className="block text-sm font-medium text-gray-300">
+            Team Server URL
+          </label>
+          <input
+            id="team-server-url"
+            type="url"
+            value={serverUrl}
+            onChange={(e) => setServerUrl(e.target.value)}
+            placeholder="https://team.waggle.dev"
+            className="mt-1 w-full rounded-md border border-gray-600 bg-gray-800 px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:border-blue-500 focus:outline-none"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="team-auth-token" className="block text-sm font-medium text-gray-300">
+            Auth Token
+          </label>
+          <input
+            id="team-auth-token"
+            type="password"
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            placeholder="Paste your team authentication token"
+            className="mt-1 w-full rounded-md border border-gray-600 bg-gray-800 px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:border-blue-500 focus:outline-none"
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            Get your token from the team server admin panel.
+          </p>
+        </div>
+      </div>
+
+      {error && (
+        <div className="rounded-md border border-red-800 bg-red-900/20 px-4 py-2 text-sm text-red-400">
+          {error}
+        </div>
+      )}
+
+      <button
+        onClick={handleConnect}
+        disabled={connecting || !serverUrl.trim() || !token.trim()}
+        className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        {connecting ? 'Connecting...' : 'Connect to Team'}
+      </button>
+    </div>
+  );
+}

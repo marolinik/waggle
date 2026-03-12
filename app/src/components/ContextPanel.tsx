@@ -6,8 +6,8 @@
  * Other views: nothing (panel hidden)
  */
 
-import type { Session, SessionSearchResult, Frame, FileEntry } from '@waggle/ui';
-import { SessionList, FrameDetail, FilePreview } from '@waggle/ui';
+import type { Session, SessionSearchResult, Frame, FileEntry, TeamMember, ActivityItem } from '@waggle/ui';
+import { SessionList, FrameDetail, FilePreview, TeamPresence, ActivityFeed } from '@waggle/ui';
 
 type AppView = 'chat' | 'settings' | 'memory' | 'events';
 
@@ -32,6 +32,11 @@ export interface ContextPanelProps {
   searchResults?: SessionSearchResult[] | null;
   searchLoading?: boolean;
   onClearSearch?: () => void;
+  /** I4: Team presence members (shown for team workspaces) */
+  teamMembers?: TeamMember[];
+  /** J1: Team activity feed items */
+  teamActivity?: ActivityItem[];
+  teamActivityLoading?: boolean;
 }
 
 function PanelHeader({ label, action }: { label: string; action?: { label: string; onClick: () => void } }) {
@@ -86,6 +91,9 @@ export function ContextPanel({
   searchResults,
   searchLoading,
   onClearSearch,
+  teamMembers,
+  teamActivity,
+  teamActivityLoading,
 }: ContextPanelProps) {
   if (currentView === 'chat') {
     // If there's a file to preview, show it above sessions
@@ -165,6 +173,24 @@ export function ContextPanel({
                   </div>
                 </div>
               ))}
+            </div>
+          </>
+        )}
+        {/* I4: Team presence */}
+        {teamMembers && teamMembers.length > 0 && (
+          <>
+            <PanelHeader label="Team" />
+            <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)' }}>
+              <TeamPresence members={teamMembers} />
+            </div>
+          </>
+        )}
+        {/* J1: Team activity feed */}
+        {(teamActivity && teamActivity.length > 0 || teamActivityLoading) && (
+          <>
+            <PanelHeader label="Activity" />
+            <div style={{ borderBottom: '1px solid var(--border)' }}>
+              <ActivityFeed items={teamActivity ?? []} loading={teamActivityLoading} />
             </div>
           </>
         )}

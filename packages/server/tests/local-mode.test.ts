@@ -188,6 +188,41 @@ describe('Local Server Mode', () => {
       });
       expect(res.statusCode).toBe(400);
     });
+
+    it('returns normalized frames from /api/memory/frames endpoint', async () => {
+      const res = await server.inject({
+        method: 'GET',
+        url: '/api/memory/frames?limit=10',
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.results).toBeDefined();
+      expect(Array.isArray(body.results)).toBe(true);
+      // Frames should have camelCase field names (UI shape)
+      if (body.results.length > 0) {
+        const frame = body.results[0];
+        expect(frame.frameType).toBeDefined();
+        expect(frame.timestamp).toBeDefined();
+        expect(frame.source).toBeDefined();
+        // Should NOT have raw snake_case fields
+        expect(frame.frame_type).toBeUndefined();
+        expect(frame.created_at).toBeUndefined();
+      }
+    });
+
+    it('returns normalized fields from search results', async () => {
+      const res = await server.inject({
+        method: 'GET',
+        url: '/api/memory/search?q=waggle',
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      if (body.results.length > 0) {
+        const frame = body.results[0];
+        expect(frame.frameType).toBeDefined();
+        expect(frame.timestamp).toBeDefined();
+      }
+    });
   });
 
   // --- Settings ---

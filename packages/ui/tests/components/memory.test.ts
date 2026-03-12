@@ -319,6 +319,47 @@ describe('sortFrames', () => {
   });
 });
 
+// ── I3: Frame attribution ───────────────────────────────────────────
+
+describe('Frame attribution (I3)', () => {
+  it('Frame type accepts authorId and authorName fields', () => {
+    const frame = makeFrame({
+      authorId: 'user-123',
+      authorName: 'Marko',
+    });
+    expect(frame.authorId).toBe('user-123');
+    expect(frame.authorName).toBe('Marko');
+  });
+
+  it('Frame without attribution has undefined author fields', () => {
+    const frame = makeFrame();
+    expect(frame.authorId).toBeUndefined();
+    expect(frame.authorName).toBeUndefined();
+  });
+
+  it('filterFrames preserves attribution fields', () => {
+    const frames: Frame[] = [
+      makeFrame({ id: 1, authorName: 'Alice', frameType: 'I' }),
+      makeFrame({ id: 2, authorName: 'Bob', frameType: 'P' }),
+      makeFrame({ id: 3, frameType: 'I' }), // no attribution
+    ];
+    const filtered = filterFrames(frames, { types: ['I'] });
+    expect(filtered).toHaveLength(2);
+    expect(filtered[0].authorName).toBe('Alice');
+    expect(filtered[1].authorName).toBeUndefined();
+  });
+
+  it('sortFrames preserves attribution fields', () => {
+    const frames: Frame[] = [
+      makeFrame({ id: 1, timestamp: '2026-03-07T12:00:00Z', authorName: 'Alice' }),
+      makeFrame({ id: 2, timestamp: '2026-03-09T12:00:00Z', authorName: 'Bob' }),
+    ];
+    const sorted = sortFrames(frames, 'time');
+    expect(sorted[0].authorName).toBe('Bob');
+    expect(sorted[1].authorName).toBe('Alice');
+  });
+});
+
 // ── Component exports ───────────────────────────────────────────────
 
 describe('memory component exports', () => {
@@ -358,6 +399,7 @@ describe('useMemory', () => {
       updateWorkspace: vi.fn().mockResolvedValue(undefined),
       deleteWorkspace: vi.fn().mockResolvedValue(undefined),
       searchMemory: vi.fn().mockResolvedValue([]),
+      listFrames: vi.fn().mockResolvedValue([]),
       getKnowledgeGraph: vi.fn().mockResolvedValue({ entities: [], relations: [] }),
       listSessions: vi.fn().mockResolvedValue([]),
       createSession: vi.fn().mockResolvedValue({}),
@@ -393,7 +435,7 @@ describe('useMemory', () => {
 
     const result = await executeMemorySearch(service, 'test query', {}, 'ws-1');
 
-    expect(mockSearch).toHaveBeenCalledWith('test query', 'all');
+    expect(mockSearch).toHaveBeenCalledWith('test query', 'all', 'ws-1');
     expect(result.error).toBeNull();
     expect(result.frames).toHaveLength(1);
     expect(result.frames[0].id).toBe(10);
@@ -405,7 +447,7 @@ describe('useMemory', () => {
 
     await executeMemorySearch(service, 'query', { source: 'personal' }, 'ws-1');
 
-    expect(mockSearch).toHaveBeenCalledWith('query', 'personal');
+    expect(mockSearch).toHaveBeenCalledWith('query', 'personal', 'ws-1');
   });
 
   it('search error sets error state', async () => {

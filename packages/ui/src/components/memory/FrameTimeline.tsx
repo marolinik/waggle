@@ -1,8 +1,8 @@
 /**
  * FrameTimeline — scrollable list of frame cards sorted by time.
  *
- * Each card shows type icon, timestamp, first 2 lines, importance badge, and source.
- * Clicking a card selects it.
+ * Each card shows type icon, timestamp, first 2 lines, importance badge, source,
+ * and team attribution (author name) when present.
  */
 
 import React from 'react';
@@ -70,11 +70,19 @@ export function FrameTimeline({ frames, selectedId, onSelect }: FrameTimelinePro
               {preview}
             </div>
 
-            {/* Source badge */}
-            <div className="flex items-center gap-1">
+            {/* Source badge + attribution */}
+            <div className="flex items-center gap-2">
               <span className="text-[10px] text-gray-600 capitalize">
                 {frame.source}
               </span>
+              {frame.authorName && (
+                <span
+                  className="frame-timeline__author text-[10px] text-blue-400"
+                  title={`Added by ${frame.authorName}`}
+                >
+                  by {frame.authorName}
+                </span>
+              )}
             </div>
           </button>
         );

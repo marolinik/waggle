@@ -5,7 +5,7 @@
  */
 
 import React, { useState } from 'react';
-import type { WaggleConfig } from '../../services/types.js';
+import type { WaggleConfig, TeamConnection } from '../../services/types.js';
 import { SETTINGS_TABS } from './utils.js';
 import { ApiKeySection } from './ApiKeySection.js';
 import { ModelSection } from './ModelSection.js';
@@ -13,6 +13,7 @@ import { PermissionSection } from './PermissionSection.js';
 import { ThemeSection } from './ThemeSection.js';
 import { AdvancedSection } from './AdvancedSection.js';
 import { SkillsSection } from './SkillsSection.js';
+import { TeamSection } from './TeamSection.js';
 
 export interface SettingsPanelProps {
   activeTab?: string;
@@ -21,6 +22,9 @@ export interface SettingsPanelProps {
   onConfigUpdate: (config: Partial<WaggleConfig>) => void;
   onTestApiKey?: (provider: string, key: string) => Promise<{ valid: boolean; error?: string }>;
   onRestartLiteLLM?: () => Promise<void>;
+  teamConnection?: TeamConnection | null;
+  onTeamConnect?: (serverUrl: string, token: string) => Promise<void>;
+  onTeamDisconnect?: () => Promise<void>;
 }
 
 export function SettingsPanel({
@@ -30,6 +34,9 @@ export function SettingsPanel({
   onConfigUpdate,
   onTestApiKey,
   onRestartLiteLLM,
+  teamConnection,
+  onTeamConnect,
+  onTeamDisconnect,
 }: SettingsPanelProps) {
   const [internalTab, setInternalTab] = useState('general');
   const [yoloMode, setYoloMode] = useState(true);
@@ -84,6 +91,13 @@ export function SettingsPanel({
             onYoloModeChange={setYoloMode}
             externalGates={externalGates}
             onExternalGatesChange={setExternalGates}
+          />
+        )}
+        {activeTab === 'team' && onTeamConnect && onTeamDisconnect && (
+          <TeamSection
+            teamConnection={teamConnection ?? null}
+            onConnect={onTeamConnect}
+            onDisconnect={onTeamDisconnect}
           />
         )}
         {activeTab === 'advanced' && (

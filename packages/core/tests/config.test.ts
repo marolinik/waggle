@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { WaggleConfig, type ProviderEntry } from '../src/config.js';
+import { WaggleConfig, type ProviderEntry, type TeamServerConfig } from '../src/config.js';
 
 describe('WaggleConfig', () => {
   const tempDirs: string[] = [];
@@ -98,5 +98,60 @@ describe('WaggleConfig', () => {
     const config = new WaggleConfig(configDir);
 
     expect(config.getConfigDir()).toBe(configDir);
+  });
+
+  describe('team server config', () => {
+    it('returns null when no team server configured', () => {
+      const configDir = makeTempDir();
+      const config = new WaggleConfig(configDir);
+
+      expect(config.getTeamServer()).toBeNull();
+      expect(config.isTeamConnected()).toBe(false);
+    });
+
+    it('sets and gets team server config', () => {
+      const configDir = makeTempDir();
+      const config = new WaggleConfig(configDir);
+
+      const teamConfig: TeamServerConfig = {
+        url: 'https://team.waggle.dev',
+        token: 'clerk-jwt-token',
+        userId: 'user-123',
+        displayName: 'Marko',
+      };
+
+      config.setTeamServer(teamConfig);
+      config.save();
+
+      const config2 = new WaggleConfig(configDir);
+      const loaded = config2.getTeamServer();
+      expect(loaded).toEqual(teamConfig);
+      expect(config2.isTeamConnected()).toBe(true);
+    });
+
+    it('clears team server config', () => {
+      const configDir = makeTempDir();
+      const config = new WaggleConfig(configDir);
+
+      config.setTeamServer({ url: 'https://team.waggle.dev' });
+      config.clearTeamServer();
+      config.save();
+
+      const config2 = new WaggleConfig(configDir);
+      expect(config2.getTeamServer()).toBeNull();
+      expect(config2.isTeamConnected()).toBe(false);
+    });
+
+    it('persists team server through save/load cycle', () => {
+      const configDir = makeTempDir();
+      const config = new WaggleConfig(configDir);
+
+      config.setTeamServer({ url: 'https://example.com', userId: 'u1' });
+      config.save();
+
+      const config2 = new WaggleConfig(configDir);
+      expect(config2.getTeamServer()!.url).toBe('https://example.com');
+      expect(config2.getTeamServer()!.userId).toBe('u1');
+    });
   });
 });

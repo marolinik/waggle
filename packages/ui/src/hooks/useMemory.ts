@@ -4,7 +4,7 @@
  * Manages frames, filters, search, and stats via WaggleService.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { WaggleService, Frame } from '../services/types.js';
 import type { FrameFilters, MemoryStats } from '../components/memory/utils.js';
 import { filterFrames, sortFrames } from '../components/memory/utils.js';
@@ -53,7 +53,7 @@ export async function executeMemorySearch(
 ): Promise<MemorySearchResult | MemorySearchError> {
   try {
     const scope = filters.source && filters.source !== 'all' ? filters.source : 'all';
-    const results = await service.searchMemory(query, scope);
+    const results = await service.searchMemory(query, scope, workspaceId);
 
     let stats: MemoryStats;
 
@@ -99,6 +99,23 @@ export function useMemory({ service, workspaceId, mindFileSize }: UseMemoryOptio
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<MemoryStats | null>(null);
+
+  // Auto-load recent frames when workspace changes (no search query needed)
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    service.listFrames(workspaceId, 50).then((frames) => {
+      if (cancelled) return;
+      setAllFrames(frames);
+      setStats({ totalFrames: frames.length, entities: 0, relations: 0, mindFileSize });
+      setLoading(false);
+    }).catch(() => {
+      if (cancelled) return;
+      setAllFrames([]);
+      setLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [service, workspaceId, mindFileSize]);
 
   const search = useCallback(async (query: string) => {
     setLoading(true);

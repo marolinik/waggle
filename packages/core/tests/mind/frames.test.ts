@@ -242,6 +242,31 @@ describe('Memory Frames (Layer 2 - The Codec)', () => {
     });
   });
 
+  describe('getRecent', () => {
+    it('returns recent frames sorted by created_at descending', () => {
+      const session = sessions.create();
+      frames.createIFrame(session.gop_id, 'First');
+      frames.createIFrame(session.gop_id, 'Second');
+      frames.createIFrame(session.gop_id, 'Third');
+
+      const recent = frames.getRecent(2);
+      expect(recent).toHaveLength(2);
+      expect(recent[0].content).toBe('Third');
+      expect(recent[1].content).toBe('Second');
+    });
+
+    it('returns all frames when limit exceeds count', () => {
+      const session = sessions.create();
+      frames.createIFrame(session.gop_id, 'Only');
+      const recent = frames.getRecent(100);
+      expect(recent).toHaveLength(1);
+    });
+
+    it('returns empty array for empty database', () => {
+      expect(frames.getRecent(10)).toHaveLength(0);
+    });
+  });
+
   describe('Performance', () => {
     it('inserts 10,000 frames in under 10s', () => {
       const session = sessions.create();

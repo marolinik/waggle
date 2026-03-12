@@ -36,6 +36,8 @@ import { agentRoutes } from './routes/agent.js';
 import { skillRoutes } from './routes/skills.js';
 import { approvalRoutes } from './routes/approval.js';
 import { anthropicProxyRoutes } from './routes/anthropic-proxy.js';
+import { teamRoutes } from './routes/team.js';
+import { taskRoutes } from './routes/tasks.js';
 import { EventEmitter } from 'node:events';
 
 export interface LocalConfig {
@@ -72,6 +74,8 @@ export interface AgentState {
   buildToolsForWorkspace: (workspacePath: string) => ToolDefinition[];
   /** Activate workspace mind for the given workspace ID. Returns true if switched. */
   activateWorkspaceMind: (workspaceId: string) => boolean;
+  /** Get a cached workspace MindDB (opens on demand). Returns null if workspace not found. */
+  getWorkspaceMindDb: (workspaceId: string) => import('@waggle/core').MindDB | null;
   /** Currently active workspace ID (null = personal only) */
   activeWorkspaceId: string | null;
 }
@@ -328,6 +332,21 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
     return result;
   };
 
+  // Helper: get a cached workspace MindDB (opens on demand)
+  const getWorkspaceMindDb = (workspaceId: string): MindDB | null => {
+    let wsDb = workspaceMindCache.get(workspaceId);
+    if (wsDb) return wsDb;
+    const mindPath = wsManager.getMindPath(workspaceId);
+    if (!mindPath) return null;
+    try {
+      wsDb = new MindDB(mindPath);
+      workspaceMindCache.set(workspaceId, wsDb);
+      return wsDb;
+    } catch {
+      return null;
+    }
+  };
+
   // Decorate with shared agent state
   server.decorate('agentState', {
     orchestrator,
@@ -342,6 +361,7 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
     pendingApprovals,
     buildToolsForWorkspace,
     activateWorkspaceMind: activateWorkspaceMindWithWeaver,
+    getWorkspaceMindDb,
     activeWorkspaceId,
   });
 
@@ -369,6 +389,8 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   await server.register(skillRoutes);
   await server.register(approvalRoutes);
   await server.register(anthropicProxyRoutes);
+  await server.register(teamRoutes);
+  await server.register(taskRoutes);
 
   // WebSocket endpoint — event bus relay to frontend
   server.get('/ws', { websocket: true }, (socket) => {

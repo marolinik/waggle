@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createTeamTools, type TeamToolDeps } from '../src/team-tools.js';
+import { createTeamTools, createLocalTeamTools, type TeamToolDeps, type LocalTeamToolDeps } from '../src/team-tools.js';
 import type { ToolDefinition } from '../src/tools.js';
 
 function makeDeps(fetchMock: ReturnType<typeof vi.fn>): TeamToolDeps {
@@ -179,6 +179,158 @@ describe('createTeamTools', () => {
 
       const tool = getTool('share_to_team');
       await expect(tool.execute({ content: 'test', type: 'note' })).rejects.toThrow('ECONNREFUSED');
+    });
+  });
+});
+
+// ── Local Team Tools ──────────────────────────────────────────────
+
+describe('createLocalTeamTools', () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  let localDeps: LocalTeamToolDeps;
+  let tools: ToolDefinition[];
+
+  beforeEach(() => {
+    fetchMock = vi.fn();
+    localDeps = {
+      localServerUrl: 'http://127.0.0.1:3333',
+      workspaceId: 'ws-123',
+      teamId: 'team-abc',
+      fetch: fetchMock as unknown as typeof globalThis.fetch,
+    };
+    tools = createLocalTeamTools(localDeps);
+  });
+
+  function getTool(name: string): ToolDefinition {
+    const tool = tools.find((t) => t.name === name);
+    if (!tool) throw new Error(`Tool "${name}" not found`);
+    return tool;
+  }
+
+  it('creates 5 local team tools', () => {
+    const names = tools.map((t) => t.name);
+    expect(names).toContain('team_activity');
+    expect(names).toContain('team_tasks');
+    expect(names).toContain('team_members');
+    expect(names).toContain('assign_task');
+    expect(names).toContain('complete_task');
+    expect(tools).toHaveLength(5);
+  });
+
+  describe('team_activity', () => {
+    it('returns formatted activity items', async () => {
+      fetchMock.mockResolvedValueOnce(okResponse({
+        items: [
+          { authorName: 'Alice', summary: 'Added design docs', timestamp: '2026-01-01T00:00:00Z', type: 'memory' },
+          { authorName: 'Bob', summary: 'Fixed auth bug', timestamp: '2026-01-01T01:00:00Z', type: 'session' },
+        ],
+      }));
+
+      const tool = getTool('team_activity');
+      const result = await tool.execute({});
+      expect(result).toContain('Alice');
+      expect(result).toContain('design docs');
+      expect(result).toContain('Bob');
+    });
+
+    it('returns message when no activity', async () => {
+      fetchMock.mockResolvedValueOnce(okResponse({ items: [] }));
+      const tool = getTool('team_activity');
+      const result = await tool.execute({});
+      expect(result).toContain('No recent team activity');
+    });
+  });
+
+  describe('team_tasks', () => {
+    it('returns formatted task list', async () => {
+      fetchMock.mockResolvedValueOnce(okResponse({
+        tasks: [
+          { id: 't1', title: 'Fix bug', status: 'open', assigneeName: 'Alice' },
+          { id: 't2', title: 'Add tests', status: 'in_progress' },
+        ],
+      }));
+
+      const tool = getTool('team_tasks');
+      const result = await tool.execute({});
+      expect(result).toContain('Fix bug');
+      expect(result).toContain('Alice');
+      expect(result).toContain('Add tests');
+    });
+
+    it('filters by status', async () => {
+      fetchMock.mockResolvedValueOnce(okResponse({ tasks: [] }));
+      const tool = getTool('team_tasks');
+      const result = await tool.execute({ status: 'done' });
+
+      const [url] = fetchMock.mock.calls[0];
+      expect(url).toContain('?status=done');
+      expect(result).toContain('No done tasks');
+    });
+  });
+
+  describe('team_members', () => {
+    it('returns formatted member list', async () => {
+      fetchMock.mockResolvedValueOnce(okResponse({
+        members: [
+          { displayName: 'Alice', status: 'online', activitySummary: 'Editing docs' },
+          { displayName: 'Bob', status: 'away' },
+        ],
+      }));
+
+      const tool = getTool('team_members');
+      const result = await tool.execute({});
+      expect(result).toContain('Alice (online)');
+      expect(result).toContain('Editing docs');
+      expect(result).toContain('Bob (away)');
+    });
+
+    it('returns message when no members', async () => {
+      fetchMock.mockResolvedValueOnce(okResponse({ members: [] }));
+      const tool = getTool('team_members');
+      const result = await tool.execute({});
+      expect(result).toContain('No team members found');
+    });
+  });
+
+  describe('assign_task', () => {
+    it('creates a task with assignee and returns confirmation', async () => {
+      fetchMock.mockResolvedValueOnce(okResponse({ id: 'task-new-1' }));
+
+      const tool = getTool('assign_task');
+      const result = await tool.execute({
+        title: 'Review the PR',
+        assigneeName: 'Alice',
+        assigneeId: 'user-alice',
+      });
+
+      expect(fetchMock).toHaveBeenCalledOnce();
+      const [url, opts] = fetchMock.mock.calls[0];
+      expect(url).toBe('http://127.0.0.1:3333/api/workspaces/ws-123/tasks');
+      expect(opts.method).toBe('POST');
+      const body = JSON.parse(opts.body);
+      expect(body.title).toBe('Review the PR');
+      expect(body.assigneeName).toBe('Alice');
+      expect(body.assigneeId).toBe('user-alice');
+      expect(body.creatorName).toBe('Agent');
+      expect(result).toContain('Alice');
+      expect(result).toContain('Review the PR');
+    });
+  });
+
+  describe('complete_task', () => {
+    it('marks task as done', async () => {
+      fetchMock.mockResolvedValueOnce(okResponse({ id: 'task-42', status: 'done' }));
+
+      const tool = getTool('complete_task');
+      const result = await tool.execute({ task_id: 'task-42' });
+
+      expect(fetchMock).toHaveBeenCalledOnce();
+      const [url, opts] = fetchMock.mock.calls[0];
+      expect(url).toBe('http://127.0.0.1:3333/api/workspaces/ws-123/tasks/task-42');
+      expect(opts.method).toBe('PATCH');
+      const body = JSON.parse(opts.body);
+      expect(body.status).toBe('done');
+      expect(result).toContain('done');
     });
   });
 });

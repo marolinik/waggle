@@ -62,6 +62,12 @@ export interface Workspace {
   /** Filesystem directory where agent operates and generates files. */
   directory?: string;
   created: string;
+
+  // --- Team Mode fields (Phase 5) ---
+  teamId?: string;
+  teamServerUrl?: string;
+  teamRole?: 'owner' | 'admin' | 'member' | 'viewer';
+  teamUserId?: string;
 }
 
 // ── Progress Items (E3) ───────────────────────────────────────────────
@@ -134,6 +140,9 @@ export interface Frame {
   sessionId?: string;
   entities?: string[];
   linkedFrames?: number[];
+  /** Team attribution — present for frames synced from team server */
+  authorId?: string;
+  authorName?: string;
 }
 
 // ── Agent Status ───────────────────────────────────────────────────────
@@ -148,12 +157,31 @@ export interface AgentStatus {
 
 // ── Configuration ──────────────────────────────────────────────────────
 
+export interface TeamMember {
+  userId: string;
+  displayName: string;
+  avatarUrl?: string;
+  status: 'online' | 'away' | 'offline';
+  lastActivity?: string;
+  /** What the user was last doing (e.g., "Working on marketing plan") */
+  activitySummary?: string;
+}
+
+export interface TeamConnection {
+  serverUrl: string;
+  token: string;
+  userId: string;
+  displayName: string;
+  teamSlug?: string;
+}
+
 export interface WaggleConfig {
   providers: Record<string, { apiKey: string; models: string[] }>;
   defaultModel: string;
   theme: 'dark' | 'light';
   autostart: boolean;
   globalHotkey: string;
+  teamConnection?: TeamConnection | null;
 }
 
 // ── Service Interface ──────────────────────────────────────────────────
@@ -176,7 +204,8 @@ export interface WaggleService {
   getWorkspaceContext(id: string): Promise<WorkspaceContext>;
 
   // Memory
-  searchMemory(query: string, scope: 'personal' | 'workspace' | 'all'): Promise<Frame[]>;
+  searchMemory(query: string, scope: 'personal' | 'workspace' | 'all', workspace?: string): Promise<Frame[]>;
+  listFrames(workspace?: string, limit?: number): Promise<Frame[]>;
   getKnowledgeGraph(workspace: string): Promise<{ entities: unknown[]; relations: unknown[] }>;
 
   // Sessions
@@ -201,6 +230,11 @@ export interface WaggleService {
   getConfig(): Promise<WaggleConfig>;
   updateConfig(config: Partial<WaggleConfig>): Promise<void>;
   testApiKey(provider: string, key: string): Promise<{ valid: boolean; error?: string }>;
+
+  // Team
+  connectTeam(serverUrl: string, token: string): Promise<TeamConnection>;
+  disconnectTeam(): Promise<void>;
+  getTeamStatus(): Promise<TeamConnection | null>;
 
   // Events
   on(event: string, cb: (data: unknown) => void): () => void;

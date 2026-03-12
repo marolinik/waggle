@@ -114,6 +114,18 @@ export class MultiMind {
   }
 
   /**
+   * Set the workspace mind to an already-open MindDB instance.
+   * Does NOT close the previous workspace (caller manages lifecycle).
+   * Use this when the DB is managed by an external cache.
+   */
+  setWorkspace(db: MindDB): void {
+    // Don't close — the caller (cache) owns the lifecycle
+    this.workspace = db;
+    this.workspaceFrames = new FrameStore(db);
+    this.workspaceAwareness = new AwarenessLayer(db);
+  }
+
+  /**
    * Close both minds. After this, the MultiMind instance should not be used.
    */
   close(): void {

@@ -1,0 +1,4 @@
+{
+  "model": "claude-sonnet",
+  "litellmUrl": "http://localhost:4000/v1"
+}

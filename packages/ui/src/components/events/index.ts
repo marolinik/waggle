@@ -18,3 +18,6 @@ export {
   filterSteps,
 } from './utils.js';
 export type { AgentStep, StepFilter } from './utils.js';
+
+export { ActivityFeed, formatActivityTime } from './ActivityFeed.js';
+export type { ActivityFeedProps, ActivityItem } from './ActivityFeed.js';

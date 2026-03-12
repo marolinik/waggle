@@ -151,6 +151,95 @@ describe('WorkspaceManager', () => {
     });
   });
 
+  describe('team workspace support', () => {
+    it('creates team workspace with team fields', () => {
+      const ws = manager.create({
+        name: 'Team Project',
+        group: 'Work',
+        teamId: 'team-abc-123',
+        teamServerUrl: 'https://team.waggle.dev',
+        teamRole: 'member',
+        teamUserId: 'user-xyz',
+      });
+
+      expect(ws.teamId).toBe('team-abc-123');
+      expect(ws.teamServerUrl).toBe('https://team.waggle.dev');
+      expect(ws.teamRole).toBe('member');
+      expect(ws.teamUserId).toBe('user-xyz');
+    });
+
+    it('creates solo workspace without team fields', () => {
+      const ws = manager.create({ name: 'Solo', group: 'Personal' });
+
+      expect(ws.teamId).toBeUndefined();
+      expect(ws.teamServerUrl).toBeUndefined();
+      expect(ws.teamRole).toBeUndefined();
+      expect(ws.teamUserId).toBeUndefined();
+    });
+
+    it('isTeamWorkspace returns true for team workspaces', () => {
+      manager.create({
+        name: 'Team WS',
+        group: 'Work',
+        teamId: 'team-1',
+        teamServerUrl: 'https://example.com',
+      });
+      expect(manager.isTeamWorkspace('team-ws')).toBe(true);
+    });
+
+    it('isTeamWorkspace returns false for solo workspaces', () => {
+      manager.create({ name: 'Solo WS', group: 'Personal' });
+      expect(manager.isTeamWorkspace('solo-ws')).toBe(false);
+    });
+
+    it('isTeamWorkspace returns false for nonexistent workspace', () => {
+      expect(manager.isTeamWorkspace('nope')).toBe(false);
+    });
+
+    it('listTeamWorkspaces filters to team-connected only', () => {
+      manager.create({ name: 'Solo A', group: 'Work' });
+      manager.create({ name: 'Team B', group: 'Work', teamId: 'team-1', teamServerUrl: 'https://a.com' });
+      manager.create({ name: 'Solo C', group: 'Personal' });
+      manager.create({ name: 'Team D', group: 'Work', teamId: 'team-2', teamServerUrl: 'https://b.com' });
+
+      const teamWs = manager.listTeamWorkspaces();
+      expect(teamWs).toHaveLength(2);
+      expect(teamWs.map(w => w.name).sort()).toEqual(['Team B', 'Team D']);
+    });
+
+    it('persists team fields through get round-trip', () => {
+      manager.create({
+        name: 'Persist Test',
+        group: 'Work',
+        teamId: 'team-persist',
+        teamServerUrl: 'https://persist.dev',
+        teamRole: 'admin',
+        teamUserId: 'user-persist',
+      });
+
+      const ws = manager.get('persist-test');
+      expect(ws!.teamId).toBe('team-persist');
+      expect(ws!.teamServerUrl).toBe('https://persist.dev');
+      expect(ws!.teamRole).toBe('admin');
+      expect(ws!.teamUserId).toBe('user-persist');
+    });
+
+    it('updates team fields', () => {
+      manager.create({
+        name: 'Update Team',
+        group: 'Work',
+        teamId: 'team-1',
+        teamRole: 'member',
+      });
+
+      manager.update('update-team', { teamRole: 'admin' });
+
+      const ws = manager.get('update-team');
+      expect(ws!.teamRole).toBe('admin');
+      expect(ws!.teamId).toBe('team-1'); // unchanged
+    });
+  });
+
   describe('default workspace', () => {
     it('sets and gets default workspace', () => {
       manager.create({ name: 'Default WS', group: 'Work' });

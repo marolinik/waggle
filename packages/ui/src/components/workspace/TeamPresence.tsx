@@ -1,0 +1,82 @@
+/**
+ * TeamPresence — shows online team members for a team workspace.
+ *
+ * Displays small status dots with member names on hover.
+ * Only visible when a team workspace is active.
+ */
+
+import React from 'react';
+import type { TeamMember } from '../../services/types.js';
+
+export interface TeamPresenceProps {
+  members: TeamMember[];
+  /** Max number of avatars to show before "+N more" */
+  maxVisible?: number;
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  online: '#22c55e',  // green
+  away: '#f59e0b',    // amber
+  offline: '#6b7280', // gray
+};
+
+export function TeamPresence({ members, maxVisible = 5 }: TeamPresenceProps) {
+  if (members.length === 0) return null;
+
+  const online = members.filter(m => m.status === 'online');
+  const visible = members.slice(0, maxVisible);
+  const remaining = members.length - maxVisible;
+
+  return (
+    <div className="team-presence flex items-center gap-1.5">
+      {/* Online count */}
+      <span className="team-presence__count text-[10px] text-gray-500">
+        {online.length} online
+      </span>
+
+      {/* Member dots */}
+      <div className="team-presence__dots flex -space-x-1">
+        {visible.map((member) => (
+          <div
+            key={member.userId}
+            className="team-presence__dot relative flex h-6 w-6 items-center justify-center rounded-full border border-gray-800 bg-gray-700 text-[10px] font-medium text-gray-200"
+            title={`${member.displayName}${member.activitySummary ? ` — ${member.activitySummary}` : ''} (${member.status})`}
+          >
+            {member.avatarUrl ? (
+              <img
+                src={member.avatarUrl}
+                alt={member.displayName}
+                className="h-full w-full rounded-full object-cover"
+              />
+            ) : (
+              getInitials(member.displayName)
+            )}
+            {/* Status indicator */}
+            <span
+              className="team-presence__status absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border border-gray-800"
+              style={{ backgroundColor: STATUS_COLORS[member.status] ?? STATUS_COLORS.offline }}
+            />
+          </div>
+        ))}
+        {remaining > 0 && (
+          <div
+            className="team-presence__more flex h-6 w-6 items-center justify-center rounded-full border border-gray-800 bg-gray-600 text-[9px] text-gray-300"
+            title={`${remaining} more member${remaining > 1 ? 's' : ''}`}
+          >
+            +{remaining}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
+}
+
+export { getInitials };

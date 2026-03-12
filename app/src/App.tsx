@@ -32,6 +32,8 @@ import {
   useSessions,
   useOnboardingSetup,
   useApprovalGate,
+  useTeamPresence,
+  useTeamActivity,
   matchesNamedShortcut,
   categorizeFile,
 } from '@waggle/ui';
@@ -89,6 +91,14 @@ function WaggleApp() {
     setActiveWorkspace,
     createWorkspace,
   } = useWorkspaces({ service });
+
+  // ── Team presence (I4) ───────────────────────────────────────────
+  const { members: teamMembers } = useTeamPresence({
+    teamId: activeWorkspace?.teamId,
+  });
+  const { items: teamActivity, loading: teamActivityLoading } = useTeamActivity({
+    teamId: activeWorkspace?.teamId,
+  });
 
   // ── Sessions ──────────────────────────────────────────────────────
   const {
@@ -592,6 +602,30 @@ function WaggleApp() {
     }
   }, [handleFileDrop]);
 
+  // ── Team connection state ─────────────────────────────────────────
+  const [teamConnection, setTeamConnection] = useState<import('@waggle/ui').TeamConnection | null>(null);
+
+  // Check team status on mount
+  useEffect(() => {
+    (adapter as any).getTeamStatus?.()
+      .then((tc: import('@waggle/ui').TeamConnection | null) => setTeamConnection(tc))
+      .catch(() => {});
+  }, []);
+
+  const handleTeamConnect = useCallback(async (serverUrl: string, token: string) => {
+    const tc = await (adapter as any).connectTeam(serverUrl, token);
+    setTeamConnection(tc);
+  }, []);
+
+  const handleTeamDisconnect = useCallback(async () => {
+    await (adapter as any).disconnectTeam();
+    setTeamConnection(null);
+  }, []);
+
+  const handleFetchTeams = useCallback(async () => {
+    return (adapter as any).listTeams() ?? [];
+  }, []);
+
   // ── Workspace creation ────────────────────────────────────────────
   const handleCreateWorkspace = useCallback(async (wsConfig: {
     name: string;
@@ -599,6 +633,10 @@ function WaggleApp() {
     model?: string;
     personality?: string;
     directory?: string;
+    teamId?: string;
+    teamServerUrl?: string;
+    teamRole?: 'owner' | 'admin' | 'member' | 'viewer';
+    teamUserId?: string;
   }) => {
     await createWorkspace(wsConfig);
     setShowCreateWorkspace(false);
@@ -731,6 +769,9 @@ function WaggleApp() {
                 config={config}
                 onConfigUpdate={handleConfigUpdate}
                 onTestApiKey={(provider, key) => service.testApiKey(provider, key)}
+                teamConnection={teamConnection}
+                onTeamConnect={handleTeamConnect}
+                onTeamDisconnect={handleTeamDisconnect}
               />
             )}
             {currentView === 'memory' && (
@@ -775,6 +816,9 @@ function WaggleApp() {
               searchResults={searchResults}
               searchLoading={searchLoading}
               onClearSearch={clearSearch}
+              teamMembers={teamMembers}
+              teamActivity={teamActivity}
+              teamActivityLoading={teamActivityLoading}
             />
           ) : undefined
         }
@@ -796,6 +840,10 @@ function WaggleApp() {
         isOpen={showCreateWorkspace}
         onClose={() => setShowCreateWorkspace(false)}
         onSubmit={handleCreateWorkspace}
+        isTeamConnected={teamConnection !== null}
+        teamServerUrl={teamConnection?.serverUrl}
+        teamUserId={teamConnection?.userId}
+        onFetchTeams={handleFetchTeams}
       />
 
       {/* File preview modal — B6: with "Open" button via Tauri shell */}

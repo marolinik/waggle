@@ -21,8 +21,11 @@ import {
   EventStream,
   StepCard,
   useEvents,
+  ActivityFeed,
+  formatActivityTime,
+  useTeamActivity,
 } from '../../src/index.js';
-import type { AgentStep, StepFilter } from '../../src/index.js';
+import type { AgentStep, StepFilter, ActivityItem } from '../../src/index.js';
 
 // ── Test data ───────────────────────────────────────────────────────
 
@@ -380,5 +383,45 @@ describe('event stream exports', () => {
     expect(STEP_ICONS).toBeDefined();
     expect(STEP_COLORS).toBeDefined();
     expect(STEP_TYPE_COLORS).toBeDefined();
+  });
+
+  it('exports ActivityFeed as a function', () => {
+    expect(typeof ActivityFeed).toBe('function');
+  });
+
+  it('exports useTeamActivity as a function', () => {
+    expect(typeof useTeamActivity).toBe('function');
+  });
+});
+
+// ── formatActivityTime ──────────────────────────────────────────────
+
+describe('formatActivityTime', () => {
+  it('returns "just now" for timestamps less than 1 minute ago', () => {
+    const now = new Date().toISOString();
+    expect(formatActivityTime(now)).toBe('just now');
+  });
+
+  it('returns minutes ago for recent timestamps', () => {
+    const fiveMinAgo = new Date(Date.now() - 5 * 60000).toISOString();
+    expect(formatActivityTime(fiveMinAgo)).toBe('5m ago');
+  });
+
+  it('returns hours ago for timestamps within 24h', () => {
+    const threeHoursAgo = new Date(Date.now() - 3 * 3600000).toISOString();
+    expect(formatActivityTime(threeHoursAgo)).toBe('3h ago');
+  });
+
+  it('returns days ago for timestamps within a week', () => {
+    const twoDaysAgo = new Date(Date.now() - 2 * 86400000).toISOString();
+    expect(formatActivityTime(twoDaysAgo)).toBe('2d ago');
+  });
+
+  it('returns formatted date for timestamps older than a week', () => {
+    const twoWeeksAgo = new Date(Date.now() - 14 * 86400000).toISOString();
+    const result = formatActivityTime(twoWeeksAgo);
+    // Should be a date string, not a relative time
+    expect(result).not.toContain('ago');
+    expect(result.length).toBeGreaterThan(0);
   });
 });

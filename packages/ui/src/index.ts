@@ -13,6 +13,9 @@ export type {
   Frame,
   AgentStatus,
   WaggleConfig,
+  TeamConnection,
+  TeamMember,
+  ProgressItem,
 } from './services/types.js';
 
 // Services — adapters
@@ -60,16 +63,25 @@ export {
   WorkspaceCard,
   GroupHeader,
   CreateWorkspaceDialog,
+  TeamPresence,
+  getInitials,
   groupWorkspacesByGroup,
   validateWorkspaceForm,
   sortGroups,
   GROUP_ORDER,
+  TaskBoard,
+  getTaskStatusColor,
+  groupTasksByStatus,
 } from './components/workspace/index.js';
 export type {
   WorkspaceTreeProps,
   WorkspaceCardProps,
   GroupHeaderProps,
   CreateWorkspaceDialogProps,
+  TeamPresenceProps,
+  TeamInfo,
+  TaskBoardProps,
+  TeamTask,
 } from './components/workspace/index.js';
 
 // Components — common
@@ -233,12 +245,16 @@ export {
   STEP_COLORS,
   STEP_TYPE_COLORS,
   filterSteps,
+  ActivityFeed,
+  formatActivityTime,
 } from './components/events/index.js';
 export type {
   EventStreamProps,
   StepCardProps,
   AgentStep,
   StepFilter,
+  ActivityFeedProps,
+  ActivityItem,
 } from './components/events/index.js';
 
 // Components — sessions
@@ -342,3 +358,9 @@ export type { UseSessionsOptions, UseSessionsReturn } from './hooks/useSessions.
 
 export { useTabs } from './hooks/useTabs.js';
 export type { UseTabsOptions, UseTabsReturn } from './hooks/useTabs.js';
+
+export { useTeamPresence } from './hooks/useTeamPresence.js';
+export type { UseTeamPresenceOptions, UseTeamPresenceReturn } from './hooks/useTeamPresence.js';
+
+export { useTeamActivity } from './hooks/useTeamActivity.js';
+export type { UseTeamActivityOptions, UseTeamActivityReturn } from './hooks/useTeamActivity.js';

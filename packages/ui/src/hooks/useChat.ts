@@ -150,10 +150,11 @@ export function useChat({ service, workspace, session, workspacePath, onFileCrea
   // Load history when session or workspace changes
   useEffect(() => {
     abortRef.current = true; // abort any in-flight stream
-    setMessages([]); // clear immediately for fast UI response
 
-    // Then load saved history from server
+    // Load saved history from server — replace messages atomically
+    // (no flash-clear: old messages stay visible until new ones arrive)
     if (session || workspace) {
+      setIsLoading(true);
       service.getHistory(workspace, session).then((data) => {
         const history = (data as any)?.messages;
         if (Array.isArray(history) && history.length > 0) {
@@ -163,10 +164,16 @@ export function useChat({ service, workspace, session, workspacePath, onFileCrea
             content: m.content,
             timestamp: m.timestamp ?? new Date().toISOString(),
           })));
+        } else {
+          setMessages([]);
         }
       }).catch(() => {
-        // History load failed — start fresh
+        setMessages([]); // History load failed — start fresh
+      }).finally(() => {
+        setIsLoading(false);
       });
+    } else {
+      setMessages([]);
     }
   }, [session, workspace, service]);
 

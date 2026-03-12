@@ -64,13 +64,26 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
 
   // POST /api/workspaces — create workspace
   server.post<{
-    Body: { name: string; group: string; icon?: string; model?: string; directory?: string };
+    Body: {
+      name: string;
+      group: string;
+      icon?: string;
+      model?: string;
+      directory?: string;
+      teamId?: string;
+      teamServerUrl?: string;
+      teamRole?: 'owner' | 'admin' | 'member' | 'viewer';
+      teamUserId?: string;
+    };
   }>('/api/workspaces', async (request, reply) => {
-    const { name, group, icon, model, directory } = request.body;
+    const { name, group, icon, model, directory, teamId, teamServerUrl, teamRole, teamUserId } = request.body;
     if (!name || !group) {
       return reply.status(400).send({ error: 'name and group are required' });
     }
-    const ws = server.workspaceManager.create({ name, group, icon, model, directory });
+    const ws = server.workspaceManager.create({
+      name, group, icon, model, directory,
+      teamId, teamServerUrl, teamRole, teamUserId,
+    });
     return reply.status(201).send(ws);
   });
 
@@ -268,6 +281,34 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
       }
     }
 
+    // ── J4: Team catch-up context (for team workspaces) ────
+    let teamContext: {
+      isTeam: boolean;
+      teamId?: string;
+      tasks?: Array<{ id: string; title: string; status: string; assigneeName?: string }>;
+    } | undefined;
+
+    if (ws.teamId) {
+      teamContext = { isTeam: true, teamId: ws.teamId };
+
+      // Load workspace tasks
+      try {
+        const { readTasks } = await import('./tasks.js');
+        const tasks = readTasks(server.localConfig.dataDir, id);
+        teamContext.tasks = tasks.map(t => ({
+          id: t.id, title: t.title, status: t.status, assigneeName: t.assigneeName,
+        }));
+      } catch { /* tasks file may not exist */ }
+
+      // Add team-specific suggested prompts
+      if (suggestedPrompts.length > 0) {
+        suggestedPrompts.push('What has the team been working on?');
+        if (teamContext.tasks && teamContext.tasks.some(t => t.status === 'open')) {
+          suggestedPrompts.push('What team tasks are open?');
+        }
+      }
+    }
+
     return {
       workspace: { id: ws.id, name: ws.name, group: ws.group, model: ws.model, directory: ws.directory },
       summary: summary || `This is your ${ws.name} workspace. Everything you discuss here stays in context — decisions, research, and progress are remembered across sessions.`,
@@ -282,6 +323,7 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
         fileCount,
       },
       lastActive: recentThreads[0]?.lastActive ?? ws.created,
+      teamContext,
     };
   });
 

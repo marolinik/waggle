@@ -608,10 +608,10 @@ export const sessionRoutes: FastifyPluginAsync = async (server) => {
     const { workspaceId } = request.params;
     assertSafeSegment(workspaceId, 'workspaceId');
 
-    // Verify workspace exists
+    // Gracefully return empty for non-existent workspaces (e.g. 'default' on startup)
     const ws = server.workspaceManager.get(workspaceId);
     if (!ws) {
-      return reply.status(404).send({ error: 'Workspace not found' });
+      return [];
     }
 
     const sessionsDir = path.join(

@@ -14,6 +14,16 @@ export interface WorkspaceConfig {
   /** Filesystem directory where agent operates and generates files. */
   directory?: string;
   created: string; // ISO 8601
+
+  // --- Team Mode fields (Phase 5) ---
+  /** Team ID on the team server. Present = team workspace. */
+  teamId?: string;
+  /** URL of the team server (e.g. "https://team.waggle.dev"). */
+  teamServerUrl?: string;
+  /** Current user's role in this team workspace. */
+  teamRole?: 'owner' | 'admin' | 'member' | 'viewer';
+  /** Current user's ID on the team server. */
+  teamUserId?: string;
 }
 
 export interface CreateWorkspaceOptions {
@@ -27,6 +37,12 @@ export interface CreateWorkspaceOptions {
   team?: string | null;
   /** Filesystem directory where agent operates and generates files. */
   directory?: string;
+
+  // --- Team Mode fields (Phase 5) ---
+  teamId?: string;
+  teamServerUrl?: string;
+  teamRole?: 'owner' | 'admin' | 'member' | 'viewer';
+  teamUserId?: string;
 }
 
 interface WorkspacesMeta {
@@ -77,6 +93,10 @@ export class WorkspaceManager {
       ...(options.skills !== undefined && { skills: options.skills }),
       ...(options.team !== undefined && { team: options.team }),
       ...(options.directory !== undefined && { directory: options.directory }),
+      ...(options.teamId !== undefined && { teamId: options.teamId }),
+      ...(options.teamServerUrl !== undefined && { teamServerUrl: options.teamServerUrl }),
+      ...(options.teamRole !== undefined && { teamRole: options.teamRole }),
+      ...(options.teamUserId !== undefined && { teamUserId: options.teamUserId }),
       created: new Date().toISOString(),
     };
 
@@ -156,6 +176,21 @@ export class WorkspaceManager {
     if (fs.existsSync(wsDir)) {
       fs.rmSync(wsDir, { recursive: true, force: true });
     }
+  }
+
+  /**
+   * Check whether a workspace is team-connected (has a teamId).
+   */
+  isTeamWorkspace(id: string): boolean {
+    const ws = this.get(id);
+    return ws !== null && typeof ws.teamId === 'string' && ws.teamId.length > 0;
+  }
+
+  /**
+   * List only team-connected workspaces.
+   */
+  listTeamWorkspaces(): WorkspaceConfig[] {
+    return this.list().filter(ws => typeof ws.teamId === 'string' && ws.teamId.length > 0);
   }
 
   /**

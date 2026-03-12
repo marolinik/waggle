@@ -1,6 +1,7 @@
 import fp from 'fastify-plugin';
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { createClerkClient } from '@clerk/fastify';
+import { UserService } from '../services/user-service.js';
 
 export type AuthenticateFn = (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
 
@@ -17,6 +18,7 @@ declare module 'fastify' {
 
 export default fp(async function authPlugin(fastify: FastifyInstance) {
   const clerk = createClerkClient({ secretKey: fastify.config.clerkSecretKey });
+  const userService = new UserService(fastify.db);
 
   const clerkAuth: AuthenticateFn = async function (request, reply) {
     const token = request.headers.authorization?.replace('Bearer ', '');
@@ -28,13 +30,18 @@ export default fp(async function authPlugin(fastify: FastifyInstance) {
       const payload = await clerk.verifyToken(token);
       request.clerkId = payload.sub;
 
-      // Look up internal user
-      const { users } = await import('../db/schema.js');
-      const { eq } = await import('drizzle-orm');
-      const [user] = await fastify.db.select().from(users).where(eq(users.clerkId, payload.sub)).limit(1);
+      // Look up internal user, auto-provision if not found
+      let user = await userService.getByClerkId(payload.sub);
 
       if (!user) {
-        return reply.code(401).send({ error: 'User not found. Please complete onboarding.' });
+        // Auto-create user from Clerk JWT claims (self-healing: works even if webhook was missed)
+        const clerkUser = await clerk.users.getUser(payload.sub);
+        user = await userService.upsertFromClerk({
+          clerkId: payload.sub,
+          displayName: `${clerkUser.firstName ?? ''} ${clerkUser.lastName ?? ''}`.trim() || payload.sub,
+          email: clerkUser.emailAddresses?.[0]?.emailAddress ?? '',
+          avatarUrl: clerkUser.imageUrl ?? null,
+        });
       }
 
       request.userId = user.id;

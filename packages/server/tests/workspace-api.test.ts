@@ -45,6 +45,59 @@ describe('Workspace & Session API', () => {
     workspaceId = body.id;
   });
 
+  // --- I2: Team Workspace Creation ---
+
+  it('creates a team workspace with team fields', async () => {
+    const res = await server.inject({
+      method: 'POST',
+      url: '/api/workspaces',
+      payload: {
+        name: 'Team Project Alpha',
+        group: 'Team',
+        teamId: 'team-123',
+        teamServerUrl: 'https://team.example.com',
+        teamRole: 'member',
+        teamUserId: 'user-456',
+      },
+    });
+    expect(res.statusCode).toBe(201);
+    const body = JSON.parse(res.body);
+    expect(body.name).toBe('Team Project Alpha');
+    expect(body.group).toBe('Team');
+    expect(body.teamId).toBe('team-123');
+    expect(body.teamServerUrl).toBe('https://team.example.com');
+    expect(body.teamRole).toBe('member');
+    expect(body.teamUserId).toBe('user-456');
+
+    // Verify it appears in workspace list
+    const listRes = await server.inject({
+      method: 'GET',
+      url: '/api/workspaces',
+    });
+    const list = JSON.parse(listRes.body);
+    const teamWs = list.find((ws: { teamId?: string }) => ws.teamId === 'team-123');
+    expect(teamWs).toBeTruthy();
+    expect(teamWs.teamServerUrl).toBe('https://team.example.com');
+
+    // Clean up
+    await server.inject({ method: 'DELETE', url: `/api/workspaces/${body.id}` });
+  });
+
+  it('creates a regular workspace without team fields', async () => {
+    const res = await server.inject({
+      method: 'POST',
+      url: '/api/workspaces',
+      payload: { name: 'Regular WS', group: 'Personal' },
+    });
+    expect(res.statusCode).toBe(201);
+    const body = JSON.parse(res.body);
+    expect(body.teamId).toBeUndefined();
+    expect(body.teamServerUrl).toBeUndefined();
+
+    // Clean up
+    await server.inject({ method: 'DELETE', url: `/api/workspaces/${body.id}` });
+  });
+
   // --- Session Tests ---
 
   it('lists sessions (empty initially)', async () => {
@@ -654,5 +707,36 @@ describe('Workspace & Session API', () => {
       url: '/api/workspaces/nonexistent-ws-999/files',
     });
     expect(res.statusCode).toBe(404);
+  });
+
+  // J4: Team catch-up context
+  it('workspace context includes teamContext for team workspaces', async () => {
+    // Create a team workspace
+    const createRes = await server.inject({
+      method: 'POST',
+      url: '/api/workspaces',
+      payload: { name: 'Team WS', group: 'Team', teamId: 'team-test-123' },
+    });
+    const teamWsId = JSON.parse(createRes.body).id;
+
+    // Get context
+    const contextRes = await server.inject({
+      method: 'GET',
+      url: `/api/workspaces/${teamWsId}/context`,
+    });
+    expect(contextRes.statusCode).toBe(200);
+    const context = JSON.parse(contextRes.body);
+    expect(context.teamContext).toBeDefined();
+    expect(context.teamContext.isTeam).toBe(true);
+    expect(context.teamContext.teamId).toBe('team-test-123');
+  });
+
+  it('workspace context omits teamContext for non-team workspaces', async () => {
+    const contextRes = await server.inject({
+      method: 'GET',
+      url: `/api/workspaces/${workspaceId}/context`,
+    });
+    const context = JSON.parse(contextRes.body);
+    expect(context.teamContext).toBeUndefined();
   });
 });

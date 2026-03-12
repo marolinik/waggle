@@ -66,8 +66,8 @@ export function SessionCard({
 
   const cardClasses = `session-card__button flex w-full items-center gap-2 rounded px-3 py-2 text-sm transition-colors ${
     active
-      ? 'bg-blue-600/20 text-blue-300'
-      : 'text-gray-300 hover:bg-gray-800'
+      ? 'bg-blue-600/30 text-blue-200 border-l-2 border-blue-400'
+      : 'text-gray-300 hover:bg-gray-800 border-l-2 border-transparent'
   }`;
 
   const cardContent = (

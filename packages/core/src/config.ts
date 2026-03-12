@@ -8,10 +8,18 @@ export interface ProviderEntry {
   baseUrl?: string;
 }
 
+export interface TeamServerConfig {
+  url: string;
+  token?: string;
+  userId?: string;
+  displayName?: string;
+}
+
 interface ConfigData {
   defaultModel: string;
   providers: Record<string, ProviderEntry>;
   mindPath?: string;
+  teamServer?: TeamServerConfig;
 }
 
 const DEFAULT_MODEL = 'claude-sonnet-4-6';
@@ -80,5 +88,23 @@ export class WaggleConfig {
 
   getConfigDir(): string {
     return this.configDir;
+  }
+
+  // --- Team Server (Phase 5) ---
+
+  getTeamServer(): TeamServerConfig | null {
+    return this.data.teamServer ?? null;
+  }
+
+  setTeamServer(config: TeamServerConfig): void {
+    this.data.teamServer = config;
+  }
+
+  clearTeamServer(): void {
+    delete this.data.teamServer;
+  }
+
+  isTeamConnected(): boolean {
+    return this.data.teamServer !== null && this.data.teamServer !== undefined && typeof this.data.teamServer.url === 'string' && this.data.teamServer.url.length > 0;
   }
 }

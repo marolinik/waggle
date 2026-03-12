@@ -14,6 +14,7 @@ import type {
   Frame,
   AgentStatus,
   WaggleConfig,
+  TeamConnection,
 } from './types.js';
 
 export interface LocalAdapterOptions {
@@ -163,9 +164,20 @@ export class LocalAdapter implements WaggleService {
   async searchMemory(
     query: string,
     scope: 'personal' | 'workspace' | 'all',
+    workspace?: string,
   ): Promise<Frame[]> {
     const params = new URLSearchParams({ q: query, scope });
+    if (workspace) params.set('workspace', workspace);
     const res = await fetch(`${this.baseUrl}/api/memory/search?${params}`);
+    if (!res.ok) return [];
+    const data = await res.json() as { results: Frame[]; count: number };
+    return data.results;
+  }
+
+  async listFrames(workspace?: string, limit = 50): Promise<Frame[]> {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (workspace) params.set('workspace', workspace);
+    const res = await fetch(`${this.baseUrl}/api/memory/frames?${params}`);
     if (!res.ok) return [];
     const data = await res.json() as { results: Frame[]; count: number };
     return data.results;
@@ -380,6 +392,47 @@ export class LocalAdapter implements WaggleService {
     });
     if (!res.ok) return { valid: false, error: `Request failed: ${res.status}` };
     return res.json() as Promise<{ valid: boolean; error?: string }>;
+  }
+
+  // ── Team ───────────────────────────────────────────────────────────
+
+  async connectTeam(serverUrl: string, token: string): Promise<TeamConnection> {
+    const res = await fetch(`${this.baseUrl}/api/team/connect`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ serverUrl, token }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as Record<string, string>).error ?? `Connection failed: ${res.status}`);
+    }
+    return res.json() as Promise<TeamConnection>;
+  }
+
+  async disconnectTeam(): Promise<void> {
+    const res = await fetch(`${this.baseUrl}/api/team/disconnect`, {
+      method: 'POST',
+    });
+    if (!res.ok) throw new Error(`Disconnect failed: ${res.status}`);
+  }
+
+  async getTeamStatus(): Promise<TeamConnection | null> {
+    const res = await fetch(`${this.baseUrl}/api/team/status`);
+    if (!res.ok) return null;
+    const data = await res.json() as { connected: boolean; serverUrl?: string; userId?: string; displayName?: string };
+    if (!data.connected) return null;
+    return {
+      serverUrl: data.serverUrl ?? '',
+      token: '', // never returned by server
+      userId: data.userId ?? '',
+      displayName: data.displayName ?? '',
+    };
+  }
+
+  async listTeams(): Promise<Array<{ id: string; name: string; slug: string; role: string }>> {
+    const res = await fetch(`${this.baseUrl}/api/team/teams`);
+    if (!res.ok) return [];
+    return res.json() as Promise<Array<{ id: string; name: string; slug: string; role: string }>>;
   }
 
   // ── Events ─────────────────────────────────────────────────────────

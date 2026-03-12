@@ -15,8 +15,15 @@ import {
   WorkspaceCard,
   GroupHeader,
   CreateWorkspaceDialog,
+  TeamPresence,
+  getInitials,
   useWorkspaces,
+  useTeamPresence,
+  TaskBoard,
+  getTaskStatusColor,
+  groupTasksByStatus,
 } from '../../src/index.js';
+import type { TeamTask } from '../../src/index.js';
 import type { Workspace } from '../../src/index.js';
 
 // ── Test helpers ────────────────────────────────────────────────────
@@ -152,5 +159,92 @@ describe('workspace component exports', () => {
 
   it('exports useWorkspaces as a function', () => {
     expect(typeof useWorkspaces).toBe('function');
+  });
+
+  it('exports TeamPresence as a function', () => {
+    expect(typeof TeamPresence).toBe('function');
+  });
+
+  it('exports useTeamPresence as a function', () => {
+    expect(typeof useTeamPresence).toBe('function');
+  });
+});
+
+// ── getInitials ─────────────────────────────────────────────────────
+
+describe('getInitials', () => {
+  it('returns first+last initials for two-word name', () => {
+    expect(getInitials('Alice Smith')).toBe('AS');
+  });
+
+  it('returns first+last initials for multi-word name', () => {
+    expect(getInitials('Jean-Claude Van Damme')).toBe('JD');
+  });
+
+  it('returns first two chars for single-word name', () => {
+    expect(getInitials('Admin')).toBe('AD');
+  });
+
+  it('handles leading/trailing whitespace', () => {
+    expect(getInitials('  Bob Jones  ')).toBe('BJ');
+  });
+
+  it('uppercases lowercase names', () => {
+    expect(getInitials('john doe')).toBe('JD');
+  });
+});
+
+// ── groupTasksByStatus ──────────────────────────────────────────────
+
+function makeTask(overrides: Partial<TeamTask> = {}): TeamTask {
+  return {
+    id: 'task-1',
+    title: 'Test task',
+    status: 'open',
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    ...overrides,
+  };
+}
+
+describe('groupTasksByStatus', () => {
+  it('groups tasks by status', () => {
+    const tasks = [
+      makeTask({ id: '1', status: 'open' }),
+      makeTask({ id: '2', status: 'in_progress' }),
+      makeTask({ id: '3', status: 'done' }),
+      makeTask({ id: '4', status: 'open' }),
+    ];
+    const grouped = groupTasksByStatus(tasks);
+    expect(grouped.open).toHaveLength(2);
+    expect(grouped.in_progress).toHaveLength(1);
+    expect(grouped.done).toHaveLength(1);
+  });
+
+  it('returns empty arrays for no tasks', () => {
+    const grouped = groupTasksByStatus([]);
+    expect(grouped.open).toHaveLength(0);
+    expect(grouped.in_progress).toHaveLength(0);
+    expect(grouped.done).toHaveLength(0);
+  });
+});
+
+describe('getTaskStatusColor', () => {
+  it('returns blue for open', () => {
+    expect(getTaskStatusColor('open')).toBe('#3b82f6');
+  });
+
+  it('returns amber for in_progress', () => {
+    expect(getTaskStatusColor('in_progress')).toBe('#f59e0b');
+  });
+
+  it('returns green for done', () => {
+    expect(getTaskStatusColor('done')).toBe('#22c55e');
+  });
+});
+
+describe('TaskBoard exports', () => {
+  it('exports TaskBoard as a function', () => {
+    expect(typeof TaskBoard).toBe('function');
   });
 });

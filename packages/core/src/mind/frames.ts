@@ -125,6 +125,13 @@ export class FrameStore {
     return IMPORTANCE_MULTIPLIERS[importance];
   }
 
+  /** Get the most recent frames ordered by creation time descending. */
+  getRecent(limit = 50): MemoryFrame[] {
+    return this.db.getDatabase().prepare(`
+      SELECT * FROM memory_frames ORDER BY id DESC LIMIT ?
+    `).all(limit) as MemoryFrame[];
+  }
+
   getBFrameReferences(bframeId: number): number[] {
     const frame = this.getById(bframeId);
     if (!frame || frame.frame_type !== 'B') return [];
