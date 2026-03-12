@@ -23,6 +23,18 @@ export const skillRoutes: FastifyPluginAsync = async (server) => {
 
   // ── Skills ────────────────────────────────────────────────────────
 
+  // POST /api/skills/starter-pack — install starter skills
+  server.post('/api/skills/starter-pack', async () => {
+    const { installStarterSkills } = await import('@waggle/sdk');
+    const installed = installStarterSkills(skillsDir);
+
+    // Reload skills into agent state
+    server.agentState.skills.length = 0;
+    server.agentState.skills.push(...loadSkills(waggleHome));
+
+    return { ok: true, installed, count: installed.length };
+  });
+
   // GET /api/skills — list all installed skills
   server.get('/api/skills', async () => {
     const skills = loadSkills(waggleHome);
