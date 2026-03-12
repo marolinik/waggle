@@ -13,6 +13,7 @@ import {
   createDocumentTools,
   createSkillTools,
   createSubAgentTools,
+  createWorkflowTools,
   runAgentLoop,
   ensureIdentity,
   loadSystemPrompt,
@@ -173,7 +174,16 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
     defaultModel: 'claude-sonnet-4-6',
   });
 
-  const allTools = [...baseTools, ...subAgentTools];
+  // Workflow tools — multi-agent workflow templates (research, review, plan-execute)
+  const workflowTools = createWorkflowTools({
+    availableTools: baseTools,
+    runLoop: runAgentLoop,
+    litellmUrl: fullConfig.litellmUrl,
+    litellmApiKey: litellmApiKey,
+    defaultModel: 'claude-sonnet-4-6',
+  });
+
+  const allTools = [...baseTools, ...subAgentTools, ...workflowTools];
 
   // Load user customizations from ~/.waggle/
   const userSystemPrompt = loadSystemPrompt(waggleHome);
@@ -215,7 +225,14 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
       litellmApiKey: litellmApiKey,
       defaultModel: 'claude-sonnet-4-6',
     });
-    return [...wsBase, ...wsSub];
+    const wsWorkflow = createWorkflowTools({
+      availableTools: wsBase,
+      runLoop: runAgentLoop,
+      litellmUrl: fullConfig.litellmUrl,
+      litellmApiKey: litellmApiKey,
+      defaultModel: 'claude-sonnet-4-6',
+    });
+    return [...wsBase, ...wsSub, ...wsWorkflow];
   };
 
   // ── Workspace mind cache ─────────────────────────────────────────
