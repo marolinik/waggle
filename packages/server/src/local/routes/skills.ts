@@ -3,7 +3,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import type { FastifyPluginAsync } from 'fastify';
 import { PluginManager } from '@waggle/sdk';
-import { loadSkills } from '@waggle/agent';
+import { loadSkills, SkillRecommender } from '@waggle/agent';
 
 /**
  * Skills & plugins routes — manage agent extensions.
@@ -35,6 +35,24 @@ export const skillRoutes: FastifyPluginAsync = async (server) => {
       count: skills.length,
       directory: skillsDir,
     };
+  });
+
+  // GET /api/skills/suggestions — contextual skill recommendations
+  server.get<{
+    Querystring: { context: string; topN?: string };
+  }>('/api/skills/suggestions', async (request, reply) => {
+    const { context, topN } = request.query;
+    if (!context) {
+      return reply.status(400).send({ error: 'context query parameter is required' });
+    }
+
+    const skills = loadSkills(waggleHome);
+    const recommender = new SkillRecommender({
+      getSkills: () => skills,
+    });
+
+    const suggestions = recommender.recommend(context, topN ? parseInt(topN, 10) : 3);
+    return { suggestions, count: suggestions.length };
   });
 
   // GET /api/skills/:name — get full skill content

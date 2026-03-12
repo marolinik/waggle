@@ -9,6 +9,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ToolDefinition } from './tools.js';
+import { SkillRecommender } from './skill-recommender.js';
 
 export interface SkillToolsDeps {
   /** Path to ~/.waggle directory */
@@ -243,6 +244,47 @@ export function createSkillTools(deps: SkillToolsDeps): ToolDefinition[] {
         }
 
         return output;
+      },
+    },
+
+    // 6. suggest_skill — Context-aware skill recommendations
+    {
+      name: 'suggest_skill',
+      description: 'Get skill recommendations based on the current conversation context. Use this when you want to check if any installed skills could help with what the user is asking.',
+      parameters: {
+        type: 'object',
+        properties: {
+          context: { type: 'string', description: 'The current conversation topic or user request to match against installed skills' },
+          topN: { type: 'number', description: 'Maximum number of suggestions to return (default: 3)' },
+        },
+        required: ['context'],
+      },
+      execute: async (args) => {
+        const context = args.context as string;
+        const topN = (args.topN as number) ?? 3;
+
+        const recommender = new SkillRecommender({
+          getSkills: () => {
+            const files = fs.existsSync(skillsDir)
+              ? fs.readdirSync(skillsDir).filter(f => f.endsWith('.md'))
+              : [];
+            return files.map(f => ({
+              name: f.replace(/\.md$/, ''),
+              content: fs.readFileSync(path.join(skillsDir, f), 'utf-8').trim(),
+            }));
+          },
+          activeSkills: [],
+        });
+
+        const suggestions = recommender.recommend(context, topN);
+
+        if (suggestions.length === 0) {
+          return 'No matching skills found. Consider creating a custom skill with create_skill.';
+        }
+
+        return suggestions.map((s, i) =>
+          `${i + 1}. **${s.skillName}** (relevance: ${(s.relevanceScore * 100).toFixed(0)}%)\n   ${s.reason}`,
+        ).join('\n\n');
       },
     },
   ];
