@@ -90,6 +90,24 @@ export class SubagentOrchestrator extends EventEmitter {
     this.workers = new Map();
     const contextResults = new Map<string, string>();
 
+    // Pre-create all workers as 'pending' so UI can show the full workflow plan
+    const stepWorkerIds = new Map<string, string>();
+    for (const step of template.steps) {
+      const id = this.makeWorkerId(step.name);
+      stepWorkerIds.set(step.name, id);
+      const pendingState: WorkerState = {
+        id,
+        name: step.name,
+        role: step.role,
+        status: 'pending',
+        task: step.task,
+        toolsUsed: [],
+        usage: { inputTokens: 0, outputTokens: 0 },
+      };
+      this.workers.set(id, pendingState);
+      this.emit('worker:status', { workerId: id, status: 'pending', workerState: pendingState });
+    }
+
     // Build dependency graph and execute in order
     const completed = new Set<string>();
     const steps = [...template.steps];
@@ -106,8 +124,8 @@ export class SubagentOrchestrator extends EventEmitter {
         const depsReady = deps.every(d => completed.has(d));
         if (!depsReady) continue;
 
-        // Run this worker
-        const workerState = await this.runWorker(step, contextResults);
+        // Run this worker (reuse the pre-created pending worker ID)
+        const workerState = await this.runWorker(step, contextResults, stepWorkerIds.get(step.name));
 
         // Store result for downstream context injection
         if (workerState.status === 'done' && workerState.result) {
@@ -163,18 +181,20 @@ export class SubagentOrchestrator extends EventEmitter {
     return `worker-${this.workflowCounter}-${Date.now()}`;
   }
 
-  private async runWorker(step: WorkflowStep, contextResults: Map<string, string>): Promise<WorkerState> {
-    const id = this.makeWorkerId(step.name);
-    const workerState: WorkerState = {
+  private async runWorker(step: WorkflowStep, contextResults: Map<string, string>, existingId?: string): Promise<WorkerState> {
+    const id = existingId ?? this.makeWorkerId(step.name);
+    // Reuse pre-created pending worker or create fresh
+    const workerState: WorkerState = this.workers.get(id) ?? {
       id,
       name: step.name,
       role: step.role,
-      status: 'running',
+      status: 'pending',
       task: step.task,
-      startedAt: Date.now(),
       toolsUsed: [],
       usage: { inputTokens: 0, outputTokens: 0 },
     };
+    workerState.status = 'running';
+    workerState.startedAt = Date.now();
     this.workers.set(id, workerState);
     this.emit('worker:status', { workerId: id, status: 'running', workerState });
 

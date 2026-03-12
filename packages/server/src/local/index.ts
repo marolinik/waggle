@@ -79,6 +79,8 @@ export interface AgentState {
   getWorkspaceMindDb: (workspaceId: string) => import('@waggle/core').MindDB | null;
   /** Currently active workspace ID (null = personal only) */
   activeWorkspaceId: string | null;
+  /** Current sub-agent orchestrator instance (set during workflow execution) */
+  subagentOrchestrator: import('@waggle/agent').SubagentOrchestrator | null;
 }
 
 declare module 'fastify' {
@@ -380,6 +382,7 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
     activateWorkspaceMind: activateWorkspaceMindWithWeaver,
     getWorkspaceMindDb,
     activeWorkspaceId,
+    subagentOrchestrator: null,
   });
 
   // Wire up skill hot-reload callback

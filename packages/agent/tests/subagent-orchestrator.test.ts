@@ -176,10 +176,43 @@ describe('SubagentOrchestrator', () => {
 
     await orchestrator.runWorkflow(template);
 
-    // Should have at least 'running' and 'done' events
+    // Should have 'pending', 'running', and 'done' events in order
     const statuses = events.map(e => e.status);
+    expect(statuses).toContain('pending');
     expect(statuses).toContain('running');
     expect(statuses).toContain('done');
+    expect(statuses.indexOf('pending')).toBeLessThan(statuses.indexOf('running'));
+    expect(statuses.indexOf('running')).toBeLessThan(statuses.indexOf('done'));
+  });
+
+  it('workers start as pending before execution begins', async () => {
+    const statesObserved: Array<{ name: string; status: string }> = [];
+    orchestrator.on('worker:status', (data) => {
+      statesObserved.push({ name: data.workerState.name, status: data.status });
+    });
+
+    const template: WorkflowTemplate = {
+      name: 'pending-workflow',
+      description: 'Pending state workflow',
+      steps: [
+        { name: 'First', role: 'researcher', task: 'Task 1' },
+        { name: 'Second', role: 'writer', task: 'Task 2', dependsOn: ['First'] },
+      ],
+      aggregation: 'concatenate',
+    };
+
+    await orchestrator.runWorkflow(template);
+
+    // Both workers should emit 'pending' before any 'running'
+    const firstPending = statesObserved.findIndex(s => s.name === 'First' && s.status === 'pending');
+    const secondPending = statesObserved.findIndex(s => s.name === 'Second' && s.status === 'pending');
+    const firstRunning = statesObserved.findIndex(s => s.name === 'First' && s.status === 'running');
+
+    expect(firstPending).toBeGreaterThanOrEqual(0);
+    expect(secondPending).toBeGreaterThanOrEqual(0);
+    // Both pending events should fire before any running
+    expect(firstPending).toBeLessThan(firstRunning);
+    expect(secondPending).toBeLessThan(firstRunning);
   });
 
   it('failed worker sets error status', async () => {
