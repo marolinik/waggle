@@ -8,10 +8,10 @@
  * "Workspace Now" block with summary, suggested prompts, and recent threads.
  */
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import type { Message, ToolUseEvent, WorkspaceContext } from '../../services/types.js';
 import { ChatMessage } from './ChatMessage.js';
-import { ChatInput } from './ChatInput.js';
+import { ChatInput, CLIENT_COMMANDS, type SlashCommand } from './ChatInput.js';
 
 export interface ChatAreaProps {
   messages: Message[];
@@ -29,6 +29,44 @@ export interface ChatAreaProps {
 
 export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, onFileSelect, onToolApprove, onToolDeny, workspaceContext, onThreadSelect }: ChatAreaProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [mergedCommands, setMergedCommands] = useState<SlashCommand[] | undefined>(undefined);
+
+  // Fetch server commands on mount and merge with client-only commands
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/capabilities/status');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+
+        // Map server command format → SlashCommand format
+        const serverCmds: SlashCommand[] = (data.commands ?? []).map(
+          (c: { name: string; description: string; usage?: string }) => {
+            const slashName = c.name.startsWith('/') ? c.name : `/${c.name}`;
+            // Extract args from usage: e.g. "/catchup <topic>" → "<topic>"
+            let args: string | undefined;
+            if (c.usage) {
+              const spaceIdx = c.usage.indexOf(' ');
+              if (spaceIdx > 0) {
+                args = c.usage.slice(spaceIdx + 1).trim() || undefined;
+              }
+            }
+            return { name: slashName, description: c.description, args };
+          }
+        );
+
+        // Merge: server commands take precedence, then add client-only commands not in server list
+        const serverNames = new Set(serverCmds.map(c => c.name));
+        const clientOnly = CLIENT_COMMANDS.filter(c => !serverNames.has(c.name));
+        setMergedCommands([...serverCmds, ...clientOnly]);
+      } catch {
+        // Server unavailable — ChatInput will fall back to CLIENT_COMMANDS
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -230,6 +268,7 @@ export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, o
         onFileSelect={onFileSelect}
         disabled={isLoading}
         placeholder={showWorkspaceHome ? 'Ask what matters here, continue a task, or draft something...' : 'Type a message... (/ for commands)'}
+        commands={mergedCommands}
       />
     </div>
   );

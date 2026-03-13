@@ -27,6 +27,7 @@ export {
   ChatArea,
   ChatMessage,
   ChatInput,
+  CLIENT_COMMANDS,
   BUILTIN_COMMANDS,
   ToolCard,
   ToolResultRenderer,

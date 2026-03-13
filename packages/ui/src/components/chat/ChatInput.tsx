@@ -11,17 +11,19 @@ export interface SlashCommand {
   args?: string;
 }
 
-export const BUILTIN_COMMANDS: SlashCommand[] = [
+/**
+ * Client-only commands — these are handled entirely in the UI/client,
+ * not by the server's CommandRegistry. Used as fallback when no
+ * server commands are available, and always merged into the list.
+ */
+export const CLIENT_COMMANDS: SlashCommand[] = [
   { name: '/model', description: 'Switch AI model', args: '<model-name>' },
   { name: '/models', description: 'List available models' },
   { name: '/cost', description: 'Show token usage and cost' },
   { name: '/clear', description: 'Clear conversation history' },
   { name: '/identity', description: 'Show agent identity' },
   { name: '/awareness', description: 'Show agent awareness state' },
-  { name: '/plan', description: 'Show current plan' },
   { name: '/git', description: 'Show git status' },
-  { name: '/skills', description: 'List loaded skills' },
-  { name: '/help', description: 'Show available commands' },
 ];
 
 export interface ChatInputProps {
@@ -30,6 +32,8 @@ export interface ChatInputProps {
   onFileSelect?: (files: File[]) => void;
   disabled?: boolean;
   placeholder?: string;
+  /** Merged command list from server + client. Falls back to CLIENT_COMMANDS. */
+  commands?: SlashCommand[];
 }
 
 export function ChatInput({
@@ -38,6 +42,7 @@ export function ChatInput({
   onFileSelect,
   disabled = false,
   placeholder = 'Type a message... (/ for commands)',
+  commands,
 }: ChatInputProps) {
   const [text, setText] = useState('');
   const [showCommands, setShowCommands] = useState(false);
@@ -51,14 +56,16 @@ export function ChatInput({
     textareaRef.current?.focus();
   }, []);
 
+  const commandList = commands ?? CLIENT_COMMANDS;
+
   // Filter commands based on current input
   const filteredCommands = useMemo(() => {
     if (!text.startsWith('/')) return [];
     const query = text.toLowerCase();
-    return BUILTIN_COMMANDS.filter(cmd =>
+    return commandList.filter(cmd =>
       cmd.name.toLowerCase().startsWith(query)
     );
-  }, [text]);
+  }, [text, commandList]);
 
   // Show/hide command popup
   useEffect(() => {
