@@ -35,7 +35,7 @@ describe('Capabilities Route', () => {
     expect(res.statusCode).toBe(200);
   });
 
-  it('returns correct structure with empty arrays when no plugins/MCP/commands', async () => {
+  it('returns correct structure with empty plugins/MCP and populated commands', async () => {
     const res = await server.inject({ method: 'GET', url: '/api/capabilities/status' });
     const body = JSON.parse(res.body);
 
@@ -51,7 +51,8 @@ describe('Capabilities Route', () => {
     expect(Array.isArray(body.commands)).toBe(true);
     expect(body.plugins).toEqual([]);
     expect(body.mcpServers).toEqual([]);
-    expect(body.commands).toEqual([]);
+    // Commands are now populated by registerWorkflowCommands at startup
+    expect(body.commands.length).toBe(13);
   });
 
   it('tools summary has count, native, plugin, mcp fields', async () => {
@@ -144,25 +145,37 @@ describe('Capabilities Route', () => {
     (server.agentState as Record<string, unknown>).mcpRuntime = null;
   });
 
-  it('returns command data when commandRegistry is present', async () => {
-    const mockRegistry = {
-      list: () => [
-        { name: 'help', description: 'Show help', usage: '/help', aliases: [], handler: async () => '' },
-        { name: 'model', description: 'Switch model', usage: '/model <name>', aliases: ['m'], handler: async () => '' },
-      ],
-    };
-
-    (server.agentState as Record<string, unknown>).commandRegistry = mockRegistry;
-
+  it('returns 13 workflow commands from the wired CommandRegistry', async () => {
     const res = await server.inject({ method: 'GET', url: '/api/capabilities/status' });
     const body = JSON.parse(res.body);
 
-    expect(body.commands).toHaveLength(2);
-    expect(body.commands[0]).toEqual({ name: 'help', description: 'Show help', usage: '/help' });
-    expect(body.commands[1]).toEqual({ name: 'model', description: 'Switch model', usage: '/model <name>' });
+    expect(body.commands).toHaveLength(13);
 
-    // Cleanup
-    (server.agentState as Record<string, unknown>).commandRegistry = null;
+    // Verify all expected workflow commands are present
+    const commandNames = body.commands.map((c: { name: string }) => c.name);
+    expect(commandNames).toContain('catchup');
+    expect(commandNames).toContain('now');
+    expect(commandNames).toContain('research');
+    expect(commandNames).toContain('draft');
+    expect(commandNames).toContain('decide');
+    expect(commandNames).toContain('review');
+    expect(commandNames).toContain('spawn');
+    expect(commandNames).toContain('skills');
+    expect(commandNames).toContain('status');
+    expect(commandNames).toContain('memory');
+    expect(commandNames).toContain('plan');
+    expect(commandNames).toContain('focus');
+    expect(commandNames).toContain('help');
+
+    // Each command has the expected shape
+    for (const cmd of body.commands) {
+      expect(cmd).toHaveProperty('name');
+      expect(cmd).toHaveProperty('description');
+      expect(cmd).toHaveProperty('usage');
+      expect(typeof cmd.name).toBe('string');
+      expect(typeof cmd.description).toBe('string');
+      expect(cmd.usage).toMatch(/^\//); // usage starts with /
+    }
   });
 
   it('tool count breakdown is correct with both plugins and MCP', async () => {

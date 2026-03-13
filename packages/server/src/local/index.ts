@@ -21,9 +21,13 @@ import {
   HookRegistry,
   loadHooksFromConfig,
   CostTracker,
+  CommandRegistry,
+  registerWorkflowCommands,
+  McpRuntime,
   type ToolDefinition,
   type LoadedSkill,
 } from '@waggle/agent';
+import { PluginRuntimeManager } from '@waggle/sdk';
 import { workspaceRoutes } from './routes/workspaces.js';
 import { chatRoutes, type AgentRunner } from './routes/chat.js';
 import { memoryRoutes } from './routes/memory.js';
@@ -82,12 +86,12 @@ export interface AgentState {
   activeWorkspaceId: string | null;
   /** Current sub-agent orchestrator instance (set during workflow execution) */
   subagentOrchestrator: import('@waggle/agent').SubagentOrchestrator | null;
-  /** Plugin runtime manager — lifecycle, tools, skills from plugins (Q4) */
-  pluginRuntimeManager: import('@waggle/sdk').PluginRuntimeManager | null;
-  /** MCP server runtime — stdio servers, health, tools (Q4) */
-  mcpRuntime: import('@waggle/agent').McpRuntime | null;
-  /** Command registry — slash commands (Q4) */
-  commandRegistry: import('@waggle/agent').CommandRegistry | null;
+  /** Plugin runtime manager — lifecycle, tools, skills from plugins */
+  pluginRuntimeManager: import('@waggle/sdk').PluginRuntimeManager;
+  /** MCP server runtime — stdio servers, health, tools */
+  mcpRuntime: import('@waggle/agent').McpRuntime;
+  /** Command registry — slash commands */
+  commandRegistry: import('@waggle/agent').CommandRegistry;
 }
 
 declare module 'fastify' {
@@ -204,6 +208,16 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
 
   // Cost tracker
   const costTracker = new CostTracker({});
+
+  // Command registry — workflow-native slash commands
+  const commandRegistry = new CommandRegistry();
+  registerWorkflowCommands(commandRegistry);
+
+  // Plugin runtime manager — lifecycle, tools, skills from plugins
+  const pluginRuntimeManager = new PluginRuntimeManager();
+
+  // MCP server runtime — stdio servers, health, tools (empty by default)
+  const mcpRuntime = new McpRuntime();
 
   // Session histories (server-side, like CLI)
   const sessionHistories = new Map<string, Array<{ role: string; content: string }>>();
@@ -390,9 +404,9 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
     getWorkspaceMindDb,
     activeWorkspaceId,
     subagentOrchestrator: null,
-    pluginRuntimeManager: null,
-    mcpRuntime: null,
-    commandRegistry: null,
+    pluginRuntimeManager,
+    mcpRuntime,
+    commandRegistry,
   });
 
   // Wire up skill hot-reload callback
@@ -477,6 +491,9 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
 
   // Cleanup on close
   server.addHook('onClose', async () => {
+    // Stop MCP servers
+    await mcpRuntime.stopAll().catch(() => {});
+
     // Stop weaver timers
     for (const t of weaverTimers) clearInterval(t);
     for (const [, ww] of workspaceWeavers) {
