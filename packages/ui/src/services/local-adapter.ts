@@ -15,6 +15,8 @@ import type {
   AgentStatus,
   WaggleConfig,
   TeamConnection,
+  StarterCatalogResponse,
+  SkillState,
 } from './types.js';
 
 export interface LocalAdapterOptions {
@@ -362,6 +364,26 @@ export class LocalAdapter implements WaggleService {
     } catch {
       return [];
     }
+  }
+
+  // ── Install Center ──────────────────────────────────────────────────
+
+  async getStarterCatalog(): Promise<StarterCatalogResponse> {
+    const res = await fetch(`${this.baseUrl}/api/skills/starter-pack/catalog`);
+    if (!res.ok) throw new Error(`Failed to get starter catalog: ${res.status}`);
+    return res.json() as Promise<StarterCatalogResponse>;
+  }
+
+  async installStarterSkill(skillId: string): Promise<{ ok: boolean; skill: { id: string; name: string; state: SkillState } }> {
+    const res = await fetch(`${this.baseUrl}/api/skills/starter-pack/${encodeURIComponent(skillId)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Install failed' }));
+      throw new Error((err as Record<string, string>).error ?? `Install failed: ${res.status}`);
+    }
+    return res.json() as Promise<{ ok: boolean; skill: { id: string; name: string; state: SkillState } }>;
   }
 
   // ── Settings ───────────────────────────────────────────────────────

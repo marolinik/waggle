@@ -184,6 +184,30 @@ export interface WaggleConfig {
   teamConnection?: TeamConnection | null;
 }
 
+// ── Install Center (Slice 3) ────────────────────────────────────────
+
+export type SkillState = 'active' | 'installed' | 'available';
+
+export interface StarterSkillEntry {
+  id: string;
+  name: string;
+  description: string;
+  family: string;
+  familyLabel: string;
+  state: SkillState;
+  isWorkflow: boolean;
+}
+
+export interface SkillFamily {
+  id: string;
+  label: string;
+}
+
+export interface StarterCatalogResponse {
+  skills: StarterSkillEntry[];
+  families: SkillFamily[];
+}
+
 // ── Service Interface ──────────────────────────────────────────────────
 
 export interface WaggleService {
@@ -235,6 +259,10 @@ export interface WaggleService {
   connectTeam(serverUrl: string, token: string): Promise<TeamConnection>;
   disconnectTeam(): Promise<void>;
   getTeamStatus(): Promise<TeamConnection | null>;
+
+  // Install Center
+  getStarterCatalog(): Promise<StarterCatalogResponse>;
+  installStarterSkill(skillId: string): Promise<{ ok: boolean; skill: { id: string; name: string; state: SkillState } }>;
 
   // Events
   on(event: string, cb: (data: unknown) => void): () => void;
