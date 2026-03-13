@@ -148,6 +148,12 @@ function describeToolUse(name: string, input: Record<string, unknown>): string {
       return `Reading skill: ${input.name ?? ''}...`;
     case 'search_skills':
       return `Searching for skills: "${input.query ?? ''}"...`;
+    case 'suggest_skill':
+      return `Looking for relevant skills...`;
+    case 'acquire_capability':
+      return `Searching for capabilities: "${input.need ?? ''}"...`;
+    case 'install_capability':
+      return `Installing capability: ${input.name ?? ''}...`;
     case 'spawn_agent':
       return `Spawning sub-agent "${input.name ?? ''}" (${input.role ?? ''})...`;
     case 'list_agents':
