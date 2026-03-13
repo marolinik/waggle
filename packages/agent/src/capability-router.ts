@@ -25,6 +25,8 @@ export interface CapabilityRouterDeps {
   mcpServers: string[];
   /** Available sub-agent role presets */
   subAgentRoles: string[];
+  /** Optional MCP runtime for health-aware resolution */
+  mcpRuntime?: { isServerHealthy(name: string): boolean };
 }
 
 const ROLE_KEYWORDS: Record<string, string[]> = {
@@ -99,15 +101,18 @@ export class CapabilityRouter {
       }
     }
 
-    // 4. MCP servers — name match
+    // 4. MCP servers — name match (health-aware when runtime is available)
     for (const server of this.deps.mcpServers) {
       if (server.toLowerCase().includes(q) || q.includes(server.toLowerCase())) {
+        const healthy = this.deps.mcpRuntime
+          ? this.deps.mcpRuntime.isServerHealthy(server)
+          : true; // assume available when no runtime to check
         routes.push({
           source: 'mcp',
           name: server,
           confidence: 0.45,
-          description: `MCP server "${server}" may provide this capability`,
-          available: true,
+          description: `MCP server "${server}" ${healthy ? 'may provide this capability' : '(not healthy)'}`,
+          available: healthy,
         });
       }
     }

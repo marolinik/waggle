@@ -41,6 +41,7 @@ export { SkillRecommender, type SkillRecommendation, type SkillRecommenderDeps }
 export { createSubAgentTools, type SubAgentToolsDeps, type SubAgentDef, type SubAgentResult } from './subagent-tools.js';
 export { MemoryLinker, type MemoryLink } from './memory-linker.js';
 export { CapabilityRouter, type CapabilityRoute, type CapabilitySource, type CapabilityRouterDeps } from './capability-router.js';
+export { McpServerInstance, McpRuntime, type McpServerConfig, type McpServerState, type McpToolInfo, type McpProcess, type SpawnFn } from './mcp/mcp-runtime.js';
 export { SubagentOrchestrator, type WorkerState, type WorkerStatus, type WorkflowStep, type WorkflowTemplate, type OrchestratorConfig as SubagentOrchestratorConfig } from './subagent-orchestrator.js';
 export { WORKFLOW_TEMPLATES, listWorkflowTemplates, createResearchTeamTemplate, createReviewPairTemplate, createPlanExecuteTemplate } from './workflow-templates.js';
 export { createWorkflowTools } from './workflow-tools.js';
