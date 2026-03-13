@@ -323,35 +323,44 @@ function WaggleApp() {
           }
           break;
         }
-        case '/plan': {
-          addSystemMessage('Plan tools are available via the agent. Ask the agent to show the plan.');
-          break;
-        }
         case '/git': {
           addSystemMessage('Git tools are available via the agent. Ask the agent to check git status.');
           break;
         }
-        case '/help': {
-          addSystemMessage(
-            '**Commands:**\n' +
-            '- `/model <name>` — Switch AI model\n' +
-            '- `/models` — List available models\n' +
-            '- `/cost` — Show token usage and cost\n' +
-            '- `/clear` — Clear conversation\n' +
-            '- `/identity` — Show agent identity\n' +
-            '- `/awareness` — Show agent awareness\n' +
-            '- `/skills` — List loaded skills\n' +
-            '- `/help` — Show this help'
-          );
+        default: {
+          // Workflow commands that need LLM → send as regular agent message
+          const llmCommands = ['/research', '/draft', '/review', '/spawn', '/plan'];
+          if (llmCommands.includes(command)) {
+            // Send the full command text as a user message so the agent handles it
+            // with full workspace context + skills
+            const fullText = args ? `${command} ${args}` : command;
+            sendMessage(fullText);
+            break;
+          }
+
+          // All other commands → try server command execution route
+          const fullCommand = args ? `${command} ${args}` : command;
+          const cmdRes = await fetch(`${baseUrl}/api/commands/execute`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              command: fullCommand,
+              workspaceId: activeWorkspace?.id,
+            }),
+          });
+          if (cmdRes.ok) {
+            const data = await cmdRes.json() as { result: string };
+            addSystemMessage(data.result);
+          } else {
+            addSystemMessage(`Unknown command: ${command}. Type /help for available commands.`);
+          }
           break;
         }
-        default:
-          addSystemMessage(`Unknown command: ${command}. Type /help for available commands.`);
       }
     } catch (err) {
       addSystemMessage(`Command failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
-  }, [agentModel, activeSessionId, activeWorkspace?.id, addSystemMessage]);
+  }, [agentModel, activeSessionId, activeWorkspace?.id, addSystemMessage, sendMessage]);
 
   // ── Tabs ──────────────────────────────────────────────────────────
   const {
