@@ -45,3 +45,5 @@ export { McpServerInstance, McpRuntime, type McpServerConfig, type McpServerStat
 export { SubagentOrchestrator, type WorkerState, type WorkerStatus, type WorkflowStep, type WorkflowTemplate, type OrchestratorConfig as SubagentOrchestratorConfig } from './subagent-orchestrator.js';
 export { WORKFLOW_TEMPLATES, listWorkflowTemplates, createResearchTeamTemplate, createReviewPairTemplate, createPlanExecuteTemplate } from './workflow-templates.js';
 export { createWorkflowTools } from './workflow-tools.js';
+export { CommandRegistry, type CommandDefinition, type CommandContext } from './commands/command-registry.js';
+export { registerWorkflowCommands } from './commands/workflow-commands.js';
