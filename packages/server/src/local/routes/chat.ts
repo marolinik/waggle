@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type { FastifyPluginAsync } from 'fastify';
-import { runAgentLoop, needsConfirmation } from '@waggle/agent';
+import { runAgentLoop, needsConfirmation, CapabilityRouter } from '@waggle/agent';
 import type { AgentLoopConfig, AgentResponse } from '@waggle/agent';
 import { buildWorkspaceNowBlock, formatWorkspaceNowPrompt } from './workspace-context.js';
 
@@ -413,12 +413,25 @@ Tools:
 - delete_skill: Remove an installed skill.
 - read_skill: Read the full content of a skill.
 - search_skills: Search for capabilities — checks installed skills and suggests built-in tools.
-- suggest_skill: Get contextual skill recommendations based on what the user is asking. Use this to discover which loaded skills can help.
+- suggest_skill: Get contextual skill recommendations based on what the user is asking.
+- **acquire_capability**: Detect capability gaps and search for installable skills. Use this when you encounter a task that could benefit from specialized guidance.
+- **install_capability**: Install a skill identified by acquire_capability (requires user approval).
 
-When the user asks you to do something and you're unsure if you have the right capability:
-1. Use search_skills to check what's available.
-2. If you lack the skill, either create_skill with appropriate instructions or explain what's missing.
-3. Skills you create persist — they're loaded into your system prompt automatically.
+### Capability Acquisition — When You Lack Something
+
+When the user asks for something that needs structured domain expertise (risk assessment, research synthesis, code review, decision analysis, etc.) and you don't have a matching loaded skill:
+
+1. **Call acquire_capability** with a description of what you need. It will:
+   - Check if a native tool or active skill already covers the need
+   - Search the starter skill pack for installable capabilities
+   - Return a structured proposal with candidates and a recommendation
+2. **If it recommends installing a skill**: Tell the user what was found and why. Then call install_capability with the exact name and source.
+3. **The user will see an approval prompt.** Wait for their approval.
+4. **After approval**: The skill content is returned to you. Apply it immediately to the user's original task.
+
+Do NOT skip the acquire_capability step. Do NOT guess skill names for install_capability — always use the exact values from the proposal.
+
+If acquire_capability says a native tool or active skill already handles the need, use that directly instead of installing anything.
 
 ## Sub-Agents (delegate specialized work)
 - spawn_agent: Spawn a specialist sub-agent with a specific role and task. The sub-agent runs autonomously and returns its result.
@@ -632,6 +645,20 @@ When the user asks you to do something and you're unsure if you have the right c
         const toolStartTimes = new Map<string, number>();
         let toolStartCounter = 0;
 
+        // Build capability router for intelligent tool-not-found handling
+        const capabilityRouter = hasCustomRunner ? undefined : new CapabilityRouter({
+          toolNames: effectiveTools.map(t => t.name),
+          skills: server.agentState.skills,
+          plugins: server.agentState.pluginRuntimeManager.getActive().map(p => ({
+            name: p.getManifest().name,
+            description: p.getManifest().description ?? '',
+            skills: p.getContributedSkills(),
+          })),
+          mcpServers: Object.keys(server.agentState.mcpRuntime.getServerStates()),
+          subAgentRoles: ['researcher', 'writer', 'coder', 'analyst', 'reviewer', 'planner'],
+          mcpRuntime: server.agentState.mcpRuntime,
+        });
+
         // Build agent loop config — with FULL conversation history + hooks
         const agentConfig: AgentLoopConfig = {
           litellmUrl: getLitellmUrl(),
@@ -643,6 +670,7 @@ When the user asks you to do something and you're unsure if you have the right c
           stream: true,
           maxTurns: 200, // Persistent agents need many turns for complex research + document generation
           hooks: hasCustomRunner ? undefined : hookRegistry,
+          capabilityRouter,
           onToken: (token: string) => {
             sendEvent('token', { content: token });
           },

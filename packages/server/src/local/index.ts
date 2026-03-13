@@ -27,7 +27,7 @@ import {
   type ToolDefinition,
   type LoadedSkill,
 } from '@waggle/agent';
-import { PluginRuntimeManager } from '@waggle/sdk';
+import { PluginRuntimeManager, getStarterSkillsDir } from '@waggle/sdk';
 import { workspaceRoutes } from './routes/workspaces.js';
 import { chatRoutes, type AgentRunner } from './routes/chat.js';
 import { memoryRoutes } from './routes/memory.js';
@@ -165,9 +165,22 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   const gitTools = createGitTools(defaultWorkspace);
   const documentTools = createDocumentTools(defaultWorkspace);
 
-  // Skill management tools — let the agent discover, install, create skills
+  // Skill management tools — let the agent discover, install, create, and acquire skills
+  const starterSkillsDir = getStarterSkillsDir();
   const skillTools = createSkillTools({
     waggleHome,
+    starterSkillsDir,
+    nativeToolNames: [
+      ...mindTools.map(t => t.name),
+      ...systemTools.map(t => t.name),
+      ...planTools.map(t => t.name),
+      ...gitTools.map(t => t.name),
+      ...documentTools.map(t => t.name),
+    ],
+    getInstalledSkills: () => {
+      // Return the current in-memory skill state (hot-reloadable)
+      return server.agentState?.skills ?? loadSkills(waggleHome);
+    },
     onSkillsChanged: () => {
       // Hot-reload skills into agent state
       const fresh = loadSkills(waggleHome);

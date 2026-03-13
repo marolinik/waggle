@@ -341,7 +341,11 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
       } else if (config.capabilityRouter) {
         const routes = config.capabilityRouter.resolve(fnName);
         const routeInfo = routes.map(r => `- [${r.source}] ${r.name}: ${r.description} (${r.available ? 'available' : 'not wired yet'})`).join('\n');
-        result = `Tool "${fnName}" not found. Here are alternatives:\n${routeInfo}\n\nAvailable tools: ${Array.from(toolMap.keys()).join(', ')}`;
+        const hasMissing = routes.some(r => r.source === 'missing');
+        const acquireHint = hasMissing && toolMap.has('acquire_capability')
+          ? '\n\nTip: Use acquire_capability to search for installable skills that might help.'
+          : '';
+        result = `Tool "${fnName}" not found. Here are alternatives:\n${routeInfo}${acquireHint}\n\nAvailable tools: ${Array.from(toolMap.keys()).join(', ')}`;
       } else {
         result = `Error: Unknown tool "${fnName}". Available tools: ${Array.from(toolMap.keys()).join(', ')}`;
       }

@@ -6,7 +6,7 @@
  */
 
 // Tools that ALWAYS need confirmation (they modify state)
-const ALWAYS_CONFIRM = new Set(['write_file', 'edit_file', 'git_commit']);
+const ALWAYS_CONFIRM = new Set(['write_file', 'edit_file', 'git_commit', 'install_capability']);
 
 // Bash command patterns that are safe (read-only / informational)
 const SAFE_BASH_PATTERNS = [

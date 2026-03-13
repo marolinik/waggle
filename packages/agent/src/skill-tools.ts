@@ -10,12 +10,19 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ToolDefinition } from './tools.js';
 import { SkillRecommender } from './skill-recommender.js';
+import { searchCapabilities, validateInstallCandidate } from './capability-acquisition.js';
 
 export interface SkillToolsDeps {
   /** Path to ~/.waggle directory */
   waggleHome: string;
   /** Callback to reload skills into agent state after changes */
   onSkillsChanged?: () => void;
+  /** Path to starter skills source directory (from @waggle/sdk) */
+  starterSkillsDir?: string;
+  /** Function to get current installed skills (for acquisition search) */
+  getInstalledSkills?: () => Array<{ name: string; content: string }>;
+  /** Native tool names (for acquisition search — avoids proposing install when a tool exists) */
+  nativeToolNames?: string[];
 }
 
 export function createSkillTools(deps: SkillToolsDeps): ToolDefinition[] {
@@ -285,6 +292,122 @@ export function createSkillTools(deps: SkillToolsDeps): ToolDefinition[] {
         return suggestions.map((s, i) =>
           `${i + 1}. **${s.skillName}** (relevance: ${(s.relevanceScore * 100).toFixed(0)}%)\n   ${s.reason}`,
         ).join('\n\n');
+      },
+    },
+
+    // 7. acquire_capability — Structured gap detection + candidate search
+    {
+      name: 'acquire_capability',
+      description: `Detect capability gaps and find installable skills to fill them. Use this when:
+- You encounter a task you don't have a specialized skill for
+- The user asks for something that could benefit from structured guidance (risk assessment, research synthesis, code review, etc.)
+- You want to check if there's a curated skill available before attempting a task with general abilities
+
+Returns a structured proposal showing what's already available, what can be installed, and a recommendation with reasoning. If a native tool or active skill already covers the need, it tells you so instead of proposing an install.`,
+      parameters: {
+        type: 'object',
+        properties: {
+          need: {
+            type: 'string',
+            description: 'What capability you need — describe the task or domain (e.g., "risk assessment for a project", "synthesize research from multiple sources", "code review checklist")',
+          },
+        },
+        required: ['need'],
+      },
+      execute: async (args) => {
+        const need = args.need as string;
+        if (!need || !need.trim()) {
+          return 'Error: "need" is required — describe what capability you are looking for.';
+        }
+
+        const installedSkills = deps.getInstalledSkills?.() ?? (() => {
+          const files = fs.existsSync(skillsDir)
+            ? fs.readdirSync(skillsDir).filter(f => f.endsWith('.md'))
+            : [];
+          return files.map(f => ({
+            name: f.replace(/\.md$/, ''),
+            content: fs.readFileSync(path.join(skillsDir, f), 'utf-8').trim(),
+          }));
+        })();
+
+        const starterDir = deps.starterSkillsDir ?? '';
+        const nativeTools = deps.nativeToolNames ?? [];
+
+        const proposal = searchCapabilities({
+          need,
+          installedSkills,
+          starterSkillsDir: starterDir,
+          nativeToolNames: nativeTools,
+        });
+
+        return proposal.summary;
+      },
+    },
+
+    // 8. install_capability — Install a specific capability from a curated source (requires approval)
+    {
+      name: 'install_capability',
+      description: `Install a capability identified by acquire_capability. This copies a curated starter skill into your active skill set. Requires user approval before installation (approval gate will appear in the UI).
+
+After installation, the skill content is returned so you can immediately apply it to the current task. The skill is also hot-loaded into your system prompt for all future messages.
+
+Only use this after acquire_capability has identified a specific installable candidate. Do not guess names — use the exact name and source from the proposal.`,
+      parameters: {
+        type: 'object',
+        properties: {
+          name: {
+            type: 'string',
+            description: 'Exact name of the capability to install (from acquire_capability proposal)',
+          },
+          source: {
+            type: 'string',
+            description: 'Source of the capability (e.g., "starter-pack"). Must match the source from the proposal.',
+          },
+        },
+        required: ['name', 'source'],
+      },
+      execute: async (args) => {
+        const name = args.name as string;
+        const source = args.source as string;
+
+        // Path traversal protection
+        if (name.includes('..') || name.includes('/') || name.includes('\\')) {
+          return 'Error: Invalid capability name.';
+        }
+
+        const starterDir = deps.starterSkillsDir ?? '';
+        const installedNames = new Set(
+          fs.existsSync(skillsDir)
+            ? fs.readdirSync(skillsDir).filter(f => f.endsWith('.md')).map(f => f.replace(/\.md$/, ''))
+            : [],
+        );
+
+        // Validate this is a real, installable candidate
+        const validation = validateInstallCandidate(name, source, starterDir, installedNames);
+        if (!validation.valid) {
+          return `Error: ${validation.error}`;
+        }
+
+        // Copy from starter pack to installed skills directory
+        const targetPath = path.join(skillsDir, `${name}.md`);
+        fs.copyFileSync(validation.starterPath!, targetPath);
+
+        // Trigger hot-reload so the skill is immediately available in runtime
+        onSkillsChanged?.();
+
+        // Read the content to return it — so the agent can use it in the same turn
+        const content = fs.readFileSync(targetPath, 'utf-8');
+
+        return (
+          `## Skill Installed Successfully\n\n` +
+          `**${name}** has been installed from the ${source} and is now active.\n\n` +
+          `- **Location**: ${targetPath}\n` +
+          `- **Status**: Active — loaded into your system prompt\n` +
+          `- **Runtime**: Available immediately for this and all future sessions\n\n` +
+          `### Skill Content\n\nUse the following instructions to complete the current task:\n\n` +
+          `---\n\n${content}\n\n---\n\n` +
+          `You can now apply this skill to the user's request.`
+        );
       },
     },
   ];
