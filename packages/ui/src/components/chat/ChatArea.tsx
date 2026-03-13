@@ -36,7 +36,7 @@ export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, o
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch('/api/capabilities/status');
+        const res = await fetch('http://127.0.0.1:3333/api/capabilities/status');
         if (!res.ok) return;
         const data = await res.json();
         if (cancelled) return;
