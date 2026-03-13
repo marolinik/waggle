@@ -44,6 +44,7 @@ import { anthropicProxyRoutes } from './routes/anthropic-proxy.js';
 import { teamRoutes } from './routes/team.js';
 import { taskRoutes } from './routes/tasks.js';
 import { capabilitiesRoutes } from './routes/capabilities.js';
+import { commandRoutes } from './routes/commands.js';
 import { EventEmitter } from 'node:events';
 
 export interface LocalConfig {
@@ -436,6 +437,7 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   await server.register(teamRoutes);
   await server.register(taskRoutes);
   await server.register(capabilitiesRoutes);
+  await server.register(commandRoutes);
 
   // WebSocket endpoint — event bus relay to frontend
   server.get('/ws', { websocket: true }, (socket) => {
