@@ -5,6 +5,7 @@ import path from 'node:path';
 import type { FastifyPluginAsync } from 'fastify';
 import { runAgentLoop, needsConfirmation } from '@waggle/agent';
 import type { AgentLoopConfig, AgentResponse } from '@waggle/agent';
+import { buildWorkspaceNowBlock, formatWorkspaceNowPrompt } from './workspace-context.js';
 
 /**
  * Persist a chat message to the session's .jsonl file on disk.
@@ -173,14 +174,14 @@ export const chatRoutes: FastifyPluginAsync = async (server) => {
   const getLitellmUrl = () => server.localConfig.litellmUrl;
 
   // C3: Cache the base system prompt per session to avoid rebuilding on every message
-  const systemPromptCache = new Map<string, { prompt: string; workspace: string | undefined; skillCount: number }>();
+  const systemPromptCache = new Map<string, { prompt: string; workspace: string | undefined; workspaceId: string | undefined; skillCount: number }>();
 
   // Build the rich system prompt — behavioral specification, not just tool docs
-  function buildSystemPrompt(workspacePath?: string, sessionId?: string, historyLength?: number): string {
-    // Check cache: reuse if same session, workspace, and skill count
+  function buildSystemPrompt(workspacePath?: string, sessionId?: string, historyLength?: number, workspaceId?: string): string {
+    // Check cache: reuse if same session, workspace, workspaceId, and skill count
     const cacheKey = sessionId ?? 'default';
     const cached = systemPromptCache.get(cacheKey);
-    if (cached && cached.workspace === workspacePath && cached.skillCount === skills.length) {
+    if (cached && cached.workspace === workspacePath && cached.workspaceId === workspaceId && cached.skillCount === skills.length) {
       // Update only the dynamic parts (time, history length)
       return cached.prompt;
     }
@@ -432,8 +433,25 @@ When the user asks you to do something and you're unsure if you have the right c
     // Append loaded skills with active integration instructions
     prompt += buildSkillPromptSection(skills);
 
+    // Workspace Now — inject structured context so the agent is grounded on first turn
+    if (workspaceId) {
+      try {
+        const nowBlock = buildWorkspaceNowBlock({
+          dataDir: server.localConfig.dataDir,
+          workspaceId,
+          wsManager: server.workspaceManager,
+          activateWorkspaceMind: server.agentState.activateWorkspaceMind,
+        });
+        if (nowBlock) {
+          prompt += '\n\n' + formatWorkspaceNowPrompt(nowBlock);
+        }
+      } catch {
+        // Non-blocking — if workspace context fails, continue without it
+      }
+    }
+
     // C3: Cache the built prompt
-    systemPromptCache.set(cacheKey, { prompt, workspace: workspacePath, skillCount: skills.length });
+    systemPromptCache.set(cacheKey, { prompt, workspace: workspacePath, workspaceId, skillCount: skills.length });
 
     return prompt;
   }
@@ -564,7 +582,7 @@ When the user asks you to do something and you're unsure if you have the right c
         // Build system prompt (with workspace path awareness + recalled memories)
         const systemPrompt = hasCustomRunner
           ? 'You are a helpful AI assistant.'
-          : buildSystemPrompt(workspacePath, sessionId, history.length) + recalledContext;
+          : buildSystemPrompt(workspacePath, sessionId, history.length, effectiveWorkspace) + recalledContext;
 
         // Register a per-request pre:tool hook for confirmation gates
         // This fires during the agent loop and pauses until user approves/denies
