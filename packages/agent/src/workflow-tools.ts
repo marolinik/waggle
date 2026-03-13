@@ -1,8 +1,13 @@
 import type { ToolDefinition } from './tools.js';
 import { SubagentOrchestrator, type OrchestratorConfig } from './subagent-orchestrator.js';
 import { WORKFLOW_TEMPLATES, listWorkflowTemplates } from './workflow-templates.js';
+import type { HookRegistry } from './hooks.js';
 
-export function createWorkflowTools(config: OrchestratorConfig): ToolDefinition[] {
+export interface WorkflowToolsConfig extends OrchestratorConfig {
+  hooks?: HookRegistry;
+}
+
+export function createWorkflowTools(config: WorkflowToolsConfig): ToolDefinition[] {
   return [
     {
       name: 'orchestrate_workflow',
@@ -33,12 +38,33 @@ export function createWorkflowTools(config: OrchestratorConfig): ToolDefinition[
         const template = factory(task);
         const orchestrator = new SubagentOrchestrator(config);
 
+        // Fire workflow:start hook
+        if (config.hooks) {
+          const hookResult = await config.hooks.fire('workflow:start', {
+            toolName: 'orchestrate_workflow',
+            workflowName: templateName,
+            workflowTask: task,
+          });
+          if (hookResult.cancelled) {
+            return `[BLOCKED] Workflow blocked: ${hookResult.reason ?? 'No reason given'}`;
+          }
+        }
+
         // Emit progress updates
         orchestrator.on('worker:status', (_event) => {
           // Status tracking is internal — the tool result will contain the summary
         });
 
         const { results, aggregated } = await orchestrator.runWorkflow(template);
+
+        // Fire workflow:end hook
+        if (config.hooks) {
+          await config.hooks.fire('workflow:end', {
+            toolName: 'orchestrate_workflow',
+            workflowName: templateName,
+            workflowTask: task,
+          });
+        }
 
         // Build summary
         const workers = Array.from(results.values());

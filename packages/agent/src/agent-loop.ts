@@ -309,6 +309,25 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
         }
       }
 
+      // Fire pre:memory-write hook for save_memory tool
+      if (hooks && fnName === 'save_memory') {
+        const memoryHookResult = await hooks.fire('pre:memory-write', {
+          toolName: fnName,
+          args: fnArgs,
+          memoryContent: fnArgs.content as string | undefined,
+          memoryType: fnArgs.type as string | undefined,
+        });
+        if (memoryHookResult.cancelled) {
+          result = `[BLOCKED] Memory write blocked: ${memoryHookResult.reason ?? 'No reason given'}`;
+          messages.push({
+            role: 'tool',
+            content: result,
+            tool_call_id: toolCall.id,
+          });
+          continue;
+        }
+      }
+
       const tool = toolMap.get(fnName);
       if (!guard.check(fnName, fnArgs)) {
         result = `Error: Loop detected — called ${fnName} with identical arguments too many times. Try a different approach.`;
@@ -330,6 +349,17 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
       // Notify on tool completion
       if (onToolResult) {
         onToolResult(fnName, fnArgs, result);
+      }
+
+      // Fire post:memory-write hook for save_memory tool
+      if (hooks && fnName === 'save_memory') {
+        await hooks.fire('post:memory-write', {
+          toolName: fnName,
+          args: fnArgs,
+          result,
+          memoryContent: fnArgs.content as string | undefined,
+          memoryType: fnArgs.type as string | undefined,
+        });
       }
 
       // Fire post:tool hook
