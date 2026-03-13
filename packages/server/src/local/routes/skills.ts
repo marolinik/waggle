@@ -2,8 +2,33 @@ import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs';
 import type { FastifyPluginAsync } from 'fastify';
-import { PluginManager } from '@waggle/sdk';
+import { PluginManager, getStarterSkillsDir, listStarterSkills } from '@waggle/sdk';
 import { loadSkills, SkillRecommender } from '@waggle/agent';
+
+/** Capability family definitions — user-job-first grouping */
+const SKILL_FAMILIES: Record<string, { family: string; label: string }> = {
+  'draft-memo':          { family: 'writing', label: 'Writing & Docs' },
+  'compare-docs':        { family: 'writing', label: 'Writing & Docs' },
+  'extract-actions':     { family: 'writing', label: 'Writing & Docs' },
+  'research-synthesis':  { family: 'research', label: 'Research & Analysis' },
+  'explain-concept':     { family: 'research', label: 'Research & Analysis' },
+  'research-team':       { family: 'research', label: 'Research & Analysis' },
+  'decision-matrix':     { family: 'decision', label: 'Decision Support' },
+  'risk-assessment':     { family: 'decision', label: 'Decision Support' },
+  'retrospective':       { family: 'decision', label: 'Decision Support' },
+  'daily-plan':          { family: 'planning', label: 'Planning & Organization' },
+  'task-breakdown':      { family: 'planning', label: 'Planning & Organization' },
+  'plan-execute':        { family: 'planning', label: 'Planning & Organization' },
+  'catch-up':            { family: 'communication', label: 'Communication' },
+  'status-update':       { family: 'communication', label: 'Communication' },
+  'meeting-prep':        { family: 'communication', label: 'Communication' },
+  'code-review':         { family: 'code', label: 'Code & Engineering' },
+  'review-pair':         { family: 'code', label: 'Code & Engineering' },
+  'brainstorm':          { family: 'creative', label: 'Creative & Ideation' },
+};
+
+/** Multi-agent workflow skills */
+const WORKFLOW_SKILLS = new Set(['research-team', 'review-pair', 'plan-execute']);
 
 /**
  * Skills & plugins routes — manage agent extensions.
@@ -33,6 +58,92 @@ export const skillRoutes: FastifyPluginAsync = async (server) => {
     server.agentState.skills.push(...loadSkills(waggleHome));
 
     return { ok: true, installed, count: installed.length };
+  });
+
+  // GET /api/skills/starter-pack/catalog — browse starter skills with state
+  server.get('/api/skills/starter-pack/catalog', async () => {
+    const starterDir = getStarterSkillsDir();
+    const starterNames = listStarterSkills(); // returns sorted array of names without .md
+
+    // Determine installed skill names (files in ~/.waggle/skills/)
+    const installedNames = new Set<string>();
+    if (fs.existsSync(skillsDir)) {
+      for (const f of fs.readdirSync(skillsDir)) {
+        if (f.endsWith('.md')) installedNames.add(f.replace(/\.md$/, ''));
+      }
+    }
+
+    // Determine active skill names (loaded in agentState)
+    const activeNames = new Set(server.agentState.skills.map(s => s.name));
+
+    // Build skill entries
+    const skills = starterNames.map(id => {
+      // Parse the .md file for name and description
+      const filePath = path.join(starterDir, `${id}.md`);
+      let name = id.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      let description = '';
+
+      try {
+        const content = fs.readFileSync(filePath, 'utf-8');
+        const lines = content.split('\n');
+
+        // First # heading = name
+        const titleLine = lines.find(l => l.startsWith('# '));
+        if (titleLine) {
+          name = titleLine.replace(/^#\s+/, '').replace(/\s*—.*$/, '').trim();
+        }
+
+        // First non-empty, non-heading paragraph = description
+        let foundTitle = false;
+        for (const line of lines) {
+          if (line.startsWith('# ')) { foundTitle = true; continue; }
+          if (!foundTitle) continue;
+          const trimmed = line.trim();
+          if (trimmed === '' || trimmed.startsWith('#') || trimmed.startsWith('---')) continue;
+          description = trimmed;
+          break;
+        }
+      } catch { /* use defaults */ }
+
+      // Determine state
+      let state: 'active' | 'installed' | 'available' = 'available';
+      if (activeNames.has(id)) {
+        state = 'active';
+      } else if (installedNames.has(id)) {
+        state = 'installed';
+      }
+
+      const familyInfo = SKILL_FAMILIES[id] ?? { family: 'other', label: 'Other' };
+
+      return {
+        id,
+        name,
+        description,
+        family: familyInfo.family,
+        familyLabel: familyInfo.label,
+        state,
+        isWorkflow: WORKFLOW_SKILLS.has(id),
+      };
+    });
+
+    // Extract unique families (ordered)
+    const familyOrder = ['writing', 'research', 'decision', 'planning', 'communication', 'code', 'creative'];
+    const seenFamilies = new Set<string>();
+    const families = familyOrder
+      .filter(fid => {
+        const hasSkills = skills.some(s => s.family === fid);
+        if (hasSkills && !seenFamilies.has(fid)) {
+          seenFamilies.add(fid);
+          return true;
+        }
+        return false;
+      })
+      .map(fid => {
+        const skill = skills.find(s => s.family === fid)!;
+        return { id: fid, label: skill.familyLabel };
+      });
+
+    return { skills, families };
   });
 
   // GET /api/skills — list all installed skills
