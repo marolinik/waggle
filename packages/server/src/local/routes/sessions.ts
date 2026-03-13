@@ -728,6 +728,7 @@ export const sessionRoutes: FastifyPluginAsync = async (server) => {
     const session: SessionInfo = {
       id: sessionId,
       title,
+      summary: null,
       messageCount: 0,
       lastActive: now,
       created: now,

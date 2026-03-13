@@ -17,7 +17,7 @@ export interface WorkspaceNowBlock {
 // ── Workspace Manager interface (minimal, passed via opts) ─────────────
 
 interface WsManagerLike {
-  get: (id: string) => { id: string; name: string; [k: string]: unknown } | null;
+  get: (id: string) => { id: string; name: string } | null;
   getMindPath: (id: string) => string;
 }
 
