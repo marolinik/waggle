@@ -87,7 +87,7 @@ export function InstallCenter({ baseUrl = 'http://127.0.0.1:3333' }: InstallCent
   const [installingSkillId, setInstallingSkillId] = useState<string | null>(null);
   const [confirmingSkillId, setConfirmingSkillId] = useState<string | null>(null);
   const [runtimeData, setRuntimeData] = useState<CapabilityData | null>(null);
-  const [runtimeExpanded, setRuntimeExpanded] = useState(false);
+  const [runtimeExpanded, setRuntimeExpanded] = useState(true);
 
   // ── Data fetching ────────────────────────────────────────────────────
 
@@ -129,16 +129,25 @@ export function InstallCenter({ baseUrl = 'http://127.0.0.1:3333' }: InstallCent
     setInstallingSkillId(skillId);
 
     try {
-      await fetch(`${baseUrl}/api/skills/starter-pack/${encodeURIComponent(skillId)}`, {
+      const installRes = await fetch(`${baseUrl}/api/skills/starter-pack/${encodeURIComponent(skillId)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
 
+      if (!installRes.ok) {
+        const errBody = await installRes.json().catch(() => ({ error: 'Install failed' }));
+        setError((errBody as Record<string, string>).error ?? `Install failed (${installRes.status})`);
+        return;
+      }
+
       // Re-fetch catalog to get truthful state from server (NO optimistic update)
-      const res = await fetch(`${baseUrl}/api/skills/starter-pack/catalog`);
-      if (res.ok) {
-        const data = await res.json();
+      const catalogRes = await fetch(`${baseUrl}/api/skills/starter-pack/catalog`);
+      if (catalogRes.ok) {
+        const data = await catalogRes.json();
         setCatalog(data);
+      } else {
+        // Skill was installed but catalog refresh failed — trigger full reload
+        setError('Skill installed but failed to refresh catalog. Reopen settings to see updated state.');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Install failed');

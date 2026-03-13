@@ -1,10 +1,13 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { MindDB } from '@waggle/core';
 import { buildLocalServer } from '../../src/local/index.js';
 import type { FastifyInstance } from 'fastify';
+
+/** Skill ID used for install tests — cleaned up between tests to avoid 409 conflicts */
+const INSTALL_TEST_SKILL = 'retrospective';
 
 describe('Starter Skill Catalog', () => {
   let server: FastifyInstance;
@@ -21,6 +24,9 @@ describe('Starter Skill Catalog', () => {
   afterAll(async () => {
     await server.close();
     fs.rmSync(tmpDir, { recursive: true, force: true });
+    // Clean up any skill installed into real ~/.waggle/skills/ during tests
+    const realSkillPath = path.join(os.homedir(), '.waggle', 'skills', `${INSTALL_TEST_SKILL}.md`);
+    try { if (fs.existsSync(realSkillPath)) fs.unlinkSync(realSkillPath); } catch { /* ok */ }
   });
 
   it('GET /api/skills/starter-pack/catalog returns all starter skills', async () => {
@@ -119,23 +125,28 @@ describe('Starter Skill Catalog', () => {
   });
 
   it('POST /api/skills/starter-pack/:id installs a single skill', async () => {
+    // Ensure the skill is not already installed
+    const skillsDir = path.join(os.homedir(), '.waggle', 'skills');
+    const targetPath = path.join(skillsDir, `${INSTALL_TEST_SKILL}.md`);
+    if (fs.existsSync(targetPath)) fs.unlinkSync(targetPath);
+
     const res = await server.inject({
       method: 'POST',
-      url: '/api/skills/starter-pack/draft-memo',
+      url: `/api/skills/starter-pack/${INSTALL_TEST_SKILL}`,
     });
 
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.payload);
     expect(body.ok).toBe(true);
-    expect(body.skill.id).toBe('draft-memo');
+    expect(body.skill.id).toBe(INSTALL_TEST_SKILL);
     expect(['active', 'installed']).toContain(body.skill.state);
   });
 
   it('POST /api/skills/starter-pack/:id returns 409 for already installed', async () => {
-    // draft-memo was installed in previous test
+    // INSTALL_TEST_SKILL was installed in previous test
     const res = await server.inject({
       method: 'POST',
-      url: '/api/skills/starter-pack/draft-memo',
+      url: `/api/skills/starter-pack/${INSTALL_TEST_SKILL}`,
     });
 
     expect(res.statusCode).toBe(409);
@@ -166,8 +177,8 @@ describe('Starter Skill Catalog', () => {
     });
 
     const body = JSON.parse(res.payload);
-    const draftMemo = body.skills.find((s: any) => s.id === 'draft-memo');
-    expect(draftMemo).toBeDefined();
-    expect(['active', 'installed']).toContain(draftMemo.state);
+    const installed = body.skills.find((s: any) => s.id === INSTALL_TEST_SKILL);
+    expect(installed).toBeDefined();
+    expect(['active', 'installed']).toContain(installed.state);
   });
 });
