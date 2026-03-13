@@ -39,6 +39,7 @@ import { approvalRoutes } from './routes/approval.js';
 import { anthropicProxyRoutes } from './routes/anthropic-proxy.js';
 import { teamRoutes } from './routes/team.js';
 import { taskRoutes } from './routes/tasks.js';
+import { capabilitiesRoutes } from './routes/capabilities.js';
 import { EventEmitter } from 'node:events';
 
 export interface LocalConfig {
@@ -81,6 +82,12 @@ export interface AgentState {
   activeWorkspaceId: string | null;
   /** Current sub-agent orchestrator instance (set during workflow execution) */
   subagentOrchestrator: import('@waggle/agent').SubagentOrchestrator | null;
+  /** Plugin runtime manager — lifecycle, tools, skills from plugins (Q4) */
+  pluginRuntimeManager: import('@waggle/sdk').PluginRuntimeManager | null;
+  /** MCP server runtime — stdio servers, health, tools (Q4) */
+  mcpRuntime: import('@waggle/agent').McpRuntime | null;
+  /** Command registry — slash commands (Q4) */
+  commandRegistry: import('@waggle/agent').CommandRegistry | null;
 }
 
 declare module 'fastify' {
@@ -383,6 +390,9 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
     getWorkspaceMindDb,
     activeWorkspaceId,
     subagentOrchestrator: null,
+    pluginRuntimeManager: null,
+    mcpRuntime: null,
+    commandRegistry: null,
   });
 
   // Wire up skill hot-reload callback
@@ -411,6 +421,7 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   await server.register(anthropicProxyRoutes);
   await server.register(teamRoutes);
   await server.register(taskRoutes);
+  await server.register(capabilitiesRoutes);
 
   // WebSocket endpoint — event bus relay to frontend
   server.get('/ws', { websocket: true }, (socket) => {
