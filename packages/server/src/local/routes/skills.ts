@@ -146,6 +146,50 @@ export const skillRoutes: FastifyPluginAsync = async (server) => {
     return { skills, families };
   });
 
+  // POST /api/skills/starter-pack/:id — install a single starter skill
+  server.post<{
+    Params: { id: string };
+  }>('/api/skills/starter-pack/:id', async (request, reply) => {
+    const { id } = request.params;
+
+    // Prevent path traversal
+    if (id.includes('..') || id.includes('/') || id.includes('\\')) {
+      return reply.status(400).send({ error: 'Invalid skill ID' });
+    }
+
+    // Verify skill exists in starter pack
+    const starterDir = getStarterSkillsDir();
+    const sourcePath = path.join(starterDir, `${id}.md`);
+    if (!fs.existsSync(sourcePath)) {
+      return reply.status(404).send({ error: `Starter skill "${id}" not found` });
+    }
+
+    // Check if already installed
+    const targetPath = path.join(skillsDir, `${id}.md`);
+    if (fs.existsSync(targetPath)) {
+      return reply.status(409).send({ error: `Skill "${id}" is already installed` });
+    }
+
+    // Copy skill file
+    fs.copyFileSync(sourcePath, targetPath);
+
+    // Reload skills into agent state
+    server.agentState.skills.length = 0;
+    server.agentState.skills.push(...loadSkills(waggleHome));
+
+    // Determine new state (should be active after reload)
+    const isActive = server.agentState.skills.some(s => s.name === id);
+
+    return {
+      ok: true,
+      skill: {
+        id,
+        name: id.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+        state: isActive ? 'active' : 'installed',
+      },
+    };
+  });
+
   // GET /api/skills — list all installed skills
   server.get('/api/skills', async () => {
     const skills = loadSkills(waggleHome);

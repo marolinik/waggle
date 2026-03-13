@@ -117,4 +117,57 @@ describe('Starter Skill Catalog', () => {
       ).toContain(skill.family);
     }
   });
+
+  it('POST /api/skills/starter-pack/:id installs a single skill', async () => {
+    const res = await server.inject({
+      method: 'POST',
+      url: '/api/skills/starter-pack/draft-memo',
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.payload);
+    expect(body.ok).toBe(true);
+    expect(body.skill.id).toBe('draft-memo');
+    expect(['active', 'installed']).toContain(body.skill.state);
+  });
+
+  it('POST /api/skills/starter-pack/:id returns 409 for already installed', async () => {
+    // draft-memo was installed in previous test
+    const res = await server.inject({
+      method: 'POST',
+      url: '/api/skills/starter-pack/draft-memo',
+    });
+
+    expect(res.statusCode).toBe(409);
+  });
+
+  it('POST /api/skills/starter-pack/:id returns 404 for nonexistent skill', async () => {
+    const res = await server.inject({
+      method: 'POST',
+      url: '/api/skills/starter-pack/nonexistent-skill-xyz',
+    });
+
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('POST /api/skills/starter-pack/:id returns 400 for path traversal', async () => {
+    const res = await server.inject({
+      method: 'POST',
+      url: '/api/skills/starter-pack/..%2F..%2Fetc%2Fpasswd',
+    });
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('catalog reflects installed state after single install', async () => {
+    const res = await server.inject({
+      method: 'GET',
+      url: '/api/skills/starter-pack/catalog',
+    });
+
+    const body = JSON.parse(res.payload);
+    const draftMemo = body.skills.find((s: any) => s.id === 'draft-memo');
+    expect(draftMemo).toBeDefined();
+    expect(['active', 'installed']).toContain(draftMemo.state);
+  });
 });
