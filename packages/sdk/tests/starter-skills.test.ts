@@ -24,9 +24,9 @@ describe('starter-skills', () => {
     expect(fs.existsSync(dir)).toBe(true);
   });
 
-  it('listStarterSkills() returns 15 skill names', () => {
+  it('listStarterSkills() returns 18 skill names', () => {
     const skills = listStarterSkills();
-    expect(skills).toHaveLength(15);
+    expect(skills).toHaveLength(18);
   });
 
   it('all expected skill names are present', () => {
@@ -42,8 +42,11 @@ describe('starter-skills', () => {
       'explain-concept',
       'extract-actions',
       'meeting-prep',
+      'plan-execute',
       'research-synthesis',
+      'research-team',
       'retrospective',
+      'review-pair',
       'risk-assessment',
       'status-update',
       'task-breakdown',
@@ -71,7 +74,7 @@ describe('starter-skills', () => {
 
   it('installStarterSkills() copies files to target directory', () => {
     const installed = installStarterSkills(tmpDir);
-    expect(installed).toHaveLength(15);
+    expect(installed).toHaveLength(18);
 
     // Verify files exist in target
     for (const name of installed) {
@@ -89,7 +92,7 @@ describe('starter-skills', () => {
 
     // catch-up should NOT be in the installed list (was skipped)
     expect(installed).not.toContain('catch-up');
-    expect(installed).toHaveLength(14);
+    expect(installed).toHaveLength(17);
 
     // Verify custom content was preserved
     const content = fs.readFileSync(path.join(tmpDir, 'catch-up.md'), 'utf-8');
@@ -101,7 +104,7 @@ describe('starter-skills', () => {
     expect(fs.existsSync(nestedDir)).toBe(false);
 
     const installed = installStarterSkills(nestedDir);
-    expect(installed).toHaveLength(15);
+    expect(installed).toHaveLength(18);
     expect(fs.existsSync(nestedDir)).toBe(true);
   });
 });
