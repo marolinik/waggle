@@ -14,7 +14,7 @@ import { ThemeSection } from './ThemeSection.js';
 import { AdvancedSection } from './AdvancedSection.js';
 import { SkillsSection } from './SkillsSection.js';
 import { TeamSection } from './TeamSection.js';
-import { CapabilitySection } from './CapabilitySection.js';
+import { InstallCenter } from './InstallCenter.js';
 
 export interface SettingsPanelProps {
   activeTab?: string;
@@ -87,7 +87,7 @@ export function SettingsPanel({
           <SkillsSection />
         )}
         {activeTab === 'capabilities' && (
-          <CapabilitySection />
+          <InstallCenter />
         )}
         {activeTab === 'permissions' && (
           <PermissionSection
