@@ -31,12 +31,32 @@ interface CommandInfo {
   usage?: string;
 }
 
+interface HookActivity {
+  event: string;
+  timestamp: number;
+  cancelled: boolean;
+  reason?: string;
+}
+
+interface HooksInfo {
+  registered: number;
+  recentActivity: HookActivity[];
+}
+
+interface WorkflowInfo {
+  name: string;
+  description: string;
+  steps: number;
+}
+
 interface CapabilityData {
   plugins: PluginStatus[];
   mcpServers: McpServerStatus[];
   skills: SkillStatus[];
   tools: { count: number; native: number; plugin: number; mcp: number };
   commands: CommandInfo[];
+  hooks: HooksInfo;
+  workflows: WorkflowInfo[];
 }
 
 export interface CapabilitySectionProps {
@@ -89,6 +109,17 @@ function HealthDot({ healthy }: { healthy: boolean }) {
       }}
     />
   );
+}
+
+function formatTimeAgo(timestamp: number): string {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000);
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }
 
 export function CapabilitySection({ baseUrl = 'http://127.0.0.1:3333' }: CapabilitySectionProps) {
@@ -239,6 +270,12 @@ export function CapabilitySection({ baseUrl = 'http://127.0.0.1:3333' }: Capabil
           </span>
           <span style={pillStyle}>
             <span style={pillValueStyle}>{healthyMcp}</span> / {data.mcpServers.length} MCP servers
+          </span>
+          <span style={pillStyle}>
+            <span style={pillValueStyle}>{data.hooks.registered}</span> hook events
+          </span>
+          <span style={pillStyle}>
+            <span style={pillValueStyle}>{data.workflows.length}</span> workflow templates
           </span>
         </div>
       </div>
@@ -406,6 +443,106 @@ export function CapabilitySection({ baseUrl = 'http://127.0.0.1:3333' }: Capabil
           <div style={{ ...cardStyle, color: 'var(--text-muted, #888)', fontSize: 13 }}>
             {data.commands.length} commands registered. Click Expand to see details.
           </div>
+        )}
+      </div>
+
+      {/* Hooks */}
+      <div style={sectionStyle}>
+        <div style={headingStyle}>Hooks</div>
+        <div style={subStyle}>
+          Lifecycle hook events for pre/post tool execution, memory writes, and workflow stages.
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <span style={pillStyle}>
+            <span style={pillValueStyle}>{data.hooks.registered}</span> hook events supported
+          </span>
+        </div>
+        {data.hooks.recentActivity.length === 0 ? (
+          <div style={{ ...cardStyle, textAlign: 'center', color: 'var(--text-dim, #555)' }}>
+            No hook activity recorded yet.
+          </div>
+        ) : (
+          data.hooks.recentActivity.map((entry, i) => (
+            <div key={`${entry.event}-${entry.timestamp}-${i}`} style={cardStyle}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span
+                    style={{
+                      fontWeight: 600,
+                      color: 'var(--text, #e0e0e0)',
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: 13,
+                    }}
+                  >
+                    {entry.event}
+                  </span>
+                  {entry.cancelled && (
+                    <span
+                      style={{
+                        background: '#ef444422',
+                        color: '#ef4444',
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        fontSize: 10,
+                        fontWeight: 600,
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      cancelled
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  {entry.reason && (
+                    <span style={{ fontSize: 11, color: 'var(--text-dim, #555)' }}>
+                      {entry.reason}
+                    </span>
+                  )}
+                  <span style={{ fontSize: 11, color: 'var(--text-muted, #888)', fontFamily: "'JetBrains Mono', monospace" }}>
+                    {formatTimeAgo(entry.timestamp)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Workflow Templates */}
+      <div style={sectionStyle}>
+        <div style={headingStyle}>Workflow Templates</div>
+        <div style={subStyle}>
+          Built-in multi-agent workflow templates for common collaboration patterns.
+        </div>
+        {data.workflows.length === 0 ? (
+          <div style={{ ...cardStyle, textAlign: 'center', color: 'var(--text-dim, #555)' }}>
+            No workflow templates available.
+          </div>
+        ) : (
+          data.workflows.map(wf => (
+            <div key={wf.name} style={cardStyle}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <span
+                    style={{
+                      fontWeight: 600,
+                      color: 'var(--text, #e0e0e0)',
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: 14,
+                    }}
+                  >
+                    {wf.name}
+                  </span>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted, #888)', marginTop: 4 }}>
+                    {wf.description}
+                  </div>
+                </div>
+                <span style={pillStyle}>
+                  <span style={pillValueStyle}>{wf.steps}</span> steps
+                </span>
+              </div>
+            </div>
+          ))
         )}
       </div>
     </div>

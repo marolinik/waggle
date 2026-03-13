@@ -178,6 +178,42 @@ describe('Capabilities Route', () => {
     }
   });
 
+  it('returns hooks object with registered count and recentActivity array', async () => {
+    const res = await server.inject({ method: 'GET', url: '/api/capabilities/status' });
+    const body = JSON.parse(res.body);
+
+    expect(body).toHaveProperty('hooks');
+    expect(body.hooks).toHaveProperty('registered');
+    expect(body.hooks).toHaveProperty('recentActivity');
+    expect(body.hooks.registered).toBe(10);
+    expect(Array.isArray(body.hooks.recentActivity)).toBe(true);
+  });
+
+  it('returns workflows array with 3 built-in templates', async () => {
+    const res = await server.inject({ method: 'GET', url: '/api/capabilities/status' });
+    const body = JSON.parse(res.body);
+
+    expect(body).toHaveProperty('workflows');
+    expect(Array.isArray(body.workflows)).toBe(true);
+    expect(body.workflows).toHaveLength(3);
+
+    const names = body.workflows.map((w: { name: string }) => w.name);
+    expect(names).toContain('research-team');
+    expect(names).toContain('review-pair');
+    expect(names).toContain('plan-execute');
+
+    for (const wf of body.workflows) {
+      expect(wf).toHaveProperty('name');
+      expect(wf).toHaveProperty('description');
+      expect(wf).toHaveProperty('steps');
+      expect(typeof wf.name).toBe('string');
+      expect(typeof wf.description).toBe('string');
+      expect(typeof wf.steps).toBe('number');
+      expect(wf.steps).toBeGreaterThan(0);
+      expect(wf.description.length).toBeGreaterThan(0);
+    }
+  });
+
   it('tool count breakdown is correct with both plugins and MCP', async () => {
     const mockManager = {
       getPluginStates: () => ({ 'p1': 'active' }),

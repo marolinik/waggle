@@ -1,8 +1,9 @@
 import type { FastifyPluginAsync } from 'fastify';
+import { listWorkflowTemplates, WORKFLOW_TEMPLATES } from '@waggle/agent';
 
 /**
  * Capabilities routes — read-only status dashboard for plugins, MCP servers,
- * skills, tools, and commands. No side effects.
+ * skills, tools, commands, hooks, and workflow templates. No side effects.
  */
 export const capabilitiesRoutes: FastifyPluginAsync = async (server) => {
   // GET /api/capabilities/status — aggregated capability summary
@@ -72,6 +73,31 @@ export const capabilitiesRoutes: FastifyPluginAsync = async (server) => {
         }))
       : [];
 
+    // ── Hooks ──────────────────────────────────────────────────────
+    const hookRegistry = agentState.hookRegistry;
+    const activityLog = hookRegistry.getActivityLog();
+
+    const hooks = {
+      registered: 10, // Total supported hook events
+      recentActivity: activityLog.slice(-10).map(entry => ({
+        event: entry.event,
+        timestamp: entry.timestamp,
+        cancelled: entry.cancelled,
+        reason: entry.reason,
+      })),
+    };
+
+    // ── Workflows ──────────────────────────────────────────────────
+    const workflows = listWorkflowTemplates().map(name => {
+      const factory = WORKFLOW_TEMPLATES[name];
+      const tmpl = factory?.('_introspect_');
+      return {
+        name,
+        description: tmpl?.description ?? '',
+        steps: tmpl?.steps?.length ?? 0,
+      };
+    });
+
     return {
       plugins,
       mcpServers,
@@ -83,6 +109,8 @@ export const capabilitiesRoutes: FastifyPluginAsync = async (server) => {
         mcp: mcpToolCount,
       },
       commands,
+      hooks,
+      workflows,
     };
     } catch (err) {
       return reply.status(500).send({ error: err instanceof Error ? err.message : String(err) });
