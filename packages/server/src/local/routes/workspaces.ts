@@ -88,7 +88,7 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
 
     // Auto-install starter skills on first workspace creation
     try {
-      const waggleHome = path.join(os.homedir(), '.waggle');
+      const waggleHome = server.localConfig.dataDir || path.join(os.homedir(), '.waggle');
       const skillsDir = path.join(waggleHome, 'skills');
       const existingSkills = fs.existsSync(skillsDir)
         ? fs.readdirSync(skillsDir).filter(f => f.endsWith('.md'))

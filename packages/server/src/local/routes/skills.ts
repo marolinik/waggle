@@ -36,7 +36,7 @@ const WORKFLOW_SKILLS = new Set(['research-team', 'review-pair', 'plan-execute']
  * Plugins: structured packages in ~/.waggle/plugins/ with manifests.
  */
 export const skillRoutes: FastifyPluginAsync = async (server) => {
-  const waggleHome = path.join(os.homedir(), '.waggle');
+  const waggleHome = server.localConfig.dataDir || path.join(os.homedir(), '.waggle');
   const skillsDir = path.join(waggleHome, 'skills');
   const pluginsDir = path.join(waggleHome, 'plugins');
 

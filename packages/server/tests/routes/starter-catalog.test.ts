@@ -24,9 +24,6 @@ describe('Starter Skill Catalog', () => {
   afterAll(async () => {
     await server.close();
     fs.rmSync(tmpDir, { recursive: true, force: true });
-    // Clean up any skill installed into real ~/.waggle/skills/ during tests
-    const realSkillPath = path.join(os.homedir(), '.waggle', 'skills', `${INSTALL_TEST_SKILL}.md`);
-    try { if (fs.existsSync(realSkillPath)) fs.unlinkSync(realSkillPath); } catch { /* ok */ }
   });
 
   it('GET /api/skills/starter-pack/catalog returns all starter skills', async () => {
@@ -125,8 +122,8 @@ describe('Starter Skill Catalog', () => {
   });
 
   it('POST /api/skills/starter-pack/:id installs a single skill', async () => {
-    // Ensure the skill is not already installed
-    const skillsDir = path.join(os.homedir(), '.waggle', 'skills');
+    // Ensure the skill is not already installed (now writes to tmpDir/skills/)
+    const skillsDir = path.join(tmpDir, 'skills');
     const targetPath = path.join(skillsDir, `${INSTALL_TEST_SKILL}.md`);
     if (fs.existsSync(targetPath)) fs.unlinkSync(targetPath);
 

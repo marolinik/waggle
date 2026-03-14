@@ -66,6 +66,21 @@ export interface PendingApproval {
  * Shared agent state — initialized once at server startup,
  * accessible by all route modules for feature parity with CLI.
  */
+/** LLM provider health: healthy (verified), degraded (configured, not verified), unavailable */
+export type LlmHealthStatus = 'healthy' | 'degraded' | 'unavailable';
+
+/** Which LLM provider is active and its runtime health */
+export interface LlmProviderStatus {
+  /** Which provider is handling LLM requests */
+  provider: 'litellm' | 'anthropic-proxy';
+  /** Runtime health — truthful, not optimistic */
+  health: LlmHealthStatus;
+  /** Human-readable detail (e.g. "LiteLLM on port 4000" or "No API key configured") */
+  detail: string;
+  /** When this status was last checked */
+  checkedAt: string;
+}
+
 export interface AgentState {
   orchestrator: Orchestrator;
   allTools: ToolDefinition[];
@@ -93,6 +108,8 @@ export interface AgentState {
   mcpRuntime: import('@waggle/agent').McpRuntime;
   /** Command registry — slash commands */
   commandRegistry: import('@waggle/agent').CommandRegistry;
+  /** LLM provider status — which provider is active and whether it's truly healthy */
+  llmProvider: LlmProviderStatus;
 }
 
 declare module 'fastify' {
@@ -158,7 +175,7 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   // Build tools — use a default workspace (homedir), but tools are rebuilt
   // per-request when a workspace directory is specified in chat.
   const defaultWorkspace = os.homedir();
-  const waggleHome = path.join(os.homedir(), '.waggle');
+  const waggleHome = fullConfig.dataDir || path.join(os.homedir(), '.waggle');
   const mindTools = orchestrator.getTools();
   const systemTools = createSystemTools(defaultWorkspace);
   const planTools = createPlanTools();
@@ -421,6 +438,12 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
     pluginRuntimeManager,
     mcpRuntime,
     commandRegistry,
+    llmProvider: {
+      provider: 'anthropic-proxy' as const,
+      health: 'unavailable' as const,
+      detail: 'Not yet initialized',
+      checkedAt: new Date().toISOString(),
+    },
   });
 
   // Wire up skill hot-reload callback
@@ -497,12 +520,37 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
     });
   });
 
-  // Health check
-  server.get('/health', async () => ({
-    status: 'ok',
-    mode: 'local',
-    timestamp: new Date().toISOString(),
-  }));
+  // Health check — truthful, not optimistic
+  server.get('/health', async () => {
+    const llm = server.agentState.llmProvider;
+    const dbHealthy = (() => {
+      try {
+        multiMind.personal.getDatabase().prepare('SELECT 1').get();
+        return true;
+      } catch {
+        return false;
+      }
+    })();
+
+    const overallStatus = llm.health === 'healthy' && dbHealthy
+      ? 'ok'
+      : llm.health === 'unavailable' || !dbHealthy
+        ? 'unavailable'
+        : 'degraded';
+
+    return {
+      status: overallStatus,
+      mode: 'local',
+      timestamp: new Date().toISOString(),
+      llm: {
+        provider: llm.provider,
+        health: llm.health,
+        detail: llm.detail,
+        checkedAt: llm.checkedAt,
+      },
+      database: { healthy: dbHealthy },
+    };
+  });
 
   // Cleanup on close
   server.addHook('onClose', async () => {
