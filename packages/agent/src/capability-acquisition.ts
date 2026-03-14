@@ -11,6 +11,7 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { assessTrust, formatTrustSummary, type TrustAssessment } from './trust-model.js';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -31,6 +32,7 @@ export interface CapabilityCandidate {
   matchScore: number;       // 0–1, internal ranking
   matchReason: string;      // Human-readable: why this matches the need
   installAction: string | null; // null if already active or native
+  trust?: TrustAssessment;  // Trust/risk assessment (attached during search)
 }
 
 export interface AcquisitionProposal {
@@ -194,6 +196,7 @@ export function searchCapabilities(input: SearchCapabilitiesInput): AcquisitionP
         matchScore: score,
         matchReason: buildMatchReason(nameHits, contentHits),
         installAction: null,
+        trust: assessTrust({ capabilityType: 'native', source: 'native-tools', content: hints }),
       });
     }
   }
@@ -213,6 +216,7 @@ export function searchCapabilities(input: SearchCapabilitiesInput): AcquisitionP
         matchScore: score,
         matchReason: buildMatchReason(nameHits, contentHits),
         installAction: null,
+        trust: assessTrust({ capabilityType: 'skill', source: 'installed', content: skill.content }),
       });
     }
   }
@@ -235,6 +239,7 @@ export function searchCapabilities(input: SearchCapabilitiesInput): AcquisitionP
         matchScore: score,
         matchReason: buildMatchReason(nameHits, contentHits),
         installAction: `install_capability`,
+        trust: assessTrust({ capabilityType: 'skill', source: 'starter-pack', content: starter.content }),
       });
     }
   }
@@ -319,17 +324,23 @@ function buildProposalSummary(
   if (installable.length > 0) {
     sections.push('### Available to Install');
     for (const c of installable.slice(0, 3)) {
-      sections.push(`- **${c.name}** (${c.source}) — ${c.description}`);
+      const trustLine = c.trust ? `\n  ${formatTrustSummary(c.trust)}` : '';
+      sections.push(`- **${c.name}** (${c.source}) — ${c.description}${trustLine}`);
     }
   }
 
   // Recommendation
   if (recommendation && recommendation.availability === 'installable') {
+    const trustBlock = recommendation.trust
+      ? `- **Risk level**: ${capitalize(recommendation.trust.riskLevel)} (${recommendation.trust.assessmentMode})\n` +
+        `- **Trust**: ${recommendation.trust.explanation}\n`
+      : '';
     sections.push(
       `### Recommendation\n\n` +
       `Install **${recommendation.name}** from the ${recommendation.source}.\n` +
       `- **Why**: ${recommendation.matchReason}\n` +
       `- **What it does**: ${recommendation.description}\n` +
+      trustBlock +
       `- **Approval required**: Yes — user must approve before installation.\n\n` +
       `To install, call: \`install_capability\` with name "${recommendation.name}" and source "${recommendation.source}".`,
     );
@@ -340,6 +351,10 @@ function buildProposalSummary(
   }
 
   return sections.join('\n\n');
+}
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 // ── Validate install candidate ─────────────────────────────────────────

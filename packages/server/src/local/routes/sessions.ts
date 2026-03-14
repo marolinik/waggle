@@ -427,6 +427,328 @@ export function markSessionDistilled(filePath: string): void {
   }
 }
 
+// ── Session-end outcome capture ──────────────────────────────────────
+
+export interface SessionOutcome {
+  whatChanged: string;
+  openItems: string | null;
+  nextStep: string | null;
+}
+
+/**
+ * Extract a compact session outcome from the last messages.
+ * Per design: 3-5 line handoff note (what changed, what's open, next step).
+ * NOT verbose blobs — distilled for catch-up.
+ */
+export function extractSessionOutcome(messageLines: string[]): SessionOutcome | null {
+  if (messageLines.length < 4) return null;
+
+  const messages: Array<{ role: string; content: string }> = [];
+  for (const line of messageLines) {
+    try {
+      const parsed = JSON.parse(line);
+      if (parsed.role && parsed.content) {
+        messages.push({ role: parsed.role, content: parsed.content });
+      }
+    } catch { /* skip */ }
+  }
+
+  if (messages.length < 3) return null;
+
+  // Scan the LAST messages (tail of session = most likely to have outcome)
+  const tail = messages.slice(-10);
+  const allContent = tail.map(m => m.content).join(' ');
+
+  // ── What changed: look for completion signals ────────────
+  let whatChanged = '';
+  const changePatterns = [
+    /\b(?:completed|finished|implemented|deployed|shipped|fixed|resolved|merged|added|created|updated|built|wrote)\s+(.{5,120})/i,
+    /\b(?:we|I)\s+(?:completed|finished|shipped|fixed|resolved|merged)\s+(.{5,120})/i,
+    /\b(?:that'?s done|all done|task complete|work complete)\b.*$/im,
+  ];
+
+  for (const msg of [...tail].reverse()) {
+    if (whatChanged) break;
+    for (const pattern of changePatterns) {
+      const match = msg.content.match(pattern);
+      if (match) {
+        const extracted = (match[1] || match[0]).trim().replace(/[.!,;]+$/, '');
+        whatChanged = extracted.length > 120 ? extracted.slice(0, 117) + '...' : extracted;
+        break;
+      }
+    }
+  }
+
+  // Fallback: use the session topic from the first substantive user message
+  if (!whatChanged) {
+    const greetingPattern = /^(hi|hello|hey|thanks|ok|sure|yes|no)\b/i;
+    const substantive = messages.find(m =>
+      m.role === 'user' && m.content.length > 15 && !greetingPattern.test(m.content.trim())
+    );
+    if (substantive) {
+      const firstSentence = substantive.content.split(/[.!?\n]/)[0]?.trim() ?? '';
+      whatChanged = firstSentence.length > 120 ? firstSentence.slice(0, 117) + '...' : firstSentence;
+    }
+  }
+
+  if (!whatChanged) return null;
+
+  // ── Open items: look for unresolved signals in tail ──────
+  let openItems: string | null = null;
+  const openPatterns = [
+    /\b(?:still need|remaining|left to do|TODO|TBD|not yet|haven'?t|open question|unresolved)\s+(.{5,100})/i,
+    /\b(?:need to figure out|need to decide|pending)\s+(.{5,100})/i,
+  ];
+
+  for (const msg of [...tail].reverse()) {
+    if (openItems) break;
+    for (const pattern of openPatterns) {
+      const match = msg.content.match(pattern);
+      if (match) {
+        const extracted = (match[1] || match[0]).trim().replace(/[.!,;]+$/, '');
+        openItems = extracted.length > 100 ? extracted.slice(0, 97) + '...' : extracted;
+        break;
+      }
+    }
+  }
+
+  // ── Next step: look for forward-looking signals ──────────
+  let nextStep: string | null = null;
+  const nextPatterns = [
+    /\b(?:next step|next steps|next up|next we should|then we)\s*[:.]?\s*(.{5,100})/i,
+    /\b(?:after this|following that|moving forward)\s*[:,.]?\s*(.{5,100})/i,
+    /\b(?:should|will|going to|plan to)\s+(.{5,100})\s+(?:next|tomorrow|soon|later)\b/i,
+  ];
+
+  for (const msg of [...tail].reverse()) {
+    if (nextStep) break;
+    for (const pattern of nextPatterns) {
+      const match = msg.content.match(pattern);
+      if (match) {
+        const extracted = (match[1] || match[0]).trim().replace(/[.!,;]+$/, '');
+        nextStep = extracted.length > 100 ? extracted.slice(0, 97) + '...' : extracted;
+        break;
+      }
+    }
+  }
+
+  return { whatChanged, openItems, nextStep };
+}
+
+/**
+ * Persist a session outcome to its JSONL meta line.
+ * Called at session end or lazily during state reconstruction.
+ */
+export function persistSessionOutcome(filePath: string, outcome: SessionOutcome): void {
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8').trim();
+    const lines = content.split('\n');
+    const meta = JSON.parse(lines[0]);
+    if (meta.type === 'meta') {
+      meta.outcome = outcome;
+      lines[0] = JSON.stringify(meta);
+      fs.writeFileSync(filePath, lines.join('\n') + '\n', 'utf-8');
+    }
+  } catch {
+    // Non-critical
+  }
+}
+
+// ── Open question / unresolved signal extraction ─────────────────────
+
+export interface OpenQuestion {
+  content: string;
+  date: string;
+  sessionId: string;
+}
+
+/**
+ * Patterns that signal an unresolved question or pending decision.
+ * Per design: goes beyond literal "?" — also detects statement-form open items
+ * like "we still need to decide", "not yet clear", "pending decision", "TBD".
+ */
+const OPEN_QUESTION_PATTERNS = [
+  // Literal questions (but filtered for substance — skip "how are you?")
+  /\b(?:what should|how should|should we|do we need|which (?:approach|option|way))\b.{5,120}\?/i,
+  /\b(?:is it better|would it be|are we going|can we)\b.{5,80}\?/i,
+  // Statement-form unresolved signals
+  /\b(?:we still need to decide|still need to figure out|haven'?t decided|not yet decided)\s+(.{5,120})/i,
+  /\b(?:not yet clear|remains unclear|unclear whether|open question|remaining question)\s*[:.]?\s*(.{5,120})/i,
+  /\b(?:pending decision|undecided|unresolved|TBD|to be determined)\s*[:.]?\s*(.{3,120})/i,
+  /\b(?:need to figure out|need to determine|need to settle|need input on)\s+(.{5,120})/i,
+  /\b(?:haven'?t resolved|left open|still open|remains open)\s*[:.]?\s*(.{3,120})/i,
+];
+
+// Exclude questions that are clearly rhetorical, greetings, or too short
+const QUESTION_EXCLUDE = /^(?:how are you|what'?s up|hello|hi|hey|ok|sure|thanks|right)\b/i;
+
+/**
+ * Extract open questions and unresolved signals from recent session JSONL files.
+ * Scans both user and assistant messages for question patterns and
+ * unresolved-decision language. Deduplicates by normalized content.
+ */
+export function extractOpenQuestions(sessionsDir: string, maxSessions = 10): OpenQuestion[] {
+  if (!fs.existsSync(sessionsDir)) return [];
+
+  const files = fs.readdirSync(sessionsDir).filter(f => f.endsWith('.jsonl'));
+  const sorted = files
+    .map(f => ({ name: f, mtime: fs.statSync(path.join(sessionsDir, f)).mtimeMs }))
+    .sort((a, b) => b.mtime - a.mtime)
+    .slice(0, maxSessions);
+
+  const items: OpenQuestion[] = [];
+  const seen = new Set<string>();
+
+  for (const { name: file } of sorted) {
+    const filePath = path.join(sessionsDir, file);
+    const sessionId = file.replace('.jsonl', '');
+
+    try {
+      const content = fs.readFileSync(filePath, 'utf-8').trim();
+      const lines = content.split('\n').filter(l => l.trim());
+      if (lines.length < 3) continue;
+
+      // Get date from meta line or file stat
+      let date = '';
+      try {
+        const meta = JSON.parse(lines[0]);
+        if (meta.type === 'meta' && meta.created) {
+          date = new Date(meta.created as string).toISOString().slice(0, 10);
+        }
+      } catch { /* skip */ }
+      if (!date) {
+        date = new Date(fs.statSync(filePath).birthtime).toISOString().slice(0, 10);
+      }
+
+      const messageLines = lines.slice(1).slice(0, 40);
+
+      for (const line of messageLines) {
+        try {
+          const msg = JSON.parse(line);
+          if (!msg.content || !msg.role) continue;
+          const text = msg.content as string;
+
+          for (const pattern of OPEN_QUESTION_PATTERNS) {
+            const match = text.match(pattern);
+            if (match) {
+              const extracted = (match[1] || match[0]).trim()
+                .replace(/[.!,;]+$/, '')
+                .slice(0, 150);
+              const key = extracted.toLowerCase().slice(0, 60);
+
+              if (extracted.length >= 10 && !seen.has(key) && !QUESTION_EXCLUDE.test(extracted)) {
+                seen.add(key);
+                items.push({ content: extracted, date, sessionId });
+              }
+              break; // One match per message
+            }
+          }
+        } catch {
+          // skip malformed lines
+        }
+      }
+    } catch {
+      // skip unreadable files
+    }
+  }
+
+  return items;
+}
+
+// ── Thread freshness classification ─────────────────────────────────
+
+/** Thread freshness — matches workspace-state.ts Freshness type structurally */
+type ThreadFreshness = 'fresh' | 'aging' | 'stale';
+
+const THREAD_FRESH_DAYS = 2;
+const THREAD_AGING_DAYS = 7;
+
+function computeThreadFreshness(dateStr: string): ThreadFreshness {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffDays = (now.getTime() - date.getTime()) / (86400 * 1000);
+  if (diffDays < THREAD_FRESH_DAYS) return 'fresh';
+  if (diffDays < THREAD_AGING_DAYS) return 'aging';
+  return 'stale';
+}
+
+export interface ThreadInfo {
+  title: string;
+  lastActive: string;
+  freshness: ThreadFreshness;
+  messageCount: number;
+  sessionId: string;
+}
+
+/**
+ * Classify session files as threads with freshness based on last modification time.
+ * Freshness is purely timestamp-based (correction #4: stale = "not recently touched",
+ * NOT "unimportant" — old threads can still be highly important).
+ */
+export function classifyThreads(sessionsDir: string, maxSessions = 20): ThreadInfo[] {
+  if (!fs.existsSync(sessionsDir)) return [];
+
+  const files = fs.readdirSync(sessionsDir).filter(f => f.endsWith('.jsonl'));
+  const sorted = files
+    .map(f => {
+      const stat = fs.statSync(path.join(sessionsDir, f));
+      return { name: f, mtime: stat.mtime.toISOString(), mtimeMs: stat.mtimeMs };
+    })
+    .sort((a, b) => b.mtimeMs - a.mtimeMs)
+    .slice(0, maxSessions);
+
+  const threads: ThreadInfo[] = [];
+
+  for (const { name: file, mtime } of sorted) {
+    const filePath = path.join(sessionsDir, file);
+    const sessionId = file.replace('.jsonl', '');
+
+    try {
+      const content = fs.readFileSync(filePath, 'utf-8').trim();
+      const lines = content.split('\n').filter(l => l.trim());
+      if (lines.length === 0) continue;
+
+      let title = sessionId;
+      let messageLines = lines;
+
+      // Parse meta line for title
+      try {
+        const meta = JSON.parse(lines[0]);
+        if (meta.type === 'meta') {
+          if (meta.title) title = meta.title;
+          messageLines = lines.slice(1);
+        }
+      } catch { /* treat all as messages */ }
+
+      // Fall back to first user message for title
+      if (title === sessionId && messageLines.length > 0) {
+        try {
+          const firstMsg = JSON.parse(messageLines[0]);
+          if (firstMsg.content) {
+            const firstLine = (firstMsg.content as string).split('\n')[0].trim();
+            title = firstLine.length > 80 ? firstLine.slice(0, 77) + '...' : firstLine;
+          }
+        } catch { /* keep default */ }
+      }
+
+      // Skip sessions with < 2 messages (not a real thread)
+      if (messageLines.length < 2) continue;
+
+      threads.push({
+        title,
+        lastActive: mtime,
+        freshness: computeThreadFreshness(mtime),
+        messageCount: messageLines.length,
+        sessionId,
+      });
+    } catch {
+      // skip unreadable files
+    }
+  }
+
+  return threads;
+}
+
 // ── F1: Session search ───────────────────────────────────────────────
 
 export interface SessionSearchResult {

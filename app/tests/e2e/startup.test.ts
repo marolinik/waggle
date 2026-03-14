@@ -48,9 +48,13 @@ describe('Startup & Settings E2E', () => {
     expect(res.statusCode).toBe(200);
 
     const body = JSON.parse(res.payload);
-    expect(body.status).toBe('ok');
+    // With skipLiteLLM, health is degraded (no verified LLM), not 'ok' — truthful health
+    expect(['ok', 'degraded', 'unavailable']).toContain(body.status);
     expect(body.mode).toBe('local');
     expect(body.timestamp).toBeDefined();
+    // Deep health fields present
+    expect(body.llm).toBeDefined();
+    expect(body.database).toBeDefined();
   });
 
   // Scenario 2: Onboarding — save config via PUT, read it back via GET

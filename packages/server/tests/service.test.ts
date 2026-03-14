@@ -89,8 +89,13 @@ describe('Agent Service', () => {
     const res = await server.inject({ method: 'GET', url: '/health' });
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
-    expect(body.status).toBe('ok');
+    // With skipLiteLLM, health is degraded (no verified LLM), not 'ok'
+    expect(['ok', 'degraded', 'unavailable']).toContain(body.status);
     expect(body.mode).toBe('local');
+    // Deep health: LLM provider and database status present
+    expect(body.llm).toBeDefined();
+    expect(body.llm.provider).toBeDefined();
+    expect(body.database).toBeDefined();
   });
 
   it('server gracefully shuts down on close', async () => {

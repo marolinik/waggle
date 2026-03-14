@@ -6,6 +6,7 @@ import { MindDB } from '@waggle/core';
 import { assertSafeSegment } from './validate.js';
 import { extractProgressItems, type ProgressItem } from './sessions.js';
 import { readFileRegistry, type FileRegistryEntry } from './ingest.js';
+import { buildWorkspaceState, type WorkspaceState } from '../workspace-state.js';
 
 /**
  * A6: Compose a structured workspace summary — the "return reward moment."
@@ -298,6 +299,17 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
       }
     }
 
+    // ── Structured workspace state (Slice 6) ──────────────
+    let workspaceState: WorkspaceState | null = null;
+    try {
+      workspaceState = buildWorkspaceState({
+        dataDir: server.localConfig.dataDir,
+        workspaceId: id,
+        wsManager: server.workspaceManager,
+        activateWorkspaceMind: server.agentState.activateWorkspaceMind,
+      });
+    } catch { /* non-blocking */ }
+
     // ── J4: Team catch-up context (for team workspaces) ────
     let teamContext: {
       isTeam: boolean;
@@ -341,6 +353,7 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
       },
       lastActive: recentThreads[0]?.lastActive ?? ws.created,
       teamContext,
+      workspaceState,
     };
   });
 

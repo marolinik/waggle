@@ -60,6 +60,23 @@ export function needsConfirmation(toolName: string, args?: Record<string, unknow
   return true;
 }
 
+/**
+ * Get the approval class for a tool call based on trust metadata.
+ * Returns 'standard' for non-install tools. For install_capability,
+ * inspects the args for trust metadata to determine the class.
+ */
+export type ApprovalClass = 'standard' | 'elevated' | 'critical';
+
+export function getApprovalClass(toolName: string, args?: Record<string, unknown>): ApprovalClass {
+  if (toolName !== 'install_capability') return 'standard';
+
+  // If trust metadata is passed in args (from the proposal flow), use it
+  const riskLevel = args?._riskLevel as string | undefined;
+  if (riskLevel === 'high') return 'critical';
+  if (riskLevel === 'medium') return 'elevated';
+  return 'standard';
+}
+
 export interface ConfirmationGateConfig {
   interactive?: boolean;
   autoApprove?: string[];

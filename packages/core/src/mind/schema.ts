@@ -97,6 +97,40 @@ CREATE TABLE IF NOT EXISTS knowledge_relations (
 CREATE INDEX IF NOT EXISTS idx_relations_source ON knowledge_relations (source_id, relation_type);
 CREATE INDEX IF NOT EXISTS idx_relations_target ON knowledge_relations (target_id, relation_type);
 
+-- Layer 5: Improvement Signals (recurring patterns that should change behavior)
+CREATE TABLE IF NOT EXISTS improvement_signals (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  category TEXT NOT NULL CHECK (category IN ('capability_gap', 'correction', 'workflow_pattern')),
+  pattern_key TEXT NOT NULL,
+  detail TEXT NOT NULL DEFAULT '',
+  count INTEGER NOT NULL DEFAULT 1,
+  first_seen TEXT NOT NULL DEFAULT (datetime('now')),
+  last_seen TEXT NOT NULL DEFAULT (datetime('now')),
+  surfaced INTEGER NOT NULL DEFAULT 0,
+  surfaced_at TEXT,
+  metadata TEXT NOT NULL DEFAULT '{}'
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_signals_category_key ON improvement_signals (category, pattern_key);
+CREATE INDEX IF NOT EXISTS idx_signals_category ON improvement_signals (category, count DESC);
+
+-- Layer 6: Install Audit (capability install trust trail)
+CREATE TABLE IF NOT EXISTS install_audit (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  timestamp TEXT NOT NULL DEFAULT (datetime('now')),
+  capability_name TEXT NOT NULL,
+  capability_type TEXT NOT NULL CHECK (capability_type IN ('native', 'skill', 'plugin', 'mcp')),
+  source TEXT NOT NULL,
+  version TEXT,
+  risk_level TEXT NOT NULL CHECK (risk_level IN ('low', 'medium', 'high')),
+  trust_source TEXT NOT NULL,
+  approval_class TEXT NOT NULL CHECK (approval_class IN ('standard', 'elevated', 'critical')),
+  action TEXT NOT NULL CHECK (action IN ('proposed', 'approved', 'installed', 'rejected', 'failed')),
+  initiator TEXT NOT NULL CHECK (initiator IN ('agent', 'user', 'system')),
+  detail TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_audit_capability ON install_audit (capability_name, action);
+CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON install_audit (timestamp DESC);
+
 -- Layer 4: Procedures (GEPA-optimized prompt templates)
 CREATE TABLE IF NOT EXISTS procedures (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

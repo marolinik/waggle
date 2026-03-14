@@ -3,9 +3,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type { FastifyPluginAsync } from 'fastify';
-import { runAgentLoop, needsConfirmation, CapabilityRouter } from '@waggle/agent';
+import { runAgentLoop, needsConfirmation, CapabilityRouter, analyzeAndRecordCorrection, recordCapabilityGap } from '@waggle/agent';
 import type { AgentLoopConfig, AgentResponse } from '@waggle/agent';
 import { buildWorkspaceNowBlock, formatWorkspaceNowPrompt } from './workspace-context.js';
+import { formatWorkspaceStatePrompt } from '../workspace-state.js';
 
 /**
  * Persist a chat message to the session's .jsonl file on disk.
@@ -154,6 +155,10 @@ function describeToolUse(name: string, input: Record<string, unknown>): string {
       return `Searching for capabilities: "${input.need ?? ''}"...`;
     case 'install_capability':
       return `Installing capability: ${input.name ?? ''}...`;
+    case 'compose_workflow':
+      return `Analyzing task and composing workflow plan...`;
+    case 'orchestrate_workflow':
+      return `Running workflow: ${input.template ?? input.inline_template ? 'inline' : ''}...`;
     case 'spawn_agent':
       return `Spawning sub-agent "${input.name ?? ''}" (${input.role ?? ''})...`;
     case 'list_agents':
@@ -447,7 +452,23 @@ If acquire_capability says a native tool or active skill already handles the nee
 - get_agent_result: Retrieve the full result from a completed sub-agent.
 
 ## Planning (structured multi-step work)
-- create_plan, add_plan_step, execute_step, show_plan`;
+- create_plan, add_plan_step, execute_step, show_plan
+
+## Workflow Composition (for complex multi-phase tasks)
+- **compose_workflow**: Analyze a task and get a recommended execution approach. Returns a plan with steps and the lightest sufficient execution mode.
+- **orchestrate_workflow**: Run a multi-agent workflow (named template or inline template from compose_workflow).
+
+### When to Use Workflow Composition
+
+Most tasks do NOT need workflow composition. Use it only when a request has **multiple distinct phases** (e.g., "research X, then compare options, then draft a recommendation").
+
+**Decision flow:**
+1. Simple question or single-step task → respond directly (no tools needed)
+2. Multi-step but single-domain task (e.g., "write a report") → use a loaded skill or create_plan
+3. Multi-phase task with distinct work types → call compose_workflow to get a structured plan
+4. Only if compose_workflow recommends sub-agents AND the task genuinely warrants parallel specialists → use orchestrate_workflow
+
+**Never** jump straight to orchestrate_workflow for tasks you can handle directly. The compose_workflow tool will tell you when sub-agents are actually warranted.`;
 
     // Append loaded skills with active integration instructions
     prompt += buildSkillPromptSection(skills);
@@ -462,7 +483,12 @@ If acquire_capability says a native tool or active skill already handles the nee
           activateWorkspaceMind: server.agentState.activateWorkspaceMind,
         });
         if (nowBlock) {
-          prompt += '\n\n' + formatWorkspaceNowPrompt(nowBlock);
+          // Use structured state prompt when available (richer: open questions, blockers, stale threads)
+          if (nowBlock.structuredState) {
+            prompt += '\n\n' + formatWorkspaceStatePrompt(nowBlock.structuredState, nowBlock.workspaceName);
+          } else {
+            prompt += '\n\n' + formatWorkspaceNowPrompt(nowBlock);
+          }
         }
       } catch {
         // Non-blocking — if workspace context fails, continue without it
@@ -741,6 +767,27 @@ If acquire_capability says a native tool or active skill already handles the nee
             } catch {
               // Non-blocking
             }
+          }
+        }
+
+        // ── Correction detection ──────────────────────────────────
+        // Analyze user message for corrections and record improvement signals.
+        // Non-blocking — detection failure shouldn't affect the response.
+        if (!hasCustomRunner) {
+          try {
+            const signalStore = orchestrator.getImprovementSignals();
+            analyzeAndRecordCorrection(signalStore, message);
+
+            // Record capability gaps from tool-not-found events
+            const toolNotFoundPattern = /Tool "(.+?)" not found/;
+            if (result.content) {
+              const match = result.content.match(toolNotFoundPattern);
+              if (match) {
+                recordCapabilityGap(signalStore, match[1]);
+              }
+            }
+          } catch {
+            // Non-blocking
           }
         }
 

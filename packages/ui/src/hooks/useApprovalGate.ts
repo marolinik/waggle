@@ -72,7 +72,7 @@ export function useApprovalGate({
           if (!msg.toolUse) return msg;
           const updatedTools = msg.toolUse.map((tool) => {
             if (tool.name === event.toolName && tool.approved === undefined) {
-              return { ...tool, requiresApproval: true, status: 'pending_approval' as const };
+              return { ...tool, requiresApproval: true, status: 'pending_approval' as const, requestId: event.requestId };
             }
             return tool;
           });

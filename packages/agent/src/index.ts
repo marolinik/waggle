@@ -33,7 +33,7 @@ export { createPlanTools } from './plan-tools.js';
 export { createGitTools } from './git-tools.js';
 export { PermissionManager, READONLY_TOOLS } from './permissions.js';
 export { filterToolsForContext, type ToolContext, type ToolFilterConfig } from './tool-filter.js';
-export { needsConfirmation, ConfirmationGate, type ConfirmationGateConfig } from './confirmation.js';
+export { needsConfirmation, ConfirmationGate, getApprovalClass, type ConfirmationGateConfig, type ApprovalClass } from './confirmation.js';
 export { createAuditTools } from './audit-tools.js';
 export { createDocumentTools } from './document-tools.js';
 export { createSkillTools, type SkillToolsDeps } from './skill-tools.js';
@@ -49,6 +49,22 @@ export {
 export { McpServerInstance, McpRuntime, type McpServerConfig, type McpServerState, type McpToolInfo, type McpProcess, type SpawnFn } from './mcp/mcp-runtime.js';
 export { SubagentOrchestrator, type WorkerState, type WorkerStatus, type WorkflowStep, type WorkflowTemplate, type OrchestratorConfig as SubagentOrchestratorConfig } from './subagent-orchestrator.js';
 export { WORKFLOW_TEMPLATES, listWorkflowTemplates, createResearchTeamTemplate, createReviewPairTemplate, createPlanExecuteTemplate } from './workflow-templates.js';
-export { createWorkflowTools } from './workflow-tools.js';
+export { createWorkflowTools, type WorkflowToolsConfig } from './workflow-tools.js';
+export { detectTaskShape, type TaskShape, type TaskShapeType, type TaskShapeSignal, type ComponentPhase } from './task-shape.js';
+export {
+  composeWorkflow, validateTemplate,
+  type WorkflowPlan, type ExecutionMode, type PlanStep as ComposerPlanStep, type ComposerContext, type ValidationError,
+} from './workflow-composer.js';
 export { CommandRegistry, type CommandDefinition, type CommandContext } from './commands/command-registry.js';
 export { registerWorkflowCommands } from './commands/workflow-commands.js';
+export {
+  assessTrust, resolveTrustSource, detectPermissions, classifyRisk, deriveApprovalClass, formatTrustSummary,
+  type TrustAssessment, type TrustSource, type RiskLevel, type RiskFactor, type PermissionSummary,
+  type AssessmentMode, type AssessTrustInput,
+} from './trust-model.js';
+export { detectCorrection, detectCorrectionsInHistory, type DetectedCorrection, type CorrectionDurability } from './correction-detector.js';
+export {
+  recordCapabilityGap, analyzeAndRecordCorrection, recordWorkflowPattern,
+  buildAwarenessSummary, formatAwarenessPrompt, markSummarySurfaced,
+  type AwarenessSummary, type CapabilityGapSignal, type CorrectionSignal, type WorkflowPatternSignal,
+} from './improvement-detector.js';

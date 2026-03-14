@@ -25,3 +25,16 @@ export { MultiMind, type MultiMindSearchResult, type MindSource, type SearchScop
 export { WorkspaceManager, type WorkspaceConfig, type CreateWorkspaceOptions } from './workspace-config.js';
 export { needsMigration, migrateToMultiMind } from './migration.js';
 export { TeamSync, frameToEntity, entityToSyncedFrame, type TeamSyncConfig, type SyncedFrame } from './team-sync.js';
+export {
+  ImprovementSignalStore,
+  type ImprovementSignal,
+  type ActionableSignal,
+  type SignalCategory,
+  type ActionableThresholds,
+} from './mind/improvement-signals.js';
+export {
+  InstallAuditStore, INSTALL_AUDIT_TABLE_SQL,
+  type InstallAuditEntry, type RecordAuditInput,
+  type AuditAction, type AuditRiskLevel, type AuditTrustSource,
+  type AuditApprovalClass, type AuditInitiator, type AuditCapabilityType,
+} from './install-audit.js';

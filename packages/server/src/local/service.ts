@@ -1,9 +1,11 @@
 import fs from 'node:fs';
+import net from 'node:net';
 import path from 'node:path';
 import os from 'node:os';
 import type { FastifyInstance } from 'fastify';
 import { needsMigration, migrateToMultiMind, MindDB } from '@waggle/core';
 import { buildLocalServer } from './index.js';
+import type { LlmHealthStatus } from './index.js';
 import { startLiteLLM, stopLiteLLM, type LiteLLMStatus } from './lifecycle.js';
 
 // ── Startup progress types ─────────────────────────────────────────
@@ -39,6 +41,36 @@ export function isFirstRun(dataDir: string): boolean {
   const hasPersonal = fs.existsSync(path.join(dataDir, 'personal.mind'));
   const hasDefault = fs.existsSync(path.join(dataDir, 'default.mind'));
   return !hasPersonal && !hasDefault;
+}
+
+/**
+ * Check if a port is available by attempting to bind to it briefly.
+ * Returns true if the port is free, false if already in use.
+ */
+export function checkPortAvailable(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const tester = net.createServer()
+      .once('error', () => resolve(false))
+      .once('listening', () => {
+        tester.close(() => resolve(true));
+      })
+      .listen(port, '127.0.0.1');
+  });
+}
+
+/**
+ * Check if an Anthropic API key is available (env or config file).
+ */
+function hasAnthropicKey(dataDir: string): boolean {
+  if (process.env.ANTHROPIC_API_KEY) return true;
+  try {
+    const configPath = path.join(dataDir, 'config.json');
+    if (fs.existsSync(configPath)) {
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      return !!config?.providers?.anthropic?.apiKey;
+    }
+  } catch { /* ignore */ }
+  return false;
 }
 
 /**
@@ -95,7 +127,16 @@ export async function startService(options?: ServiceOptions): Promise<ServiceRes
     litellm = await startLiteLLM(litellmPort);
   }
 
-  // 5. Build and start local server
+  // 5. Check port availability before building server
+  emit({ phase: 'server', message: 'Checking port availability...', progress: 0.7 });
+  const portFree = await checkPortAvailable(port);
+  if (!portFree) {
+    const msg = `Port ${port} is already in use. Another Waggle instance may be running.\nTo fix: close the other instance, or set WAGGLE_PORT=<port> to use a different port.`;
+    emit({ phase: 'server', message: msg, progress: 0.7 });
+    throw new Error(msg);
+  }
+
+  // 6. Build and start local server
   emit({ phase: 'server', message: 'Starting local server...', progress: 0.75 });
   const server = await buildLocalServer({
     dataDir,
@@ -103,30 +144,76 @@ export async function startService(options?: ServiceOptions): Promise<ServiceRes
     litellmUrl: `http://localhost:${litellmPort}`,
   });
 
-  // 6. Register self-removing shutdown handlers (must add hook before listen)
+  // 7. Register self-removing shutdown handlers (must add hook before listen)
   let shutdown: () => Promise<void>;
 
   // Deregister signal handlers when server closes normally (e.g. in tests)
   server.addHook('onClose', async () => {
     process.off('SIGTERM', shutdown);
     process.off('SIGINT', shutdown);
+    // Remove PID file on close
+    try { fs.unlinkSync(path.join(dataDir, 'server.pid')); } catch { /* ok */ }
   });
 
   await server.listen({ port, host: '127.0.0.1' });
 
-  // Check if external LiteLLM is available; if not, use built-in Anthropic proxy
+  // Write PID file for stale-process detection
+  try {
+    fs.writeFileSync(path.join(dataDir, 'server.pid'), String(process.pid));
+  } catch { /* non-blocking */ }
+
+  // 8. Determine LLM provider — truthful, not optimistic
+  let providerName: 'litellm' | 'anthropic-proxy' = 'anthropic-proxy';
+  let providerHealth: LlmHealthStatus = 'unavailable';
+  let providerDetail = 'No working LLM path';
+
+  // Try LiteLLM first
+  let litellmReachable = false;
   try {
     const healthRes = await fetch(`http://localhost:${litellmPort}/health/liveliness`, {
       signal: AbortSignal.timeout(2000),
     });
-    if (!healthRes.ok) throw new Error('unhealthy');
-  } catch {
-    // LiteLLM not running — redirect to built-in proxy
+    litellmReachable = healthRes.ok;
+  } catch { /* not reachable */ }
+
+  if (litellmReachable) {
+    providerName = 'litellm';
+    providerHealth = 'healthy';
+    providerDetail = `LiteLLM on port ${litellmPort}`;
+    console.log(`[waggle] LLM provider: LiteLLM (http://localhost:${litellmPort})`);
+  } else {
+    // Fall back to built-in Anthropic proxy
     const selfUrl = `http://127.0.0.1:${port}/v1`;
     server.agentState.litellmApiKey = 'built-in';
     (server.localConfig as any).litellmUrl = selfUrl;
-    emit({ phase: 'ready', message: 'Using built-in Anthropic proxy (no LiteLLM)', progress: 0.9 });
+    providerName = 'anthropic-proxy';
+
+    const hasKey = hasAnthropicKey(dataDir);
+    if (hasKey) {
+      providerHealth = 'healthy';
+      providerDetail = 'Built-in Anthropic proxy (API key configured)';
+    } else {
+      providerHealth = 'degraded';
+      providerDetail = 'Built-in Anthropic proxy (no API key — configure in Settings > API Keys)';
+    }
+
+    if (litellm.status !== 'running' && litellm.status !== 'started') {
+      console.log(`[waggle] LiteLLM unavailable (${litellm.status}), using built-in Anthropic proxy`);
+    } else {
+      console.log(`[waggle] LiteLLM not reachable, using built-in Anthropic proxy`);
+    }
+    console.log(`[waggle] LLM provider: ${providerDetail}`);
   }
+
+  // Set the provider status on server state
+  server.agentState.llmProvider = {
+    provider: providerName,
+    health: providerHealth,
+    detail: providerDetail,
+    checkedAt: new Date().toISOString(),
+  };
+
+  emit({ phase: 'ready', message: `LLM: ${providerDetail}`, progress: 0.9 });
 
   shutdown = async () => {
     process.off('SIGTERM', shutdown);
@@ -150,14 +237,15 @@ const isMain = process.argv[1] && import.meta.url.endsWith(process.argv[1].repla
 if (isMain) {
   const skipLiteLLM = process.argv.includes('--skip-litellm') || process.env.WAGGLE_SKIP_LITELLM === '1';
   startService({ skipLiteLLM })
-    .then(({ server, litellm }) => {
+    .then(({ server }) => {
       const addr = server.server.address();
       const port = typeof addr === 'object' && addr ? addr.port : '?';
-      console.log(`Waggle service running on http://127.0.0.1:${port}`);
-      console.log(`LiteLLM: ${litellm.status} (port ${litellm.port})`);
+      const llm = server.agentState.llmProvider;
+      console.log(`[waggle] Server running on http://127.0.0.1:${port}`);
+      console.log(`[waggle] LLM: ${llm.provider} (${llm.health}) — ${llm.detail}`);
     })
     .catch((err) => {
-      console.error('Failed to start Waggle service:', err);
+      console.error('[waggle] Failed to start:', err.message ?? err);
       process.exit(1);
     });
 }

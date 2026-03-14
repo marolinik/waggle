@@ -175,9 +175,8 @@ describe('orchestrate_workflow tool', () => {
   });
 
   it('tool is defined with correct metadata', () => {
-    expect(tools).toHaveLength(1);
-    const tool = tools[0];
-    expect(tool.name).toBe('orchestrate_workflow');
+    const tool = tools.find(t => t.name === 'orchestrate_workflow')!;
+    expect(tool).toBeDefined();
     expect(tool.description).toContain('research-team');
     expect(tool.description).toContain('review-pair');
     expect(tool.description).toContain('plan-execute');
@@ -195,7 +194,7 @@ describe('orchestrate_workflow tool', () => {
       };
     });
 
-    const tool = tools[0];
+    const tool = tools.find(t => t.name === 'orchestrate_workflow')!;
     const result = await tool.execute({ template: 'research-team', task: 'Research quantum computing' });
 
     expect(callOrder).toEqual(['Researcher', 'Synthesizer', 'Reviewer']);
@@ -215,7 +214,7 @@ describe('orchestrate_workflow tool', () => {
       };
     });
 
-    const tool = tools[0];
+    const tool = tools.find(t => t.name === 'orchestrate_workflow')!;
     await tool.execute({ template: 'review-pair', task: 'Write a blog post' });
 
     expect(runner).toHaveBeenCalledTimes(3);
@@ -227,7 +226,7 @@ describe('orchestrate_workflow tool', () => {
   });
 
   it('returns error for unknown template', async () => {
-    const tool = tools[0];
+    const tool = tools.find(t => t.name === 'orchestrate_workflow')!;
     const result = await tool.execute({ template: 'nonexistent', task: 'Do something' });
 
     expect(result).toContain('Unknown workflow template');
@@ -246,7 +245,7 @@ describe('orchestrate_workflow tool', () => {
       };
     });
 
-    const tool = tools[0];
+    const tool = tools.find(t => t.name === 'orchestrate_workflow')!;
     const result = await tool.execute({ template: 'research-team', task: 'Research AI' });
 
     // Should contain workflow name

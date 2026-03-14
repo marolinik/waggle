@@ -2,6 +2,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { MindDB } from '@waggle/core';
 import { extractProgressItems, type ProgressItem } from './sessions.js';
+import {
+  buildWorkspaceState,
+  formatWorkspaceStatePrompt,
+  type WorkspaceState,
+} from '../workspace-state.js';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -12,7 +17,12 @@ export interface WorkspaceNowBlock {
   activeThreads: string[];   // max 3, title + last active
   progressItems: string[];   // max 5, formatted as "type: content"
   nextActions: string[];     // max 3, derived from progress/decisions
+  /** Structured state — richer model for programmatic access */
+  structuredState?: WorkspaceState;
 }
+
+// Re-export for consumers that need the structured state types
+export type { WorkspaceState } from '../workspace-state.js';
 
 // ── Workspace Manager interface (minimal, passed via opts) ─────────────
 
@@ -66,75 +76,7 @@ function buildCompactSummary(
   return parts.join(' ');
 }
 
-// ── Decision extraction (mirrors workspaces.ts pattern) ────────────────
-
-function extractDecisions(
-  raw: ReturnType<MindDB['getDatabase']>,
-  max: number,
-): string[] {
-  const decisionFrames = raw.prepare(
-    `SELECT content, created_at FROM memory_frames
-     WHERE importance != 'deprecated' AND importance != 'temporary'
-       AND (content LIKE 'Decision%' OR content LIKE '%decided%'
-         OR content LIKE '%decision made%' OR content LIKE '%chose %'
-         OR content LIKE '%selected %' OR content LIKE '%agreed %'
-         OR importance = 'critical')
-     ORDER BY id DESC LIMIT ?`
-  ).all(max + 2) as Array<{ content: string; created_at: string }>;
-
-  return decisionFrames.slice(0, max).map(f => {
-    const firstLine = f.content.split('\n')[0];
-    const sentenceMatch = firstLine.match(/^(.+?\.\s)(?=[A-Z])/);
-    const text = sentenceMatch
-      ? sentenceMatch[1].trim()
-      : (firstLine.length > 150 ? firstLine.slice(0, 147) + '...' : firstLine);
-    return text.replace(/\.\s*$/, '');
-  });
-}
-
-// ── Thread extraction (from session JSONL files) ───────────────────────
-
-function extractActiveThreads(sessionsDir: string, max: number): string[] {
-  if (!fs.existsSync(sessionsDir)) return [];
-
-  const files = fs.readdirSync(sessionsDir).filter(f => f.endsWith('.jsonl'));
-  const sessionMeta: Array<{ title: string; mtime: number }> = [];
-
-  for (const file of files) {
-    const filePath = path.join(sessionsDir, file);
-    const sessionId = file.replace('.jsonl', '');
-    try {
-      const stat = fs.statSync(filePath);
-      const content = fs.readFileSync(filePath, 'utf-8').trim();
-      const lines = content ? content.split('\n').filter(l => l.trim()) : [];
-
-      let title = sessionId;
-      if (lines.length > 0) {
-        try {
-          const first = JSON.parse(lines[0]);
-          if (first.type === 'meta' && first.title) title = first.title;
-          else if (first.content) title = first.content.slice(0, 50);
-        } catch { /* use default */ }
-      }
-      if (title === sessionId && lines.length > 1) {
-        try {
-          const msg = JSON.parse(lines[1]);
-          if (msg.content) title = msg.content.slice(0, 50);
-        } catch { /* use default */ }
-      }
-
-      sessionMeta.push({ title, mtime: stat.mtimeMs });
-    } catch { /* skip */ }
-  }
-
-  sessionMeta.sort((a, b) => b.mtime - a.mtime);
-
-  return sessionMeta.slice(0, max).map(s => {
-    const ago = formatRelativeTime(s.mtime);
-    const label = s.title.length > 60 ? s.title.slice(0, 57) + '...' : s.title;
-    return `${label} (${ago})`;
-  });
-}
+// ── Relative time formatting ────────────────────────────────────────────
 
 function formatRelativeTime(mtimeMs: number): string {
   const diffMs = Date.now() - mtimeMs;
@@ -144,37 +86,6 @@ function formatRelativeTime(mtimeMs: number): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   return days === 1 ? 'yesterday' : `${days}d ago`;
-}
-
-// ── Next-action derivation ─────────────────────────────────────────────
-
-function deriveNextActions(
-  decisions: string[],
-  progress: ProgressItem[],
-  max: number,
-): string[] {
-  const actions: string[] = [];
-
-  // Blockers become immediate next actions
-  for (const p of progress) {
-    if (p.type === 'blocker' && actions.length < max) {
-      actions.push(`Resolve: ${p.content}`);
-    }
-  }
-
-  // Open tasks
-  for (const p of progress) {
-    if (p.type === 'task' && actions.length < max) {
-      actions.push(p.content);
-    }
-  }
-
-  // If we still have room and there are decisions, suggest review
-  if (actions.length < max && decisions.length > 0 && progress.length === 0) {
-    actions.push('Review recent decisions and determine next steps');
-  }
-
-  return actions.slice(0, max);
 }
 
 // ── Main builder ───────────────────────────────────────────────────────
@@ -191,14 +102,81 @@ export function buildWorkspaceNowBlock(opts: {
   if (!ws) return null;
 
   const mindPath = wsManager.getMindPath(workspaceId);
-  if (!fs.existsSync(mindPath)) {
-    // No mind file — workspace exists but has no meaningful data
-    return null;
-  }
+  if (!fs.existsSync(mindPath)) return null;
 
-  // Activate workspace mind (ensures it's ready)
   activateWorkspaceMind(workspaceId);
 
+  // ── Try structured state first (new path) ────────────────────
+  const structuredState = buildWorkspaceState({
+    dataDir,
+    workspaceId,
+    wsManager,
+    activateWorkspaceMind,
+  });
+
+  if (structuredState) {
+    // Convert structured state → WorkspaceNowBlock for backward compat
+    const activeThreads = structuredState.active.slice(0, 3).map(a => {
+      const ago = formatRelativeTime(new Date(a.dateLastTouched).getTime());
+      const label = a.content.length > 60 ? a.content.slice(0, 57) + '...' : a.content;
+      return `${label} (${ago})`;
+    });
+
+    const progressItems: string[] = [];
+    for (const p of structuredState.pending.slice(0, 3)) {
+      progressItems.push(`[task] ${p.content}`);
+    }
+    for (const b of structuredState.blocked.slice(0, 2)) {
+      progressItems.push(`[blocker] ${b.content}`);
+    }
+    for (const c of structuredState.completed.slice(0, 2)) {
+      progressItems.push(`[completed] ${c.content}`);
+    }
+
+    const decisions = structuredState.recentDecisions.slice(0, 3).map(d => d.content);
+
+    // Build summary from mind DB (still needed — structuredState doesn't carry it)
+    let summary = '';
+    let wsDb: MindDB | null = null;
+    try {
+      wsDb = new MindDB(mindPath);
+      const raw = wsDb.getDatabase();
+      const memoryCount = (raw.prepare('SELECT COUNT(*) as cnt FROM memory_frames').get() as { cnt: number }).cnt;
+      const frames = raw.prepare(
+        `SELECT content, importance, created_at FROM memory_frames
+         WHERE importance != 'deprecated' AND importance != 'temporary'
+         ORDER BY CASE importance
+           WHEN 'critical' THEN 1 WHEN 'important' THEN 2
+           WHEN 'normal' THEN 3 ELSE 4 END,
+         id DESC LIMIT 8`,
+      ).all() as Array<{ content: string; importance: string; created_at: string }>;
+
+      const sessDir = path.join(dataDir, 'workspaces', workspaceId, 'sessions');
+      const sessCount = fs.existsSync(sessDir)
+        ? fs.readdirSync(sessDir).filter(f => f.endsWith('.jsonl')).length
+        : 0;
+
+      if (frames.length > 0) {
+        summary = buildCompactSummary(frames, memoryCount, sessCount);
+      }
+      wsDb.close();
+      wsDb = null;
+    } catch {
+      if (wsDb) { try { wsDb.close(); } catch { /* */ } }
+    }
+
+    return {
+      workspaceName: ws.name as string,
+      summary,
+      recentDecisions: decisions,
+      activeThreads,
+      progressItems: progressItems.slice(0, 5),
+      nextActions: structuredState.nextActions.slice(0, 3),
+      structuredState,
+    };
+  }
+
+  // ── Fallback: legacy path (no structured state available) ────
   let summary = '';
   let decisions: string[] = [];
   let wsDb: MindDB | null = null;
@@ -213,17 +191,15 @@ export function buildWorkspaceNowBlock(opts: {
       return null;
     }
 
-    // Get recent important frames (same query as workspaces.ts context endpoint)
     const frames = raw.prepare(
       `SELECT content, importance, created_at FROM memory_frames
        WHERE importance != 'deprecated' AND importance != 'temporary'
        ORDER BY CASE importance
          WHEN 'critical' THEN 1 WHEN 'important' THEN 2
          WHEN 'normal' THEN 3 ELSE 4 END,
-       id DESC LIMIT 8`
+       id DESC LIMIT 8`,
     ).all() as Array<{ content: string; importance: string; created_at: string }>;
 
-    // Session count from filesystem
     const sessDir = path.join(dataDir, 'workspaces', workspaceId, 'sessions');
     const sessCount = fs.existsSync(sessDir)
       ? fs.readdirSync(sessDir).filter(f => f.endsWith('.jsonl')).length
@@ -233,42 +209,60 @@ export function buildWorkspaceNowBlock(opts: {
       summary = buildCompactSummary(frames, memoryCount, sessCount);
     }
 
-    // Extract decisions (cap at 3 for the now-block)
-    decisions = extractDecisions(raw, 3);
+    // Extract decisions inline (legacy)
+    const decisionFrames = raw.prepare(
+      `SELECT content FROM memory_frames
+       WHERE importance != 'deprecated' AND importance != 'temporary'
+         AND (content LIKE 'Decision%' OR content LIKE '%decided%'
+           OR content LIKE '%decision made%' OR content LIKE '%chose %'
+           OR content LIKE '%selected %' OR content LIKE '%agreed %'
+           OR importance = 'critical')
+       ORDER BY id DESC LIMIT 5`,
+    ).all() as Array<{ content: string }>;
+
+    decisions = decisionFrames.slice(0, 3).map(f => {
+      const firstLine = f.content.split('\n')[0];
+      const sentenceMatch = firstLine.match(/^(.+?\.\s)(?=[A-Z])/);
+      const text = sentenceMatch
+        ? sentenceMatch[1].trim()
+        : (firstLine.length > 150 ? firstLine.slice(0, 147) + '...' : firstLine);
+      return text.replace(/\.\s*$/, '');
+    });
 
     wsDb.close();
     wsDb = null;
   } catch {
-    // If mind DB fails, close and return null
-    if (wsDb) {
-      try { wsDb.close(); } catch { /* ignore */ }
-    }
+    if (wsDb) { try { wsDb.close(); } catch { /* ignore */ } }
     return null;
   }
 
-  // Extract active threads from session files (cap at 3)
-  const sessionsDir = path.join(dataDir, 'workspaces', workspaceId, 'sessions');
-  const activeThreads = extractActiveThreads(sessionsDir, 3);
-
   // Extract progress items (cap at 5)
+  const sessionsDir = path.join(dataDir, 'workspaces', workspaceId, 'sessions');
   let rawProgress: ProgressItem[] = [];
   if (fs.existsSync(sessionsDir)) {
-    try {
-      rawProgress = extractProgressItems(sessionsDir, 5);
-    } catch { /* non-blocking */ }
+    try { rawProgress = extractProgressItems(sessionsDir, 5); } catch { /* */ }
   }
   const progressItems = rawProgress.slice(0, 5).map(p => `[${p.type}] ${p.content}`);
 
-  // Derive next actions (cap at 3)
-  const nextActions = deriveNextActions(decisions, rawProgress, 3);
+  // Derive next actions
+  const nextActions: string[] = [];
+  for (const p of rawProgress) {
+    if (p.type === 'blocker' && nextActions.length < 3) nextActions.push(`Resolve: ${p.content}`);
+  }
+  for (const p of rawProgress) {
+    if (p.type === 'task' && nextActions.length < 3) nextActions.push(p.content);
+  }
+  if (nextActions.length === 0 && decisions.length > 0) {
+    nextActions.push('Review recent decisions and determine next steps');
+  }
 
   return {
     workspaceName: ws.name as string,
     summary,
     recentDecisions: decisions,
-    activeThreads,
+    activeThreads: [],
     progressItems,
-    nextActions,
+    nextActions: nextActions.slice(0, 3),
   };
 }
 

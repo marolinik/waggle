@@ -11,6 +11,8 @@ import * as path from 'node:path';
 import type { ToolDefinition } from './tools.js';
 import { SkillRecommender } from './skill-recommender.js';
 import { searchCapabilities, validateInstallCandidate } from './capability-acquisition.js';
+import { assessTrust, formatTrustSummary } from './trust-model.js';
+import type { InstallAuditStore } from '@waggle/core';
 
 export interface SkillToolsDeps {
   /** Path to ~/.waggle directory */
@@ -23,6 +25,8 @@ export interface SkillToolsDeps {
   getInstalledSkills?: () => Array<{ name: string; content: string }>;
   /** Native tool names (for acquisition search — avoids proposing install when a tool exists) */
   nativeToolNames?: string[];
+  /** Audit store for recording install events (optional — degrades gracefully) */
+  auditStore?: InstallAuditStore;
 }
 
 export function createSkillTools(deps: SkillToolsDeps): ToolDefinition[] {
@@ -340,6 +344,22 @@ Returns a structured proposal showing what's already available, what can be inst
           nativeToolNames: nativeTools,
         });
 
+        // Record proposal audit event if a gap was detected with a recommendation
+        if (proposal.gapDetected && proposal.recommendation?.trust) {
+          const trust = proposal.recommendation.trust;
+          deps.auditStore?.record({
+            capabilityName: proposal.recommendation.name,
+            capabilityType: proposal.recommendation.type,
+            source: proposal.recommendation.source,
+            riskLevel: trust.riskLevel,
+            trustSource: trust.trustSource,
+            approvalClass: trust.approvalClass,
+            action: 'proposed',
+            initiator: 'agent',
+            detail: `Proposed for need: ${need}`,
+          });
+        }
+
         return proposal.summary;
       },
     },
@@ -385,8 +405,43 @@ Only use this after acquire_capability has identified a specific installable can
         // Validate this is a real, installable candidate
         const validation = validateInstallCandidate(name, source, starterDir, installedNames);
         if (!validation.valid) {
+          // Record failed install attempt
+          deps.auditStore?.record({
+            capabilityName: name,
+            capabilityType: 'skill',
+            source,
+            riskLevel: 'low',
+            trustSource: 'unknown',
+            approvalClass: 'standard',
+            action: 'failed',
+            initiator: 'agent',
+            detail: validation.error ?? 'Validation failed',
+          });
           return `Error: ${validation.error}`;
         }
+
+        // Read content from starter pack for trust assessment
+        const sourceContent = fs.readFileSync(validation.starterPath!, 'utf-8');
+
+        // Assess trust before installing
+        const trust = assessTrust({
+          capabilityType: 'skill',
+          source,
+          content: sourceContent,
+        });
+
+        // Record proposal audit event
+        deps.auditStore?.record({
+          capabilityName: name,
+          capabilityType: 'skill',
+          source,
+          riskLevel: trust.riskLevel,
+          trustSource: trust.trustSource,
+          approvalClass: trust.approvalClass,
+          action: 'approved',
+          initiator: 'agent',
+          detail: trust.explanation,
+        });
 
         // Copy from starter pack to installed skills directory
         const targetPath = path.join(skillsDir, `${name}.md`);
@@ -395,8 +450,22 @@ Only use this after acquire_capability has identified a specific installable can
         // Trigger hot-reload so the skill is immediately available in runtime
         onSkillsChanged?.();
 
+        // Record successful install audit event
+        deps.auditStore?.record({
+          capabilityName: name,
+          capabilityType: 'skill',
+          source,
+          riskLevel: trust.riskLevel,
+          trustSource: trust.trustSource,
+          approvalClass: trust.approvalClass,
+          action: 'installed',
+          initiator: 'agent',
+          detail: `Installed successfully. ${trust.explanation}`,
+        });
+
         // Read the content to return it — so the agent can use it in the same turn
         const content = fs.readFileSync(targetPath, 'utf-8');
+        const trustSummary = formatTrustSummary(trust);
 
         return (
           `## Skill Installed Successfully\n\n` +
@@ -404,6 +473,7 @@ Only use this after acquire_capability has identified a specific installable can
           `- **Location**: ${targetPath}\n` +
           `- **Status**: Active — loaded into your system prompt\n` +
           `- **Runtime**: Available immediately for this and all future sessions\n\n` +
+          `### Trust Assessment\n${trustSummary}\n\n` +
           `### Skill Content\n\nUse the following instructions to complete the current task:\n\n` +
           `---\n\n${content}\n\n---\n\n` +
           `You can now apply this skill to the user's request.`

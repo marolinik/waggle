@@ -74,4 +74,75 @@ describe('Self-Awareness', () => {
     expect(result).toContain('empty');
     expect(result).toContain('fresh start');
   });
+
+  it('includes groundedness guidance', () => {
+    const caps: AgentCapabilities = {
+      tools: [],
+      skills: [],
+      model: 'test',
+      memoryStats: { frameCount: 0, sessionCount: 0, entityCount: 0 },
+      mode: 'local',
+      version: '1.0.0',
+    };
+
+    const result = buildSelfAwareness(caps);
+    expect(result).toContain('## Groundedness');
+    expect(result).toContain('acquire_capability');
+    expect(result).toContain('uncertain');
+  });
+
+  it('includes improvement signals when awareness has actionable data', () => {
+    const caps: AgentCapabilities = {
+      tools: [],
+      skills: [],
+      model: 'test',
+      memoryStats: { frameCount: 10, sessionCount: 2, entityCount: 3 },
+      mode: 'local',
+      version: '1.0.0',
+      awareness: {
+        capabilityGaps: [{
+          id: 1,
+          toolName: 'pdf_reader',
+          occurrences: 3,
+          suggestion: 'User has needed "pdf_reader" 3 times. Consider using acquire_capability to find it.',
+        }],
+        corrections: [{
+          id: 2,
+          patternKey: 'tone:too_formal',
+          detail: 'Keep it casual',
+          occurrences: 4,
+          guidance: 'Keep it casual (corrected 4 times)',
+        }],
+        workflowPatterns: [],
+        totalActionable: 2,
+      },
+    };
+
+    const result = buildSelfAwareness(caps);
+    expect(result).toContain('Learning from Past Sessions');
+    expect(result).toContain('pdf_reader');
+    expect(result).toContain('Keep it casual');
+    expect(result).toContain('Recurring capability gaps');
+    expect(result).toContain('User corrections to apply');
+  });
+
+  it('omits improvement section when awareness has zero actionable signals', () => {
+    const caps: AgentCapabilities = {
+      tools: [],
+      skills: [],
+      model: 'test',
+      memoryStats: { frameCount: 10, sessionCount: 2, entityCount: 3 },
+      mode: 'local',
+      version: '1.0.0',
+      awareness: {
+        capabilityGaps: [],
+        corrections: [],
+        workflowPatterns: [],
+        totalActionable: 0,
+      },
+    };
+
+    const result = buildSelfAwareness(caps);
+    expect(result).not.toContain('Learning from Past Sessions');
+  });
 });

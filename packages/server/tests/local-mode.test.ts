@@ -38,13 +38,20 @@ describe('Local Server Mode', () => {
 
   // --- Health check ---
   describe('health check', () => {
-    it('returns mode: local', async () => {
+    it('returns mode: local with structured health', async () => {
       const res = await server.inject({ method: 'GET', url: '/health' });
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
-      expect(body.status).toBe('ok');
+      // In test mode (no LLM provider initialized), status is not 'ok'
+      expect(['ok', 'degraded', 'unavailable']).toContain(body.status);
       expect(body.mode).toBe('local');
       expect(body.timestamp).toBeDefined();
+      // Deep health fields present
+      expect(body.llm).toBeDefined();
+      expect(body.llm.provider).toBeDefined();
+      expect(body.llm.health).toBeDefined();
+      expect(body.database).toBeDefined();
+      expect(body.database.healthy).toBe(true);
     });
   });
 

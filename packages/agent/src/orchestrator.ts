@@ -6,10 +6,12 @@ import {
   SessionStore,
   HybridSearch,
   KnowledgeGraph,
+  ImprovementSignalStore,
   type Embedder,
 } from '@waggle/core';
 import { createMindTools, type ToolDefinition } from './tools.js';
 import { buildSelfAwareness, type AgentCapabilities } from './self-awareness.js';
+import { buildAwarenessSummary, markSummarySurfaced } from './improvement-detector.js';
 import { CognifyPipeline } from './cognify.js';
 
 export interface OrchestratorConfig {
@@ -49,6 +51,7 @@ export class Orchestrator {
   private mode: 'local' | 'team';
   private version: string;
   private skills: string[];
+  private improvementSignals: ImprovementSignalStore;
 
   /** Workspace-specific layers (null when no workspace is active) */
   private workspaceLayers: WorkspaceLayers | null = null;
@@ -66,6 +69,7 @@ export class Orchestrator {
     this.sessions = new SessionStore(config.db);
     this.search = new HybridSearch(config.db, config.embedder);
     this.knowledge = new KnowledgeGraph(config.db);
+    this.improvementSignals = new ImprovementSignalStore(config.db);
 
     const cognify = new CognifyPipeline({
       db: config.db,
@@ -232,6 +236,11 @@ export class Orchestrator {
     }
 
     // ── SELF-AWARENESS (runtime context) ──
+    const awareness = buildAwarenessSummary(this.improvementSignals);
+    // Mark signals as surfaced so they won't repeat (per correction #6)
+    if (awareness.totalActionable > 0) {
+      markSummarySurfaced(this.improvementSignals, awareness);
+    }
     const caps: AgentCapabilities = {
       tools: this.tools.map(t => ({ name: t.name, description: t.description })),
       skills: this.skills,
@@ -239,6 +248,7 @@ export class Orchestrator {
       memoryStats: this.getMemoryStats(),
       mode: this.mode,
       version: this.version,
+      awareness: awareness.totalActionable > 0 ? awareness : undefined,
     };
     parts.push(buildSelfAwareness(caps));
 
@@ -539,4 +549,5 @@ export class Orchestrator {
   getSessions(): SessionStore { return this.sessions; }
   getSearch(): HybridSearch { return this.search; }
   getKnowledge(): KnowledgeGraph { return this.knowledge; }
+  getImprovementSignals(): ImprovementSignalStore { return this.improvementSignals; }
 }
