@@ -28,13 +28,24 @@ export function ServiceProvider({ adapter, children }: ServiceProviderProps) {
   useEffect(() => {
     let cancelled = false;
 
-    adapter.connect()
-      .then(() => {
+    (async () => {
+      // If running in Tauri, ensure the server process is started first
+      if ((window as any).__TAURI_INTERNALS__) {
+        try {
+          const { invoke } = await import('@tauri-apps/api/core');
+          await invoke('ensure_service');
+        } catch (err) {
+          console.warn('[waggle] ensure_service failed:', err);
+        }
+      }
+
+      try {
+        await adapter.connect();
         if (!cancelled) setConnected(true);
-      })
-      .catch((err: Error) => {
+      } catch (err: any) {
         if (!cancelled) setError(err.message);
-      });
+      }
+    })();
 
     return () => {
       cancelled = true;

@@ -34,9 +34,12 @@ import {
   useApprovalGate,
   useTeamPresence,
   useTeamActivity,
+  useNotifications,
+  ToastContainer,
   matchesNamedShortcut,
   categorizeFile,
 } from '@waggle/ui';
+import type { Toast } from '@waggle/ui';
 import { ServiceProvider, useService } from './providers/ServiceProvider';
 import { AppSidebar } from './components/AppSidebar';
 import { ContextPanel } from './components/ContextPanel';
@@ -123,6 +126,79 @@ function WaggleApp() {
     const interval = setInterval(fetchMessages, 30_000);
     return () => clearInterval(interval);
   }, [activeWorkspace?.teamId]);
+
+  // ── Notifications + Toasts ──────────────────────────────────────
+  const { notifications } = useNotifications('http://127.0.0.1:3333');
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  // Convert focused notifications to toasts
+  useEffect(() => {
+    if (notifications.length === 0) return;
+    const latest = notifications[0];
+    if (document.hasFocus()) {
+      setToasts(prev => [{
+        id: `${Date.now()}-${Math.random()}`,
+        title: latest.title,
+        body: latest.body,
+        category: latest.category,
+        actionUrl: latest.actionUrl,
+        createdAt: Date.now(),
+      }, ...prev].slice(0, 10));
+    }
+  }, [notifications]);
+
+  const dismissToast = useCallback((id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
+  // ── Tray event listeners (Tauri only) ─────────────────────────
+  useEffect(() => {
+    if (!(window as any).__TAURI_INTERNALS__) return;
+
+    const listeners: Array<() => void> = [];
+
+    (async () => {
+      const { listen } = await import('@tauri-apps/api/event');
+
+      listeners.push(await listen('waggle://pause-agents', () => {
+        console.log('[waggle] Pause agents toggled via tray');
+      }));
+
+      listeners.push(await listen('waggle://navigate', (event: any) => {
+        const path = event.payload as string;
+        console.log('[waggle] Navigate via tray:', path);
+      }));
+
+      listeners.push(await listen('waggle://quit', async () => {
+        try {
+          const { invoke } = await import('@tauri-apps/api/core');
+          await invoke('stop_service');
+        } catch {}
+        try {
+          const { exit } = await import('@tauri-apps/plugin-process');
+          await exit(0);
+        } catch {
+          window.close();
+        }
+      }));
+
+      listeners.push(await listen('waggle://service-status', (event: any) => {
+        const payload = event.payload as { status: string };
+        console.log('[waggle] Service status:', payload.status);
+      }));
+
+      listeners.push(await listen('waggle://service-restart-needed', async () => {
+        try {
+          const { invoke } = await import('@tauri-apps/api/core');
+          await invoke('ensure_service');
+        } catch {}
+      }));
+    })();
+
+    return () => {
+      listeners.forEach(unlisten => unlisten());
+    };
+  }, []);
 
   // ── Sessions ──────────────────────────────────────────────────────
   const {
@@ -785,6 +861,7 @@ function WaggleApp() {
 
   return (
     <>
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       <AppShell
         sidebar={
           <AppSidebar
