@@ -1,6 +1,7 @@
 import { eq, and, sql } from 'drizzle-orm';
 import { teams, teamMembers, users } from '../db/schema.js';
 import type { Db } from '../db/connection.js';
+import { TeamCapabilityGovernance } from './team-capability-governance.js';
 
 export class TeamService {
   constructor(private db: Db) {}
@@ -18,6 +19,10 @@ export class TeamService {
         userId: ownerId,
         role: 'owner',
       });
+
+      // Seed default capability policies
+      const governance = new TeamCapabilityGovernance(tx as any);
+      await governance.seedDefaultPolicies(team.id, ownerId);
 
       return team;
     });
