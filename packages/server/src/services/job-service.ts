@@ -1,5 +1,5 @@
 import { Queue } from 'bullmq';
-import { eq } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 import { agentJobs } from '../db/schema.js';
 import type { Db } from '../db/connection.js';
 
@@ -39,6 +39,13 @@ export class JobService {
   async getJob(jobId: string) {
     const [job] = await this.db.select().from(agentJobs).where(eq(agentJobs.id, jobId));
     return job ?? null;
+  }
+
+  async listByTeam(teamId: string, limit = 50) {
+    return this.db.select().from(agentJobs)
+      .where(eq(agentJobs.teamId, teamId))
+      .orderBy(desc(agentJobs.createdAt))
+      .limit(Math.min(limit, 100));
   }
 
   async updateJobStatus(jobId: string, status: string, output?: Record<string, unknown>) {
