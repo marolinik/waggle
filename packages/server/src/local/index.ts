@@ -3,7 +3,7 @@ import path from 'node:path';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import websocket from '@fastify/websocket';
-import { MindDB, MultiMind, WorkspaceManager, createLiteLLMEmbedder, FrameStore, SessionStore } from '@waggle/core';
+import { MindDB, MultiMind, WorkspaceManager, createLiteLLMEmbedder, FrameStore, SessionStore, InstallAuditStore, CronStore, AwarenessLayer } from '@waggle/core';
 import { MemoryWeaver } from '@waggle/weaver';
 import {
   Orchestrator,
@@ -45,6 +45,8 @@ import { teamRoutes } from './routes/team.js';
 import { taskRoutes } from './routes/tasks.js';
 import { capabilitiesRoutes } from './routes/capabilities.js';
 import { commandRoutes } from './routes/commands.js';
+import { cronRoutes } from './routes/cron.js';
+import { LocalScheduler } from './cron.js';
 import { EventEmitter } from 'node:events';
 
 export interface LocalConfig {
@@ -120,6 +122,9 @@ declare module 'fastify' {
     eventBus: EventEmitter;
     agentRunner?: AgentRunner;
     agentState: AgentState;
+    auditStore: import('@waggle/core').InstallAuditStore;
+    cronStore: import('@waggle/core').CronStore;
+    scheduler: import('./cron.js').LocalScheduler;
   }
 }
 
@@ -149,6 +154,20 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   const personalPath = path.join(fullConfig.dataDir, 'personal.mind');
   const multiMind = new MultiMind(personalPath);
   server.decorate('multiMind', multiMind);
+
+  // Install audit store — persistent trail for capability install events
+  const auditStore = new InstallAuditStore(multiMind.personal);
+  server.decorate('auditStore', auditStore);
+
+  // Cron store — SQLite-backed schedule persistence for Solo
+  const cronStore = new CronStore(multiMind.personal);
+  server.decorate('cronStore', cronStore);
+
+  // Seed default routines on first run
+  if (cronStore.list().length === 0) {
+    cronStore.create({ name: 'Memory consolidation', cronExpr: '0 3 * * *', jobType: 'memory_consolidation' });
+    cronStore.create({ name: 'Workspace health check', cronExpr: '0 8 * * 1', jobType: 'workspace_health' });
+  }
 
   // ── Agent state (matches CLI initialization) ────────────────────────
   const litellmApiKey = process.env.LITELLM_API_KEY ?? process.env.LITELLM_MASTER_KEY ?? 'sk-waggle-dev';
@@ -187,6 +206,7 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   const skillTools = createSkillTools({
     waggleHome,
     starterSkillsDir,
+    auditStore,
     nativeToolNames: [
       ...mindTools.map(t => t.name),
       ...systemTools.map(t => t.name),
@@ -452,6 +472,41 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
     server.agentState.skills.push(...fresh);
   };
 
+  // Local scheduler — runs cron jobs in-process (Solo, no Redis/BullMQ)
+  const scheduler = new LocalScheduler(cronStore, async (schedule) => {
+    switch (schedule.job_type) {
+      case 'memory_consolidation':
+        try { runPersonalConsolidation(); } catch { /* non-blocking */ }
+        break;
+      case 'workspace_health':
+        // Log stale frame count per workspace as awareness flag
+        try {
+          const workspaces = wsManager.list();
+          for (const ws of workspaces) {
+            const wsDb = getWorkspaceMindDb(ws.id);
+            if (wsDb) {
+              const wsFrames = new FrameStore(wsDb);
+              const staleCount = wsFrames.list({ limit: 100 })
+                .filter(f => {
+                  const age = Date.now() - new Date(f.last_accessed).getTime();
+                  return age > 7 * 24 * 60 * 60 * 1000;
+                }).length;
+              if (staleCount > 0) {
+                const wsAwareness = new AwarenessLayer(wsDb);
+                wsAwareness.add('flag', `Workspace "${ws.name}" has ${staleCount} stale memory frames (>7 days untouched)`, 0);
+              }
+            }
+          }
+        } catch { /* non-blocking */ }
+        break;
+      case 'agent_task':
+        // Deferred to Wave 1.2 (background service mode)
+        break;
+    }
+  });
+  scheduler.start();
+  server.decorate('scheduler', scheduler);
+
   // Plugins
   await server.register(cors, { origin: true });
   await server.register(websocket);
@@ -474,6 +529,7 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   await server.register(taskRoutes);
   await server.register(capabilitiesRoutes);
   await server.register(commandRoutes);
+  await server.register(cronRoutes);
 
   // WebSocket endpoint — event bus relay to frontend
   server.get('/ws', { websocket: true }, (socket) => {
@@ -554,6 +610,9 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
 
   // Cleanup on close
   server.addHook('onClose', async () => {
+    // Stop cron scheduler
+    scheduler.stop();
+
     // Stop MCP servers
     await mcpRuntime.stopAll().catch(() => {});
 
