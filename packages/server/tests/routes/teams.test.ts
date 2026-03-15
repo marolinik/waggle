@@ -14,6 +14,9 @@ describe('Team API', () => {
 
     // Clean up any leftover test data (use unique prefix to avoid collision with auth tests)
     await server.db.execute(sql`DELETE FROM team_members WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'test-%')`);
+    await server.db.execute(sql`DELETE FROM team_capability_requests WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'test-%')`);
+    await server.db.execute(sql`DELETE FROM team_capability_overrides WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'test-%')`);
+    await server.db.execute(sql`DELETE FROM team_capability_policies WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'test-%')`);
     await server.db.execute(sql`DELETE FROM teams WHERE slug LIKE 'test-%'`);
     await server.db.execute(sql`DELETE FROM users WHERE clerk_id LIKE 'tmtest_%'`);
 
@@ -52,6 +55,9 @@ describe('Team API', () => {
 
   afterAll(async () => {
     await server.db.execute(sql`DELETE FROM team_members WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'test-%')`);
+    await server.db.execute(sql`DELETE FROM team_capability_requests WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'test-%')`);
+    await server.db.execute(sql`DELETE FROM team_capability_overrides WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'test-%')`);
+    await server.db.execute(sql`DELETE FROM team_capability_policies WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'test-%')`);
     await server.db.execute(sql`DELETE FROM teams WHERE slug LIKE 'test-%'`);
     await server.db.execute(sql`DELETE FROM users WHERE clerk_id LIKE 'tmtest_%'`);
     await server.close();

@@ -26,6 +26,9 @@ describe('M3 Full Stack Integration', () => {
     await server.db.execute(sql`DELETE FROM agent_jobs WHERE team_id IN (SELECT id FROM teams WHERE slug = 'integ-team')`);
     await server.db.execute(sql`DELETE FROM cron_schedules WHERE team_id IN (SELECT id FROM teams WHERE slug = 'integ-team')`);
     await server.db.execute(sql`DELETE FROM team_members WHERE team_id IN (SELECT id FROM teams WHERE slug = 'integ-team')`);
+    await server.db.execute(sql`DELETE FROM team_capability_requests WHERE team_id IN (SELECT id FROM teams WHERE slug = 'integ-team')`);
+    await server.db.execute(sql`DELETE FROM team_capability_overrides WHERE team_id IN (SELECT id FROM teams WHERE slug = 'integ-team')`);
+    await server.db.execute(sql`DELETE FROM team_capability_policies WHERE team_id IN (SELECT id FROM teams WHERE slug = 'integ-team')`);
     await server.db.execute(sql`DELETE FROM teams WHERE slug = 'integ-team'`);
     await server.db.execute(sql`DELETE FROM users WHERE clerk_id LIKE 'integ_%'`);
 
@@ -51,6 +54,9 @@ describe('M3 Full Stack Integration', () => {
     await server.db.execute(sql`DELETE FROM agent_jobs WHERE team_id IN (SELECT id FROM teams WHERE slug = 'integ-team')`);
     await server.db.execute(sql`DELETE FROM cron_schedules WHERE team_id IN (SELECT id FROM teams WHERE slug = 'integ-team')`);
     await server.db.execute(sql`DELETE FROM team_members WHERE team_id IN (SELECT id FROM teams WHERE slug = 'integ-team')`);
+    await server.db.execute(sql`DELETE FROM team_capability_requests WHERE team_id IN (SELECT id FROM teams WHERE slug = 'integ-team')`);
+    await server.db.execute(sql`DELETE FROM team_capability_overrides WHERE team_id IN (SELECT id FROM teams WHERE slug = 'integ-team')`);
+    await server.db.execute(sql`DELETE FROM team_capability_policies WHERE team_id IN (SELECT id FROM teams WHERE slug = 'integ-team')`);
     await server.db.execute(sql`DELETE FROM teams WHERE slug = 'integ-team'`);
     await server.db.execute(sql`DELETE FROM users WHERE clerk_id LIKE 'integ_%'`);
     await server.close();

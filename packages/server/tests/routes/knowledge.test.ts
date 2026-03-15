@@ -18,6 +18,9 @@ describe('Team Knowledge Graph API', () => {
     await server.db.execute(sql`DELETE FROM team_relations WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'kgtest-%')`);
     await server.db.execute(sql`DELETE FROM team_entities WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'kgtest-%')`);
     await server.db.execute(sql`DELETE FROM team_members WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'kgtest-%')`);
+    await server.db.execute(sql`DELETE FROM team_capability_requests WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'kgtest-%')`);
+    await server.db.execute(sql`DELETE FROM team_capability_overrides WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'kgtest-%')`);
+    await server.db.execute(sql`DELETE FROM team_capability_policies WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'kgtest-%')`);
     await server.db.execute(sql`DELETE FROM teams WHERE slug LIKE 'kgtest-%'`);
     await server.db.execute(sql`DELETE FROM users WHERE clerk_id LIKE 'kgtest_%'`);
 
@@ -72,6 +75,9 @@ describe('Team Knowledge Graph API', () => {
     await server.db.execute(sql`DELETE FROM team_relations WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'kgtest-%')`);
     await server.db.execute(sql`DELETE FROM team_entities WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'kgtest-%')`);
     await server.db.execute(sql`DELETE FROM team_members WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'kgtest-%')`);
+    await server.db.execute(sql`DELETE FROM team_capability_requests WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'kgtest-%')`);
+    await server.db.execute(sql`DELETE FROM team_capability_overrides WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'kgtest-%')`);
+    await server.db.execute(sql`DELETE FROM team_capability_policies WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'kgtest-%')`);
     await server.db.execute(sql`DELETE FROM teams WHERE slug LIKE 'kgtest-%'`);
     await server.db.execute(sql`DELETE FROM users WHERE clerk_id LIKE 'kgtest_%'`);
     await server.close();

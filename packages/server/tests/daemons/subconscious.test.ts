@@ -17,6 +17,9 @@ describe('Subconscious Agent (Task 3.19)', () => {
     await server.db.execute(sql`DELETE FROM agent_audit_log WHERE user_id IN (SELECT id FROM users WHERE clerk_id LIKE 'subcon_%')`);
     await server.db.execute(sql`DELETE FROM agent_jobs WHERE user_id IN (SELECT id FROM users WHERE clerk_id LIKE 'subcon_%')`);
     await server.db.execute(sql`DELETE FROM team_members WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'subcontest-%')`);
+    await server.db.execute(sql`DELETE FROM team_capability_requests WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'subcontest-%')`);
+    await server.db.execute(sql`DELETE FROM team_capability_overrides WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'subcontest-%')`);
+    await server.db.execute(sql`DELETE FROM team_capability_policies WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'subcontest-%')`);
     await server.db.execute(sql`DELETE FROM teams WHERE slug LIKE 'subcontest-%'`);
     await server.db.execute(sql`DELETE FROM users WHERE clerk_id LIKE 'subcon_%'`);
 
@@ -49,6 +52,9 @@ describe('Subconscious Agent (Task 3.19)', () => {
     await server.db.execute(sql`DELETE FROM agent_audit_log WHERE user_id IN (SELECT id FROM users WHERE clerk_id LIKE 'subcon_%')`);
     await server.db.execute(sql`DELETE FROM agent_jobs WHERE user_id IN (SELECT id FROM users WHERE clerk_id LIKE 'subcon_%')`);
     await server.db.execute(sql`DELETE FROM team_members WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'subcontest-%')`);
+    await server.db.execute(sql`DELETE FROM team_capability_requests WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'subcontest-%')`);
+    await server.db.execute(sql`DELETE FROM team_capability_overrides WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'subcontest-%')`);
+    await server.db.execute(sql`DELETE FROM team_capability_policies WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'subcontest-%')`);
     await server.db.execute(sql`DELETE FROM teams WHERE slug LIKE 'subcontest-%'`);
     await server.db.execute(sql`DELETE FROM users WHERE clerk_id LIKE 'subcon_%'`);
     await server.close();

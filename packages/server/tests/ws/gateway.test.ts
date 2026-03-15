@@ -173,6 +173,9 @@ describe('WebSocket Gateway (integration)', () => {
     const { users, teams, teamMembers } = await import('../../src/db/schema.js');
     await server.db.execute(drizzleSql`DELETE FROM team_members WHERE user_id IN (SELECT id FROM users WHERE clerk_id LIKE 'wstest_%')`);
     await server.db.execute(drizzleSql`DELETE FROM messages WHERE sender_id IN (SELECT id FROM users WHERE clerk_id LIKE 'wstest_%')`);
+    await server.db.execute(drizzleSql`DELETE FROM team_capability_requests WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'ws-test-team-%')`);
+    await server.db.execute(drizzleSql`DELETE FROM team_capability_overrides WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'ws-test-team-%')`);
+    await server.db.execute(drizzleSql`DELETE FROM team_capability_policies WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'ws-test-team-%')`);
     await server.db.execute(drizzleSql`DELETE FROM teams WHERE slug LIKE 'ws-test-team-%'`);
     await server.db.execute(drizzleSql`DELETE FROM users WHERE clerk_id LIKE 'wstest_%'`);
 
@@ -213,6 +216,9 @@ describe('WebSocket Gateway (integration)', () => {
     await server.db.execute(
       sql`DELETE FROM messages WHERE sender_id IN (SELECT id FROM users WHERE clerk_id LIKE 'wstest_%')`,
     );
+    await server.db.execute(sql`DELETE FROM team_capability_requests WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'ws-test-team-%')`);
+    await server.db.execute(sql`DELETE FROM team_capability_overrides WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'ws-test-team-%')`);
+    await server.db.execute(sql`DELETE FROM team_capability_policies WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'ws-test-team-%')`);
     await server.db.execute(sql`DELETE FROM teams WHERE slug LIKE 'ws-test-team-%'`);
     await server.db.execute(
       sql`DELETE FROM users WHERE clerk_id LIKE 'wstest_%'`,

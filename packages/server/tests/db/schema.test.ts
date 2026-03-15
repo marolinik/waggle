@@ -15,6 +15,9 @@ describe('PostgreSQL schema', () => {
 
     // Clean up any leftovers from previous runs
     await db.execute(sql`DELETE FROM team_members WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE '%_schema_%')`);
+    await db.execute(sql`DELETE FROM team_capability_requests WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE '%_schema_%')`);
+    await db.execute(sql`DELETE FROM team_capability_overrides WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE '%_schema_%')`);
+    await db.execute(sql`DELETE FROM team_capability_policies WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE '%_schema_%')`);
     await db.execute(sql`DELETE FROM teams WHERE slug LIKE '%_schema_%'`);
     await db.execute(sql`DELETE FROM users WHERE clerk_id LIKE '%_schema_%'`);
   });
@@ -23,6 +26,9 @@ describe('PostgreSQL schema', () => {
     // Clean up test data created by these tests
     if (testTeamId) {
       await db.execute(sql`DELETE FROM team_members WHERE team_id = ${testTeamId}`);
+      await db.execute(sql`DELETE FROM team_capability_requests WHERE team_id = ${testTeamId}`);
+      await db.execute(sql`DELETE FROM team_capability_overrides WHERE team_id = ${testTeamId}`);
+      await db.execute(sql`DELETE FROM team_capability_policies WHERE team_id = ${testTeamId}`);
       await db.execute(sql`DELETE FROM teams WHERE id = ${testTeamId}`);
     }
     if (testUserId) {

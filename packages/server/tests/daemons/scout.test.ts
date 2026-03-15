@@ -18,6 +18,9 @@ describe('Scout Agent (Task 3.18)', () => {
     await server.db.execute(sql`DELETE FROM agents WHERE user_id IN (SELECT id FROM users WHERE clerk_id LIKE 'scout_%')`);
     await server.db.execute(sql`DELETE FROM team_resources WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'scouttest-%')`);
     await server.db.execute(sql`DELETE FROM team_members WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'scouttest-%')`);
+    await server.db.execute(sql`DELETE FROM team_capability_requests WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'scouttest-%')`);
+    await server.db.execute(sql`DELETE FROM team_capability_overrides WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'scouttest-%')`);
+    await server.db.execute(sql`DELETE FROM team_capability_policies WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'scouttest-%')`);
     await server.db.execute(sql`DELETE FROM teams WHERE slug LIKE 'scouttest-%'`);
     await server.db.execute(sql`DELETE FROM users WHERE clerk_id LIKE 'scout_%'`);
 
@@ -91,6 +94,9 @@ describe('Scout Agent (Task 3.18)', () => {
     await server.db.execute(sql`DELETE FROM agents WHERE user_id IN (SELECT id FROM users WHERE clerk_id LIKE 'scout_%')`);
     await server.db.execute(sql`DELETE FROM team_resources WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'scouttest-%')`);
     await server.db.execute(sql`DELETE FROM team_members WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'scouttest-%')`);
+    await server.db.execute(sql`DELETE FROM team_capability_requests WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'scouttest-%')`);
+    await server.db.execute(sql`DELETE FROM team_capability_overrides WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'scouttest-%')`);
+    await server.db.execute(sql`DELETE FROM team_capability_policies WHERE team_id IN (SELECT id FROM teams WHERE slug LIKE 'scouttest-%')`);
     await server.db.execute(sql`DELETE FROM teams WHERE slug LIKE 'scouttest-%'`);
     await server.db.execute(sql`DELETE FROM users WHERE clerk_id LIKE 'scout_%'`);
     await server.close();
