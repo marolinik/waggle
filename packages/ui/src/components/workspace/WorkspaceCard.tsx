@@ -8,6 +8,15 @@
 import React from 'react';
 import type { Workspace } from '../../services/types.js';
 
+/** Derive a stable hue (0-360) from a workspace name for visual identity */
+function workspaceHue(name: string): number {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return ((hash % 360) + 360) % 360;
+}
+
 export interface WorkspaceCardProps {
   workspace: Workspace;
   isActive: boolean;
@@ -17,14 +26,19 @@ export interface WorkspaceCardProps {
 
 export function WorkspaceCard({ workspace, isActive, onClick, onContextMenu }: WorkspaceCardProps) {
   const isTeam = Boolean(workspace.teamId);
+  const hue = workspaceHue(workspace.name);
 
   return (
     <button
       className={`workspace-card flex w-full items-center gap-2 rounded px-3 py-1.5 text-sm transition-colors ${
         isActive
-          ? 'bg-blue-600/20 text-blue-300'
+          ? 'text-blue-300'
           : 'text-gray-300 hover:bg-gray-800'
       }`}
+      style={{
+        borderLeft: `3px solid hsl(${hue}, 60%, 50%)`,
+        background: isActive ? `hsla(${hue}, 60%, 50%, 0.08)` : undefined,
+      }}
       onClick={onClick}
       onContextMenu={onContextMenu}
       title={workspace.name + (isTeam ? ' (Team)' : '')}
