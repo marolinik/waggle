@@ -1,6 +1,7 @@
 use std::process::{Child, Command};
 use std::sync::Mutex;
-use tauri::State;
+use std::time::{Duration, Instant};
+use tauri::{AppHandle, Emitter, State};
 
 pub struct ServiceState {
     pub process: Mutex<Option<Child>>,
@@ -97,4 +98,53 @@ pub async fn stop_service(state: State<'_, ServiceState>) -> Result<String, Stri
 #[tauri::command]
 pub async fn get_service_port(state: State<'_, ServiceState>) -> Result<u16, String> {
     Ok(state.port)
+}
+
+pub fn start_watchdog(app: AppHandle, port: u16) {
+    tokio::spawn(async move {
+        let health_url = format!("http://127.0.0.1:{}/health", port);
+        let mut consecutive_failures: u32 = 0;
+        let mut restart_count: u32 = 0;
+        let mut restart_window_start = Instant::now();
+        const MAX_RESTARTS: u32 = 5;
+        const RESTART_WINDOW: Duration = Duration::from_secs(600);
+
+        // Wait for initial startup
+        tokio::time::sleep(Duration::from_secs(15)).await;
+
+        loop {
+            tokio::time::sleep(Duration::from_secs(10)).await;
+
+            match reqwest::get(&health_url).await {
+                Ok(resp) if resp.status().is_success() => {
+                    consecutive_failures = 0;
+                }
+                _ => {
+                    consecutive_failures += 1;
+                    if consecutive_failures >= 3 {
+                        if restart_window_start.elapsed() > RESTART_WINDOW {
+                            restart_count = 0;
+                            restart_window_start = Instant::now();
+                        }
+
+                        if restart_count >= MAX_RESTARTS {
+                            let _ = app.emit("waggle://service-status",
+                                serde_json::json!({ "status": "failed" }));
+                            eprintln!("[waggle] Watchdog: max restarts exceeded, giving up");
+                            break;
+                        }
+
+                        let _ = app.emit("waggle://service-status",
+                            serde_json::json!({ "status": "restarting" }));
+                        eprintln!("[waggle] Watchdog: server unresponsive, restart needed (attempt {})", restart_count + 1);
+                        let _ = app.emit("waggle://service-restart-needed", ());
+
+                        restart_count += 1;
+                        consecutive_failures = 0;
+                        tokio::time::sleep(Duration::from_secs(10)).await;
+                    }
+                }
+            }
+        }
+    });
 }

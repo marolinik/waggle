@@ -5,12 +5,30 @@ mod service;
 mod tray;
 
 use service::ServiceState;
-use tauri::{Emitter, Manager};
+use tauri::Manager;
+
+#[tauri::command]
+async fn show_notification(app: tauri::AppHandle, title: String, body: String) -> Result<(), String> {
+    use tauri_plugin_notification::NotificationExt;
+    app.notification()
+        .builder()
+        .title(&title)
+        .body(&body)
+        .show()
+        .map_err(|e| e.to_string())
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec!["--minimized"]),
@@ -20,6 +38,7 @@ pub fn run() {
             service::ensure_service,
             service::stop_service,
             service::get_service_port,
+            show_notification,
         ])
         .setup(|app| {
             tray::setup_tray(app.handle())?;
@@ -46,6 +65,11 @@ pub fn run() {
 
             let shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyW);
             app.global_shortcut().register(shortcut)?;
+
+            // Start service watchdog
+            let app_handle_watchdog = app.handle().clone();
+            let port = app.state::<ServiceState>().port;
+            service::start_watchdog(app_handle_watchdog, port);
 
             Ok(())
         })

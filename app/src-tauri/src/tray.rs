@@ -64,9 +64,8 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
                 let _ = app.emit("waggle://navigate", "/about");
             }
             "quit" => {
-                // Stop the service before quitting
+                // Emit quit event — React handles cleanup then exits via Tauri API
                 let _ = app.emit("waggle://quit", ());
-                app.exit(0);
             }
             _ => {}
         })
