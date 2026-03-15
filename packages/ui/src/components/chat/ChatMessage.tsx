@@ -11,13 +11,104 @@ import React, { useMemo, useState, useCallback } from 'react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import type { Message, ToolUseEvent } from '../../services/types.js';
-import { ToolCard } from './ToolCard.js';
+import { ToolCard, AUTO_HIDE_TOOLS } from './ToolCard.js';
 
 // Configure marked for safe rendering
 marked.setOptions({
   breaks: true,
   gfm: true,
 });
+
+// ── Tool grouping ─────────────────────────────────────────────────────
+
+/** Collapsed summary of multiple completed read-only tools. */
+function ToolGroup({ tools }: { tools: ToolUseEvent[] }) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (expanded) {
+    return (
+      <div className="tool-group">
+        <button
+          onClick={() => setExpanded(false)}
+          className="text-xs text-gray-600 hover:text-gray-400 flex items-center gap-1 mb-1"
+        >
+          <span style={{ fontSize: 8, color: '#3fb950' }}>{'\u25CF'}</span>
+          {tools.length} tools completed
+          <span style={{ fontSize: 8 }}>{'\u25B2'}</span>
+        </button>
+        <div className="space-y-0.5">
+          {tools.map((tool, i) => (
+            <ToolCard key={`${tool.name}-${i}`} tool={tool} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => setExpanded(true)}
+      className="tool-group--collapsed flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-400 transition-colors py-0.5"
+      title={tools.map(t => t.name).join(', ')}
+    >
+      <span style={{ fontSize: 8, color: '#3fb950' }}>{'\u25CF'}</span>
+      <span className="font-mono">
+        {tools.length} tools completed ({tools.map(t => t.name.replace(/_/g, ' ')).join(', ')})
+      </span>
+    </button>
+  );
+}
+
+/**
+ * Walk through tools array and group adjacent completed auto-hide tools (runs of 2+).
+ * Returns mixed array of ToolCard and ToolGroup elements.
+ */
+function groupToolCards(
+  tools: ToolUseEvent[],
+  onApprove?: (tool: ToolUseEvent) => void,
+  onDeny?: (tool: ToolUseEvent, reason?: string) => void,
+): React.ReactNode[] {
+  const elements: React.ReactNode[] = [];
+  let i = 0;
+
+  while (i < tools.length) {
+    const tool = tools[i];
+    const status = tool.status ?? (tool.result !== undefined ? 'done' : 'running');
+    const isGroupable = status === 'done' && AUTO_HIDE_TOOLS.has(tool.name);
+
+    if (isGroupable) {
+      // Collect run of adjacent groupable tools
+      const runStart = i;
+      while (i < tools.length) {
+        const t = tools[i];
+        const s = t.status ?? (t.result !== undefined ? 'done' : 'running');
+        if (s === 'done' && AUTO_HIDE_TOOLS.has(t.name)) {
+          i++;
+        } else {
+          break;
+        }
+      }
+      const run = tools.slice(runStart, i);
+      if (run.length >= 2) {
+        elements.push(<ToolGroup key={`group-${runStart}`} tools={run} />);
+      } else {
+        // Single tool — render as normal ToolCard
+        elements.push(
+          <ToolCard key={`${run[0].name}-${runStart}`} tool={run[0]} onApprove={onApprove} onDeny={onDeny} />,
+        );
+      }
+    } else {
+      elements.push(
+        <ToolCard key={`${tool.name}-${i}`} tool={tool} onApprove={onApprove} onDeny={onDeny} />,
+      );
+      i++;
+    }
+  }
+
+  return elements;
+}
+
+// ── ChatMessage ───────────────────────────────────────────────────────
 
 export interface ChatMessageProps {
   message: Message;
@@ -147,17 +238,10 @@ export function ChatMessage({ message, onToolApprove, onToolDeny }: ChatMessageP
                   </div>
                 )}
 
-                {/* Tool cards */}
+                {/* Tool cards — adjacent completed auto-hide tools grouped */}
                 {hasTools && (
                   <div className="chat-message__tools space-y-1">
-                    {message.toolUse!.map((tool, i) => (
-                      <ToolCard
-                        key={`${tool.name}-${i}`}
-                        tool={tool}
-                        onApprove={onToolApprove}
-                        onDeny={onToolDeny}
-                      />
-                    ))}
+                    {groupToolCards(message.toolUse!, onToolApprove, onToolDeny)}
                   </div>
                 )}
               </div>

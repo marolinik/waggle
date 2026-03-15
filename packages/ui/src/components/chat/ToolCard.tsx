@@ -22,7 +22,7 @@ export interface ToolCardProps {
 
 // Tools that are safe/read-only — auto-hide after completion
 // B5: auto_recall removed — its trust signal should stay visible
-const AUTO_HIDE_TOOLS = new Set([
+export const AUTO_HIDE_TOOLS = new Set([
   'search_memory', 'get_identity', 'get_awareness', 'query_knowledge',
   'read_file', 'search_files', 'search_content', 'web_search', 'web_fetch',
   'git_status', 'git_diff', 'git_log', 'show_plan',
@@ -219,9 +219,19 @@ function formatResultDetail(result: string): string {
 export function ToolCard({ tool, onApprove, onDeny }: ToolCardProps) {
   const [layer, setLayer] = useState<1 | 2 | 3>(1); // Current transparency layer
   const [visible, setVisible] = useState(true);
+  const [justCompleted, setJustCompleted] = useState(false);
   const status = tool.status ?? (tool.result !== undefined ? 'done' : 'running');
   const isPendingApproval = status === 'pending_approval';
   const isDone = status === 'done' || status === 'error' || status === 'denied';
+
+  // Subtle flash on completion
+  useEffect(() => {
+    if (isDone) {
+      setJustCompleted(true);
+      const timer = setTimeout(() => setJustCompleted(false), 400);
+      return () => clearTimeout(timer);
+    }
+  }, [isDone]);
 
   // Auto-hide read-only completed tools after 3 seconds
   useEffect(() => {
@@ -257,6 +267,7 @@ export function ToolCard({ tool, onApprove, onDeny }: ToolCardProps) {
   return (
     <div
       className={`tool-card rounded border-l-2 ${BORDER_CLASSES[status]} text-xs transition-all`}
+      style={justCompleted ? { opacity: 0.85, transition: 'opacity 0.3s ease-out, border-color 0.3s' } : { transition: 'opacity 0.3s ease-out, border-color 0.3s' }}
     >
       {/* Layer 1 — Inline: status icon + description + summary */}
       <button
