@@ -372,3 +372,10 @@ export type { UseTeamPresenceOptions, UseTeamPresenceReturn } from './hooks/useT
 
 export { useTeamActivity } from './hooks/useTeamActivity.js';
 export type { UseTeamActivityOptions, UseTeamActivityReturn } from './hooks/useTeamActivity.js';
+
+export { useNotifications } from './hooks/useNotifications.js';
+export type { NotificationEvent, UseNotificationsResult } from './hooks/useNotifications.js';
+
+// Components — notifications
+export { ToastContainer } from './components/ToastContainer.js';
+export type { Toast } from './components/ToastContainer.js';

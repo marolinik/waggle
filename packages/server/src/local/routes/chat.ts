@@ -3,10 +3,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type { FastifyPluginAsync } from 'fastify';
-import { runAgentLoop, needsConfirmation, CapabilityRouter, analyzeAndRecordCorrection, recordCapabilityGap } from '@waggle/agent';
+import { runAgentLoop, needsConfirmation, CapabilityRouter, analyzeAndRecordCorrection, recordCapabilityGap, assessTrust, formatTrustSummary } from '@waggle/agent';
 import type { AgentLoopConfig, AgentResponse } from '@waggle/agent';
 import { buildWorkspaceNowBlock, formatWorkspaceNowPrompt } from './workspace-context.js';
 import { formatWorkspaceStatePrompt } from '../workspace-state.js';
+import { emitNotification } from './notifications.js';
 
 /**
  * Persist a chat message to the session's .jsonl file on disk.
@@ -638,8 +639,30 @@ Most tasks do NOT need workflow composition. Use it only when a request has **mu
           const toolName = ctx.toolName;
           const input = (ctx.args ?? {}) as Record<string, unknown>;
 
+          // For install_capability, enrich the event with trust metadata
+          let trustMeta: Record<string, unknown> | undefined;
+          if (toolName === 'install_capability') {
+            try {
+              const skillName = input.name as string ?? '';
+              const source = input.source as string ?? '';
+              // Read starter skill content for trust assessment
+              const { getStarterSkillsDir } = await import('@waggle/sdk');
+              const starterPath = path.join(getStarterSkillsDir(), `${skillName}.md`);
+              const content = fs.existsSync(starterPath) ? fs.readFileSync(starterPath, 'utf-8') : '';
+              const trust = assessTrust({ capabilityType: 'skill', source, content });
+              trustMeta = {
+                riskLevel: trust.riskLevel,
+                approvalClass: trust.approvalClass,
+                trustSource: trust.trustSource,
+                assessmentMode: trust.assessmentMode,
+                explanation: trust.explanation,
+                permissions: trust.permissions,
+              };
+            } catch { /* trust enrichment is best-effort */ }
+          }
+
           // Send approval_required SSE event to the client
-          sendEvent('approval_required', { requestId, toolName, input });
+          sendEvent('approval_required', { requestId, toolName, input, ...trustMeta });
 
           // Wait for the client to approve or deny
           const approved = await new Promise<boolean>((resolve) => {
@@ -801,6 +824,12 @@ Most tasks do NOT need workflow composition. Use it only when a request has **mu
           usage: result.usage,
           toolsUsed: result.toolsUsed,
           model: resolvedModel,
+        });
+
+        emitNotification(server, {
+          title: 'Agent finished',
+          body: 'Your agent has completed the task',
+          category: 'agent',
         });
       }
     } catch (err) {

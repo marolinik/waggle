@@ -9,6 +9,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { emitNotification } from './notifications.js';
 
 export interface TeamTask {
   id: string;
@@ -106,6 +107,13 @@ export const taskRoutes: FastifyPluginAsync = async (fastify) => {
     const tasks = readTasks(dataDir, id);
     tasks.push(task);
     writeTasks(dataDir, id, tasks);
+
+    emitNotification(fastify, {
+      title: 'Task update',
+      body: task.title || 'New task',
+      category: 'task',
+      actionUrl: '/tasks',
+    });
 
     return reply.code(201).send(task);
   });

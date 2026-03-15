@@ -14,6 +14,7 @@
 
 import type { FastifyPluginAsync } from 'fastify';
 import type { CronSchedule, CronJobType } from '@waggle/core';
+import { emitNotification } from './notifications.js';
 
 /** Convert DB snake_case CronSchedule to API camelCase response. */
 function toResponse(s: CronSchedule) {
@@ -154,6 +155,12 @@ export const cronRoutes: FastifyPluginAsync = async (server) => {
       // Mark as run (updates last_run_at and next_run_at)
       server.cronStore.markRun(id);
       const updated = server.cronStore.getById(id);
+      emitNotification(server, {
+        title: 'Routine complete',
+        body: `${schedule.name || 'Scheduled task'} finished`,
+        category: 'cron',
+        actionUrl: '/cockpit',
+      });
       return { triggered: true, id, nextRunAt: updated?.next_run_at };
     } catch (err) {
       return reply.status(500).send({

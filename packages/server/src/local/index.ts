@@ -47,6 +47,7 @@ import { taskRoutes } from './routes/tasks.js';
 import { capabilitiesRoutes } from './routes/capabilities.js';
 import { commandRoutes } from './routes/commands.js';
 import { cronRoutes } from './routes/cron.js';
+import { notificationRoutes } from './routes/notifications.js';
 import { LocalScheduler } from './cron.js';
 import { EventEmitter } from 'node:events';
 
@@ -609,6 +610,7 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   await server.register(capabilitiesRoutes);
   await server.register(commandRoutes);
   await server.register(cronRoutes);
+  await server.register(notificationRoutes);
 
   // WebSocket endpoint — event bus relay to frontend
   server.get('/ws', { websocket: true }, (socket) => {
@@ -622,7 +624,7 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
     };
 
     // Forward approval events and agent events to the WebSocket client
-    const handlers = ['approval_required', 'step', 'tool', 'done', 'error', 'presence_update'] as const;
+    const handlers = ['approval_required', 'step', 'tool', 'done', 'error', 'presence_update', 'notification'] as const;
     for (const evt of handlers) {
       eventBus.on(evt, (data: unknown) => onEvent(evt, data));
     }

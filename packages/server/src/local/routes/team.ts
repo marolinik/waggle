@@ -9,6 +9,7 @@
 
 import type { FastifyInstance } from 'fastify';
 import { WaggleConfig } from '@waggle/core';
+import { emitNotification } from './notifications.js';
 
 export async function teamRoutes(fastify: FastifyInstance) {
   const dataDir = fastify.localConfig.dataDir;
@@ -270,7 +271,15 @@ export async function teamRoutes(fastify: FastifyInstance) {
 
       if (res.ok) {
         const data = await res.json() as any;
-        return reply.code(200).send({ messages: data.messages ?? data ?? [] });
+        const messages = data.messages ?? data ?? [];
+        if (Array.isArray(messages) && messages.length > 0) {
+          emitNotification(fastify, {
+            title: 'Team message',
+            body: 'New message from team',
+            category: 'message',
+          });
+        }
+        return reply.code(200).send({ messages });
       }
     } catch {
       // Team server unavailable — return empty
