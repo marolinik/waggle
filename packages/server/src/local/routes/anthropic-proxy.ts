@@ -278,12 +278,22 @@ export const anthropicProxyRoutes: FastifyPluginAsync = async (server) => {
   });
 };
 
-/** Read Anthropic API key from config or environment */
+/** Read Anthropic API key from vault, env, or config (legacy fallback) */
 function getAnthropicKey(server: any): string | null {
-  // Try env first
+  // Try vault first (encrypted)
+  if (server.vault) {
+    try {
+      const entry = server.vault.get('anthropic');
+      if (entry) return entry.value;
+    } catch {
+      // Vault read failed — fall through
+    }
+  }
+
+  // Try env var
   if (process.env.ANTHROPIC_API_KEY) return process.env.ANTHROPIC_API_KEY;
 
-  // Try reading from ~/.waggle/config.json directly
+  // Try reading from ~/.waggle/config.json directly (legacy fallback)
   try {
     const configPath = path.join(server.localConfig.dataDir, 'config.json');
     const raw = fs.readFileSync(configPath, 'utf-8');

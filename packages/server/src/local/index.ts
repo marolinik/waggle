@@ -3,7 +3,7 @@ import path from 'node:path';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import websocket from '@fastify/websocket';
-import { MindDB, MultiMind, WorkspaceManager, createLiteLLMEmbedder, FrameStore, SessionStore, InstallAuditStore, CronStore, AwarenessLayer } from '@waggle/core';
+import { MindDB, MultiMind, WorkspaceManager, WaggleConfig, createLiteLLMEmbedder, FrameStore, SessionStore, InstallAuditStore, CronStore, AwarenessLayer, VaultStore } from '@waggle/core';
 import { MemoryWeaver } from '@waggle/weaver';
 import {
   Orchestrator,
@@ -124,6 +124,7 @@ declare module 'fastify' {
     agentState: AgentState;
     auditStore: import('@waggle/core').InstallAuditStore;
     cronStore: import('@waggle/core').CronStore;
+    vault: import('@waggle/core').VaultStore;
     scheduler: import('./cron.js').LocalScheduler;
   }
 }
@@ -167,6 +168,24 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   if (cronStore.list().length === 0) {
     cronStore.create({ name: 'Memory consolidation', cronExpr: '0 3 * * *', jobType: 'memory_consolidation' });
     cronStore.create({ name: 'Workspace health check', cronExpr: '0 8 * * 1', jobType: 'workspace_health' });
+  }
+
+  // Vault — encrypted secret storage
+  const vault = new VaultStore(fullConfig.dataDir);
+  server.decorate('vault', vault);
+
+  // Migrate plaintext keys from config.json to vault on first run
+  try {
+    const waggleConfig = new WaggleConfig(fullConfig.dataDir);
+    const configProviders = waggleConfig.getProviders();
+    if (Object.keys(configProviders).length > 0) {
+      const migrated = vault.migrateFromConfig({ providers: configProviders });
+      if (migrated > 0) {
+        console.log(`[waggle] Migrated ${migrated} API key(s) to encrypted vault`);
+      }
+    }
+  } catch {
+    // Migration failure should never block startup
   }
 
   // ── Agent state (matches CLI initialization) ────────────────────────

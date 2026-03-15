@@ -2,19 +2,45 @@ import type { FastifyPluginAsync } from 'fastify';
 import { WaggleConfig } from '@waggle/core';
 
 export const settingsRoutes: FastifyPluginAsync = async (server) => {
-  // GET /api/settings — read config
+  // GET /api/settings — read config (keys from vault, metadata from vault+config)
   server.get('/api/settings', async () => {
     const config = new WaggleConfig(server.localConfig.dataDir);
+
+    // Build providers response from vault (encrypted) with config fallback
+    const providers: Record<string, { apiKey: string; models: string[]; baseUrl?: string }> = {};
+
+    if (server.vault) {
+      const vaultEntries = server.vault.list();
+      for (const entry of vaultEntries) {
+        const full = server.vault.get(entry.name);
+        if (full) {
+          providers[entry.name] = {
+            apiKey: full.value,
+            models: (full.metadata?.models as string[]) ?? [],
+            baseUrl: full.metadata?.baseUrl as string | undefined,
+          };
+        }
+      }
+    }
+
+    // Fallback: merge any config.json providers not in vault (backward compat)
+    const configProviders = config.getProviders();
+    for (const [name, entry] of Object.entries(configProviders)) {
+      if (!providers[name]) {
+        providers[name] = entry;
+      }
+    }
+
     return {
       defaultModel: config.getDefaultModel(),
-      providers: config.getProviders(),
+      providers,
       mindPath: config.getMindPath(),
       dataDir: server.localConfig.dataDir,
       litellmUrl: server.localConfig.litellmUrl,
     };
   });
 
-  // PUT /api/settings — update config
+  // PUT /api/settings — update config (keys to vault, non-secret fields to config.json)
   server.put<{
     Body: { defaultModel?: string; providers?: Record<string, unknown> };
   }>('/api/settings', async (request) => {
@@ -27,15 +53,46 @@ export const settingsRoutes: FastifyPluginAsync = async (server) => {
 
     if (providers && typeof providers === 'object') {
       for (const [name, entry] of Object.entries(providers)) {
+        const { apiKey, models, baseUrl } = entry as { apiKey?: string; models?: string[]; baseUrl?: string };
+
+        // Save secret to vault (encrypted)
+        if (apiKey && server.vault) {
+          server.vault.set(name, apiKey, { models, baseUrl });
+        }
+
+        // Also keep in config.json for backward compat (non-secret fields)
         config.setProvider(name, entry as { apiKey: string; models: string[] });
       }
     }
 
     config.save();
 
+    // Return providers from vault (same as GET)
+    const responseProviders: Record<string, { apiKey: string; models: string[]; baseUrl?: string }> = {};
+    if (server.vault) {
+      const vaultEntries = server.vault.list();
+      for (const vEntry of vaultEntries) {
+        const full = server.vault.get(vEntry.name);
+        if (full) {
+          responseProviders[vEntry.name] = {
+            apiKey: full.value,
+            models: (full.metadata?.models as string[]) ?? [],
+            baseUrl: full.metadata?.baseUrl as string | undefined,
+          };
+        }
+      }
+    }
+    // Fallback for any providers not in vault
+    const configProviders = config.getProviders();
+    for (const [name, entry] of Object.entries(configProviders)) {
+      if (!responseProviders[name]) {
+        responseProviders[name] = entry;
+      }
+    }
+
     return {
       defaultModel: config.getDefaultModel(),
-      providers: config.getProviders(),
+      providers: responseProviders,
       mindPath: config.getMindPath(),
     };
   });

@@ -42,3 +42,4 @@ export {
   CronStore, CRON_SCHEDULES_TABLE_SQL,
   type CronSchedule, type CreateScheduleInput, type CronJobType,
 } from './cron-store.js';
+export { VaultStore, type VaultEntry } from './vault.js';
