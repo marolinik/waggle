@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import Fastify from 'fastify';
@@ -27,7 +28,7 @@ import {
   type ToolDefinition,
   type LoadedSkill,
 } from '@waggle/agent';
-import { PluginRuntimeManager, getStarterSkillsDir } from '@waggle/sdk';
+import { PluginRuntimeManager, getStarterSkillsDir, validatePluginManifest } from '@waggle/sdk';
 import { workspaceRoutes } from './routes/workspaces.js';
 import { chatRoutes, type AgentRunner } from './routes/chat.js';
 import { memoryRoutes } from './routes/memory.js';
@@ -310,6 +311,40 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
 
   // Plugin runtime manager — lifecycle, tools, skills from plugins
   const pluginRuntimeManager = new PluginRuntimeManager();
+
+  // Auto-load installed plugins from ~/.waggle/plugins/
+  const pluginsDir = path.join(waggleHome, 'plugins');
+  if (fs.existsSync(pluginsDir)) {
+    try {
+      const pluginDirs = fs.readdirSync(pluginsDir, { withFileTypes: true })
+        .filter(d => d.isDirectory())
+        .map(d => d.name);
+
+      for (const pluginName of pluginDirs) {
+        const pluginPath = path.join(pluginsDir, pluginName);
+        const manifestPath = path.join(pluginPath, 'plugin.json');
+        if (!fs.existsSync(manifestPath)) continue;
+
+        try {
+          const raw = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Record<string, unknown>;
+          const validation = validatePluginManifest(raw);
+          if (!validation.valid) {
+            console.log(`[waggle] Skipping plugin "${pluginName}": invalid manifest — ${validation.errors.join(', ')}`);
+            continue;
+          }
+          pluginRuntimeManager.register(raw as Parameters<typeof pluginRuntimeManager.register>[0]);
+          await pluginRuntimeManager.enable(raw.name as string);
+        } catch (err) {
+          console.log(`[waggle] Failed to load plugin "${pluginName}": ${(err as Error).message}`);
+        }
+      }
+
+      const active = pluginRuntimeManager.getActive();
+      if (active.length > 0) {
+        console.log(`[waggle] Loaded ${active.length} plugin(s): ${active.map(p => p.getManifest().name).join(', ')}`);
+      }
+    } catch { /* non-blocking — plugin scan failure must not prevent startup */ }
+  }
 
   // MCP server runtime — stdio servers, health, tools (empty by default)
   const mcpRuntime = new McpRuntime();
