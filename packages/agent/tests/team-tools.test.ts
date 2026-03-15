@@ -53,7 +53,8 @@ describe('createTeamTools', () => {
     expect(names).toContain('create_team_task');
     expect(names).toContain('claim_team_task');
     expect(names).toContain('send_waggle_message');
-    expect(tools).toHaveLength(5);
+    expect(names).toContain('request_team_capability');
+    expect(tools).toHaveLength(6);
   });
 
   describe('check_hive', () => {
