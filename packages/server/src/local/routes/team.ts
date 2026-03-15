@@ -149,6 +149,8 @@ export async function teamRoutes(fastify: FastifyInstance) {
 
       if (res.ok) {
         const data = await res.json();
+        // Emit presence update for WebSocket subscribers
+        fastify.eventBus.emit('presence_update', data);
         return reply.code(200).send(data);
       }
     } catch {
@@ -156,14 +158,17 @@ export async function teamRoutes(fastify: FastifyInstance) {
     }
 
     // Fallback: return current user as online
-    return reply.code(200).send({
+    const fallbackData = {
       members: [{
         userId: teamServer.userId ?? 'self',
         displayName: teamServer.displayName ?? 'You',
         status: 'online',
         lastActivity: new Date().toISOString(),
       }],
-    });
+    };
+    // Emit presence update for WebSocket subscribers
+    fastify.eventBus.emit('presence_update', fallbackData);
+    return reply.code(200).send(fallbackData);
   });
 
   /**

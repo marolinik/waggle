@@ -622,7 +622,7 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
     };
 
     // Forward approval events and agent events to the WebSocket client
-    const handlers = ['approval_required', 'step', 'tool', 'done', 'error'] as const;
+    const handlers = ['approval_required', 'step', 'tool', 'done', 'error', 'presence_update'] as const;
     for (const evt of handlers) {
       eventBus.on(evt, (data: unknown) => onEvent(evt, data));
     }

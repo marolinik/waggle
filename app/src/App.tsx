@@ -97,6 +97,7 @@ function WaggleApp() {
   // ── Team presence (I4) ───────────────────────────────────────────
   const { members: teamMembers } = useTeamPresence({
     teamId: activeWorkspace?.teamId,
+    service,
   });
   const { items: teamActivity, loading: teamActivityLoading } = useTeamActivity({
     teamId: activeWorkspace?.teamId,
