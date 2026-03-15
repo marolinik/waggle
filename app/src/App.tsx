@@ -820,7 +820,7 @@ function WaggleApp() {
       }).catch(() => {
         // Ignore status poll errors
       });
-    }, 5000);
+    }, 30000); // Poll every 30s — cost/tokens don't change rapidly
     return () => clearInterval(poll);
   }, [service]);
 

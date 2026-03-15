@@ -39,7 +39,7 @@ export function FrameTimeline({ frames, selectedId, onSelect }: FrameTimelinePro
 
         return (
           <button
-            key={frame.id}
+            key={`${frame.source ?? 'default'}-${frame.id}`}
             className={`frame-timeline__card flex flex-col gap-1 rounded px-3 py-2 text-left transition-colors ${
               isSelected
                 ? 'bg-blue-900/40 border border-blue-500/50'
