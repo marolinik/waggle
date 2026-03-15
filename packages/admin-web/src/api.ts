@@ -94,6 +94,44 @@ export interface JobResponse {
   createdAt: string;
 }
 
+export interface CapabilityPolicyResponse {
+  id: string;
+  teamId: string;
+  role: string;
+  allowedSources: string[];
+  blockedTools: string[];
+  approvalThreshold: string;
+  updatedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CapabilityOverrideResponse {
+  id: string;
+  teamId: string;
+  capabilityName: string;
+  capabilityType: string;
+  decision: string;
+  reason: string;
+  decidedBy: string;
+  createdAt: string;
+  decidedAt: string;
+}
+
+export interface CapabilityRequestResponse {
+  id: string;
+  teamId: string;
+  requestedBy: string;
+  capabilityName: string;
+  capabilityType: string;
+  justification: string;
+  status: string;
+  decidedBy?: string;
+  decisionReason?: string;
+  createdAt: string;
+  decidedAt?: string;
+}
+
 export const api = {
   listTeams: (token: string) => apiFetch<TeamResponse[]>('/api/teams', token),
   getTeam: (token: string, slug: string) =>
@@ -126,4 +164,19 @@ export const api = {
     apiFetch<TaskResponse[]>(`/api/teams/${encodeURIComponent(slug)}/tasks`, token),
   listScoutFindings: (token: string) => apiFetch('/api/scout/findings', token),
   listSuggestions: (token: string) => apiFetch('/api/suggestions', token),
+  // Capability Governance
+  listCapabilityPolicies: (token: string, slug: string) =>
+    apiFetch<CapabilityPolicyResponse[]>(`/api/teams/${encodeURIComponent(slug)}/capability-policies`, token),
+  updateCapabilityPolicy: (token: string, slug: string, role: string, data: { allowedSources: string[]; blockedTools: string[]; approvalThreshold: string }) =>
+    apiMutate<CapabilityPolicyResponse>(`/api/teams/${encodeURIComponent(slug)}/capability-policies/${encodeURIComponent(role)}`, token, 'PUT', data),
+  listCapabilityOverrides: (token: string, slug: string) =>
+    apiFetch<CapabilityOverrideResponse[]>(`/api/teams/${encodeURIComponent(slug)}/capability-overrides`, token),
+  createCapabilityOverride: (token: string, slug: string, data: { capabilityName: string; capabilityType: string; decision: string; reason: string }) =>
+    apiMutate<CapabilityOverrideResponse>(`/api/teams/${encodeURIComponent(slug)}/capability-overrides`, token, 'POST', data),
+  deleteCapabilityOverride: (token: string, slug: string, id: string) =>
+    apiMutate<void>(`/api/teams/${encodeURIComponent(slug)}/capability-overrides/${encodeURIComponent(id)}`, token, 'DELETE'),
+  listCapabilityRequests: (token: string, slug: string, status?: string) =>
+    apiFetch<CapabilityRequestResponse[]>(`/api/teams/${encodeURIComponent(slug)}/capability-requests${status ? `?status=${status}` : ''}`, token),
+  decideCapabilityRequest: (token: string, slug: string, id: string, decision: { status: string; reason?: string }) =>
+    apiMutate<CapabilityRequestResponse>(`/api/teams/${encodeURIComponent(slug)}/capability-requests/${encodeURIComponent(id)}`, token, 'PATCH', decision),
 };

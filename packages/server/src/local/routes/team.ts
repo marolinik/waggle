@@ -278,4 +278,53 @@ export async function teamRoutes(fastify: FastifyInstance) {
 
     return reply.code(200).send({ messages: [] });
   });
+
+  // --- Capability Governance Proxy ---
+
+  // In-memory policy cache: teamId → { permissions, fetchedAt }
+  const policyCache = new Map<string, { permissions: any; fetchedAt: number }>();
+  const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+  // Listen for policy update events to invalidate cache
+  if ((fastify as any).eventBus) {
+    (fastify as any).eventBus.on('capability_policy_update', (data: any) => {
+      if (data?.teamId) policyCache.delete(data.teamId);
+      else policyCache.clear(); // Clear all if no specific teamId
+    });
+  }
+
+  // GET /api/team/governance/permissions — get effective permissions for current user
+  fastify.get('/api/team/governance/permissions', async (request, reply) => {
+    const { workspaceId } = request.query as { workspaceId?: string };
+    const waggleConfig = new WaggleConfig(dataDir);
+    const teamServer = waggleConfig.getTeamServer();
+    if (!teamServer?.url || !teamServer?.token) {
+      return { connected: false, permissions: null };
+    }
+
+    // Check cache
+    const cacheKey = workspaceId ?? 'default';
+    const cached = policyCache.get(cacheKey);
+    if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+      return { connected: true, permissions: cached.permissions };
+    }
+
+    try {
+      const teamSlug = (teamServer as any).teamSlug ?? 'default';
+      const url = `${teamServer.url.replace(/\/$/, '')}/api/teams/${teamSlug}/capability-policies`;
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${teamServer.token}` },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) throw new Error(`${res.status}`);
+      const policies = await res.json();
+
+      policyCache.set(cacheKey, { permissions: policies, fetchedAt: Date.now() });
+      return { connected: true, permissions: policies };
+    } catch {
+      // Return cached if available, otherwise null
+      if (cached) return { connected: true, permissions: cached.permissions, stale: true };
+      return { connected: true, permissions: null };
+    }
+  });
 }

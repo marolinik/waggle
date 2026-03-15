@@ -152,6 +152,43 @@ export function createTeamTools(deps: TeamToolDeps): ToolDefinition[] {
         return `Message sent to team (type: ${type}).`;
       },
     },
+
+    {
+      name: 'request_team_capability',
+      description: 'Request team admin approval for a restricted capability. Use when a capability is blocked by team policy and the user wants to request access.',
+      parameters: {
+        type: 'object',
+        properties: {
+          capability_name: { type: 'string', description: 'Name of the blocked capability (e.g., "bash", "custom-plugin")' },
+          capability_type: { type: 'string', enum: ['native', 'skill', 'plugin', 'mcp'], description: 'Type of capability' },
+          justification: { type: 'string', description: 'Why the user needs this capability — use their own words' },
+        },
+        required: ['capability_name', 'capability_type', 'justification'],
+      },
+      execute: async (args) => {
+        const name = args.capability_name as string;
+        const type = args.capability_type as string;
+        const justification = args.justification as string;
+
+        try {
+          const result = await apiCall(deps, 'POST', `${base}/capability-requests`, {
+            capabilityName: name,
+            capabilityType: type,
+            justification,
+          });
+          const res = result as any;
+          if (res.error?.includes('pending')) {
+            return `A request for "${name}" is already pending. Your team admin will review it.`;
+          }
+          return `Request submitted for "${name}" (${type}). Your team admin will be notified and can approve or reject this request. You'll receive a notification when they decide.`;
+        } catch (err: any) {
+          if (err.message?.includes('409')) {
+            return `A request for "${name}" is already pending. Your team admin will review it.`;
+          }
+          return `Could not submit request: ${err.message}`;
+        }
+      },
+    },
   ];
 }
 
