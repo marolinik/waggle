@@ -121,6 +121,44 @@ export const teamResources = pgTable('team_resources', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const teamCapabilityPolicies = pgTable('team_capability_policies', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  teamId: uuid('team_id').references(() => teams.id).notNull(),
+  role: text('role').notNull(),
+  allowedSources: jsonb('allowed_sources').$type<string[]>().notNull().default([]),
+  blockedTools: jsonb('blocked_tools').$type<string[]>().notNull().default([]),
+  approvalThreshold: text('approval_threshold').notNull().default('none'),
+  updatedBy: uuid('updated_by').references(() => users.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const teamCapabilityOverrides = pgTable('team_capability_overrides', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  teamId: uuid('team_id').references(() => teams.id).notNull(),
+  capabilityName: text('capability_name').notNull(),
+  capabilityType: text('capability_type').notNull(),
+  decision: text('decision').notNull(),
+  reason: text('reason').notNull().default(''),
+  decidedBy: uuid('decided_by').references(() => users.id).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  decidedAt: timestamp('decided_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const teamCapabilityRequests = pgTable('team_capability_requests', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  teamId: uuid('team_id').references(() => teams.id).notNull(),
+  requestedBy: uuid('requested_by').references(() => users.id).notNull(),
+  capabilityName: text('capability_name').notNull(),
+  capabilityType: text('capability_type').notNull(),
+  justification: text('justification').notNull(),
+  status: text('status').notNull().default('pending'),
+  decidedBy: uuid('decided_by').references(() => users.id),
+  decisionReason: text('decision_reason'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  decidedAt: timestamp('decided_at', { withTimezone: true }),
+});
+
 export const agentJobs = pgTable('agent_jobs', {
   id: uuid('id').primaryKey().defaultRandom(),
   teamId: uuid('team_id').references(() => teams.id).notNull(),
