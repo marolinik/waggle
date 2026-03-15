@@ -6,7 +6,8 @@
  * InstallAuditStore — operates on the .mind DB with lazy table creation.
  */
 
-import { parseExpression } from 'cron-parser';
+import cronParser from 'cron-parser';
+const { parseExpression } = cronParser;
 import type { MindDB } from './mind/db.js';
 
 // ── Types ──────────────────────────────────────────────────────────────
