@@ -2,8 +2,8 @@ import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs';
 import type { FastifyPluginAsync } from 'fastify';
-import { PluginManager, getStarterSkillsDir, listStarterSkills } from '@waggle/sdk';
-import { loadSkills, SkillRecommender } from '@waggle/agent';
+import { PluginManager, getStarterSkillsDir, listStarterSkills, listCapabilityPacks, getPackManifest } from '@waggle/sdk';
+import { loadSkills, SkillRecommender, assessTrust } from '@waggle/agent';
 
 /** Capability family definitions — user-job-first grouping */
 const SKILL_FAMILIES: Record<string, { family: string; label: string }> = {
@@ -170,6 +170,10 @@ export const skillRoutes: FastifyPluginAsync = async (server) => {
       return reply.status(409).send({ error: `Skill "${id}" is already installed` });
     }
 
+    // Assess trust before install
+    const content = fs.readFileSync(sourcePath, 'utf-8');
+    const trust = assessTrust({ capabilityType: 'skill', source: 'starter-pack', content });
+
     // Copy skill file
     fs.copyFileSync(sourcePath, targetPath);
 
@@ -180,6 +184,21 @@ export const skillRoutes: FastifyPluginAsync = async (server) => {
     // Determine new state (should be active after reload)
     const isActive = server.agentState.skills.some(s => s.name === id);
 
+    // Record audit trail
+    try {
+      server.auditStore.record({
+        capabilityName: id,
+        capabilityType: 'skill',
+        source: 'starter-pack',
+        riskLevel: trust.riskLevel,
+        trustSource: trust.trustSource,
+        approvalClass: trust.approvalClass,
+        action: 'installed',
+        initiator: 'user',
+        detail: `Installed via Install Center. ${trust.explanation}`,
+      });
+    } catch { /* audit is best-effort */ }
+
     return {
       ok: true,
       skill: {
@@ -187,6 +206,111 @@ export const skillRoutes: FastifyPluginAsync = async (server) => {
         name: id.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
         state: isActive ? 'active' : 'installed',
       },
+    };
+  });
+
+  // ── Capability Packs ─────────────────────────────────────────────
+
+  // GET /api/skills/capability-packs/catalog — list all packs with skill states
+  server.get('/api/skills/capability-packs/catalog', async () => {
+    const packs = listCapabilityPacks();
+    const installedSkillNames = new Set(
+      server.agentState.skills.map(s => s.name)
+    );
+
+    const packEntries = packs.map(pack => {
+      const skillStates = pack.skills.map(skillId => {
+        const isActive = installedSkillNames.has(skillId);
+        const isOnDisk = fs.existsSync(path.join(skillsDir, `${skillId}.md`));
+        return {
+          id: skillId,
+          state: isActive ? 'active' : isOnDisk ? 'installed' : 'available',
+        };
+      });
+      const installedCount = skillStates.filter(s => s.state !== 'available').length;
+      const packState = installedCount === 0 ? 'available'
+        : installedCount === pack.skills.length ? 'complete'
+        : 'incomplete';
+
+      return {
+        ...pack,
+        skillStates,
+        packState,
+        installedCount,
+        totalCount: pack.skills.length,
+      };
+    });
+
+    return { packs: packEntries };
+  });
+
+  // POST /api/skills/capability-packs/:id — install all skills in a pack
+  server.post<{ Params: { id: string } }>('/api/skills/capability-packs/:id', async (request, reply) => {
+    const { id } = request.params;
+
+    // Prevent path traversal
+    if (id.includes('..') || id.includes('/') || id.includes('\\')) {
+      return reply.status(400).send({ error: 'Invalid pack ID' });
+    }
+
+    const pack = getPackManifest(id);
+    if (!pack) {
+      return reply.status(404).send({ error: `Capability pack "${id}" not found` });
+    }
+
+    const starterDir = getStarterSkillsDir();
+    const installed: string[] = [];
+    const skipped: string[] = [];
+    const errors: string[] = [];
+
+    for (const skillId of pack.skills) {
+      const targetPath = path.join(skillsDir, `${skillId}.md`);
+      if (fs.existsSync(targetPath)) {
+        skipped.push(skillId);
+        continue;
+      }
+      const sourcePath = path.join(starterDir, `${skillId}.md`);
+      if (!fs.existsSync(sourcePath)) {
+        errors.push(`Skill "${skillId}" not found in starter pack`);
+        continue;
+      }
+
+      // Assess trust and record audit (same as single skill install)
+      try {
+        const content = fs.readFileSync(sourcePath, 'utf-8');
+        const trust = assessTrust({ capabilityType: 'skill', source: 'starter-pack', content });
+
+        fs.copyFileSync(sourcePath, targetPath);
+        installed.push(skillId);
+
+        try {
+          server.auditStore.record({
+            capabilityName: skillId,
+            capabilityType: 'skill',
+            source: 'starter-pack',
+            riskLevel: trust.riskLevel,
+            trustSource: trust.trustSource,
+            approvalClass: trust.approvalClass,
+            action: 'installed',
+            initiator: 'user',
+            detail: `Installed via pack "${pack.name}". ${trust.explanation}`,
+          });
+        } catch { /* audit is best-effort */ }
+      } catch (err) {
+        errors.push(`Failed to install "${skillId}": ${(err as Error).message}`);
+      }
+    }
+
+    // Reload skills
+    server.agentState.skills.length = 0;
+    server.agentState.skills.push(...loadSkills(waggleHome));
+
+    return {
+      ok: errors.length === 0,
+      pack: { id: pack.id, name: pack.name },
+      installed,
+      skipped,
+      errors: errors.length > 0 ? errors : undefined,
     };
   });
 

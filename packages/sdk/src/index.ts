@@ -13,3 +13,4 @@ export type {
   ActivationDependencies,
 } from './plugin-runtime.js';
 export { listStarterSkills, installStarterSkills, getStarterSkillsDir } from './starter-skills/index.js';
+export { listCapabilityPacks, getCapabilityPacksDir, getPackManifest, type CapabilityPack } from './capability-packs/index.js';
