@@ -38,3 +38,7 @@ export {
   type AuditAction, type AuditRiskLevel, type AuditTrustSource,
   type AuditApprovalClass, type AuditInitiator, type AuditCapabilityType,
 } from './install-audit.js';
+export {
+  CronStore, CRON_SCHEDULES_TABLE_SQL,
+  type CronSchedule, type CreateScheduleInput, type CronJobType,
+} from './cron-store.js';
