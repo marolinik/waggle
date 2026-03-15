@@ -54,6 +54,46 @@ export interface TeamResponse {
   members?: TeamMemberResponse[];
 }
 
+export interface TaskResponse {
+  id: string;
+  teamId: string;
+  title: string;
+  description?: string;
+  status: string;
+  priority: string;
+  assignedTo?: string;
+  createdBy: string;
+  parentTaskId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AuditEntryResponse {
+  id: string;
+  userId: string;
+  teamId?: string;
+  agentName: string;
+  actionType: string;
+  description: string;
+  requiresApproval: boolean;
+  approved?: boolean;
+  approvedBy?: string;
+  createdAt: string;
+}
+
+export interface JobResponse {
+  id: string;
+  teamId: string;
+  userId: string;
+  jobType: string;
+  status: string;
+  input: Record<string, unknown>;
+  output?: Record<string, unknown>;
+  startedAt?: string;
+  completedAt?: string;
+  createdAt: string;
+}
+
 export const api = {
   listTeams: (token: string) => apiFetch<TeamResponse[]>('/api/teams', token),
   getTeam: (token: string, slug: string) =>
@@ -75,13 +115,15 @@ export const api = {
       token, 'PATCH', { role },
     ),
   listJobs: (token: string, slug: string) =>
-    apiFetch(`/api/jobs?teamSlug=${encodeURIComponent(slug)}`, token),
+    apiFetch<JobResponse[]>(`/api/jobs?teamSlug=${encodeURIComponent(slug)}`, token),
   listCron: (token: string, slug: string) =>
     apiFetch(`/api/teams/${encodeURIComponent(slug)}/cron`, token),
   listAudit: (token: string, slug: string) =>
-    apiFetch(`/api/admin/teams/${encodeURIComponent(slug)}/audit`, token),
+    apiFetch<AuditEntryResponse[]>(`/api/admin/teams/${encodeURIComponent(slug)}/audit`, token),
   getStats: (token: string, slug: string) =>
     apiFetch(`/api/admin/teams/${encodeURIComponent(slug)}/usage`, token),
+  listTasks: (token: string, slug: string) =>
+    apiFetch<TaskResponse[]>(`/api/teams/${encodeURIComponent(slug)}/tasks`, token),
   listScoutFindings: (token: string) => apiFetch('/api/scout/findings', token),
   listSuggestions: (token: string) => apiFetch('/api/suggestions', token),
 };

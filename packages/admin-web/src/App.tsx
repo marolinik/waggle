@@ -110,10 +110,10 @@ export function App() {
           </div>
         ) : (
           <>
-            {page === 'dashboard' && <Dashboard />}
+            {page === 'dashboard' && <Dashboard token={token} teamSlug={teamSlug} />}
             {page === 'members' && <Members token={token} teamSlug={teamSlug} />}
-            {page === 'jobs' && <Jobs />}
-            {page === 'audit' && <Audit />}
+            {page === 'jobs' && <Jobs token={token} teamSlug={teamSlug} />}
+            {page === 'audit' && <Audit token={token} teamSlug={teamSlug} />}
             {page === 'settings' && <TeamSettings token={token} teamSlug={teamSlug} />}
           </>
         )}
