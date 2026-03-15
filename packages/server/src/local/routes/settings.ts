@@ -1,6 +1,11 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { WaggleConfig } from '@waggle/core';
 
+function maskApiKey(key: string): string {
+  if (!key || key.length < 8) return '****';
+  return key.slice(0, 7) + '...' + key.slice(-4);
+}
+
 export const settingsRoutes: FastifyPluginAsync = async (server) => {
   // GET /api/settings — read config (keys from vault, metadata from vault+config)
   server.get('/api/settings', async () => {
@@ -15,7 +20,7 @@ export const settingsRoutes: FastifyPluginAsync = async (server) => {
         const full = server.vault.get(entry.name);
         if (full) {
           providers[entry.name] = {
-            apiKey: full.value,
+            apiKey: maskApiKey(full.value),
             models: (full.metadata?.models as string[]) ?? [],
             baseUrl: full.metadata?.baseUrl as string | undefined,
           };
@@ -27,7 +32,7 @@ export const settingsRoutes: FastifyPluginAsync = async (server) => {
     const configProviders = config.getProviders();
     for (const [name, entry] of Object.entries(configProviders)) {
       if (!providers[name]) {
-        providers[name] = entry;
+        providers[name] = { ...entry, apiKey: maskApiKey(entry.apiKey) };
       }
     }
 
@@ -75,7 +80,7 @@ export const settingsRoutes: FastifyPluginAsync = async (server) => {
         const full = server.vault.get(vEntry.name);
         if (full) {
           responseProviders[vEntry.name] = {
-            apiKey: full.value,
+            apiKey: maskApiKey(full.value),
             models: (full.metadata?.models as string[]) ?? [],
             baseUrl: full.metadata?.baseUrl as string | undefined,
           };
@@ -86,7 +91,7 @@ export const settingsRoutes: FastifyPluginAsync = async (server) => {
     const configProviders = config.getProviders();
     for (const [name, entry] of Object.entries(configProviders)) {
       if (!responseProviders[name]) {
-        responseProviders[name] = entry;
+        responseProviders[name] = { ...entry, apiKey: maskApiKey(entry.apiKey) };
       }
     }
 
