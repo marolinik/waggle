@@ -13,6 +13,19 @@ import type { Message, ToolUseEvent, WorkspaceContext } from '../../services/typ
 import { ChatMessage } from './ChatMessage.js';
 import { ChatInput, CLIENT_COMMANDS, type SlashCommand } from './ChatInput.js';
 
+function formatRelativeTime(isoDate: string): string {
+  const diff = Date.now() - new Date(isoDate).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return 'yesterday';
+  if (days < 7) return `${days}d ago`;
+  return new Date(isoDate).toLocaleDateString();
+}
+
 export interface ChatAreaProps {
   messages: Message[];
   isLoading: boolean;
@@ -88,6 +101,11 @@ export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, o
         {/* Workspace Home — shown when entering a workspace with no messages */}
         {showWorkspaceHome && (
           <div className="chat-area__workspace-home">
+            {workspaceContext.stats.memoryCount > 0 && workspaceContext.stats.sessionCount > 1 && (
+              <div className="chat-area__welcome-back">
+                Welcome back — here's where things stand.
+              </div>
+            )}
             <div className="chat-area__workspace-header">
               <div className="chat-area__workspace-icon">
                 <svg width="32" height="32" viewBox="0 0 48 48" fill="none">
@@ -106,6 +124,11 @@ export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, o
                   : 'No memories yet'}
                 {workspaceContext.workspace.model && ` · ${workspaceContext.workspace.model}`}
               </span>
+              {workspaceContext.lastActive && (
+                <span className="chat-area__last-active">
+                  Last active: {formatRelativeTime(workspaceContext.lastActive)}
+                </span>
+              )}
             </div>
 
             {/* Summary */}
@@ -188,6 +211,23 @@ export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, o
                       onClick={onThreadSelect ? () => onThreadSelect(thread.id) : undefined}
                     >
                       {thread.title}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Key memories */}
+            {workspaceContext.recentMemories?.length > 0 && (
+              <div className="chat-area__recent-memories">
+                <h3>Key memories</h3>
+                <ul>
+                  {workspaceContext.recentMemories.slice(0, 3).map((memory, i) => (
+                    <li key={i}>
+                      <span className={`chat-area__memory-importance chat-area__memory-importance--${memory.importance}`}>
+                        {memory.importance === 'critical' ? '\u25C6' : memory.importance === 'important' ? '\u25C7' : '\u25CB'}
+                      </span>
+                      <span className="chat-area__memory-text">{memory.content}</span>
                     </li>
                   ))}
                 </ul>

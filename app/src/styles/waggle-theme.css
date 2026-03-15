@@ -423,6 +423,69 @@ button.workspace-card[class*="bg-blue"] {
   font-size: 11px;
   letter-spacing: 0.02em;
 }
+/* Welcome back message for returning users */
+.chat-area__welcome-back {
+  font-size: 13px;
+  color: var(--text-muted, #8b949e);
+  font-style: italic;
+  text-align: center;
+}
+/* Last active timestamp */
+.chat-area__last-active {
+  font-size: 11px;
+  color: var(--text-dim, #666);
+}
+/* Key memories section */
+.chat-area__recent-memories {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+.chat-area__recent-memories h3 {
+  color: var(--text-dim);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0 0 8px 0;
+}
+.chat-area__recent-memories ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.chat-area__recent-memories li {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px 0;
+}
+.chat-area__memory-importance {
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.chat-area__memory-importance--critical {
+  color: #f85149;
+}
+.chat-area__memory-importance--important {
+  color: #d29922;
+}
+.chat-area__memory-importance--normal {
+  color: var(--text-dim);
+}
+.chat-area__memory-text {
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
 .chat-area__workspace-summary {
   color: var(--text-muted);
   font-size: 13px;
