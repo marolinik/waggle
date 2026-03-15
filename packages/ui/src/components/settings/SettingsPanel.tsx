@@ -12,9 +12,7 @@ import { ModelSection } from './ModelSection.js';
 import { PermissionSection } from './PermissionSection.js';
 import { ThemeSection } from './ThemeSection.js';
 import { AdvancedSection } from './AdvancedSection.js';
-import { SkillsSection } from './SkillsSection.js';
 import { TeamSection } from './TeamSection.js';
-import { InstallCenter } from './InstallCenter.js';
 
 export interface SettingsPanelProps {
   activeTab?: string;
@@ -71,7 +69,12 @@ export function SettingsPanel({
       {/* Tab content */}
       <div className="settings-panel__content flex-1 overflow-y-auto p-6">
         {activeTab === 'general' && (
-          <ThemeSection config={config} onConfigUpdate={onConfigUpdate} />
+          <>
+            <ThemeSection config={config} onConfigUpdate={onConfigUpdate} />
+            <div style={{ marginTop: 24 }}>
+              <ModelSection config={config} onConfigUpdate={onConfigUpdate} />
+            </div>
+          </>
         )}
         {activeTab === 'api-keys' && (
           <ApiKeySection
@@ -79,15 +82,6 @@ export function SettingsPanel({
             onConfigUpdate={onConfigUpdate}
             onTestApiKey={onTestApiKey}
           />
-        )}
-        {activeTab === 'models' && (
-          <ModelSection config={config} onConfigUpdate={onConfigUpdate} />
-        )}
-        {activeTab === 'skills' && (
-          <SkillsSection />
-        )}
-        {activeTab === 'capabilities' && (
-          <InstallCenter />
         )}
         {activeTab === 'permissions' && (
           <PermissionSection

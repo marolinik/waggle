@@ -188,13 +188,16 @@ describe('SETTINGS_TABS', () => {
     expect(SETTINGS_TABS.length).toBeGreaterThan(0);
   });
 
-  it('has General, API Keys, Models, Permissions, Advanced tabs', () => {
+  it('has General, API Keys, Permissions, Team, Advanced tabs', () => {
     const labels = SETTINGS_TABS.map((t) => t.label);
     expect(labels).toContain('General');
     expect(labels).toContain('API Keys');
-    expect(labels).toContain('Models');
     expect(labels).toContain('Permissions');
+    expect(labels).toContain('Team');
     expect(labels).toContain('Advanced');
+    expect(labels).not.toContain('Models');
+    expect(labels).not.toContain('Skills & Plugins');
+    expect(labels).not.toContain('Capabilities');
   });
 
   it('each tab has id and label', () => {
