@@ -3,13 +3,15 @@ import { Dashboard } from './pages/Dashboard.js';
 import { Jobs } from './pages/Jobs.js';
 import { Audit } from './pages/Audit.js';
 import { Members } from './pages/Members.js';
+import { Capabilities } from './pages/Capabilities.js';
 import { TeamSettings } from './pages/TeamSettings.js';
 
-type Page = 'dashboard' | 'jobs' | 'audit' | 'members' | 'settings';
+type Page = 'dashboard' | 'jobs' | 'audit' | 'members' | 'capabilities' | 'settings';
 
 const NAV_ITEMS: { key: Page; label: string }[] = [
   { key: 'dashboard', label: 'Dashboard' },
   { key: 'members', label: 'Members' },
+  { key: 'capabilities', label: 'Capabilities' },
   { key: 'jobs', label: 'Jobs' },
   { key: 'audit', label: 'Audit Log' },
   { key: 'settings', label: 'Team Settings' },
@@ -112,6 +114,7 @@ export function App() {
           <>
             {page === 'dashboard' && <Dashboard token={token} teamSlug={teamSlug} />}
             {page === 'members' && <Members token={token} teamSlug={teamSlug} />}
+            {page === 'capabilities' && <Capabilities token={token} teamSlug={teamSlug} />}
             {page === 'jobs' && <Jobs token={token} teamSlug={teamSlug} />}
             {page === 'audit' && <Audit token={token} teamSlug={teamSlug} />}
             {page === 'settings' && <TeamSettings token={token} teamSlug={teamSlug} />}
