@@ -17,3 +17,6 @@ export { groupWorkspacesByGroup, validateWorkspaceForm, sortGroups, GROUP_ORDER 
 
 export { TaskBoard, getTaskStatusColor, groupTasksByStatus } from './TaskBoard.js';
 export type { TaskBoardProps, TeamTask } from './TaskBoard.js';
+
+export { TeamMessages, formatRelativeTime, TYPE_COLORS as MESSAGE_TYPE_COLORS } from './TeamMessages.js';
+export type { TeamMessagesProps, TeamMessage } from './TeamMessages.js';

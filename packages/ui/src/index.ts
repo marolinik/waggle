@@ -73,6 +73,9 @@ export {
   TaskBoard,
   getTaskStatusColor,
   groupTasksByStatus,
+  TeamMessages,
+  formatRelativeTime,
+  MESSAGE_TYPE_COLORS,
 } from './components/workspace/index.js';
 export type {
   WorkspaceTreeProps,
@@ -83,6 +86,8 @@ export type {
   TeamInfo,
   TaskBoardProps,
   TeamTask,
+  TeamMessagesProps,
+  TeamMessage,
 } from './components/workspace/index.js';
 
 // Components — common

@@ -6,8 +6,8 @@
  * Other views: nothing (panel hidden)
  */
 
-import type { Session, SessionSearchResult, Frame, FileEntry, TeamMember, ActivityItem } from '@waggle/ui';
-import { SessionList, FrameDetail, FilePreview, TeamPresence, ActivityFeed } from '@waggle/ui';
+import type { Session, SessionSearchResult, Frame, FileEntry, TeamMember, ActivityItem, TeamMessage } from '@waggle/ui';
+import { SessionList, FrameDetail, FilePreview, TeamPresence, ActivityFeed, TeamMessages } from '@waggle/ui';
 
 type AppView = 'chat' | 'memory' | 'events' | 'capabilities' | 'cockpit' | 'settings';
 
@@ -37,6 +37,8 @@ export interface ContextPanelProps {
   /** J1: Team activity feed items */
   teamActivity?: ActivityItem[];
   teamActivityLoading?: boolean;
+  /** Wave 2.4: Waggle Dance messages */
+  teamMessages?: TeamMessage[];
 }
 
 function PanelHeader({ label, action }: { label: string; action?: { label: string; onClick: () => void } }) {
@@ -94,6 +96,7 @@ export function ContextPanel({
   teamMembers,
   teamActivity,
   teamActivityLoading,
+  teamMessages,
 }: ContextPanelProps) {
   if (currentView === 'chat') {
     // If there's a file to preview, show it above sessions
@@ -191,6 +194,15 @@ export function ContextPanel({
             <PanelHeader label="Activity" />
             <div style={{ borderBottom: '1px solid var(--border)' }}>
               <ActivityFeed items={teamActivity ?? []} loading={teamActivityLoading} />
+            </div>
+          </>
+        )}
+        {/* Wave 2.4: Waggle Dance messages */}
+        {teamMessages && teamMessages.length > 0 && (
+          <>
+            <PanelHeader label="Messages" />
+            <div style={{ borderBottom: '1px solid var(--border)' }}>
+              <TeamMessages messages={teamMessages} />
             </div>
           </>
         )}

@@ -13,7 +13,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import type { Message, WaggleConfig, WorkspaceContext, Frame, OnboardingData, FileEntry, DroppedFile } from '@waggle/ui';
+import type { Message, WaggleConfig, WorkspaceContext, Frame, OnboardingData, FileEntry, DroppedFile, TeamMessage } from '@waggle/ui';
 import {
   ThemeProvider,
   useTheme,
@@ -102,6 +102,27 @@ function WaggleApp() {
   const { items: teamActivity, loading: teamActivityLoading } = useTeamActivity({
     teamId: activeWorkspace?.teamId,
   });
+
+  // ── Team messages (Wave 2.4) ────────────────────────────────────
+  const [teamMessages, setTeamMessages] = useState<TeamMessage[]>([]);
+  useEffect(() => {
+    const teamId = activeWorkspace?.teamId;
+    if (!teamId) { setTeamMessages([]); return; }
+
+    const fetchMessages = async () => {
+      try {
+        const res = await fetch(`http://127.0.0.1:3333/api/team/messages?workspaceId=${teamId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setTeamMessages(data.messages ?? []);
+        }
+      } catch { /* silent */ }
+    };
+
+    fetchMessages();
+    const interval = setInterval(fetchMessages, 30_000);
+    return () => clearInterval(interval);
+  }, [activeWorkspace?.teamId]);
 
   // ── Sessions ──────────────────────────────────────────────────────
   const {
@@ -863,6 +884,7 @@ function WaggleApp() {
               teamMembers={teamMembers}
               teamActivity={teamActivity}
               teamActivityLoading={teamActivityLoading}
+              teamMessages={teamMessages}
             />
           ) : undefined
         }

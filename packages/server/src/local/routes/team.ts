@@ -243,4 +243,39 @@ export async function teamRoutes(fastify: FastifyInstance) {
 
     return reply.code(200).send({ items: [] });
   });
+
+  /**
+   * GET /api/team/messages?workspaceId=X&limit=N
+   * Get recent Waggle Dance messages for a workspace.
+   * Proxies to team server or returns empty when disconnected.
+   */
+  fastify.get<{
+    Querystring: { workspaceId?: string; limit?: string };
+  }>('/api/team/messages', async (request, reply) => {
+    const waggleConfig = new WaggleConfig(dataDir);
+    const teamServer = waggleConfig.getTeamServer();
+    const limit = Math.min(parseInt(request.query.limit ?? '20', 10) || 20, 50);
+
+    if (!teamServer || !teamServer.token) {
+      return reply.code(200).send({ messages: [] });
+    }
+
+    try {
+      const teamSlug = (teamServer as any).teamSlug ?? 'default';
+      const messagesUrl = `${teamServer.url}/api/teams/${teamSlug}/messages?limit=${limit}`;
+      const res = await fetch(messagesUrl, {
+        headers: { 'Authorization': `Bearer ${teamServer.token}` },
+        signal: AbortSignal.timeout(5000),
+      });
+
+      if (res.ok) {
+        const data = await res.json() as any;
+        return reply.code(200).send({ messages: data.messages ?? data ?? [] });
+      }
+    } catch {
+      // Team server unavailable — return empty
+    }
+
+    return reply.code(200).send({ messages: [] });
+  });
 }
