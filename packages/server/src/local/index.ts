@@ -3,7 +3,7 @@ import path from 'node:path';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import websocket from '@fastify/websocket';
-import { MindDB, MultiMind, WorkspaceManager, WaggleConfig, createLiteLLMEmbedder, FrameStore, SessionStore, InstallAuditStore, CronStore, AwarenessLayer, VaultStore } from '@waggle/core';
+import { MindDB, MultiMind, WorkspaceManager, WaggleConfig, createLiteLLMEmbedder, FrameStore, SessionStore, InstallAuditStore, CronStore, AwarenessLayer, VaultStore, SkillHashStore } from '@waggle/core';
 import { MemoryWeaver } from '@waggle/weaver';
 import {
   Orchestrator,
@@ -125,6 +125,7 @@ declare module 'fastify' {
     auditStore: import('@waggle/core').InstallAuditStore;
     cronStore: import('@waggle/core').CronStore;
     vault: import('@waggle/core').VaultStore;
+    skillHashStore: import('@waggle/core').SkillHashStore;
     scheduler: import('./cron.js').LocalScheduler;
   }
 }
@@ -271,6 +272,30 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   // Load user customizations from ~/.waggle/
   const userSystemPrompt = loadSystemPrompt(waggleHome);
   const skills = loadSkills(waggleHome);
+
+  // Skill hash store — detect skill changes on disk
+  const skillHashStore = new SkillHashStore(multiMind.personal);
+  server.decorate('skillHashStore', skillHashStore);
+
+  // Check for changed skills at startup
+  const hashCheck = skillHashStore.checkAll(skills);
+
+  // Auto-verify new skills (first install — no change to flag)
+  for (const name of hashCheck.added) {
+    const skill = skills.find(s => s.name === name);
+    if (skill) skillHashStore.verify(name, skill.content);
+  }
+
+  // Log changed skills as warnings
+  if (hashCheck.changed.length > 0) {
+    console.log(`[waggle] WARNING: ${hashCheck.changed.length} skill(s) changed on disk: ${hashCheck.changed.join(', ')}`);
+    console.log('[waggle] Run /skills to review changes');
+  }
+
+  // Clean up removed skill hashes
+  for (const name of hashCheck.removed) {
+    skillHashStore.removeHash(name);
+  }
 
   // Hook registry with user-configured hooks
   const hookRegistry = new HookRegistry();

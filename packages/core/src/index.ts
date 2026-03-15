@@ -43,3 +43,7 @@ export {
   type CronSchedule, type CreateScheduleInput, type CronJobType,
 } from './cron-store.js';
 export { VaultStore, type VaultEntry } from './vault.js';
+export {
+  SkillHashStore, computeSkillHash, SKILL_HASHES_TABLE_SQL,
+  type SkillHash,
+} from './skill-hashes.js';

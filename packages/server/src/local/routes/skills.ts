@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import type { FastifyPluginAsync } from 'fastify';
 import { PluginManager, getStarterSkillsDir, listStarterSkills, listCapabilityPacks, getPackManifest } from '@waggle/sdk';
 import { loadSkills, SkillRecommender, assessTrust } from '@waggle/agent';
+import { computeSkillHash } from '@waggle/core';
 
 /** Capability family definitions — user-job-first grouping */
 const SKILL_FAMILIES: Record<string, { family: string; label: string }> = {
@@ -177,6 +178,11 @@ export const skillRoutes: FastifyPluginAsync = async (server) => {
     // Copy skill file
     fs.copyFileSync(sourcePath, targetPath);
 
+    // Record content hash for change detection
+    try {
+      server.skillHashStore.setHash(id, computeSkillHash(content));
+    } catch { /* best-effort */ }
+
     // Reload skills into agent state
     server.agentState.skills.length = 0;
     server.agentState.skills.push(...loadSkills(waggleHome));
@@ -283,6 +289,11 @@ export const skillRoutes: FastifyPluginAsync = async (server) => {
         fs.copyFileSync(sourcePath, targetPath);
         installed.push(skillId);
 
+        // Record content hash for change detection
+        try {
+          server.skillHashStore.setHash(skillId, computeSkillHash(content));
+        } catch { /* best-effort */ }
+
         try {
           server.auditStore.record({
             capabilityName: skillId,
@@ -378,6 +389,11 @@ export const skillRoutes: FastifyPluginAsync = async (server) => {
     const filePath = path.join(skillsDir, `${name}.md`);
     fs.writeFileSync(filePath, content, 'utf-8');
 
+    // Record content hash for change detection
+    try {
+      server.skillHashStore.setHash(name, computeSkillHash(content));
+    } catch { /* best-effort */ }
+
     // Reload skills into agent state
     server.agentState.skills.length = 0;
     server.agentState.skills.push(...loadSkills(waggleHome));
@@ -404,6 +420,11 @@ export const skillRoutes: FastifyPluginAsync = async (server) => {
     }
     fs.writeFileSync(filePath, content, 'utf-8');
 
+    // Update content hash for change detection
+    try {
+      server.skillHashStore.setHash(name, computeSkillHash(content));
+    } catch { /* best-effort */ }
+
     // Reload skills into agent state
     server.agentState.skills.length = 0;
     server.agentState.skills.push(...loadSkills(waggleHome));
@@ -425,11 +446,23 @@ export const skillRoutes: FastifyPluginAsync = async (server) => {
     }
     fs.unlinkSync(filePath);
 
+    // Remove content hash
+    try {
+      server.skillHashStore.removeHash(name);
+    } catch { /* best-effort */ }
+
     // Reload skills into agent state
     server.agentState.skills.length = 0;
     server.agentState.skills.push(...loadSkills(waggleHome));
 
     return { ok: true, name };
+  });
+
+  // GET /api/skills/hash-status — check which skills have changed on disk
+  server.get('/api/skills/hash-status', async () => {
+    const currentSkills = loadSkills(waggleHome);
+    const result = server.skillHashStore.checkAll(currentSkills);
+    return result;
   });
 
   // ── Plugins ───────────────────────────────────────────────────────
