@@ -62,6 +62,7 @@ export {
   type TrustAssessment, type TrustSource, type RiskLevel, type RiskFactor, type PermissionSummary,
   type AssessmentMode, type AssessTrustInput,
 } from './trust-model.js';
+export { parseSkillFrontmatter, type SkillFrontmatter } from './skill-frontmatter.js';
 export { detectCorrection, detectCorrectionsInHistory, type DetectedCorrection, type CorrectionDurability } from './correction-detector.js';
 export {
   recordCapabilityGap, analyzeAndRecordCorrection, recordWorkflowPattern,

@@ -1,3 +1,8 @@
+---
+permissions:
+  network: true
+---
+
 # Research Team — Multi-Agent Investigation
 
 A coordinated 3-agent research workflow: researcher gathers information, synthesizer combines findings, reviewer validates quality.

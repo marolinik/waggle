@@ -1,3 +1,8 @@
+---
+permissions:
+  fileSystem: true
+---
+
 # Code Review — Structured Code Analysis
 
 Perform a thorough, structured code review with actionable feedback organized by priority.

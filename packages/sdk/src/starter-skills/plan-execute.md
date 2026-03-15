@@ -1,3 +1,9 @@
+---
+permissions:
+  codeExecution: true
+  fileSystem: true
+---
+
 # Plan & Execute — Structured Task Decomposition
 
 A multi-agent workflow: planner breaks down the task, executors work on sub-tasks, summarizer consolidates results.

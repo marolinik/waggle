@@ -12,6 +12,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { assessTrust, formatTrustSummary, type TrustAssessment } from './trust-model.js';
+import { parseSkillFrontmatter } from './skill-frontmatter.js';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -206,6 +207,7 @@ export function searchCapabilities(input: SearchCapabilitiesInput): AcquisitionP
     const { score, nameHits, contentHits } = scoreMatch(keywords, skill.name, skill.content);
 
     if (score >= 0.1) {
+      const { frontmatter } = parseSkillFrontmatter(skill.content);
       const firstLine = skill.content.split('\n').find(l => l.trim().length > 0)?.replace(/^#+\s*/, '') ?? '';
       candidates.push({
         name: skill.name,
@@ -216,7 +218,7 @@ export function searchCapabilities(input: SearchCapabilitiesInput): AcquisitionP
         matchScore: score,
         matchReason: buildMatchReason(nameHits, contentHits),
         installAction: null,
-        trust: assessTrust({ capabilityType: 'skill', source: 'installed', content: skill.content }),
+        trust: assessTrust({ capabilityType: 'skill', source: 'installed', content: skill.content, declaredPermissions: frontmatter.permissions }),
       });
     }
   }
@@ -230,6 +232,7 @@ export function searchCapabilities(input: SearchCapabilitiesInput): AcquisitionP
     const { score, nameHits, contentHits } = scoreMatch(keywords, starter.name, starter.content);
 
     if (score >= 0.1) {
+      const { frontmatter: starterFm } = parseSkillFrontmatter(starter.content);
       candidates.push({
         name: starter.name,
         type: 'skill',
@@ -239,7 +242,7 @@ export function searchCapabilities(input: SearchCapabilitiesInput): AcquisitionP
         matchScore: score,
         matchReason: buildMatchReason(nameHits, contentHits),
         installAction: `install_capability`,
-        trust: assessTrust({ capabilityType: 'skill', source: 'starter-pack', content: starter.content }),
+        trust: assessTrust({ capabilityType: 'skill', source: 'starter-pack', content: starter.content, declaredPermissions: starterFm.permissions }),
       });
     }
   }

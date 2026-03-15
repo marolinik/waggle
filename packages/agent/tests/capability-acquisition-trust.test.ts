@@ -180,6 +180,76 @@ describe('capability-acquisition trust integration', () => {
     expect(typeof trust.permissions).toBe('object');
   });
 
+  it('skill with declared permissions gets assessmentMode mixed', () => {
+    const skillWithFrontmatter = `---
+permissions:
+  network: true
+  codeExecution: true
+---
+
+# Deploy Skill
+Deploy using web_fetch and bash commands.`;
+
+    writeStarter('deploy-skill', skillWithFrontmatter);
+
+    const proposal = searchCapabilities({
+      need: 'deploy my application',
+      installedSkills: [],
+      starterSkillsDir: starterDir,
+      nativeToolNames: [],
+    });
+
+    const deployer = proposal.candidates.find(c => c.name === 'deploy-skill');
+    expect(deployer).toBeDefined();
+    expect(deployer!.trust).toBeDefined();
+    // Has both declared permissions AND content analysis -> mixed
+    expect(deployer!.trust!.assessmentMode).toBe('mixed');
+    expect(deployer!.trust!.permissions.network).toBe(true);
+    expect(deployer!.trust!.permissions.codeExecution).toBe(true);
+  });
+
+  it('skill without frontmatter still gets assessmentMode heuristic', () => {
+    writeStarter('plain-skill', '# Plain Skill\n\nJust instructions, no frontmatter at all.');
+
+    const proposal = searchCapabilities({
+      need: 'plain skill for task',
+      installedSkills: [],
+      starterSkillsDir: starterDir,
+      nativeToolNames: [],
+    });
+
+    const plain = proposal.candidates.find(c => c.name === 'plain-skill');
+    expect(plain).toBeDefined();
+    expect(plain!.trust!.assessmentMode).toBe('heuristic');
+  });
+
+  it('declared permissions are merged with heuristic detection', () => {
+    // Frontmatter declares network, content mentions bash (codeExecution heuristic)
+    const skillContent = `---
+permissions:
+  network: true
+---
+
+# Hybrid Skill
+Run bash commands to process data.`;
+
+    writeStarter('hybrid-skill', skillContent);
+
+    const proposal = searchCapabilities({
+      need: 'hybrid skill processing',
+      installedSkills: [],
+      starterSkillsDir: starterDir,
+      nativeToolNames: [],
+    });
+
+    const hybrid = proposal.candidates.find(c => c.name === 'hybrid-skill');
+    expect(hybrid).toBeDefined();
+    // network from declared, codeExecution from heuristic (bash keyword)
+    expect(hybrid!.trust!.permissions.network).toBe(true);
+    expect(hybrid!.trust!.permissions.codeExecution).toBe(true);
+    expect(hybrid!.trust!.assessmentMode).toBe('mixed');
+  });
+
   it('multiple candidates each have independent trust assessments', () => {
     writeStarter('simple-skill', '# Simple\n\nJust instructions, no tools.');
     writeStarter('complex-skill', '# Complex\n\nUse bash and web_fetch with api_key');
