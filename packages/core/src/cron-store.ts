@@ -106,7 +106,7 @@ export class CronStore {
     const raw = this.db.getDatabase();
     const enabled = input.enabled === false ? 0 : 1;
 
-    raw.prepare(`
+    const result = raw.prepare(`
       INSERT INTO cron_schedules (name, cron_expr, job_type, job_config, workspace_id, enabled, next_run_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(
@@ -120,8 +120,8 @@ export class CronStore {
     );
 
     return raw.prepare(
-      'SELECT * FROM cron_schedules ORDER BY id DESC LIMIT 1',
-    ).get() as CronSchedule;
+      'SELECT * FROM cron_schedules WHERE id = ?',
+    ).get(result.lastInsertRowid) as CronSchedule;
   }
 
   /** List all schedules ordered by name. */
@@ -138,14 +138,8 @@ export class CronStore {
     ).get(id) as CronSchedule | undefined;
   }
 
-  /** Update a schedule. Recomputes next_run_at if cronExpr changes. */
-  update(id: number, changes: {
-    name?: string;
-    cronExpr?: string;
-    jobConfig?: Record<string, unknown>;
-    workspaceId?: string;
-    enabled?: boolean;
-  }): void {
+  /** Update a schedule. Recomputes next_run_at if cronExpr changes. Returns updated schedule. */
+  update(id: number, changes: Partial<Pick<CreateScheduleInput, 'name' | 'cronExpr' | 'jobConfig' | 'workspaceId' | 'enabled'>>): CronSchedule {
     const setClauses: string[] = [];
     const values: unknown[] = [];
 
@@ -173,12 +167,14 @@ export class CronStore {
       values.push(changes.enabled ? 1 : 0);
     }
 
-    if (setClauses.length === 0) return;
+    if (setClauses.length > 0) {
+      values.push(id);
+      this.db.getDatabase().prepare(
+        `UPDATE cron_schedules SET ${setClauses.join(', ')} WHERE id = ?`,
+      ).run(...values);
+    }
 
-    values.push(id);
-    this.db.getDatabase().prepare(
-      `UPDATE cron_schedules SET ${setClauses.join(', ')} WHERE id = ?`,
-    ).run(...values);
+    return this.getById(id)!;
   }
 
   /** Delete a schedule by ID. */
