@@ -36,6 +36,20 @@ interface CronSchedule {
   createdAt: string;
 }
 
+interface AuditEntry {
+  id: number;
+  timestamp: string;
+  capabilityName: string;
+  capabilityType: string;
+  source: string;
+  riskLevel: 'low' | 'medium' | 'high';
+  trustSource: string;
+  approvalClass: string;
+  action: 'proposed' | 'approved' | 'installed' | 'rejected' | 'failed';
+  initiator: string;
+  detail: string;
+}
+
 interface CapabilitiesData {
   plugins: Array<{ name: string; state: string; tools: number; skills: number }>;
   mcpServers: Array<{ name: string; state: string; healthy: boolean; tools: number }>;
@@ -59,6 +73,7 @@ export function CockpitView() {
   const [schedules, setSchedules] = useState<CronSchedule[]>([]);
   const [schedulesLoading, setSchedulesLoading] = useState(true);
   const [capabilities, setCapabilities] = useState<CapabilitiesData | null>(null);
+  const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
   const [triggeringId, setTriggeringId] = useState<number | null>(null);
   const [togglingId, setTogglingId] = useState<number | null>(null);
 
@@ -90,6 +105,16 @@ export function CockpitView() {
     finally { setSchedulesLoading(false); }
   }, []);
 
+  const fetchAudit = useCallback(async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/api/audit/installs?limit=10`);
+      if (res.ok) {
+        const data = await res.json();
+        setAuditEntries(data.entries ?? []);
+      }
+    } catch { /* silent */ }
+  }, []);
+
   const fetchCapabilities = useCallback(async () => {
     try {
       const res = await fetch(`${BASE_URL}/api/capabilities/status`);
@@ -105,10 +130,11 @@ export function CockpitView() {
     fetchHealth();
     fetchSchedules();
     fetchCapabilities();
+    fetchAudit();
 
     const interval = setInterval(fetchHealth, REFRESH_INTERVAL);
     return () => clearInterval(interval);
-  }, [fetchHealth, fetchSchedules, fetchCapabilities]);
+  }, [fetchHealth, fetchSchedules, fetchCapabilities, fetchAudit]);
 
   // ── Actions ──────────────────────────────────────────────────────────
 
@@ -149,6 +175,40 @@ export function CockpitView() {
         hour: '2-digit', minute: '2-digit',
       });
     } catch { return '--'; }
+  };
+
+  const relativeTime = (iso: string): string => {
+    try {
+      const diff = Date.now() - new Date(iso).getTime();
+      if (diff < 0) return 'just now';
+      const secs = Math.floor(diff / 1000);
+      if (secs < 60) return 'just now';
+      const mins = Math.floor(secs / 60);
+      if (mins < 60) return `${mins} min ago`;
+      const hrs = Math.floor(mins / 60);
+      if (hrs < 24) return `${hrs} hr ago`;
+      const days = Math.floor(hrs / 24);
+      return `${days}d ago`;
+    } catch { return '--'; }
+  };
+
+  const actionDotColor = (action: string): string => {
+    switch (action) {
+      case 'installed': return '#3fb950';
+      case 'proposed': return '#58a6ff';
+      case 'approved': return '#d29922';
+      case 'failed': case 'rejected': return '#f85149';
+      default: return '#8b949e';
+    }
+  };
+
+  const riskColor = (risk: string): string => {
+    switch (risk) {
+      case 'low': return '#3fb950';
+      case 'medium': return '#d29922';
+      case 'high': return '#f85149';
+      default: return '#8b949e';
+    }
   };
 
   const statusColor = (status: string): string => {
@@ -279,7 +339,7 @@ export function CockpitView() {
   return (
     <div style={containerStyle}>
       <div style={headingStyle}>Cockpit</div>
-      <div style={subStyle}>Health, schedules, runtime status, and usage.</div>
+      <div style={subStyle}>Health, schedules, runtime status, usage, and audit trail.</div>
 
       <div style={gridStyle}>
         {/* ── Section 1: System Health ─────────────────────────────────── */}
@@ -456,6 +516,48 @@ export function CockpitView() {
           }}>
             Usage tracking coming in a future update.
           </div>
+        </div>
+
+        {/* ── Section 5: Install Audit Trail ───────────────────────────── */}
+        <div style={sectionStyle}>
+          <div style={sectionTitleStyle}>Install Audit Trail</div>
+
+          {auditEntries.length === 0 ? (
+            <div style={{ ...mutedStyle, padding: '8px 0' }}>
+              No install events recorded yet. Install a skill to see audit history.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {auditEntries.map(entry => (
+                <div key={entry.id} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '5px 0',
+                  fontSize: 12,
+                  color: 'var(--text, #e6edf3)',
+                  borderBottom: '1px solid rgba(255,255,255,0.04)',
+                }}>
+                  <span style={dotStyle(actionDotColor(entry.action))} title={entry.action} />
+                  <span style={{ fontWeight: 600, minWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                    {entry.capabilityName}
+                  </span>
+                  <span style={{ color: actionDotColor(entry.action), fontSize: 11, minWidth: 60 }}>
+                    {entry.action}
+                  </span>
+                  <span style={{ color: riskColor(entry.riskLevel), fontSize: 10, fontWeight: 600, textTransform: 'uppercase' as const, minWidth: 36 }}>
+                    {entry.riskLevel}
+                  </span>
+                  <span style={{ ...mutedStyle, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                    {entry.trustSource.replace(/_/g, ' ')}
+                  </span>
+                  <span style={{ ...mutedStyle, flexShrink: 0 }}>
+                    {relativeTime(entry.timestamp)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

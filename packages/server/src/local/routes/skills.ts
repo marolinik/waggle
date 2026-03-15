@@ -465,6 +465,29 @@ export const skillRoutes: FastifyPluginAsync = async (server) => {
     return result;
   });
 
+  // ── Audit Trail ─────────────────────────────────────────────────
+
+  // GET /api/audit/installs — recent install audit trail
+  server.get('/api/audit/installs', async (request) => {
+    const limit = parseInt((request.query as Record<string, string>).limit ?? '20', 10);
+    const entries = server.auditStore.getRecent(Math.min(limit, 100));
+    return {
+      entries: entries.map(e => ({
+        id: e.id,
+        timestamp: e.timestamp,
+        capabilityName: e.capability_name,
+        capabilityType: e.capability_type,
+        source: e.source,
+        riskLevel: e.risk_level,
+        trustSource: e.trust_source,
+        approvalClass: e.approval_class,
+        action: e.action,
+        initiator: e.initiator,
+        detail: e.detail,
+      })),
+    };
+  });
+
   // ── Plugins ───────────────────────────────────────────────────────
 
   // GET /api/plugins — list all installed plugins
