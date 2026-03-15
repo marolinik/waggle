@@ -26,7 +26,8 @@ export function useNotifications(serverUrl: string): UseNotificationsResult {
         return;
       }
       try {
-        const { isPermissionGranted, requestPermission } = await import('@tauri-apps/plugin-notification');
+        const notifModule = '@tauri-apps/' + 'plugin-notification';
+        const { isPermissionGranted, requestPermission } = await import(/* @vite-ignore */ notifModule);
         let permitted = await isPermissionGranted();
         if (!permitted) {
           const result = await requestPermission();
@@ -55,7 +56,8 @@ export function useNotifications(serverUrl: string): UseNotificationsResult {
         // OS notification when app not focused
         if (!document.hasFocus() && permittedRef.current) {
           try {
-            const { invoke } = await import('@tauri-apps/api/core');
+            const coreModule = '@tauri-apps/' + 'api/core';
+            const { invoke } = await import(/* @vite-ignore */ coreModule);
             await invoke('show_notification', {
               title: notification.title,
               body: notification.body,

@@ -32,7 +32,8 @@ export function ServiceProvider({ adapter, children }: ServiceProviderProps) {
       // If running in Tauri, ensure the server process is started first
       if ((window as any).__TAURI_INTERNALS__) {
         try {
-          const { invoke } = await import('@tauri-apps/api/core');
+          const coreModule = '@tauri-apps/' + 'api/core';
+          const { invoke } = await import(/* @vite-ignore */ coreModule);
           await invoke('ensure_service');
         } catch (err) {
           console.warn('[waggle] ensure_service failed:', err);

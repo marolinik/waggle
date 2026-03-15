@@ -158,7 +158,8 @@ function WaggleApp() {
     const listeners: Array<() => void> = [];
 
     (async () => {
-      const { listen } = await import('@tauri-apps/api/event');
+      const eventModule = '@tauri-apps/' + 'api/event';
+      const { listen } = await import(/* @vite-ignore */ eventModule);
 
       listeners.push(await listen('waggle://pause-agents', () => {
         console.log('[waggle] Pause agents toggled via tray');
@@ -171,11 +172,13 @@ function WaggleApp() {
 
       listeners.push(await listen('waggle://quit', async () => {
         try {
-          const { invoke } = await import('@tauri-apps/api/core');
+          const coreModule = '@tauri-apps/' + 'api/core';
+          const { invoke } = await import(/* @vite-ignore */ coreModule);
           await invoke('stop_service');
         } catch {}
         try {
-          const { exit } = await import('@tauri-apps/plugin-process');
+          const processModule = '@tauri-apps/' + 'plugin-process';
+          const { exit } = await import(/* @vite-ignore */ processModule);
           await exit(0);
         } catch {
           window.close();
@@ -189,7 +192,8 @@ function WaggleApp() {
 
       listeners.push(await listen('waggle://service-restart-needed', async () => {
         try {
-          const { invoke } = await import('@tauri-apps/api/core');
+          const coreModule2 = '@tauri-apps/' + 'api/core';
+          const { invoke } = await import(/* @vite-ignore */ coreModule2);
           await invoke('ensure_service');
         } catch {}
       }));
