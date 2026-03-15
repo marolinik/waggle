@@ -6,7 +6,7 @@
 import type { Workspace } from '@waggle/ui';
 import { Sidebar, WorkspaceTree } from '@waggle/ui';
 
-type AppView = 'chat' | 'settings' | 'memory' | 'events';
+type AppView = 'chat' | 'memory' | 'events' | 'capabilities' | 'cockpit' | 'settings';
 
 export interface AppSidebarProps {
   collapsed: boolean;
@@ -21,9 +21,11 @@ export interface AppSidebarProps {
 
 const NAV_ITEMS: { view: AppView; label: string; shortcut: string }[] = [
   { view: 'chat', label: 'Chat', shortcut: '1' },
-  { view: 'memory', label: 'Memory', shortcut: '2' },
-  { view: 'events', label: 'Events', shortcut: '3' },
-  { view: 'settings', label: 'Settings', shortcut: '4' },
+  { view: 'capabilities', label: 'Capabilities', shortcut: '2' },
+  { view: 'cockpit', label: 'Cockpit', shortcut: '3' },
+  { view: 'memory', label: 'Memory', shortcut: '4' },
+  { view: 'events', label: 'Events', shortcut: '5' },
+  { view: 'settings', label: 'Settings', shortcut: '6' },
 ];
 
 /** Indicator dot for nav items */

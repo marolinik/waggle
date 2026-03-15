@@ -9,7 +9,7 @@
 import type { Session, SessionSearchResult, Frame, FileEntry, TeamMember, ActivityItem } from '@waggle/ui';
 import { SessionList, FrameDetail, FilePreview, TeamPresence, ActivityFeed } from '@waggle/ui';
 
-type AppView = 'chat' | 'settings' | 'memory' | 'events';
+type AppView = 'chat' | 'memory' | 'events' | 'capabilities' | 'cockpit' | 'settings';
 
 export interface ContextPanelProps {
   currentView: AppView;

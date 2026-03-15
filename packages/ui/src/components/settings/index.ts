@@ -19,6 +19,9 @@ export type { AdvancedSectionProps, MindFileInfo } from './AdvancedSection.js';
 export { SkillsSection } from './SkillsSection.js';
 export type { SkillsSectionProps, SkillInfo, PluginInfo } from './SkillsSection.js';
 
+export { InstallCenter } from './InstallCenter.js';
+export type { InstallCenterProps } from './InstallCenter.js';
+
 export {
   maskApiKey,
   getProviderDisplayName,

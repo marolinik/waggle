@@ -142,6 +142,7 @@ export {
   mergeGates,
   SUPPORTED_PROVIDERS,
   SETTINGS_TABS,
+  InstallCenter,
 } from './components/settings/index.js';
 export type {
   SettingsPanelProps,
@@ -156,6 +157,7 @@ export type {
   MindFileInfo,
   ProviderConfig,
   SettingsTab,
+  InstallCenterProps,
 } from './components/settings/index.js';
 
 // Components — onboarding

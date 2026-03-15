@@ -44,6 +44,8 @@ import { ChatView } from './views/ChatView';
 import { SettingsView } from './views/SettingsView';
 import { MemoryView } from './views/MemoryView';
 import { EventsView } from './views/EventsView';
+import { CapabilitiesView } from './views/CapabilitiesView';
+import { CockpitView } from './views/CockpitView';
 
 const adapter = new LocalAdapter({ baseUrl: 'http://127.0.0.1:3333' });
 
@@ -69,7 +71,7 @@ function friendlyModelName(model: string): string {
   return parts[parts.length - 1];
 }
 
-type AppView = 'chat' | 'settings' | 'memory' | 'events';
+type AppView = 'chat' | 'memory' | 'events' | 'capabilities' | 'cockpit' | 'settings';
 
 function WaggleApp() {
   const service = useService();
@@ -803,6 +805,12 @@ function WaggleApp() {
                 filter={eventFilter}
                 onFilterChange={setEventFilter}
               />
+            )}
+            {currentView === 'capabilities' && (
+              <CapabilitiesView />
+            )}
+            {currentView === 'cockpit' && (
+              <CockpitView />
             )}
           </div>
         }
