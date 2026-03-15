@@ -329,6 +329,32 @@ function WaggleApp() {
           addSystemMessage('Git tools are available via the agent. Ask the agent to check git status.');
           break;
         }
+        case '/help': {
+          addSystemMessage(
+            '**Available Commands:**\n\n' +
+            '| Command | Description |\n' +
+            '|---------|-------------|\n' +
+            '| `/model [name]` | Show or switch the active LLM model |\n' +
+            '| `/models` | List all available models |\n' +
+            '| `/cost` | Show token usage and cost summary |\n' +
+            '| `/clear` | Clear conversation history |\n' +
+            '| `/identity` | Show agent identity |\n' +
+            '| `/awareness` | Show agent self-awareness state |\n' +
+            '| `/skills` | List loaded skills |\n' +
+            '| `/git` | Git tool info |\n' +
+            '| `/help` | Show this help message |\n\n' +
+            '**Workflow Commands** (processed by agent):\n\n' +
+            '| Command | Description |\n' +
+            '|---------|-------------|\n' +
+            '| `/research [topic]` | Deep research on a topic |\n' +
+            '| `/draft [type]` | Draft a document |\n' +
+            '| `/review [item]` | Review code or content |\n' +
+            '| `/spawn [task]` | Spawn a sub-agent |\n' +
+            '| `/plan [goal]` | Create a structured plan |\n\n' +
+            'Other commands are sent to the server command registry.',
+          );
+          break;
+        }
         default: {
           // Workflow commands that need LLM → send as regular agent message
           const llmCommands = ['/research', '/draft', '/review', '/spawn', '/plan'];
