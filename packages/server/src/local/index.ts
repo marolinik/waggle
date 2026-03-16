@@ -48,6 +48,7 @@ import { capabilitiesRoutes } from './routes/capabilities.js';
 import { commandRoutes } from './routes/commands.js';
 import { cronRoutes } from './routes/cron.js';
 import { notificationRoutes } from './routes/notifications.js';
+import { marketplaceDevRoutes } from './routes/marketplace-dev.js';
 import { LocalScheduler } from './cron.js';
 import { EventEmitter } from 'node:events';
 
@@ -189,6 +190,27 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
     }
   } catch {
     // Migration failure should never block startup
+  }
+
+  // Seed marketplace.db if not present (for dev marketplace routes)
+  try {
+    const marketplaceDbTarget = path.join(fullConfig.dataDir, 'marketplace.db');
+    if (!fs.existsSync(marketplaceDbTarget)) {
+      // Try to copy from monorepo packages/marketplace/marketplace.db
+      const seedPaths = [
+        path.resolve(__dirname, '../../../../marketplace/marketplace.db'),
+        path.resolve(__dirname, '../../../../../packages/marketplace/marketplace.db'),
+      ];
+      for (const seedPath of seedPaths) {
+        if (fs.existsSync(seedPath)) {
+          fs.copyFileSync(seedPath, marketplaceDbTarget);
+          console.log(`[waggle] Seeded marketplace.db from ${seedPath}`);
+          break;
+        }
+      }
+    }
+  } catch {
+    // Marketplace seeding is optional — never block startup
   }
 
   // ── Agent state (matches CLI initialization) ────────────────────────
@@ -611,6 +633,7 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   await server.register(commandRoutes);
   await server.register(cronRoutes);
   await server.register(notificationRoutes);
+  await server.register(marketplaceDevRoutes);
 
   // WebSocket endpoint — event bus relay to frontend
   server.get('/ws', { websocket: true }, (socket) => {

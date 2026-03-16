@@ -1,6 +1,13 @@
 import { defineConfig } from 'vitest/config';
+import path from 'node:path';
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      // Marketplace uses ESM .js extensions — alias to source for Vitest
+      '@waggle/marketplace': path.resolve(__dirname, 'packages/marketplace/src/index.ts'),
+    },
+  },
   test: {
     globals: true,
     testTimeout: 30_000,
