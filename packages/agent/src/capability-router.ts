@@ -1,4 +1,4 @@
-export type CapabilitySource = 'native' | 'skill' | 'plugin' | 'mcp' | 'subagent' | 'missing';
+export type CapabilitySource = 'native' | 'skill' | 'plugin' | 'mcp' | 'subagent' | 'connector' | 'missing';
 
 export interface CapabilityRoute {
   source: CapabilitySource;

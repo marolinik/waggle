@@ -145,6 +145,44 @@ export class VaultStore {
     return name in vault;
   }
 
+  /** Set a connector credential with typed metadata */
+  setConnectorCredential(connectorId: string, credential: {
+    type: 'api_key' | 'oauth2' | 'bearer' | 'basic';
+    value: string;
+    refreshToken?: string;
+    expiresAt?: string;
+    scopes?: string[];
+  }): void {
+    this.set(`connector:${connectorId}`, credential.value, {
+      credentialType: credential.type,
+      refreshToken: credential.refreshToken,
+      expiresAt: credential.expiresAt,
+      scopes: credential.scopes,
+    });
+  }
+
+  /** Get a connector credential with typed metadata */
+  getConnectorCredential(connectorId: string): {
+    value: string;
+    type: string;
+    refreshToken?: string;
+    expiresAt?: string;
+    scopes?: string[];
+    isExpired: boolean;
+  } | null {
+    const entry = this.get(`connector:${connectorId}`);
+    if (!entry) return null;
+    const expiresAt = entry.metadata?.expiresAt as string | undefined;
+    return {
+      value: entry.value,
+      type: (entry.metadata?.credentialType as string) ?? 'api_key',
+      refreshToken: entry.metadata?.refreshToken as string | undefined,
+      expiresAt,
+      scopes: entry.metadata?.scopes as string[] | undefined,
+      isExpired: expiresAt ? new Date(expiresAt) < new Date() : false,
+    };
+  }
+
   /** Migrate plaintext providers from config.json to vault. Returns count migrated. */
   migrateFromConfig(config: { providers?: Record<string, { apiKey: string; models?: string[]; baseUrl?: string }> }): number {
     if (!config.providers) return 0;

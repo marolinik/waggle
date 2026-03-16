@@ -49,6 +49,7 @@ import { commandRoutes } from './routes/commands.js';
 import { cronRoutes } from './routes/cron.js';
 import { notificationRoutes } from './routes/notifications.js';
 import { marketplaceDevRoutes } from './routes/marketplace-dev.js';
+import { connectorRoutes } from './routes/connectors.js';
 import { LocalScheduler } from './cron.js';
 import { EventEmitter } from 'node:events';
 
@@ -634,6 +635,7 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   await server.register(cronRoutes);
   await server.register(notificationRoutes);
   await server.register(marketplaceDevRoutes);
+  await server.register(connectorRoutes);
 
   // WebSocket endpoint — event bus relay to frontend
   server.get('/ws', { websocket: true }, (socket) => {

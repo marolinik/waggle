@@ -16,7 +16,7 @@ import { parseSkillFrontmatter } from './skill-frontmatter.js';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
-export type CapabilitySourceType = 'native' | 'skill' | 'plugin' | 'mcp';
+export type CapabilitySourceType = 'native' | 'skill' | 'plugin' | 'mcp' | 'connector';
 
 export type CapabilityAvailability =
   | 'active'              // Currently loaded and usable

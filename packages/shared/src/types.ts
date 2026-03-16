@@ -242,3 +242,56 @@ export type WsServerEvent =
   | { type: 'suggestion'; suggestion: SuggestionEntry }
   | { type: 'scout_finding'; finding: ScoutFinding }
   | { type: 'job_progress'; jobId: string; progress: Record<string, unknown> };
+
+// ─── Connector Types ────────────────────────────────────────────────────
+
+/** Connector credential type stored in vault */
+export interface ConnectorCredential {
+  type: 'api_key' | 'oauth2' | 'bearer' | 'basic';
+  /** For oauth2: access token */
+  accessToken?: string;
+  /** For oauth2: refresh token */
+  refreshToken?: string;
+  /** ISO timestamp when accessToken expires */
+  expiresAt?: string;
+  /** OAuth scopes granted */
+  scopes?: string[];
+  /** For api_key/bearer: the key or token value */
+  apiKey?: string;
+  /** For basic: username */
+  username?: string;
+}
+
+/** Connector status in the system */
+export type ConnectorStatus = 'connected' | 'disconnected' | 'expired' | 'error';
+
+/** Connector definition — what the user sees */
+export interface ConnectorDefinition {
+  id: string;
+  name: string;
+  description: string;
+  /** Which service this connects to */
+  service: string;
+  /** What auth method is needed */
+  authType: 'api_key' | 'oauth2' | 'bearer' | 'basic';
+  /** Whether credentials exist in vault */
+  status: ConnectorStatus;
+  /** What the connector can do */
+  capabilities: ('read' | 'write' | 'search')[];
+  /** Which substrate manages this connector */
+  substrate: 'waggle' | 'kvark';
+  /** Agent tools this connector provides when connected */
+  tools: string[];
+  /** Connector-specific config */
+  config?: Record<string, unknown>;
+}
+
+/** Connector health for cockpit display */
+export interface ConnectorHealth {
+  id: string;
+  name: string;
+  status: ConnectorStatus;
+  lastChecked: string;
+  error?: string;
+  tokenExpiresAt?: string;
+}
