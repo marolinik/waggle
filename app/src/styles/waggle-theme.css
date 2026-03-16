@@ -1427,6 +1427,178 @@ button.session-card__button[class*="bg-blue"] {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+ * Wave C1 — Home / Workspace Now Direction D Enhancement
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Welcome back message — warm, personal */
+.chat-area__welcome-back {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-style: normal !important;
+  color: var(--text-muted) !important;
+  font-size: 13px !important;
+  letter-spacing: -0.01em;
+}
+
+/* Workspace name — larger, Inter font, amber accent */
+.chat-area__workspace-name {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 22px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+  color: var(--text-bright, #ededef) !important;
+}
+
+/* Workspace group tag — amber badge */
+.chat-area__workspace-group {
+  color: var(--primary) !important;
+  font-weight: 600 !important;
+}
+
+/* Stats line — refined */
+.chat-area__workspace-stats {
+  font-size: 12px !important;
+  color: var(--text-muted) !important;
+}
+
+/* Last active — dim */
+.chat-area__last-active {
+  font-size: 11px !important;
+  color: var(--text-dim) !important;
+}
+
+/* Section cards (decisions, blockers, threads, memories) — Direction D card styling */
+.chat-area__recent-decisions,
+.chat-area__recent-threads,
+.chat-area__recent-memories,
+.chat-area__progress-items {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  padding: 14px 16px !important;
+}
+
+/* Section headers — uppercase labels with category color */
+.chat-area__recent-decisions h3,
+.chat-area__recent-threads h3,
+.chat-area__recent-memories h3,
+.chat-area__progress-items h3 {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  margin: 0 0 10px 0 !important;
+}
+
+/* Category-specific header colors */
+.chat-area__recent-decisions h3 {
+  color: var(--primary) !important;
+}
+.chat-area__progress-items h3 {
+  color: var(--text-muted) !important;
+}
+.chat-area__recent-threads h3 {
+  color: var(--accent, #c084fc) !important;
+}
+.chat-area__recent-memories h3 {
+  color: var(--primary) !important;
+}
+
+/* Decision items — amber dot before text */
+.chat-area__decision-text::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary);
+  margin-right: 8px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+/* Progress icons — colored by type */
+.chat-area__progress-blocker .chat-area__progress-icon {
+  color: var(--error, #ef4444) !important;
+}
+.chat-area__progress-task .chat-area__progress-icon {
+  color: var(--warning, #fbbf24) !important;
+}
+.chat-area__progress-completed .chat-area__progress-icon {
+  color: var(--success, #3ecf8e) !important;
+}
+
+/* Progress text */
+.chat-area__progress-text {
+  color: var(--text-muted) !important;
+  font-size: 12px !important;
+}
+
+/* Memory importance dots — colored */
+.chat-area__memory-importance--critical {
+  color: var(--error, #ef4444) !important;
+}
+.chat-area__memory-importance--important {
+  color: var(--primary) !important;
+}
+.chat-area__memory-importance--normal {
+  color: var(--text-dim) !important;
+}
+
+/* Thread items — hoverable with purple accent */
+.chat-area__thread-clickable {
+  transition: background 0.12s, color 0.12s !important;
+  border-radius: 6px !important;
+}
+.chat-area__thread-clickable:hover {
+  background: rgba(192, 132, 252, 0.08) !important;
+  color: var(--accent, #c084fc) !important;
+}
+
+/* Prompt chips — amber on hover, glass background */
+.chat-area__prompt-chip {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 20px !important;
+  color: var(--text-muted) !important;
+  font-size: 12px !important;
+  padding: 7px 16px !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  transition: all 0.15s ease !important;
+}
+.chat-area__prompt-chip:hover:not(:disabled) {
+  background: var(--primary) !important;
+  color: #0a0a12 !important;
+  border-color: var(--primary) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(212, 168, 67, 0.2) !important;
+}
+.chat-area__prompt-chip:disabled {
+  opacity: 0.4 !important;
+  cursor: not-allowed !important;
+}
+
+/* Onboarding hints — warmer styling */
+.chat-area__onboarding-hint {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 10px !important;
+  padding: 10px 14px !important;
+}
+.chat-area__onboarding-icon {
+  color: var(--primary) !important;
+  font-size: 10px !important;
+}
+
+/* Workspace summary — Inter font for readability */
+.chat-area__workspace-summary {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 13px !important;
+  line-height: 1.6 !important;
+  color: var(--text-muted) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
  * Wave A2 — Direction D Component Adoption
  * Targeted visual patterns from Direction D prototypes.
  * No layout/IA changes — visual refinement only.
@@ -1683,4 +1855,107 @@ button[class*="bg-blue"][class*="text-sm"] {
 :root[data-theme="light"] .waggle-statusbar {
   backdrop-filter: blur(8px) !important;
   background: rgba(230, 229, 224, 0.95) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Wave C3 — Onboarding Direction D Enhancement
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.onboarding-wizard {
+  background: var(--bg) !important;
+}
+
+.onboarding-wizard h2 {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  color: var(--text-bright, #ededef) !important;
+  letter-spacing: -0.02em;
+}
+
+.onboarding-wizard input[type="text"],
+.onboarding-wizard input[type="password"] {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text) !important;
+  border-radius: 10px !important;
+  transition: border-color 0.2s !important;
+}
+.onboarding-wizard input:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 1px rgba(212, 168, 67, 0.2) !important;
+  outline: none !important;
+}
+
+.onboarding-wizard button[class*="border-blue"] {
+  border-color: var(--primary) !important;
+}
+.onboarding-wizard button[class*="bg-blue-600"] {
+  background: var(--primary) !important;
+  color: #0a0a12 !important;
+  border-radius: 10px !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-weight: 600 !important;
+}
+.onboarding-wizard button[class*="bg-blue-600"]:hover {
+  background: var(--primary-hover, #e0b750) !important;
+}
+.onboarding-wizard button[class*="text-gray-500"] {
+  color: var(--text-dim) !important;
+}
+.onboarding-wizard button[class*="text-gray-500"]:hover {
+  color: var(--text-muted) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Wave C2 — Chat Direction D Refinement
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Tool trail toggle — amber dot instead of blue */
+.chat-message__trail-toggle {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 12px !important;
+  color: var(--text-muted) !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  padding: 4px 12px !important;
+  transition: background 0.12s, border-color 0.12s !important;
+}
+.chat-message__trail-toggle:hover {
+  background: var(--surface-2) !important;
+  border-color: rgba(212, 168, 67, 0.15) !important;
+}
+
+/* Trail content — refined background */
+.chat-message__trail-content {
+  background: rgba(20, 20, 30, 0.5) !important;
+  border-radius: 8px !important;
+  padding: 8px !important;
+  border: 1px solid var(--border) !important;
+}
+
+/* Reasoning steps — purple accent dots (Direction D agent color) */
+.chat-message__step {
+  font-size: 12px !important;
+  color: var(--text-muted) !important;
+}
+.chat-message__step::before {
+  color: var(--accent, #c084fc) !important;
+}
+
+/* System messages — refined */
+.chat-message--system > div {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 10px !important;
+  font-size: 12px !important;
+}
+
+/* Copy button — amber on hover */
+.chat-message__copy:hover {
+  color: var(--primary) !important;
+}
+
+/* Loading dots — amber */
+.chat-area__loading-dot {
+  background: var(--primary) !important;
 }

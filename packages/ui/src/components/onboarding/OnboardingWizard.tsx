@@ -63,15 +63,16 @@ export function OnboardingWizard({ onComplete, onTestApiKey, initialStep }: Onbo
   };
 
   return (
-    <div className="onboarding-wizard flex min-h-screen flex-col items-center justify-center bg-gray-950">
-      {/* Progress indicator */}
+    <div className="onboarding-wizard flex min-h-screen flex-col items-center justify-center" style={{ background: 'var(--bg, #0a0a12)' }}>
+      {/* Progress indicator — amber for completed steps */}
       <div className="mb-8 flex gap-2">
         {ONBOARDING_STEPS.map((step, i) => (
           <div
             key={step.id}
-            className={`h-2 w-8 rounded-full transition-colors ${
-              i <= stepIndex ? 'bg-blue-500' : 'bg-gray-700'
-            }`}
+            className="h-2 w-8 rounded-full transition-colors"
+            style={{
+              background: i <= stepIndex ? 'var(--primary, #d4a843)' : 'var(--surface-3, #22222e)',
+            }}
           />
         ))}
       </div>
