@@ -1425,3 +1425,262 @@ button.session-card__button[class*="bg-blue"] {
   border-top: 1px solid var(--border);
   margin: 0.75em 0;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Wave A2 — Direction D Component Adoption
+ * Targeted visual patterns from Direction D prototypes.
+ * No layout/IA changes — visual refinement only.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── A2: Sidebar — amber gradient edge, glass-like brand area ───────── */
+.waggle-sidebar::after {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--primary) 25%,
+    rgba(192, 132, 252, 0.5) 75%,
+    transparent 100%
+  ) !important;
+  opacity: 0.4 !important;
+}
+
+.waggle-brand {
+  color: var(--text-dim) !important;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px !important;
+  margin-bottom: 4px;
+}
+
+/* Sidebar nav active: amber left bar + amber text (Direction D pattern) */
+.waggle-sidebar-bottom button[style*="rgba(99, 102, 241"],
+.waggle-sidebar-bottom button.nav-active {
+  background: var(--primary-muted) !important;
+  color: var(--primary) !important;
+  border-left-color: var(--primary) !important;
+}
+
+/* Workspace card active: amber highlight */
+button.workspace-card[class*="bg-blue"],
+button.workspace-card[class*="bg-amber"],
+button.workspace-card.workspace-active {
+  background: var(--primary-muted) !important;
+  color: var(--primary) !important;
+}
+
+/* ── A2: Chat bubbles — Direction D glass tint refinement ───────────── */
+.chat-message--user > div {
+  border-color: rgba(212, 168, 67, 0.12) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
+}
+
+.chat-message--assistant > div {
+  border-left: 2px solid rgba(192, 132, 252, 0.3) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Agent name accent (purple like Direction D) */
+.chat-message--assistant .text-blue-400,
+.chat-message--assistant [class*="text-blue"] {
+  color: var(--accent) !important;
+}
+
+/* ── A2: Chat input — glass morphism effect ─────────────────────────── */
+.chat-input {
+  backdrop-filter: blur(12px) !important;
+  background: rgba(10, 10, 18, 0.85) !important;
+}
+
+.chat-input__textarea {
+  background: rgba(20, 20, 30, 0.7) !important;
+  border-color: rgba(255, 255, 255, 0.06) !important;
+  border-radius: 10px !important;
+  transition: border-color 0.2s, box-shadow 0.2s !important;
+}
+.chat-input__textarea:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 1px rgba(212, 168, 67, 0.2) !important;
+}
+
+.chat-input__send {
+  background: var(--primary) !important;
+  color: #0a0a12 !important;
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+  transition: background 0.15s, box-shadow 0.15s, transform 0.1s !important;
+}
+.chat-input__send:hover:not(:disabled) {
+  background: var(--primary-hover) !important;
+  box-shadow: 0 0 16px rgba(212, 168, 67, 0.25) !important;
+  transform: scale(1.02) !important;
+}
+
+/* ── A2: Tool cards — compact mono, status dot, Direction D pattern ─── */
+.tool-card {
+  background: var(--surface-2) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 6px !important;
+  transition: background 0.12s !important;
+}
+.tool-card:hover {
+  background: var(--surface-3) !important;
+}
+
+/* Tool status dots (Direction D uses small colored dots before tool name) */
+.tool-card__badge {
+  border-radius: 3px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em !important;
+}
+.tool-card__badge[class*="bg-green"] {
+  background: rgba(62, 207, 142, 0.15) !important;
+  color: var(--success) !important;
+}
+.tool-card__badge[class*="bg-blue"] {
+  background: rgba(212, 168, 67, 0.15) !important;
+  color: var(--primary) !important;
+}
+
+/* ── A2: Approval gates — amber accent, shield pattern ──────────────── */
+.approval-gate {
+  border-color: rgba(212, 168, 67, 0.3) !important;
+  background: rgba(212, 168, 67, 0.04) !important;
+  border-radius: 14px !important;
+  padding: 14px 18px !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+/* Direction D: gradient left accent bar */
+.approval-gate::before {
+  content: '' !important;
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  width: 4px !important;
+  background: linear-gradient(180deg, var(--primary) 0%, rgba(212, 168, 67, 0.1) 100%) !important;
+  border-radius: 4px 0 0 4px !important;
+}
+
+.approval-gate__actions button[class*="bg-green"],
+.approval-gate__actions button[class*="bg-blue"] {
+  background: var(--primary) !important;
+  color: #0a0a12 !important;
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+  transition: background 0.15s, transform 0.1s !important;
+}
+.approval-gate__actions button[class*="bg-green"]:hover,
+.approval-gate__actions button[class*="bg-blue"]:hover {
+  transform: scale(1.02) !important;
+  box-shadow: 0 0 16px rgba(212, 168, 67, 0.2) !important;
+}
+
+.approval-gate__actions button[class*="bg-red"],
+.approval-gate__actions button[class*="bg-gray"] {
+  background: var(--surface-2) !important;
+  color: var(--text-muted) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 10px !important;
+}
+
+/* ── A2: Cockpit — glass cards for health sections ──────────────────── */
+.cockpit-section,
+[class*="cockpit"] > div > div {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  padding: 16px !important;
+  margin-bottom: 12px !important;
+}
+
+/* Cockpit health status dot glow */
+.cockpit-health-ok,
+[class*="text-green"][class*="font-bold"] {
+  text-shadow: 0 0 8px rgba(62, 207, 142, 0.4) !important;
+}
+
+/* ── A2: Capabilities — glass pack cards ────────────────────────────── */
+.capability-pack-card,
+.pack-card {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s !important;
+}
+.capability-pack-card:hover,
+.pack-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3) !important;
+  border-color: rgba(212, 168, 67, 0.15) !important;
+}
+
+/* "Installed" badge — amber background */
+.pack-badge-installed,
+[class*="bg-green"][class*="text-xs"] {
+  background: rgba(212, 168, 67, 0.12) !important;
+  color: var(--primary) !important;
+  border-radius: 6px !important;
+  padding: 2px 8px !important;
+  font-weight: 600 !important;
+}
+
+/* Install button — amber primary */
+button[class*="bg-blue"][class*="text-xs"],
+button[class*="bg-blue"][class*="text-sm"] {
+  background: var(--primary) !important;
+  color: #0a0a12 !important;
+  border-radius: 8px !important;
+}
+
+/* ── A2: Status bar — refined with amber workspace accent ───────────── */
+.waggle-statusbar {
+  background: rgba(7, 7, 12, 0.95) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+/* ── A2: Context panel — subtle surface distinction ─────────────────── */
+.waggle-context-panel {
+  background: var(--bg-elevated) !important;
+}
+
+/* ── A2: Focus ring — amber instead of indigo ───────────────────────── */
+*:focus-visible {
+  outline: none !important;
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--primary) !important;
+  border-radius: 8px;
+}
+
+/* ── A2: Light mode adaptations ─────────────────────────────────────── */
+:root[data-theme="light"] .chat-input {
+  backdrop-filter: blur(12px) !important;
+  background: rgba(245, 244, 240, 0.9) !important;
+}
+
+:root[data-theme="light"] .chat-input__textarea {
+  background: rgba(255, 255, 255, 0.85) !important;
+}
+
+:root[data-theme="light"] .chat-input__textarea:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 1px rgba(184, 135, 42, 0.2) !important;
+}
+
+:root[data-theme="light"] .chat-message--user > div {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+}
+
+:root[data-theme="light"] .chat-message--assistant > div {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+  border-left-color: rgba(139, 92, 246, 0.2) !important;
+}
+
+:root[data-theme="light"] .approval-gate {
+  background: rgba(184, 135, 42, 0.04) !important;
+  border-color: rgba(184, 135, 42, 0.2) !important;
+}
+
+:root[data-theme="light"] .waggle-statusbar {
+  backdrop-filter: blur(8px) !important;
+  background: rgba(230, 229, 224, 0.95) !important;
+}
