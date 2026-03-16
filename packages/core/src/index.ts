@@ -47,3 +47,5 @@ export {
   SkillHashStore, computeSkillHash, SKILL_HASHES_TABLE_SQL,
   type SkillHash,
 } from './skill-hashes.js';
+export { processImport, parseChatGPTExport, parseClaudeExport, extractKnowledge } from './memory-import.js';
+export type { ImportSource, ImportResult, ExtractedKnowledge, ParsedConversation, ConversationMessage } from './memory-import.js';
