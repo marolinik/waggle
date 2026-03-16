@@ -226,6 +226,8 @@ export function CockpitView() {
     maxWidth: 960,
     margin: '0 auto',
     fontFamily: 'var(--font-mono, "JetBrains Mono", monospace)',
+    height: '100%',
+    overflowY: 'auto',
   };
 
   const headingStyle: React.CSSProperties = {

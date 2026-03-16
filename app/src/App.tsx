@@ -883,7 +883,7 @@ function WaggleApp() {
           <div
             key={activeWorkspace?.id ?? 'none'}
             className="workspace-transition"
-            style={{ '--workspace-hue': activeWorkspace ? workspaceHue(activeWorkspace.name) : 220 } as React.CSSProperties}
+            style={{ '--workspace-hue': activeWorkspace ? workspaceHue(activeWorkspace.name) : 220, height: '100%', overflow: 'hidden' } as React.CSSProperties}
           >
             {currentView === 'chat' && (
               <ChatView
