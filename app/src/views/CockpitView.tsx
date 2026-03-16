@@ -76,6 +76,12 @@ export function CockpitView() {
   const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
   const [triggeringId, setTriggeringId] = useState<number | null>(null);
   const [togglingId, setTogglingId] = useState<number | null>(null);
+  const [connectors, setConnectors] = useState<Array<{
+    id: string; name: string; status: string; service: string;
+    authType: string; capabilities: string[]; substrate: string;
+  }>>([]);
+  const [connectingId, setConnectingId] = useState<string | null>(null);
+  const [connectToken, setConnectToken] = useState('');
 
   // ── Fetchers ─────────────────────────────────────────────────────────
 
@@ -124,6 +130,16 @@ export function CockpitView() {
     } catch { /* silent */ }
   }, []);
 
+  const fetchConnectors = useCallback(async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/api/connectors`);
+      if (res.ok) {
+        const data = await res.json();
+        setConnectors(data.connectors ?? []);
+      }
+    } catch { /* silent */ }
+  }, []);
+
   // ── Effects ──────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -131,10 +147,11 @@ export function CockpitView() {
     fetchSchedules();
     fetchCapabilities();
     fetchAudit();
+    fetchConnectors();
 
     const interval = setInterval(fetchHealth, REFRESH_INTERVAL);
     return () => clearInterval(interval);
-  }, [fetchHealth, fetchSchedules, fetchCapabilities, fetchAudit]);
+  }, [fetchHealth, fetchSchedules, fetchCapabilities, fetchAudit, fetchConnectors]);
 
   // ── Actions ──────────────────────────────────────────────────────────
 
@@ -163,6 +180,31 @@ export function CockpitView() {
     } catch { /* silent */ }
     finally { setTriggeringId(null); }
   }, [fetchSchedules]);
+
+  const connectConnector = useCallback(async (id: string, token: string) => {
+    setConnectingId(id);
+    try {
+      const res = await fetch(`${BASE_URL}/api/connectors/${id}/connect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+      if (res.ok) {
+        setConnectToken('');
+        await fetchConnectors();
+      }
+    } catch { /* silent */ }
+    finally { setConnectingId(null); }
+  }, [fetchConnectors]);
+
+  const disconnectConnector = useCallback(async (id: string) => {
+    setConnectingId(id);
+    try {
+      await fetch(`${BASE_URL}/api/connectors/${id}/disconnect`, { method: 'POST' });
+      await fetchConnectors();
+    } catch { /* silent */ }
+    finally { setConnectingId(null); }
+  }, [fetchConnectors]);
 
   // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -216,6 +258,16 @@ export function CockpitView() {
       case 'ok': case 'healthy': return '#3fb950';
       case 'degraded': return '#d29922';
       default: return '#f85149';
+    }
+  };
+
+  const connectorStatusColor = (status: string): string => {
+    switch (status) {
+      case 'connected': return 'var(--success, #3ecf8e)';
+      case 'disconnected': return 'var(--text-dim, #484f58)';
+      case 'expired': return 'var(--warning, #fbbf24)';
+      case 'error': return 'var(--error, #ef4444)';
+      default: return 'var(--text-dim, #484f58)';
     }
   };
 
@@ -520,7 +572,122 @@ export function CockpitView() {
           </div>
         </div>
 
-        {/* ── Section 5: Install Audit Trail ───────────────────────────── */}
+        {/* ── Section 5: Connectors ──────────────────────────────────── */}
+        <div className="cockpit-connectors" style={sectionStyle}>
+          <div style={sectionTitleStyle}>Connectors</div>
+
+          {connectors.length === 0 ? (
+            <div style={{ ...mutedStyle, padding: '8px 0' }}>
+              No connectors configured yet.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {connectors.map(c => (
+                <div key={c.id} className="cockpit-connector-card" style={{
+                  background: 'rgba(255,255,255,0.02)',
+                  borderRadius: 8,
+                  padding: '10px 12px',
+                  border: '1px solid var(--border, rgba(255,255,255,0.06))',
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{
+                        ...dotStyle(connectorStatusColor(c.status)),
+                        boxShadow: c.status === 'connected'
+                          ? `0 0 6px ${connectorStatusColor(c.status)}`
+                          : 'none',
+                      }} />
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #ededef)' }}>
+                        {c.name}
+                      </span>
+                      <span style={{
+                        fontSize: 10,
+                        color: connectorStatusColor(c.status),
+                        textTransform: 'uppercase' as const,
+                        fontWeight: 600,
+                        letterSpacing: '0.03em',
+                      }}>
+                        {c.status}
+                      </span>
+                    </div>
+
+                    {c.status === 'connected' || c.status === 'error' ? (
+                      <button
+                        className="cockpit-connector-btn"
+                        style={{
+                          ...smallBtnStyle(connectingId === c.id),
+                          color: 'var(--error, #ef4444)',
+                          borderColor: 'rgba(239, 68, 68, 0.2)',
+                        }}
+                        onClick={() => disconnectConnector(c.id)}
+                        disabled={connectingId === c.id}
+                      >
+                        Disconnect
+                      </button>
+                    ) : null}
+                  </div>
+
+                  <div style={{ ...mutedStyle, marginTop: 4, display: 'flex', gap: 12 }}>
+                    <span>service: {c.service}</span>
+                    <span>auth: {c.authType}</span>
+                    <span>substrate: {c.substrate}</span>
+                  </div>
+
+                  {/* Connect form — shows only when disconnected */}
+                  {c.status === 'disconnected' && (
+                    <div style={{
+                      marginTop: 8,
+                      padding: '8px 0 0',
+                      borderTop: '1px solid var(--border, rgba(255,255,255,0.06))',
+                      display: 'flex',
+                      gap: 6,
+                      alignItems: 'center',
+                    }}>
+                      <input
+                        className="cockpit-connector-input"
+                        type="password"
+                        placeholder={c.authType === 'bearer' ? 'Paste personal access token...' : 'Enter API key...'}
+                        value={connectToken}
+                        onChange={e => setConnectToken(e.target.value)}
+                        style={{
+                          flex: 1,
+                          background: 'var(--surface-2, #1a1a26)',
+                          border: '1px solid var(--border, rgba(255,255,255,0.06))',
+                          borderRadius: 6,
+                          padding: '5px 10px',
+                          fontSize: 11,
+                          fontFamily: 'inherit',
+                          color: 'var(--text, #ededef)',
+                        }}
+                      />
+                      <button
+                        className="cockpit-connector-connect-btn"
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          padding: '5px 14px',
+                          borderRadius: 6,
+                          border: 'none',
+                          background: connectToken ? 'var(--primary, #d4a843)' : 'var(--surface-3, #22222e)',
+                          color: connectToken ? '#0a0a12' : 'var(--text-dim)',
+                          cursor: connectToken ? 'pointer' : 'default',
+                          fontFamily: 'inherit',
+                          transition: 'background 0.15s',
+                        }}
+                        onClick={() => connectToken && connectConnector(c.id, connectToken)}
+                        disabled={!connectToken || connectingId === c.id}
+                      >
+                        {connectingId === c.id ? 'Connecting...' : 'Connect'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── Section 6: Install Audit Trail ───────────────────────────── */}
         <div style={sectionStyle}>
           <div style={sectionTitleStyle}>Install Audit Trail</div>
 
