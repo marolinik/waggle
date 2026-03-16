@@ -1,20 +1,20 @@
 /**
- * Waggle Dark Theme
+ * Waggle Dark Theme — Direction D palette
  */
 [data-theme='dark'] {
-  --waggle-bg: #0f3460;
-  --waggle-surface: #1a1a2e;
-  --waggle-sidebar-bg: #16213e;
-  --waggle-tabs-bg: #16213e;
-  --waggle-statusbar-bg: #0a0a1a;
-  --waggle-text: #e0e0e0;
-  --waggle-text-muted: #888888;
-  --waggle-border: #333333;
-  --waggle-accent: #e94560;
-  --waggle-accent-hover: #ff6b81;
-  --waggle-input-bg: #1a1a2e;
-  --waggle-input-border: #444444;
-  --waggle-success: #2ecc71;
-  --waggle-warning: #f39c12;
-  --waggle-error: #e74c3c;
+  --waggle-bg: #0a0a12;
+  --waggle-surface: #14141e;
+  --waggle-sidebar-bg: #14141e;
+  --waggle-tabs-bg: #14141e;
+  --waggle-statusbar-bg: #07070c;
+  --waggle-text: #ededef;
+  --waggle-text-muted: rgba(237, 237, 239, 0.65);
+  --waggle-border: rgba(255, 255, 255, 0.06);
+  --waggle-accent: #d4a843;
+  --waggle-accent-hover: #e0b750;
+  --waggle-input-bg: #1a1a26;
+  --waggle-input-border: rgba(255, 255, 255, 0.08);
+  --waggle-success: #3ecf8e;
+  --waggle-warning: #fbbf24;
+  --waggle-error: #ef4444;
 }
