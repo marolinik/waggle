@@ -9,6 +9,14 @@ export interface CapabilityRoute {
   suggestion?: string;
 }
 
+export interface ConnectorInfo {
+  id: string;
+  name: string;
+  service: string;
+  connected: boolean;
+  actions: string[];
+}
+
 export interface CapabilityRouterDeps {
   /** Currently registered tool names */
   toolNames: string[];
@@ -27,6 +35,8 @@ export interface CapabilityRouterDeps {
   subAgentRoles: string[];
   /** Optional MCP runtime for health-aware resolution */
   mcpRuntime?: { isServerHealthy(name: string): boolean };
+  /** Registered connectors with connection status */
+  connectors?: ConnectorInfo[];
 }
 
 const ROLE_KEYWORDS: Record<string, string[]> = {
@@ -68,6 +78,30 @@ export class CapabilityRouter {
           description: `Native tool "${toolName}" (partial match)`,
           available: true,
         });
+      }
+    }
+
+    // 1.5. Connectors — service, ID, or action name match (confidence 0.75)
+    if (this.deps.connectors) {
+      for (const connector of this.deps.connectors) {
+        const idLower = connector.id.toLowerCase();
+        const serviceLower = connector.service.toLowerCase();
+        const nameLower = connector.name.toLowerCase();
+        const nameMatch = q.includes(idLower) || q.includes(serviceLower) || q.includes(nameLower);
+        const actionMatch = connector.actions.some(a => q.includes(a.toLowerCase().replace(/_/g, ' ')));
+
+        if (nameMatch || actionMatch) {
+          routes.push({
+            source: 'connector',
+            name: connector.id,
+            confidence: 0.75,
+            description: `Connector "${connector.name}" (${connector.service})`,
+            available: connector.connected,
+            suggestion: connector.connected
+              ? undefined
+              : `${connector.name} connector is available but not connected. Add your credentials in Cockpit > Connectors to enable it.`,
+          });
+        }
       }
     }
 
@@ -143,7 +177,7 @@ export class CapabilityRouter {
         confidence: 0,
         description: `No capability found for "${query}"`,
         available: false,
-        suggestion: `Consider creating a skill for "${query}" or searching the web for a plugin that provides it.`,
+        suggestion: `Consider creating a skill for "${query}", connecting a service in Cockpit > Connectors, or searching the marketplace for a plugin.`,
       });
     }
 

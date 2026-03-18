@@ -40,7 +40,7 @@ export { createSkillTools, type SkillToolsDeps } from './skill-tools.js';
 export { SkillRecommender, type SkillRecommendation, type SkillRecommenderDeps } from './skill-recommender.js';
 export { createSubAgentTools, type SubAgentToolsDeps, type SubAgentDef, type SubAgentResult } from './subagent-tools.js';
 export { MemoryLinker, type MemoryLink } from './memory-linker.js';
-export { CapabilityRouter, type CapabilityRoute, type CapabilitySource, type CapabilityRouterDeps } from './capability-router.js';
+export { CapabilityRouter, type CapabilityRoute, type CapabilitySource, type CapabilityRouterDeps, type ConnectorInfo } from './capability-router.js';
 export {
   searchCapabilities, validateInstallCandidate, loadStarterSkillsMeta,
   type CapabilityCandidate, type CapabilitySourceType, type CapabilityAvailability,
