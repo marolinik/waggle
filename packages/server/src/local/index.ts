@@ -29,6 +29,7 @@ import {
   createSearchTools,
   createBrowserTools,
   createLspTools,
+  createCliTools,
   McpRuntime,
   ConnectorRegistry,
   GitHubConnector,
@@ -343,11 +344,15 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   // LSP tools — TypeScript language server integration
   const lspTools = createLspTools(defaultWorkspace);
 
+  // CLI tools — governed CLI program execution
+  const cliAllowlist = (fullConfig as any).cli?.allowlist ?? [];
+  const cliTools = createCliTools({ allowlist: cliAllowlist });
+
   // Dynamic connector tools (initial — regenerated per workspace in buildToolsForWorkspace)
   const defaultConnectorTools = connectorRegistry.generateTools();
 
   // Collect all non-subagent tools first (sub-agent tools need the full list)
-  const baseTools = [...mindTools, ...systemTools, ...planTools, ...gitTools, ...documentTools, ...skillTools, ...cronTools, ...searchTools, ...browserTools, ...lspTools, ...defaultConnectorTools];
+  const baseTools = [...mindTools, ...systemTools, ...planTools, ...gitTools, ...documentTools, ...skillTools, ...cronTools, ...searchTools, ...browserTools, ...lspTools, ...cliTools, ...defaultConnectorTools];
 
   // Sub-agent tools — let the main agent spawn specialist sub-agents
   const subAgentTools = createSubAgentTools({
@@ -477,6 +482,7 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
       ...searchTools,
       ...createBrowserTools(wsPath),
       ...createLspTools(wsPath),
+      ...cliTools,
       ...connectorTools,
     ];
     const wsSub = createSubAgentTools({
