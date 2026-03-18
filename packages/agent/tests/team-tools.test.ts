@@ -150,20 +150,32 @@ describe('createTeamTools', () => {
   });
 
   describe('send_waggle_message', () => {
-    it('posts message to team', async () => {
+    it('sends valid Waggle Dance protocol message', async () => {
       fetchMock.mockResolvedValueOnce(okResponse({ id: 'msg-1' }));
 
       const tool = getTool('send_waggle_message');
-      const result = await tool.execute({ message: 'Found relevant docs', type: 'waggle' });
+      const result = await tool.execute({ message: 'Found relevant docs', type: 'broadcast', subtype: 'routed_share' });
 
       expect(fetchMock).toHaveBeenCalledOnce();
       const [url, opts] = fetchMock.mock.calls[0];
       expect(url).toBe('http://localhost:3000/api/teams/alpha-team/messages');
       expect(opts.method).toBe('POST');
       const body = JSON.parse(opts.body);
-      expect(body.content).toBe('Found relevant docs');
-      expect(body.type).toBe('waggle');
-      expect(result).toContain('sent');
+      expect(body.type).toBe('broadcast');
+      expect(body.subtype).toBe('routed_share');
+      expect(body.content).toEqual({ text: 'Found relevant docs' });
+      expect(result).toContain('broadcast/routed_share');
+    });
+
+    it('defaults to broadcast/discovery when type/subtype omitted', async () => {
+      fetchMock.mockResolvedValueOnce(okResponse({ id: 'msg-2' }));
+
+      const tool = getTool('send_waggle_message');
+      await tool.execute({ message: 'Hello team' });
+
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect(body.type).toBe('broadcast');
+      expect(body.subtype).toBe('discovery');
     });
   });
 

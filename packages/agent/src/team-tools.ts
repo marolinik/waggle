@@ -132,24 +132,34 @@ export function createTeamTools(deps: TeamToolDeps): ToolDefinition[] {
 
     {
       name: 'send_waggle_message',
-      description: 'Send a message to the team channel (waggle dance communication)',
+      description: 'Send a Waggle Dance protocol message to the team channel',
       parameters: {
         type: 'object',
         properties: {
           message: { type: 'string', description: 'Message content' },
           type: {
             type: 'string',
-            enum: ['waggle', 'alert', 'status', 'request'],
-            description: 'Message type (default: waggle)',
+            enum: ['broadcast', 'request', 'response'],
+            description: 'Message type (default: broadcast)',
+          },
+          subtype: {
+            type: 'string',
+            enum: ['discovery', 'routed_share', 'skill_share', 'task_delegation', 'knowledge_check', 'skill_request'],
+            description: 'Message subtype (default: discovery)',
           },
         },
         required: ['message'],
       },
       execute: async (args) => {
         const message = args.message as string;
-        const type = (args.type as string) ?? 'waggle';
-        await apiCall(deps, 'POST', `${base}/messages`, { content: message, type });
-        return `Message sent to team (type: ${type}).`;
+        const type = (args.type as string) ?? 'broadcast';
+        const subtype = (args.subtype as string) ?? 'discovery';
+        await apiCall(deps, 'POST', `${base}/messages`, {
+          type,
+          subtype,
+          content: { text: message },
+        });
+        return `Message sent to team (${type}/${subtype}).`;
       },
     },
 
