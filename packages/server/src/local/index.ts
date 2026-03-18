@@ -26,6 +26,9 @@ import {
   registerWorkflowCommands,
   registerMarketplaceCommands,
   createCronTools,
+  createSearchTools,
+  createBrowserTools,
+  createLspTools,
   McpRuntime,
   type ToolDefinition,
   type LoadedSkill,
@@ -314,8 +317,19 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   // Cron tools — let the agent manage cron schedules (via REST API)
   const cronTools = createCronTools();
 
+  // Search tools — Tavily + Brave with vault-backed API keys
+  const searchTools = createSearchTools(async (key: string) => {
+    try { return vault.get(key); } catch { return null; }
+  });
+
+  // Browser tools — Playwright-based browser automation
+  const browserTools = createBrowserTools(defaultWorkspace);
+
+  // LSP tools — TypeScript language server integration
+  const lspTools = createLspTools(defaultWorkspace);
+
   // Collect all non-subagent tools first (sub-agent tools need the full list)
-  const baseTools = [...mindTools, ...systemTools, ...planTools, ...gitTools, ...documentTools, ...skillTools, ...cronTools];
+  const baseTools = [...mindTools, ...systemTools, ...planTools, ...gitTools, ...documentTools, ...skillTools, ...cronTools, ...searchTools, ...browserTools, ...lspTools];
 
   // Sub-agent tools — let the main agent spawn specialist sub-agents
   const subAgentTools = createSubAgentTools({
@@ -439,6 +453,9 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
       ...createDocumentTools(wsPath),
       ...skillTools,
       ...cronTools,
+      ...searchTools,
+      ...createBrowserTools(wsPath),
+      ...createLspTools(wsPath),
     ];
     const wsSub = createSubAgentTools({
       availableTools: wsBase,

@@ -60,6 +60,9 @@ export { CommandRegistry, type CommandDefinition, type CommandContext } from './
 export { registerWorkflowCommands } from './commands/workflow-commands.js';
 export { registerMarketplaceCommands } from './commands/marketplace-commands.js';
 export { createCronTools } from './cron-tools.js';
+export { createSearchTools } from './search-tools.js';
+export { createBrowserTools, closeBrowser } from './browser-tools.js';
+export { createLspTools, stopLsp } from './lsp-tools.js';
 export {
   assessTrust, resolveTrustSource, detectPermissions, classifyRisk, deriveApprovalClass, formatTrustSummary,
   type TrustAssessment, type TrustSource, type RiskLevel, type RiskFactor, type PermissionSummary,
