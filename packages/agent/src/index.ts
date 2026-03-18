@@ -69,6 +69,8 @@ export {
   type AssessmentMode, type AssessTrustInput,
 } from './trust-model.js';
 export { parseSkillFrontmatter, type SkillFrontmatter } from './skill-frontmatter.js';
+export { BaseConnector, type WaggleConnector, type ConnectorAction, type ConnectorResult } from './connector-sdk.js';
+export { ConnectorRegistry, type AuditLogger } from './connector-registry.js';
 export { detectCorrection, detectCorrectionsInHistory, type DetectedCorrection, type CorrectionDurability } from './correction-detector.js';
 export {
   recordCapabilityGap, analyzeAndRecordCorrection, recordWorkflowPattern,

@@ -265,6 +265,13 @@ export interface ConnectorCredential {
 /** Connector status in the system */
 export type ConnectorStatus = 'connected' | 'disconnected' | 'expired' | 'error';
 
+/** Rich action metadata for SDK-backed connectors */
+export interface ConnectorActionMeta {
+  name: string;
+  description: string;
+  riskLevel: 'low' | 'medium' | 'high';
+}
+
 /** Connector definition — what the user sees */
 export interface ConnectorDefinition {
   id: string;
@@ -284,6 +291,8 @@ export interface ConnectorDefinition {
   tools: string[];
   /** Connector-specific config */
   config?: Record<string, unknown>;
+  /** Rich action metadata (optional — available when SDK connector is loaded) */
+  actions?: ConnectorActionMeta[];
 }
 
 /** Connector health for cockpit display */
