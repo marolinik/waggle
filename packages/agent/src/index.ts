@@ -61,6 +61,8 @@ export { registerWorkflowCommands } from './commands/workflow-commands.js';
 export { registerMarketplaceCommands } from './commands/marketplace-commands.js';
 export { createCronTools } from './cron-tools.js';
 export { PERSONAS, getPersona, listPersonas, composePersonaPrompt, type AgentPersona } from './personas.js';
+export { AgentMessageBus, type AgentMessage } from './agent-message-bus.js';
+export { createAgentCommsTools } from './agent-comms-tools.js';
 export { createCliTools, type CliToolsConfig } from './cli-tools.js';
 export { createSearchTools } from './search-tools.js';
 export { createBrowserTools, closeBrowser } from './browser-tools.js';
