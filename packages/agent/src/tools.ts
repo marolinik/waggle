@@ -27,6 +27,36 @@ interface WorkspaceLayers {
   cognify: CognifyPipeline;
 }
 
+/** Tracks tool utilization across the current session */
+export interface ToolUtilizationTracker {
+  /** Record that a tool was used */
+  recordUsage(toolName: string): void;
+  /** Get the set of unique tools used this session */
+  getUsedTools(): Set<string>;
+  /** Get the total number of available tools */
+  totalAvailable: number;
+  /** Get utilization ratio (uniqueUsed / totalAvailable) */
+  getUtilization(): number;
+}
+
+/** Create a ToolUtilizationTracker instance */
+export function createToolUtilizationTracker(totalAvailable: number): ToolUtilizationTracker {
+  const usedTools = new Set<string>();
+  return {
+    recordUsage(toolName: string) {
+      usedTools.add(toolName);
+    },
+    getUsedTools() {
+      return new Set(usedTools);
+    },
+    totalAvailable,
+    getUtilization() {
+      if (totalAvailable === 0) return 0;
+      return usedTools.size / totalAvailable;
+    },
+  };
+}
+
 export interface MindToolDeps {
   db: MindDB;
   identity: IdentityLayer;
@@ -39,6 +69,8 @@ export interface MindToolDeps {
   feedback?: FeedbackHandler;
   /** Dynamic accessor for workspace layers — checked at call time */
   getWorkspaceLayers?: () => WorkspaceLayers | null;
+  /** Optional tool utilization tracker for session-level stats */
+  toolUtilizationTracker?: ToolUtilizationTracker;
 }
 
 export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
@@ -54,10 +86,26 @@ export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
     },
     {
       name: 'get_awareness',
-      description: 'Get current awareness state (active tasks, recent actions, pending items, flags)',
+      description: 'Get current awareness state (active tasks, recent actions, pending items, flags, tool utilization)',
       parameters: {},
       execute: async () => {
-        return deps.awareness.toContext();
+        let context = deps.awareness.toContext();
+
+        // Append utilization stats if tracker is available
+        if (deps.toolUtilizationTracker) {
+          const tracker = deps.toolUtilizationTracker;
+          const used = tracker.getUsedTools();
+          const utilization = tracker.getUtilization();
+          context += `\n\n## Tool Utilization\n`;
+          context += `- Unique tools used this session: ${used.size}\n`;
+          context += `- Total available tools: ${tracker.totalAvailable}\n`;
+          context += `- Utilization: ${(utilization * 100).toFixed(1)}%\n`;
+          if (utilization < 0.1) {
+            context += `- Note: Low utilization — consider using more of your available tools (skills, workflows, sub-agents) for richer results.\n`;
+          }
+        }
+
+        return context;
       },
     },
     {

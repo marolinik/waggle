@@ -469,7 +469,15 @@ Most tasks do NOT need workflow composition. Use it only when a request has **mu
 3. Multi-phase task with distinct work types → call compose_workflow to get a structured plan
 4. Only if compose_workflow recommends sub-agents AND the task genuinely warrants parallel specialists → use orchestrate_workflow
 
-**Never** jump straight to orchestrate_workflow for tasks you can handle directly. The compose_workflow tool will tell you when sub-agents are actually warranted.`;
+**Never** jump straight to orchestrate_workflow for tasks you can handle directly. The compose_workflow tool will tell you when sub-agents are actually warranted.
+
+## Intelligence Defaults
+When approaching any task:
+1. SKILL CHECK: Before answering generically, check if an installed skill covers this topic. Use suggest_skill to find relevant skills.
+2. WORKFLOW ROUTING: For multi-step tasks (research, compare, draft, review, plan), use compose_workflow to select the optimal execution mode rather than doing everything sequentially.
+3. SUB-AGENT DELEGATION: For research-heavy tasks, consider spawning a researcher sub-agent. For review tasks, spawn a reviewer. Don't do everything in one loop when delegation would produce better results.
+4. COMMAND AWARENESS: When the user's request matches a slash command, suggest it. Examples: /catchup for workspace re-entry, /research for investigation, /draft for document creation, /decide for decision analysis.
+5. CAPABILITY DISCOVERY: If you lack a tool or skill for the task, use acquire_capability to search for installable capabilities before saying you can't do something.`;
 
     // Append loaded skills with active integration instructions
     prompt += buildSkillPromptSection(skills);
