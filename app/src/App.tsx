@@ -49,6 +49,8 @@ import { MemoryView } from './views/MemoryView';
 import { EventsView } from './views/EventsView';
 import { CapabilitiesView } from './views/CapabilitiesView';
 import { CockpitView } from './views/CockpitView';
+import { GlobalSearch } from './components/GlobalSearch';
+import type { GlobalSearchResultType } from './components/GlobalSearch';
 
 const adapter = new LocalAdapter({ baseUrl: 'http://127.0.0.1:3333' });
 
@@ -88,6 +90,8 @@ function WaggleApp() {
   const [contextPanelOpen] = useState(true);
   const [previewFile, setPreviewFile] = useState<FileEntry | null>(null);
   const [config, setConfig] = useState<WaggleConfig | null>(null);
+  // F6: Global search state
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
 
   // ── Workspaces ────────────────────────────────────────────────────
   const {
@@ -599,6 +603,11 @@ function WaggleApp() {
         e.preventDefault();
         handleNewTab();
       }
+      // F6: Ctrl+K (or Cmd+K) — Global search
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setGlobalSearchOpen((prev) => !prev);
+      }
       // G2: Ctrl+1-9 quick-switch workspaces
       if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key >= '1' && e.key <= '9') {
         const idx = parseInt(e.key, 10) - 1;
@@ -842,6 +851,29 @@ function WaggleApp() {
   // ── F5: Settings tab state (lifted for ContextPanel) ───────────────
   const [settingsTab, setSettingsTab] = useState('general');
 
+  // ── F6: Global search handler ──────────────────────────────────────
+  const handleGlobalSearchSelect = useCallback((type: GlobalSearchResultType, id: string) => {
+    switch (type) {
+      case 'workspace': {
+        const ws = workspaces.find(w => w.id === id);
+        if (ws) setActiveWorkspace(ws);
+        setCurrentView('chat');
+        break;
+      }
+      case 'command': {
+        // Send the command as if typed in chat
+        handleSlashCommand(id, '');
+        setCurrentView('chat');
+        break;
+      }
+      case 'settings': {
+        setSettingsTab(id);
+        setCurrentView('settings');
+        break;
+      }
+    }
+  }, [workspaces, setActiveWorkspace, handleSlashCommand, setSettingsTab]);
+
   // ── F5: Event filter state for context panel ──────────────────────
   const [eventFilters, setEventFilters] = useState<Record<string, boolean>>({
     'Tool Call': true,
@@ -893,6 +925,7 @@ function WaggleApp() {
             currentView={currentView}
             onViewChange={setCurrentView}
             onCreateWorkspace={() => setShowCreateWorkspace(true)}
+            onOpenSearch={() => setGlobalSearchOpen(true)}
           />
         }
         content={
@@ -1002,6 +1035,14 @@ function WaggleApp() {
             onModelSelect={handleModelSelect}
           />
         }
+      />
+
+      {/* F6: Global search */}
+      <GlobalSearch
+        open={globalSearchOpen}
+        onClose={() => setGlobalSearchOpen(false)}
+        onSelect={handleGlobalSearchSelect}
+        workspaces={workspaces}
       />
 
       {/* Create workspace modal */}

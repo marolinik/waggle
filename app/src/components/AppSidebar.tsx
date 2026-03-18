@@ -17,6 +17,8 @@ export interface AppSidebarProps {
   currentView: AppView;
   onViewChange: (view: AppView) => void;
   onCreateWorkspace: () => void;
+  /** F6: Open global search */
+  onOpenSearch?: () => void;
 }
 
 const NAV_ITEMS: { view: AppView; label: string; shortcut: string }[] = [
@@ -51,6 +53,7 @@ export function AppSidebar({
   currentView,
   onViewChange,
   onCreateWorkspace,
+  onOpenSearch,
 }: AppSidebarProps) {
   const bottomItems = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', padding: '0 4px' }}>
@@ -177,6 +180,52 @@ export function AppSidebar({
             style={{ width: 26, height: 32 }}
           />
         </div>
+      )}
+
+      {/* F6: Search button */}
+      {onOpenSearch && (
+        <button
+          onClick={onOpenSearch}
+          title="Search (Ctrl+K)"
+          style={{
+            background: 'none',
+            border: '1px solid var(--border)',
+            color: 'var(--text-dim)',
+            cursor: 'pointer',
+            padding: collapsed ? '6px 0' : '5px 10px',
+            width: collapsed ? '80%' : 'calc(100% - 8px)',
+            margin: collapsed ? '4px auto' : '4px 4px',
+            textAlign: collapsed ? 'center' : 'left',
+            fontSize: '10px',
+            fontFamily: "'JetBrains Mono', monospace",
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: collapsed ? 'center' : 'flex-start',
+            gap: '6px',
+            borderRadius: '4px',
+            transition: 'all 0.15s',
+            letterSpacing: '0.02em',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = 'var(--primary)';
+            e.currentTarget.style.color = 'var(--text-muted)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = 'var(--border)';
+            e.currentTarget.style.color = 'var(--text-dim)';
+          }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          {!collapsed && (
+            <>
+              <span style={{ flex: 1 }}>Search</span>
+              <span style={{ fontSize: '9px', opacity: 0.5 }}>^K</span>
+            </>
+          )}
+        </button>
       )}
 
       {workspaces.length > 0 ? (
