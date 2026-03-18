@@ -280,6 +280,22 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
       // Will be set after agentState is created (see below)
       reloadSkills?.(fresh);
     },
+    searchMarketplace: async (query: string) => {
+      // Search the marketplace DB if available (graceful degradation)
+      if (!marketplaceDb) return [];
+      try {
+        const results = marketplaceDb.search({ query, limit: 10 });
+        return results.packages.map(pkg => ({
+          name: pkg.name,
+          description: pkg.description,
+          packageType: pkg.package_type,
+          source: 'marketplace',
+          score: undefined, // FTS5 doesn't expose raw scores through our API
+        }));
+      } catch {
+        return [];
+      }
+    },
   });
 
   // Collect all non-subagent tools first (sub-agent tools need the full list)

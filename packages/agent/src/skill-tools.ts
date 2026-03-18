@@ -10,7 +10,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ToolDefinition } from './tools.js';
 import { SkillRecommender } from './skill-recommender.js';
-import { searchCapabilities, validateInstallCandidate } from './capability-acquisition.js';
+import { searchCapabilities, validateInstallCandidate, type MarketplaceCandidate } from './capability-acquisition.js';
 import { assessTrust, formatTrustSummary } from './trust-model.js';
 import type { InstallAuditStore } from '@waggle/core';
 
@@ -27,6 +27,8 @@ export interface SkillToolsDeps {
   nativeToolNames?: string[];
   /** Audit store for recording install events (optional — degrades gracefully) */
   auditStore?: InstallAuditStore;
+  /** Optional callback to search the marketplace catalog for capabilities */
+  searchMarketplace?: (query: string) => Promise<MarketplaceCandidate[]>;
 }
 
 export function createSkillTools(deps: SkillToolsDeps): ToolDefinition[] {
@@ -337,11 +339,22 @@ Returns a structured proposal showing what's already available, what can be inst
         const starterDir = deps.starterSkillsDir ?? '';
         const nativeTools = deps.nativeToolNames ?? [];
 
+        // Search marketplace if callback is available (non-blocking — graceful fallback)
+        let marketplaceCandidates: MarketplaceCandidate[] = [];
+        if (deps.searchMarketplace) {
+          try {
+            marketplaceCandidates = await deps.searchMarketplace(need);
+          } catch {
+            // Marketplace unavailable — continue with local sources only
+          }
+        }
+
         const proposal = searchCapabilities({
           need,
           installedSkills,
           starterSkillsDir: starterDir,
           nativeToolNames: nativeTools,
+          marketplaceCandidates,
         });
 
         // Record proposal audit event if a gap was detected with a recommendation

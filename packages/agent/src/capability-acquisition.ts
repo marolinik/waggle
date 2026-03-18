@@ -16,7 +16,7 @@ import { parseSkillFrontmatter } from './skill-frontmatter.js';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
-export type CapabilitySourceType = 'native' | 'skill' | 'plugin' | 'mcp' | 'connector';
+export type CapabilitySourceType = 'native' | 'skill' | 'plugin' | 'mcp' | 'connector' | 'marketplace';
 
 export type CapabilityAvailability =
   | 'active'              // Currently loaded and usable
@@ -157,15 +157,27 @@ export function loadStarterSkillsMeta(starterDir: string): StarterSkillMeta[] {
 
 // ── Main search ────────────────────────────────────────────────────────
 
+/** A marketplace search result mapped to candidate format */
+export interface MarketplaceCandidate {
+  name: string;
+  description: string;
+  packageType: string;
+  source: string;
+  /** Match score from marketplace FTS (normalized 0–1 or raw) */
+  score?: number;
+}
+
 export interface SearchCapabilitiesInput {
   need: string;
   installedSkills: Array<{ name: string; content: string }>;
   starterSkillsDir: string;
   nativeToolNames?: string[];
+  /** Pre-fetched marketplace candidates (searched externally, passed in) */
+  marketplaceCandidates?: MarketplaceCandidate[];
 }
 
 export function searchCapabilities(input: SearchCapabilitiesInput): AcquisitionProposal {
-  const { need, installedSkills, starterSkillsDir, nativeToolNames = [] } = input;
+  const { need, installedSkills, starterSkillsDir, nativeToolNames = [], marketplaceCandidates = [] } = input;
   const keywords = extractKeywords(need);
 
   if (keywords.length === 0) {
@@ -243,6 +255,31 @@ export function searchCapabilities(input: SearchCapabilitiesInput): AcquisitionP
         matchReason: buildMatchReason(nameHits, contentHits),
         installAction: `install_capability`,
         trust: assessTrust({ capabilityType: 'skill', source: 'starter-pack', content: starter.content, declaredPermissions: starterFm.permissions }),
+      });
+    }
+  }
+
+  // 4. Score marketplace candidates (pre-fetched, passed in via marketplaceCandidates)
+  for (const mkt of marketplaceCandidates) {
+    // Skip if already installed or already in candidates from starter pack
+    if (installedNames.has(mkt.name)) continue;
+    if (candidates.some(c => c.name === mkt.name && c.source === 'starter-pack')) continue;
+
+    const { score, nameHits, contentHits } = scoreMatch(keywords, mkt.name, mkt.description);
+    // Use marketplace FTS score as a boost when available, otherwise rely on keyword matching
+    const effectiveScore = mkt.score != null ? Math.min(Math.max(score, mkt.score), 1.0) : score;
+
+    if (effectiveScore >= 0.1) {
+      candidates.push({
+        name: mkt.name,
+        type: 'marketplace',
+        availability: 'installable',
+        description: mkt.description || `Marketplace package "${mkt.name}"`,
+        source: 'marketplace',
+        matchScore: effectiveScore,
+        matchReason: buildMatchReason(nameHits, contentHits) || 'marketplace search match',
+        installAction: 'install_capability',
+        trust: assessTrust({ capabilityType: 'skill', source: 'marketplace', content: mkt.description }),
       });
     }
   }

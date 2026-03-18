@@ -1,5 +1,5 @@
 export { Orchestrator, type OrchestratorConfig } from './orchestrator.js';
-export { createMindTools, type ToolDefinition, type MindToolDeps } from './tools.js';
+export { createMindTools, createToolUtilizationTracker, type ToolDefinition, type MindToolDeps, type ToolUtilizationTracker } from './tools.js';
 export { createSystemTools } from './system-tools.js';
 export {
   ModelRouter,
@@ -45,6 +45,7 @@ export {
   searchCapabilities, validateInstallCandidate, loadStarterSkillsMeta,
   type CapabilityCandidate, type CapabilitySourceType, type CapabilityAvailability,
   type AcquisitionProposal, type InstallValidation, type SearchCapabilitiesInput,
+  type MarketplaceCandidate,
 } from './capability-acquisition.js';
 export { McpServerInstance, McpRuntime, type McpServerConfig, type McpServerState, type McpToolInfo, type McpProcess, type SpawnFn } from './mcp/mcp-runtime.js';
 export { SubagentOrchestrator, type WorkerState, type WorkerStatus, type WorkflowStep, type WorkflowTemplate, type OrchestratorConfig as SubagentOrchestratorConfig } from './subagent-orchestrator.js';
