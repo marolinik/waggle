@@ -209,9 +209,10 @@ export function composePersonaPrompt(
   if (combined.length <= maxChars) return combined;
 
   // Truncate persona prompt to fit
-  const available = maxChars - corePrompt.length - SEPARATOR.length - 20; // 20 for truncation marker
+  const TRUNCATION_MARKER = '\n[...truncated]';
+  const available = maxChars - corePrompt.length - SEPARATOR.length - TRUNCATION_MARKER.length;
   if (available <= 0) return corePrompt; // Core prompt alone exceeds limit
 
-  const truncated = persona.systemPrompt.slice(0, available) + '\n[...truncated]';
+  const truncated = persona.systemPrompt.slice(0, available) + TRUNCATION_MARKER;
   return `${corePrompt}${SEPARATOR}${truncated}`;
 }

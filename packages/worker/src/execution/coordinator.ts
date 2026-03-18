@@ -113,11 +113,14 @@ export async function executeCoordinator(
     }),
   );
 
-  // Phase 3: Lead synthesizes worker results
-  const workerOutputs = workerResults
+  // Phase 3: Lead synthesizes worker results (include failure notices)
+  const successOutputs = workerResults
     .filter(r => !r.error)
-    .map(r => `## ${r.agentName}\n${r.output}`)
-    .join('\n\n');
+    .map(r => `## ${r.agentName}\n${r.output}`);
+  const failureNotices = workerResults
+    .filter(r => r.error)
+    .map(r => `## ${r.agentName} (FAILED)\nError: ${r.error}`);
+  const workerOutputs = [...successOutputs, ...failureNotices].join('\n\n');
 
   const synthesisResult = await deps.runAgent({
     model: lead.agent.model,

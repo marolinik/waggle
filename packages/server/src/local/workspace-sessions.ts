@@ -145,7 +145,7 @@ export class WorkspaceSessionManager {
     const now = Date.now();
     let closed = 0;
 
-    for (const [id, session] of this.sessions) {
+    for (const [id, session] of [...this.sessions]) { // snapshot to avoid mutation during iteration
       if (now - session.lastActivity > maxIdleMs) {
         this.close(id);
         closed++;

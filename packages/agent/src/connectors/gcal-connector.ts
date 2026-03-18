@@ -252,7 +252,7 @@ export class GoogleCalendarConnector extends BaseConnector {
       if (updates.end) body.end = { dateTime: updates.end };
       if (updates.description) body.description = updates.description;
 
-      const res = await fetch(`${CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events/${eventId}`, {
+      const res = await fetch(`${CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(String(eventId))}`, {
         method: 'PATCH',
         headers: this.headers(),
         body: JSON.stringify(body),

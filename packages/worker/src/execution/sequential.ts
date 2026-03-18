@@ -76,7 +76,7 @@ export async function executeSequential(
     strategy: 'sequential',
     agentCount: results.length,
     results,
-    finalOutput: results[results.length - 1]?.output ?? null,
+    finalOutput: results.filter(r => !r.error).at(-1)?.output ?? null,
     chainBroken: results.some(r => r.error),
   };
 }

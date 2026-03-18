@@ -187,7 +187,7 @@ export class JiraConnector extends BaseConnector {
       if (params.priority) fields.priority = { name: params.priority };
       if (params.labels) fields.labels = params.labels;
 
-      const res = await fetch(`${this.baseUrl}/rest/api/3/issue`, {
+      const res = await fetch(`${this.baseUrl!}/rest/api/3/issue`, {
         method: 'POST',
         headers: this.headers(),
         body: JSON.stringify({ fields }),
@@ -209,7 +209,7 @@ export class JiraConnector extends BaseConnector {
       if (updates.priority) fields.priority = { name: updates.priority };
       if (updates.labels) fields.labels = updates.labels;
 
-      const res = await fetch(`${this.baseUrl}/rest/api/3/issue/${issueKey}`, {
+      const res = await fetch(`${this.baseUrl!}/rest/api/3/issue/${encodeURIComponent(String(issueKey))}`, {
         method: 'PUT',
         headers: this.headers(),
         body: JSON.stringify({ fields }),
@@ -226,7 +226,7 @@ export class JiraConnector extends BaseConnector {
     try {
       const { issueKey, transitionName } = params;
       // First, get available transitions
-      const transRes = await fetch(`${this.baseUrl}/rest/api/3/issue/${issueKey}/transitions`, {
+      const transRes = await fetch(`${this.baseUrl!}/rest/api/3/issue/${encodeURIComponent(String(issueKey))}/transitions`, {
         headers: this.headers(),
         signal: AbortSignal.timeout(10000),
       });
@@ -238,7 +238,7 @@ export class JiraConnector extends BaseConnector {
         return { success: false, error: `Transition "${transitionName}" not available. Available: ${transitions.map(t => t.name).join(', ')}` };
       }
 
-      const res = await fetch(`${this.baseUrl}/rest/api/3/issue/${issueKey}/transitions`, {
+      const res = await fetch(`${this.baseUrl!}/rest/api/3/issue/${encodeURIComponent(String(issueKey))}/transitions`, {
         method: 'POST',
         headers: this.headers(),
         body: JSON.stringify({ transition: { id: match.id } }),

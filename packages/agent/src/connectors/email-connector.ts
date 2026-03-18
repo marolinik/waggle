@@ -208,7 +208,7 @@ export class EmailConnector extends BaseConnector {
 
   private async checkDelivery(params: Record<string, unknown>): Promise<ConnectorResult> {
     try {
-      const res = await fetch(`${API_BASE}/messages/${params.message_id}`, {
+      const res = await fetch(`${API_BASE}/messages/${encodeURIComponent(String(params.message_id))}`, {
         headers: this.headers(),
         signal: AbortSignal.timeout(10000),
       });

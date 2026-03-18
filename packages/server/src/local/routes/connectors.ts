@@ -92,7 +92,14 @@ export async function connectorRoutes(fastify: FastifyInstance) {
     const { id } = request.params as { id: string };
     if (!fastify.vault) return reply.code(503).send({ error: 'Vault not available' });
 
+    // Delete primary credential and all sub-keys (email, base_url, client_id, client_secret)
     const deleted = fastify.vault.delete(`connector:${id}`);
-    return { disconnected: deleted, connectorId: id };
+    const subKeys = fastify.vault.list()
+      .filter((e: { name: string }) => e.name.startsWith(`connector:${id}:`))
+      .map((e: { name: string }) => e.name);
+    for (const key of subKeys) {
+      fastify.vault.delete(key);
+    }
+    return { disconnected: deleted, connectorId: id, cleanedKeys: subKeys.length };
   });
 }

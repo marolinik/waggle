@@ -89,18 +89,9 @@ export class ConnectorRegistry {
           parameters: {
             type: 'object',
             ...(action.inputSchema as Record<string, unknown>),
-            // Inject risk metadata for approval gate (stripped before LLM sees it)
-            ...(action.riskLevel !== 'low' ? {
-              _connectorMeta: {
-                riskLevel: action.riskLevel,
-                connectorId: connector.id,
-                actionName: action.name,
-              },
-            } : {}),
           },
           execute: async (args: Record<string, unknown>) => {
-            // Strip internal metadata before passing to connector
-            const { _connectorMeta, ...cleanArgs } = args;
+            const cleanArgs = { ...args };
 
             // Audit log every connector execution
             this.auditLogger?.log({

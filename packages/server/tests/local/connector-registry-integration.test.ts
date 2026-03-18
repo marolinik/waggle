@@ -112,16 +112,15 @@ describe('Connector confirmation gates', () => {
     expect(needsConfirmation('connector_jira_transition_issue')).toBe(true);
   });
 
-  it('connector tools with high-risk metadata get critical approval class', () => {
-    expect(getApprovalClass('connector_email_send_email', {
-      _connectorMeta: { riskLevel: 'high', connectorId: 'email', actionName: 'send_email' },
-    })).toBe('critical');
+  it('email send tools get critical approval class (by tool name, not args)', () => {
+    // Security: approval class is determined by tool name, not LLM-provided metadata
+    expect(getApprovalClass('connector_email_send_email')).toBe('critical');
+    expect(getApprovalClass('connector_email_send_template')).toBe('critical');
   });
 
-  it('connector tools with medium-risk metadata get elevated approval class', () => {
-    expect(getApprovalClass('connector_github_create_issue', {
-      _connectorMeta: { riskLevel: 'medium', connectorId: 'github', actionName: 'create_issue' },
-    })).toBe('elevated');
+  it('connector write tools get elevated approval class (by tool name)', () => {
+    expect(getApprovalClass('connector_github_create_issue')).toBe('elevated');
+    expect(getApprovalClass('connector_jira_update_issue')).toBe('elevated');
   });
 
   it('connector read tools get standard approval class', () => {

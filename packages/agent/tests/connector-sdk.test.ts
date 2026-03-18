@@ -273,25 +273,16 @@ describe('Dynamic tool generation', () => {
     });
   });
 
-  it('high-risk action tools include _connectorMeta in parameters', () => {
+  it('tool parameters do NOT include _connectorMeta (security: prevents LLM injection)', () => {
     const vault = createMockVault({ mock: { value: 'tok', isExpired: false } });
     const registry = new ConnectorRegistry(vault);
     registry.register(new MockConnector());
 
     const tools = registry.generateTools();
-    const createTool = tools.find(t => t.name === 'connector_mock_create_item')!;
-    expect((createTool.parameters as any)._connectorMeta).toEqual({
-      riskLevel: 'medium',
-      connectorId: 'mock',
-      actionName: 'create_item',
-    });
-
-    const deleteTool = tools.find(t => t.name === 'connector_mock_delete_item')!;
-    expect((deleteTool.parameters as any)._connectorMeta.riskLevel).toBe('high');
-
-    // Low-risk tools should NOT have metadata
-    const listTool = tools.find(t => t.name === 'connector_mock_list_items')!;
-    expect((listTool.parameters as any)._connectorMeta).toBeUndefined();
+    // No tool should have _connectorMeta in its schema (risk is determined by tool name, not args)
+    for (const tool of tools) {
+      expect((tool.parameters as any)._connectorMeta).toBeUndefined();
+    }
   });
 
   it('audit trail entry created on tool execution', async () => {
@@ -328,7 +319,7 @@ describe('Dynamic tool generation', () => {
     expect(result.error).toBe('API timeout');
   });
 
-  it('_connectorMeta is stripped before passing to connector.execute()', async () => {
+  it('connector receives clean args without internal metadata', async () => {
     const vault = createMockVault({ mock: { value: 'tok', isExpired: false } });
     const registry = new ConnectorRegistry(vault);
     const connector = new MockConnector();
@@ -336,9 +327,8 @@ describe('Dynamic tool generation', () => {
 
     const tools = registry.generateTools();
     const createTool = tools.find(t => t.name === 'connector_mock_create_item')!;
-    await createTool.execute({ name: 'Test', _connectorMeta: { riskLevel: 'medium' } });
+    await createTool.execute({ name: 'Test' });
 
-    // The connector should NOT receive _connectorMeta
     expect(connector.executeCalls[0].params).toEqual({ name: 'Test' });
   });
 });

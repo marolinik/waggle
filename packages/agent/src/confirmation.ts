@@ -39,13 +39,19 @@ const DESTRUCTIVE_BASH_PATTERNS = [
   /\bsudo\b/,
 ];
 
+/** Known high-risk connector actions (never trust LLM-provided metadata for this) */
+const CONNECTOR_HIGH_RISK_ACTIONS = new Set([
+  'send_email', 'send_template', // email is always high-risk
+]);
+
 export function needsConfirmation(toolName: string, args?: Record<string, unknown>): boolean {
-  // Connector tools: check for write/mutating action patterns or risk metadata
+  // Connector tools: determine risk from tool NAME only (never trust args metadata)
+  // This prevents LLM injection of _connectorMeta to bypass approval gates
   if (toolName.startsWith('connector_')) {
-    // Check if _connectorMeta indicates medium or high risk
-    const meta = (args as any)?._connectorMeta;
-    if (meta?.riskLevel === 'high' || meta?.riskLevel === 'medium') return true;
-    // Fall back to action name pattern matching
+    // Extract action name: connector_<id>_<action> → <action>
+    const parts = toolName.split('_');
+    const actionPart = parts.slice(2).join('_'); // everything after connector_<id>_
+    if (CONNECTOR_HIGH_RISK_ACTIONS.has(actionPart)) return true;
     return CONNECTOR_WRITE_PATTERNS.test(toolName);
   }
 
@@ -80,11 +86,12 @@ export function needsConfirmation(toolName: string, args?: Record<string, unknow
 export type ApprovalClass = 'standard' | 'elevated' | 'critical';
 
 export function getApprovalClass(toolName: string, args?: Record<string, unknown>): ApprovalClass {
-  // Connector tools: derive approval class from risk metadata
+  // Connector tools: derive approval class from tool NAME, not args
   if (toolName.startsWith('connector_')) {
-    const meta = (args as any)?._connectorMeta;
-    if (meta?.riskLevel === 'high') return 'critical';
-    if (meta?.riskLevel === 'medium') return 'elevated';
+    const parts = toolName.split('_');
+    const actionPart = parts.slice(2).join('_');
+    if (CONNECTOR_HIGH_RISK_ACTIONS.has(actionPart)) return 'critical';
+    if (CONNECTOR_WRITE_PATTERNS.test(toolName)) return 'elevated';
     return 'standard';
   }
 
