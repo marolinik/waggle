@@ -31,6 +31,9 @@ import {
   createLspTools,
   McpRuntime,
   ConnectorRegistry,
+  GitHubConnector,
+  SlackConnector,
+  JiraConnector,
   type ToolDefinition,
   type LoadedSkill,
 } from '@waggle/agent';
@@ -216,6 +219,9 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
 
   // Connector Registry — manages registered connectors and generates dynamic tools
   const connectorRegistry = new ConnectorRegistry(vault);
+  connectorRegistry.register(new GitHubConnector());
+  connectorRegistry.register(new SlackConnector());
+  connectorRegistry.register(new JiraConnector());
   server.decorate('connectorRegistry', connectorRegistry);
 
   // Seed marketplace.db if not present, then open it for production routes
