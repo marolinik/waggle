@@ -165,7 +165,7 @@ export class EmailConnector extends BaseConnector {
 
       // SendGrid returns 202 Accepted for successful sends
       if (res.status !== 202 && !res.ok) {
-        return { success: false, error: `SendGrid API ${res.status}: ${await res.text()}` };
+        return { success: false, error: await this.safeErrorText(res, 'SendGrid API') };
       }
 
       this.dailySendCount++;
@@ -196,7 +196,7 @@ export class EmailConnector extends BaseConnector {
       });
 
       if (res.status !== 202 && !res.ok) {
-        return { success: false, error: `SendGrid API ${res.status}: ${await res.text()}` };
+        return { success: false, error: await this.safeErrorText(res, 'SendGrid API') };
       }
 
       this.dailySendCount++;
@@ -212,7 +212,7 @@ export class EmailConnector extends BaseConnector {
         headers: this.headers(),
         signal: AbortSignal.timeout(10000),
       });
-      if (!res.ok) return { success: false, error: `SendGrid API ${res.status}: ${await res.text()}` };
+      if (!res.ok) return { success: false, error: await this.safeErrorText(res, 'SendGrid API') };
       return { success: true, data: await res.json() };
     } catch (err: unknown) {
       return { success: false, error: err instanceof Error ? err.message : String(err) };

@@ -169,7 +169,7 @@ export class JiraConnector extends BaseConnector {
         body: JSON.stringify({ jql, maxResults, fields: fields.split(',').map(f => f.trim()) }),
         signal: AbortSignal.timeout(10000),
       });
-      if (!res.ok) return { success: false, error: `Jira API ${res.status}: ${await res.text()}` };
+      if (!res.ok) return { success: false, error: await this.safeErrorText(res, 'Jira API') };
       return { success: true, data: await res.json() };
     } catch (err: unknown) {
       return { success: false, error: err instanceof Error ? err.message : String(err) };
@@ -193,7 +193,7 @@ export class JiraConnector extends BaseConnector {
         body: JSON.stringify({ fields }),
         signal: AbortSignal.timeout(10000),
       });
-      if (!res.ok) return { success: false, error: `Jira API ${res.status}: ${await res.text()}` };
+      if (!res.ok) return { success: false, error: await this.safeErrorText(res, 'Jira API') };
       return { success: true, data: await res.json() };
     } catch (err: unknown) {
       return { success: false, error: err instanceof Error ? err.message : String(err) };
@@ -215,7 +215,7 @@ export class JiraConnector extends BaseConnector {
         body: JSON.stringify({ fields }),
         signal: AbortSignal.timeout(10000),
       });
-      if (!res.ok) return { success: false, error: `Jira API ${res.status}: ${await res.text()}` };
+      if (!res.ok) return { success: false, error: await this.safeErrorText(res, 'Jira API') };
       return { success: true, data: { key: issueKey, updated: true } };
     } catch (err: unknown) {
       return { success: false, error: err instanceof Error ? err.message : String(err) };
@@ -230,7 +230,7 @@ export class JiraConnector extends BaseConnector {
         headers: this.headers(),
         signal: AbortSignal.timeout(10000),
       });
-      if (!transRes.ok) return { success: false, error: `Jira API ${transRes.status}: ${await transRes.text()}` };
+      if (!transRes.ok) return { success: false, error: await this.safeErrorText(transRes, 'Jira API') };
       const { transitions } = await transRes.json() as { transitions: Array<{ id: string; name: string }> };
 
       const match = transitions.find(t => t.name.toLowerCase() === String(transitionName).toLowerCase());
@@ -244,7 +244,7 @@ export class JiraConnector extends BaseConnector {
         body: JSON.stringify({ transition: { id: match.id } }),
         signal: AbortSignal.timeout(10000),
       });
-      if (!res.ok) return { success: false, error: `Jira API ${res.status}: ${await res.text()}` };
+      if (!res.ok) return { success: false, error: await this.safeErrorText(res, 'Jira API') };
       return { success: true, data: { key: issueKey, transitioned: transitionName } };
     } catch (err: unknown) {
       return { success: false, error: err instanceof Error ? err.message : String(err) };

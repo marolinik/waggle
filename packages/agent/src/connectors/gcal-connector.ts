@@ -209,7 +209,7 @@ export class GoogleCalendarConnector extends BaseConnector {
         headers: this.headers(),
         signal: AbortSignal.timeout(10000),
       });
-      if (!res.ok) return { success: false, error: `Google API ${res.status}: ${await res.text()}` };
+      if (!res.ok) return { success: false, error: await this.safeErrorText(res, 'Google API') };
       return { success: true, data: await res.json() };
     } catch (err: unknown) {
       return { success: false, error: err instanceof Error ? err.message : String(err) };
@@ -235,7 +235,7 @@ export class GoogleCalendarConnector extends BaseConnector {
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(10000),
       });
-      if (!res.ok) return { success: false, error: `Google API ${res.status}: ${await res.text()}` };
+      if (!res.ok) return { success: false, error: await this.safeErrorText(res, 'Google API') };
       return { success: true, data: await res.json() };
     } catch (err: unknown) {
       return { success: false, error: err instanceof Error ? err.message : String(err) };
@@ -258,7 +258,7 @@ export class GoogleCalendarConnector extends BaseConnector {
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(10000),
       });
-      if (!res.ok) return { success: false, error: `Google API ${res.status}: ${await res.text()}` };
+      if (!res.ok) return { success: false, error: await this.safeErrorText(res, 'Google API') };
       return { success: true, data: await res.json() };
     } catch (err: unknown) {
       return { success: false, error: err instanceof Error ? err.message : String(err) };
@@ -282,7 +282,7 @@ export class GoogleCalendarConnector extends BaseConnector {
         }),
         signal: AbortSignal.timeout(10000),
       });
-      if (!res.ok) return { success: false, error: `Google API ${res.status}: ${await res.text()}` };
+      if (!res.ok) return { success: false, error: await this.safeErrorText(res, 'Google API') };
       return { success: true, data: await res.json() };
     } catch (err: unknown) {
       return { success: false, error: err instanceof Error ? err.message : String(err) };

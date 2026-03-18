@@ -187,7 +187,7 @@ export class GitHubConnector extends BaseConnector {
       const qs = query.toString();
       const url = `${this.baseUrl}${path}${qs ? `?${qs}` : ''}`;
       const res = await fetch(url, { headers: this.headers(), signal: AbortSignal.timeout(10000) });
-      if (!res.ok) return { success: false, error: `GitHub API ${res.status}: ${await res.text()}` };
+      if (!res.ok) return { success: false, error: await this.safeErrorText(res, 'GitHub API') };
       return { success: true, data: await res.json() };
     } catch (err: unknown) {
       return { success: false, error: err instanceof Error ? err.message : String(err) };
@@ -206,7 +206,7 @@ export class GitHubConnector extends BaseConnector {
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(10000),
       });
-      if (!res.ok) return { success: false, error: `GitHub API ${res.status}: ${await res.text()}` };
+      if (!res.ok) return { success: false, error: await this.safeErrorText(res, 'GitHub API') };
       return { success: true, data: await res.json() };
     } catch (err: unknown) {
       return { success: false, error: err instanceof Error ? err.message : String(err) };

@@ -85,6 +85,17 @@ export abstract class BaseConnector implements WaggleConnector {
     return [...caps];
   }
 
+  /** Safely extract and truncate API error text (defense-in-depth against large/leaky error responses) */
+  protected async safeErrorText(res: Response, prefix: string): Promise<string> {
+    try {
+      const text = await res.text();
+      const truncated = text.length > 500 ? text.slice(0, 500) + '...[truncated]' : text;
+      return `${prefix} ${res.status}: ${truncated}`;
+    } catch {
+      return `${prefix} ${res.status}`;
+    }
+  }
+
   toDefinition(status: ConnectorStatus): ConnectorDefinition {
     const actionMeta: ConnectorActionMeta[] = this.actions.map(a => ({
       name: a.name,
