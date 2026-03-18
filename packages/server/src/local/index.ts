@@ -29,6 +29,7 @@ import {
   type LoadedSkill,
 } from '@waggle/agent';
 import { PluginRuntimeManager, getStarterSkillsDir, validatePluginManifest } from '@waggle/sdk';
+import { MarketplaceDB } from '@waggle/marketplace';
 import { workspaceRoutes } from './routes/workspaces.js';
 import { chatRoutes, type AgentRunner } from './routes/chat.js';
 import { memoryRoutes } from './routes/memory.js';
@@ -49,6 +50,7 @@ import { commandRoutes } from './routes/commands.js';
 import { cronRoutes } from './routes/cron.js';
 import { notificationRoutes } from './routes/notifications.js';
 import { marketplaceDevRoutes } from './routes/marketplace-dev.js';
+import { marketplaceRoutes } from './routes/marketplace.js';
 import { connectorRoutes } from './routes/connectors.js';
 import { importRoutes } from './routes/import.js';
 import { LocalScheduler } from './cron.js';
@@ -132,6 +134,7 @@ declare module 'fastify' {
     vault: import('@waggle/core').VaultStore;
     skillHashStore: import('@waggle/core').SkillHashStore;
     scheduler: import('./cron.js').LocalScheduler;
+    marketplace: import('@waggle/marketplace').MarketplaceDB | null;
   }
 }
 
@@ -194,7 +197,8 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
     // Migration failure should never block startup
   }
 
-  // Seed marketplace.db if not present (for dev marketplace routes)
+  // Seed marketplace.db if not present, then open it for production routes
+  let marketplaceDb: MarketplaceDB | null = null;
   try {
     const marketplaceDbTarget = path.join(fullConfig.dataDir, 'marketplace.db');
     if (!fs.existsSync(marketplaceDbTarget)) {
@@ -211,9 +215,15 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
         }
       }
     }
-  } catch {
-    // Marketplace seeding is optional — never block startup
+    if (fs.existsSync(marketplaceDbTarget)) {
+      marketplaceDb = new MarketplaceDB(marketplaceDbTarget);
+      console.log('[waggle] Marketplace DB loaded');
+    }
+  } catch (err) {
+    console.warn(`[waggle] Marketplace DB failed to load: ${(err as Error).message}`);
+    // Marketplace is optional — never block startup
   }
+  server.decorate('marketplace', marketplaceDb);
 
   // ── Agent state (matches CLI initialization) ────────────────────────
   const litellmApiKey = process.env.LITELLM_API_KEY ?? process.env.LITELLM_MASTER_KEY ?? 'sk-waggle-dev';
@@ -636,6 +646,7 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   await server.register(cronRoutes);
   await server.register(notificationRoutes);
   await server.register(marketplaceDevRoutes);
+  await server.register(marketplaceRoutes);
   await server.register(connectorRoutes);
   await server.register(importRoutes);
 
@@ -777,6 +788,11 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
     }
     workspaceMindCache.clear();
     multiMind.close();
+
+    // Close marketplace DB
+    if (marketplaceDb) {
+      try { marketplaceDb.close(); } catch { /* already closed */ }
+    }
   });
 
   return server;
