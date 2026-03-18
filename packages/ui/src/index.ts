@@ -107,12 +107,6 @@ export {
   matchesShortcut,
   formatShortcut,
   matchesNamedShortcut,
-  THEME_TOKENS,
-  getToken,
-  getCssVariables,
-  hexToRgb,
-  relativeLuminance,
-  getContrastRatio,
 } from './components/common/index.js';
 export type {
   SidebarProps,
@@ -126,7 +120,6 @@ export type {
   KeyCombo,
   ShortcutName,
   KeyEventLike,
-  ThemeTokenSet,
 } from './components/common/index.js';
 
 // Components — settings

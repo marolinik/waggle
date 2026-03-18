@@ -65,14 +65,6 @@ import {
   formatShortcut,
   matchesNamedShortcut,
 
-  // Common — theme tokens
-  THEME_TOKENS,
-  getToken,
-  getCssVariables,
-  hexToRgb,
-  relativeLuminance,
-  getContrastRatio,
-
   // Settings
   SettingsPanel,
   ApiKeySection,
@@ -412,20 +404,6 @@ describe('Regression: utility function smoke tests', () => {
 
   it('formatShortcut produces readable string', () => {
     expect(formatShortcut(KEYBOARD_SHORTCUTS.toggleWorkspace)).toBe('Ctrl+Shift+W');
-  });
-
-  // Theme token utilities
-  it('THEME_TOKENS has dark and light', () => {
-    expect(THEME_TOKENS).toHaveProperty('dark');
-    expect(THEME_TOKENS).toHaveProperty('light');
-  });
-
-  it('getToken retrieves values', () => {
-    expect(getToken('dark', 'bg')).toBe('#0d1117');
-  });
-
-  it('getContrastRatio returns ~21 for black/white', () => {
-    expect(getContrastRatio('#000000', '#ffffff')).toBeCloseTo(21, 0);
   });
 
   // Responsive utilities

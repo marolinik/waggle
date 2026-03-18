@@ -22,13 +22,3 @@ export {
   matchesNamedShortcut,
 } from './keyboard-utils.js';
 export type { KeyCombo, ShortcutName, KeyEventLike } from './keyboard-utils.js';
-
-export {
-  THEME_TOKENS,
-  getToken,
-  getCssVariables,
-  hexToRgb,
-  relativeLuminance,
-  getContrastRatio,
-} from './theme-tokens.js';
-export type { ThemeTokenSet } from './theme-tokens.js';
