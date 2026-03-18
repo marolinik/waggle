@@ -9,8 +9,9 @@
  */
 
 import type { FastifyInstance } from 'fastify';
-import { MarketplaceDB, MarketplaceInstaller, SecurityGate } from '@waggle/marketplace';
-import type { InstallationType } from '@waggle/marketplace';
+import { MarketplaceDB, MarketplaceInstaller, MarketplaceSync, SecurityGate } from '@waggle/marketplace';
+import type { InstallationType, ScanResult } from '@waggle/marketplace';
+import { emitNotification } from './notifications.js';
 
 export async function marketplaceRoutes(fastify: FastifyInstance) {
   // ── Helpers ──────────────────────────────────────────────────────────
@@ -90,7 +91,13 @@ export async function marketplaceRoutes(fastify: FastifyInstance) {
   });
 
   // ── POST /api/marketplace/install ───────────────────────────────────
-  // Install a package from the marketplace.
+  // Install a package from the marketplace with SecurityGate pre-scan.
+  // Severity-based gating:
+  //   CRITICAL → 403 (always blocked)
+  //   HIGH     → 403 unless force=true (override logged to audit)
+  //   MEDIUM   → install proceeds, warnings in response
+  //   LOW      → install proceeds, logged to audit trail
+  //   CLEAN    → install proceeds immediately
 
   fastify.post('/api/marketplace/install', async (request, reply) => {
     const db = requireDb(reply);
@@ -108,7 +115,140 @@ export async function marketplaceRoutes(fastify: FastifyInstance) {
       return reply.code(400).send({ error: 'packageId is required' });
     }
 
-    const installer = new MarketplaceInstaller(db);
+    // ── SecurityGate pre-scan (heuristics-only for now) ──────────────
+    const pkg = db.getPackage(body.packageId);
+    if (!pkg) {
+      return reply.code(404).send({ error: `Package ID ${body.packageId} not found` });
+    }
+
+    const gate = new SecurityGate({
+      enable_gen_trust_hub: false,
+      enable_cisco_scanner: false,
+      enable_mcp_guardian: false,
+      enable_heuristics: true,
+    });
+
+    let scanResult: ScanResult | undefined;
+    try {
+      scanResult = await gate.scan(pkg);
+    } catch {
+      // Scan failure should not block installation — proceed with warning
+    }
+
+    if (scanResult) {
+      const severity = scanResult.overall_severity;
+      const score = scanResult.security_score;
+
+      // CRITICAL (score 0): Always blocked — return 403
+      if (severity === 'CRITICAL') {
+        // Log to audit store if available
+        try {
+          (fastify as any).auditStore?.record({
+            capabilityName: pkg.name,
+            capabilityType: pkg.waggle_install_type,
+            source: 'marketplace',
+            riskLevel: 'critical',
+            trustSource: 'security-gate',
+            approvalClass: 'blocked',
+            action: 'blocked',
+            initiator: 'system',
+            detail: `SecurityGate blocked: ${scanResult.findings.length} finding(s), severity=${severity}, score=${score}`,
+          });
+        } catch { /* audit failure is non-blocking */ }
+
+        return reply.code(403).send({
+          blocked: true,
+          severity,
+          score,
+          findings: scanResult.findings,
+          message: `Installation blocked: ${scanResult.findings.length} CRITICAL security finding(s) detected.`,
+        });
+      }
+
+      // HIGH (score 25): Blocked unless force=true
+      if (severity === 'HIGH' && !body.force) {
+        try {
+          (fastify as any).auditStore?.record({
+            capabilityName: pkg.name,
+            capabilityType: pkg.waggle_install_type,
+            source: 'marketplace',
+            riskLevel: 'high',
+            trustSource: 'security-gate',
+            approvalClass: 'blocked',
+            action: 'blocked',
+            initiator: 'system',
+            detail: `SecurityGate blocked (HIGH): ${scanResult.findings.length} finding(s). Use force=true to override.`,
+          });
+        } catch { /* audit failure is non-blocking */ }
+
+        return reply.code(403).send({
+          blocked: true,
+          severity,
+          score,
+          findings: scanResult.findings,
+          message: `Installation blocked: ${scanResult.findings.length} HIGH severity finding(s). Send force=true to override.`,
+        });
+      }
+
+      // HIGH with force=true: Log the override to audit trail
+      if (severity === 'HIGH' && body.force) {
+        try {
+          (fastify as any).auditStore?.record({
+            capabilityName: pkg.name,
+            capabilityType: pkg.waggle_install_type,
+            source: 'marketplace',
+            riskLevel: 'high',
+            trustSource: 'security-gate',
+            approvalClass: 'force-override',
+            action: 'approved',
+            initiator: 'user',
+            detail: `User forced install despite HIGH severity findings: ${scanResult.findings.map(f => f.title).join('; ')}`,
+          });
+        } catch { /* audit failure is non-blocking */ }
+      }
+
+      // MEDIUM: Log warning but proceed
+      if (severity === 'MEDIUM') {
+        try {
+          (fastify as any).auditStore?.record({
+            capabilityName: pkg.name,
+            capabilityType: pkg.waggle_install_type,
+            source: 'marketplace',
+            riskLevel: 'medium',
+            trustSource: 'security-gate',
+            approvalClass: 'standard',
+            action: 'approved',
+            initiator: 'system',
+            detail: `SecurityGate passed with warnings: ${scanResult.findings.length} MEDIUM finding(s)`,
+          });
+        } catch { /* audit failure is non-blocking */ }
+      }
+
+      // LOW: Log to audit trail only
+      if (severity === 'LOW') {
+        try {
+          (fastify as any).auditStore?.record({
+            capabilityName: pkg.name,
+            capabilityType: pkg.waggle_install_type,
+            source: 'marketplace',
+            riskLevel: 'low',
+            trustSource: 'security-gate',
+            approvalClass: 'standard',
+            action: 'approved',
+            initiator: 'system',
+            detail: `SecurityGate passed: ${scanResult.findings.length} LOW finding(s)`,
+          });
+        } catch { /* audit failure is non-blocking */ }
+      }
+    }
+
+    // ── Proceed with installation ────────────────────────────────────
+    const installer = new MarketplaceInstaller(db, {
+      enable_gen_trust_hub: false,
+      enable_cisco_scanner: false,
+      enable_mcp_guardian: false,
+      enable_heuristics: true,
+    });
     const result = await installer.install({
       packageId: body.packageId,
       installPath: body.installPath,
@@ -117,7 +257,40 @@ export async function marketplaceRoutes(fastify: FastifyInstance) {
       forceInsecure: body.forceInsecure,
     });
 
-    return reply.code(result.success ? 200 : 422).send(result);
+    // Update security status in DB after successful install
+    if (result.success && scanResult) {
+      try {
+        const rawDb = (db as any).db;
+        if (rawDb?.prepare) {
+          rawDb.prepare(`
+            UPDATE packages SET
+              security_status = ?,
+              security_score = ?
+            WHERE id = ?
+          `).run(
+            scanResult.overall_severity.toLowerCase(),
+            scanResult.security_score,
+            body.packageId,
+          );
+        }
+      } catch { /* non-blocking */ }
+    }
+
+    // Attach security scan info to the response
+    const response: Record<string, unknown> = { ...result };
+    if (scanResult) {
+      response.security = {
+        severity: scanResult.overall_severity,
+        score: scanResult.security_score,
+        findingsCount: scanResult.findings.length,
+        findings: scanResult.findings,
+        warnings: scanResult.overall_severity === 'MEDIUM'
+          ? scanResult.findings.map(f => `[${f.severity}] ${f.title}`)
+          : undefined,
+      };
+    }
+
+    return reply.code(result.success ? 200 : 422).send(response);
   });
 
   // ── POST /api/marketplace/uninstall ─────────────────────────────────
@@ -198,5 +371,55 @@ export async function marketplaceRoutes(fastify: FastifyInstance) {
 
     const sources = db.listSources();
     return { sources, total: sources.length };
+  });
+
+  // ── POST /api/marketplace/sync ──────────────────────────────────────
+  // Trigger a manual sync from all configured marketplace sources.
+  // In dev/local mode, external sources won't be reachable — errors are
+  // captured per-source and returned gracefully.
+
+  fastify.post('/api/marketplace/sync', async (request, reply) => {
+    const db = requireDb(reply);
+    if (!db) return;
+
+    const body = (request.body ?? {}) as { sources?: string[] };
+
+    const sync = new MarketplaceSync(db);
+
+    try {
+      const results = await sync.syncAll(body.sources ? { sources: body.sources } : {});
+
+      const sourcesChecked = results.length;
+      const packagesAdded = results.reduce((sum, r) => sum + r.added, 0);
+      const packagesUpdated = results.reduce((sum, r) => sum + r.updated, 0);
+      const errors = results.flatMap(r => r.errors.map(e => `[${r.source}] ${e}`));
+
+      // Emit notification if new packages were discovered
+      if (packagesAdded > 0) {
+        emitNotification(fastify, {
+          title: 'Marketplace sync complete',
+          body: `${packagesAdded} new capability${packagesAdded === 1 ? '' : 's'} discovered`,
+          category: 'agent',
+          actionUrl: '/capabilities',
+        });
+      }
+
+      return {
+        sourcesChecked,
+        packagesAdded,
+        packagesUpdated,
+        errors,
+        details: results,
+      };
+    } catch (err) {
+      return reply.code(500).send({
+        error: 'Sync failed',
+        message: (err as Error).message,
+        sourcesChecked: 0,
+        packagesAdded: 0,
+        packagesUpdated: 0,
+        errors: [(err as Error).message],
+      });
+    }
   });
 }

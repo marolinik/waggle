@@ -305,8 +305,9 @@ describe('Marketplace DB Seed', () => {
     const indexPath = path.join(getRepoRoot(), 'packages', 'server', 'src', 'local', 'index.ts');
     const content = fs.readFileSync(indexPath, 'utf-8');
 
-    // Verify MarketplaceDB is imported
-    expect(content).toContain("import { MarketplaceDB } from '@waggle/marketplace'");
+    // Verify MarketplaceDB is imported from @waggle/marketplace
+    expect(content).toContain("MarketplaceDB");
+    expect(content).toContain("from '@waggle/marketplace'");
     // Verify marketplace is decorated on server
     expect(content).toContain("server.decorate('marketplace'");
     // Verify marketplace routes are registered

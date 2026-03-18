@@ -31,7 +31,7 @@ import {
   type LoadedSkill,
 } from '@waggle/agent';
 import { PluginRuntimeManager, getStarterSkillsDir, validatePluginManifest } from '@waggle/sdk';
-import { MarketplaceDB } from '@waggle/marketplace';
+import { MarketplaceDB, MarketplaceSync } from '@waggle/marketplace';
 import { workspaceRoutes } from './routes/workspaces.js';
 import { chatRoutes, type AgentRunner } from './routes/chat.js';
 import { memoryRoutes } from './routes/memory.js';
@@ -179,6 +179,17 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   if (cronStore.list().length === 0) {
     cronStore.create({ name: 'Memory consolidation', cronExpr: '0 3 * * *', jobType: 'memory_consolidation' });
     cronStore.create({ name: 'Workspace health check', cronExpr: '0 8 * * 1', jobType: 'workspace_health' });
+  }
+
+  // Ensure marketplace_sync cron exists (added separately so existing installs get it)
+  const existingSync = cronStore.list().find(s => s.name === 'Marketplace sync');
+  if (!existingSync) {
+    cronStore.create({
+      name: 'Marketplace sync',
+      cronExpr: '0 2 * * 0', // Sunday 2 AM
+      jobType: 'agent_task',
+      jobConfig: { action: 'marketplace_sync' },
+    });
   }
 
   // Vault — encrypted secret storage
@@ -636,9 +647,31 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
           }
         } catch { /* non-blocking */ }
         break;
-      case 'agent_task':
-        // Deferred to Wave 1.2 (background service mode)
+      case 'agent_task': {
+        // Handle marketplace sync cron job
+        const jobConfig = JSON.parse(schedule.job_config || '{}');
+        if (jobConfig.action === 'marketplace_sync' && marketplaceDb) {
+          try {
+            const sync = new MarketplaceSync(marketplaceDb);
+            const results = await sync.syncAll();
+            const totalAdded = results.reduce((sum, r) => sum + r.added, 0);
+            if (totalAdded > 0) {
+              eventBus.emit('notification', {
+                type: 'notification',
+                timestamp: new Date().toISOString(),
+                title: 'Marketplace sync complete',
+                body: `${totalAdded} new capability${totalAdded === 1 ? '' : 's'} discovered`,
+                category: 'agent',
+                actionUrl: '/capabilities',
+              });
+            }
+            console.log(`[cron] Marketplace sync: ${totalAdded} added across ${results.length} sources`);
+          } catch (err) {
+            console.warn(`[cron] Marketplace sync failed: ${(err as Error).message}`);
+          }
+        }
         break;
+      }
     }
   });
   scheduler.start();
