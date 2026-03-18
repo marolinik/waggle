@@ -30,6 +30,7 @@ import {
   createBrowserTools,
   createLspTools,
   McpRuntime,
+  ConnectorRegistry,
   type ToolDefinition,
   type LoadedSkill,
 } from '@waggle/agent';
@@ -213,6 +214,10 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
     // Migration failure should never block startup
   }
 
+  // Connector Registry — manages registered connectors and generates dynamic tools
+  const connectorRegistry = new ConnectorRegistry(vault);
+  server.decorate('connectorRegistry', connectorRegistry);
+
   // Seed marketplace.db if not present, then open it for production routes
   let marketplaceDb: MarketplaceDB | null = null;
   try {
@@ -328,8 +333,11 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   // LSP tools — TypeScript language server integration
   const lspTools = createLspTools(defaultWorkspace);
 
+  // Dynamic connector tools (initial — regenerated per workspace in buildToolsForWorkspace)
+  const defaultConnectorTools = connectorRegistry.generateTools();
+
   // Collect all non-subagent tools first (sub-agent tools need the full list)
-  const baseTools = [...mindTools, ...systemTools, ...planTools, ...gitTools, ...documentTools, ...skillTools, ...cronTools, ...searchTools, ...browserTools, ...lspTools];
+  const baseTools = [...mindTools, ...systemTools, ...planTools, ...gitTools, ...documentTools, ...skillTools, ...cronTools, ...searchTools, ...browserTools, ...lspTools, ...defaultConnectorTools];
 
   // Sub-agent tools — let the main agent spawn specialist sub-agents
   const subAgentTools = createSubAgentTools({
@@ -445,6 +453,9 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
 
   // Factory to rebuild workspace-scoped tools for a given directory
   const buildToolsForWorkspace = (wsPath: string): ToolDefinition[] => {
+    // Dynamic connector tools (only for connected connectors)
+    const connectorTools = connectorRegistry.generateTools();
+
     const wsBase = [
       ...mindTools,
       ...createSystemTools(wsPath),
@@ -456,6 +467,7 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
       ...searchTools,
       ...createBrowserTools(wsPath),
       ...createLspTools(wsPath),
+      ...connectorTools,
     ];
     const wsSub = createSubAgentTools({
       availableTools: wsBase,

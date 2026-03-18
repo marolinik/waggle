@@ -8,6 +8,9 @@
 // Tools that ALWAYS need confirmation (they modify state)
 const ALWAYS_CONFIRM = new Set(['write_file', 'edit_file', 'git_commit', 'install_capability']);
 
+// Connector action name patterns that indicate write operations
+const CONNECTOR_WRITE_PATTERNS = /_(create|update|delete|send|post|transition|remove|add|set|put)_/;
+
 // Bash command patterns that are safe (read-only / informational)
 const SAFE_BASH_PATTERNS = [
   /^(date|whoami|hostname|pwd|echo|printenv|env|uname|id|uptime)\b/,
@@ -37,6 +40,15 @@ const DESTRUCTIVE_BASH_PATTERNS = [
 ];
 
 export function needsConfirmation(toolName: string, args?: Record<string, unknown>): boolean {
+  // Connector tools: check for write/mutating action patterns or risk metadata
+  if (toolName.startsWith('connector_')) {
+    // Check if _connectorMeta indicates medium or high risk
+    const meta = (args as any)?._connectorMeta;
+    if (meta?.riskLevel === 'high' || meta?.riskLevel === 'medium') return true;
+    // Fall back to action name pattern matching
+    return CONNECTOR_WRITE_PATTERNS.test(toolName);
+  }
+
   // Non-bash tools: simple set check
   if (toolName !== 'bash') {
     return ALWAYS_CONFIRM.has(toolName);
@@ -68,6 +80,14 @@ export function needsConfirmation(toolName: string, args?: Record<string, unknow
 export type ApprovalClass = 'standard' | 'elevated' | 'critical';
 
 export function getApprovalClass(toolName: string, args?: Record<string, unknown>): ApprovalClass {
+  // Connector tools: derive approval class from risk metadata
+  if (toolName.startsWith('connector_')) {
+    const meta = (args as any)?._connectorMeta;
+    if (meta?.riskLevel === 'high') return 'critical';
+    if (meta?.riskLevel === 'medium') return 'elevated';
+    return 'standard';
+  }
+
   if (toolName !== 'install_capability') return 'standard';
 
   // If trust metadata is passed in args (from the proposal flow), use it

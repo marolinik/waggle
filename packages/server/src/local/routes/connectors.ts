@@ -1,74 +1,49 @@
 import type { FastifyInstance } from 'fastify';
-import type { ConnectorDefinition, ConnectorHealth } from '@waggle/shared';
-
-// Built-in connector definitions — the proof-of-concept set
-const BUILTIN_CONNECTORS: Omit<ConnectorDefinition, 'status'>[] = [
-  {
-    id: 'github',
-    name: 'GitHub',
-    description: 'Access repositories, issues, and pull requests',
-    service: 'github.com',
-    authType: 'bearer',
-    capabilities: ['read', 'write'],
-    substrate: 'waggle',
-    tools: ['github_repos', 'github_issues'],
-  },
-];
+import type { ConnectorHealth } from '@waggle/shared';
 
 export async function connectorRoutes(fastify: FastifyInstance) {
-  // GET /api/connectors — list all connectors with status
+  // GET /api/connectors — list all connectors with live status from registry
   fastify.get('/api/connectors', async () => {
-    const connectors: ConnectorDefinition[] = BUILTIN_CONNECTORS.map(def => {
-      const cred = fastify.vault?.getConnectorCredential(def.id);
-      let status: ConnectorDefinition['status'] = 'disconnected';
-      if (cred) {
-        status = cred.isExpired ? 'expired' : 'connected';
-      }
-      return { ...def, status };
-    });
-    return { connectors };
+    const registry = (fastify as any).connectorRegistry;
+    if (registry) {
+      return { connectors: registry.getDefinitions() };
+    }
+    // Fallback: no registry (shouldn't happen in production)
+    return { connectors: [] };
   });
 
-  // GET /api/connectors/:id/health — check connector health
+  // GET /api/connectors/:id/health — delegate to registry healthCheck
   fastify.get('/api/connectors/:id/health', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const def = BUILTIN_CONNECTORS.find(c => c.id === id);
-    if (!def) return reply.code(404).send({ error: 'Connector not found' });
+    const registry = (fastify as any).connectorRegistry;
 
+    if (registry) {
+      const health = await registry.healthCheck(id);
+      if (!health) return reply.code(404).send({ error: 'Connector not found' });
+      return health;
+    }
+
+    // Fallback: basic health without registry
     const cred = fastify.vault?.getConnectorCredential(id);
     const health: ConnectorHealth = {
       id,
-      name: def.name,
+      name: id,
       status: cred ? (cred.isExpired ? 'expired' : 'connected') : 'disconnected',
       lastChecked: new Date().toISOString(),
       tokenExpiresAt: cred?.expiresAt,
     };
-
-    // If connected, try a lightweight health check
-    if (cred && !cred.isExpired && id === 'github') {
-      try {
-        const res = await fetch('https://api.github.com/user', {
-          headers: { Authorization: `Bearer ${cred.value}`, 'User-Agent': 'Waggle/1.0' },
-          signal: AbortSignal.timeout(5000),
-        });
-        if (!res.ok) {
-          health.status = 'error';
-          health.error = `GitHub API returned ${res.status}`;
-        }
-      } catch (err: any) {
-        health.status = 'error';
-        health.error = err.message;
-      }
-    }
-
     return health;
   });
 
   // POST /api/connectors/:id/connect — store credentials in vault
   fastify.post('/api/connectors/:id/connect', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const def = BUILTIN_CONNECTORS.find(c => c.id === id);
-    if (!def) return reply.code(404).send({ error: 'Connector not found' });
+
+    // Verify the connector exists in the registry
+    const registry = (fastify as any).connectorRegistry;
+    if (registry && !registry.get(id)) {
+      return reply.code(404).send({ error: 'Connector not found' });
+    }
 
     const body = request.body as {
       token?: string;
@@ -76,6 +51,7 @@ export async function connectorRoutes(fastify: FastifyInstance) {
       refreshToken?: string;
       expiresAt?: string;
       scopes?: string[];
+      email?: string; // For Jira (basic auth)
     };
 
     const value = body.token ?? body.apiKey;
@@ -83,13 +59,30 @@ export async function connectorRoutes(fastify: FastifyInstance) {
 
     if (!fastify.vault) return reply.code(503).send({ error: 'Vault not available' });
 
+    const connector = registry?.get(id);
+    const authType = connector?.authType ?? 'bearer';
+
     fastify.vault.setConnectorCredential(id, {
-      type: def.authType,
+      type: authType,
       value,
       refreshToken: body.refreshToken,
       expiresAt: body.expiresAt,
       scopes: body.scopes,
     });
+
+    // Store extra metadata (e.g., email for Jira basic auth)
+    if (body.email) {
+      fastify.vault.set(`connector:${id}:email`, body.email);
+    }
+
+    // Re-initialize the connector with the new credentials
+    if (connector) {
+      try {
+        await connector.connect(fastify.vault);
+      } catch {
+        // Connection failure after credential storage is non-fatal
+      }
+    }
 
     return { connected: true, connectorId: id };
   });
