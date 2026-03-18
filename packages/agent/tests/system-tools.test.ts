@@ -42,7 +42,10 @@ describe('createSystemTools', () => {
     expect(names).toContain('search_content');
     expect(names).toContain('web_search');
     expect(names).toContain('web_fetch');
-    expect(tools).toHaveLength(8);
+    expect(names).toContain('multi_edit');
+    expect(names).toContain('get_task_output');
+    expect(names).toContain('kill_task');
+    expect(tools).toHaveLength(11);
   });
 
   describe('bash', () => {
