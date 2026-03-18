@@ -3,6 +3,7 @@
  *
  * Shows icon, name, and group. Highlights when active.
  * Team workspaces show a small team badge.
+ * F7: Shows micro-status indicators (active dot, memory count, last active).
  */
 
 import React from 'react';
@@ -17,14 +18,39 @@ function workspaceHue(name: string): number {
   return ((hash % 360) + 360) % 360;
 }
 
+/** Format a relative time string from an ISO date */
+function formatRelativeTime(isoDate: string): string {
+  try {
+    const diff = Date.now() - new Date(isoDate).getTime();
+    if (diff < 0) return 'now';
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'now';
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days === 1) return '1d ago';
+    if (days < 7) return `${days}d ago`;
+    return `${Math.floor(days / 7)}w ago`;
+  } catch {
+    return '';
+  }
+}
+
 export interface WorkspaceCardProps {
   workspace: Workspace;
   isActive: boolean;
   onClick: () => void;
   onContextMenu?: (event: React.MouseEvent) => void;
+  /** F7: Whether an agent is currently active in this workspace */
+  isAgentActive?: boolean;
+  /** F7: Number of memories in this workspace */
+  memoryCount?: number;
+  /** F7: ISO timestamp of last activity in this workspace */
+  lastActive?: string;
 }
 
-export function WorkspaceCard({ workspace, isActive, onClick, onContextMenu }: WorkspaceCardProps) {
+export function WorkspaceCard({ workspace, isActive, onClick, onContextMenu, isAgentActive, memoryCount, lastActive }: WorkspaceCardProps) {
   const isTeam = Boolean(workspace.teamId);
   const hue = workspaceHue(workspace.name);
 
@@ -43,15 +69,60 @@ export function WorkspaceCard({ workspace, isActive, onClick, onContextMenu }: W
       onContextMenu={onContextMenu}
       title={workspace.name + (isTeam ? ' (Team)' : '')}
     >
-      {/* Icon */}
-      <span className="workspace-card__icon text-base">
+      {/* Icon + agent active dot */}
+      <span className="workspace-card__icon text-base" style={{ position: 'relative' }}>
         {workspace.icon || (isTeam ? '\u{1F465}' : '\u{1F4C1}')}
+        {isAgentActive && (
+          <span
+            className="workspace-card__agent-dot"
+            style={{
+              position: 'absolute',
+              top: -1,
+              right: -2,
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: '#3fb950',
+              border: '1px solid var(--bg, #0d1117)',
+            }}
+            title="Agent active"
+          />
+        )}
       </span>
 
-      {/* Name */}
-      <span className="workspace-card__name flex-1 truncate text-left">
-        {workspace.name}
+      {/* Name + last active subtitle */}
+      <span className="workspace-card__name flex-1 truncate text-left" style={{ display: 'flex', flexDirection: 'column', gap: 0, minWidth: 0 }}>
+        <span className="truncate">{workspace.name}</span>
+        {lastActive && (
+          <span
+            className="workspace-card__last-active"
+            style={{
+              fontSize: '9px',
+              color: 'var(--text-dim, #484f58)',
+              fontWeight: 400,
+              lineHeight: 1.2,
+            }}
+          >
+            {formatRelativeTime(lastActive)}
+          </span>
+        )}
       </span>
+
+      {/* F7: Memory count badge */}
+      {memoryCount != null && memoryCount > 0 && (
+        <span
+          className="workspace-card__memory-badge"
+          title={`${memoryCount} memories`}
+          style={{
+            fontSize: '9px',
+            color: 'var(--text-dim, #484f58)',
+            fontWeight: 500,
+            flexShrink: 0,
+          }}
+        >
+          {memoryCount}m
+        </span>
+      )}
 
       {/* Team badge */}
       {isTeam && (

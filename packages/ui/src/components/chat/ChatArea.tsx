@@ -26,6 +26,30 @@ function formatRelativeTime(isoDate: string): string {
   return new Date(isoDate).toLocaleDateString();
 }
 
+/** F7: Derive contextual suggestion chips based on workspace name */
+function getContextualSuggestions(workspaceName?: string): string[] {
+  if (!workspaceName) {
+    return ['/help to see commands', 'Start by telling me about your project', '/research [topic]'];
+  }
+  const lower = workspaceName.toLowerCase();
+  if (lower.includes('research')) {
+    return ['/research [topic]', 'Find recent papers on...', 'Compare approaches to...'];
+  }
+  if (lower.includes('project') || lower.includes('dev') || lower.includes('build')) {
+    return ['/catchup', 'Review project status', 'Plan next sprint'];
+  }
+  if (lower.includes('write') || lower.includes('draft') || lower.includes('blog') || lower.includes('content')) {
+    return ['/draft [type]', 'Help me outline...', 'Review and improve my draft'];
+  }
+  if (lower.includes('plan') || lower.includes('strategy')) {
+    return ['/plan [goal]', 'Break down this goal...', 'What should I prioritize?'];
+  }
+  if (lower.includes('code') || lower.includes('eng')) {
+    return ['/review [file]', 'Help me debug...', 'Explain this code'];
+  }
+  return ['/help to see commands', 'Start by telling me about your project', '/research [topic]'];
+}
+
 export interface ChatAreaProps {
   messages: Message[];
   isLoading: boolean;
@@ -38,9 +62,11 @@ export interface ChatAreaProps {
   workspaceContext?: WorkspaceContext | null;
   /** Called when user clicks a recent thread to resume it */
   onThreadSelect?: (sessionId: string) => void;
+  /** F7: Active workspace name for contextual empty state suggestions */
+  workspaceName?: string;
 }
 
-export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, onFileSelect, onToolApprove, onToolDeny, workspaceContext, onThreadSelect }: ChatAreaProps) {
+export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, onFileSelect, onToolApprove, onToolDeny, workspaceContext, onThreadSelect, workspaceName }: ChatAreaProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [mergedCommands, setMergedCommands] = useState<SlashCommand[] | undefined>(undefined);
 
@@ -268,7 +294,7 @@ export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, o
           </div>
         )}
 
-        {/* Fallback empty state — only when no workspace context */}
+        {/* F7: Smart empty state — contextual suggestions based on workspace name */}
         {messages.length === 0 && !workspaceContext && (
           <div className="chat-area__empty">
             <div className="chat-area__empty-icon">
@@ -278,8 +304,24 @@ export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, o
                 <circle cx="24" cy="26" r="3" fill="currentColor" opacity="0.4"/>
               </svg>
             </div>
-            <div className="chat-area__empty-title">What can I help you with?</div>
+            {workspaceName ? (
+              <div className="chat-area__empty-title">{workspaceName}</div>
+            ) : (
+              <div className="chat-area__empty-title">What can I help you with?</div>
+            )}
             <div className="chat-area__empty-hint">Type a message or use <span>/help</span> for commands</div>
+            <div className="chat-area__suggestion-chips">
+              {getContextualSuggestions(workspaceName).map((suggestion, i) => (
+                <button
+                  key={i}
+                  className="chat-area__suggestion-chip"
+                  onClick={() => onSendMessage(suggestion)}
+                  disabled={isLoading}
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
           </div>
         )}
         {messages.map((msg) => (

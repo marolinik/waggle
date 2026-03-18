@@ -1,5 +1,5 @@
 export { WorkspaceTree } from './WorkspaceTree.js';
-export type { WorkspaceTreeProps } from './WorkspaceTree.js';
+export type { WorkspaceTreeProps, WorkspaceMicroStatus } from './WorkspaceTree.js';
 
 export { WorkspaceCard } from './WorkspaceCard.js';
 export type { WorkspaceCardProps } from './WorkspaceCard.js';

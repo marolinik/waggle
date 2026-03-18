@@ -10,14 +10,26 @@ import { GroupHeader } from './GroupHeader.js';
 import { WorkspaceCard } from './WorkspaceCard.js';
 import { groupWorkspacesByGroup, sortGroups } from './utils.js';
 
+/** F7: Per-workspace micro-status data for sidebar indicators */
+export interface WorkspaceMicroStatus {
+  /** Whether an agent is currently active in this workspace */
+  isAgentActive?: boolean;
+  /** Number of memories stored for this workspace */
+  memoryCount?: number;
+  /** ISO timestamp of last activity */
+  lastActive?: string;
+}
+
 export interface WorkspaceTreeProps {
   workspaces: Workspace[];
   activeId?: string;
   onSelect: (id: string) => void;
   onContextMenu?: (id: string, event: React.MouseEvent) => void;
+  /** F7: Micro-status data keyed by workspace ID */
+  microStatus?: Record<string, WorkspaceMicroStatus>;
 }
 
-export function WorkspaceTree({ workspaces, activeId, onSelect, onContextMenu }: WorkspaceTreeProps) {
+export function WorkspaceTree({ workspaces, activeId, onSelect, onContextMenu, microStatus }: WorkspaceTreeProps) {
   const grouped = useMemo(() => groupWorkspacesByGroup(workspaces), [workspaces]);
   const sortedGroupNames = useMemo(() => sortGroups(Object.keys(grouped)), [grouped]);
 
@@ -63,6 +75,9 @@ export function WorkspaceTree({ workspaces, activeId, onSelect, onContextMenu }:
                         ? (e) => onContextMenu(ws.id, e)
                         : undefined
                     }
+                    isAgentActive={microStatus?.[ws.id]?.isAgentActive}
+                    memoryCount={microStatus?.[ws.id]?.memoryCount}
+                    lastActive={microStatus?.[ws.id]?.lastActive}
                   />
                 ))}
               </div>

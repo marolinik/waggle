@@ -13,7 +13,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import type { Message, WaggleConfig, WorkspaceContext, Frame, OnboardingData, FileEntry, DroppedFile, TeamMessage } from '@waggle/ui';
+import type { Message, WaggleConfig, WorkspaceContext, Frame, OnboardingData, FileEntry, DroppedFile, TeamMessage, WorkspaceMicroStatus } from '@waggle/ui';
 import {
   ThemeProvider,
   useTheme,
@@ -226,6 +226,36 @@ function WaggleApp() {
     workspaceId: activeWorkspace?.id ?? 'default',
   });
 
+  // ── F7: Workspace micro-status for sidebar indicators ────────────
+  const [workspaceMicroStatus, setWorkspaceMicroStatus] = useState<Record<string, WorkspaceMicroStatus>>({});
+
+  useEffect(() => {
+    if (workspaces.length === 0) return;
+
+    const fetchMicroStatus = async () => {
+      const status: Record<string, WorkspaceMicroStatus> = {};
+      await Promise.allSettled(
+        workspaces.map(async (ws) => {
+          try {
+            const res = await fetch(`http://127.0.0.1:3333/api/workspaces/${ws.id}/context`);
+            if (res.ok) {
+              const ctx = await res.json();
+              status[ws.id] = {
+                memoryCount: ctx.stats?.memoryCount ?? 0,
+                lastActive: ctx.lastActive ?? ws.created,
+              };
+            }
+          } catch {
+            // Silent — workspace stats unavailable
+          }
+        })
+      );
+      setWorkspaceMicroStatus(status);
+    };
+
+    fetchMicroStatus();
+  }, [workspaces]);
+
   // ── Workspace context (catch-up / return reward) ────────────────
   const [workspaceContext, setWorkspaceContext] = useState<WorkspaceContext | null>(null);
   useEffect(() => {
@@ -269,6 +299,16 @@ function WaggleApp() {
     workspacePath: activeWorkspace?.directory,
     onFileCreated: handleFileCreated,
   });
+
+  // ── F7: Update active workspace agent status in micro-status ──
+  useEffect(() => {
+    if (!activeWorkspace?.id) return;
+    setWorkspaceMicroStatus(prev => {
+      const existing = prev[activeWorkspace.id] ?? {};
+      if (existing.isAgentActive === isLoading) return prev;
+      return { ...prev, [activeWorkspace.id]: { ...existing, isAgentActive: isLoading } };
+    });
+  }, [activeWorkspace?.id, isLoading]);
 
   // ── Approval gate (listens for WebSocket-based approval events) ──
   useApprovalGate({ service, setMessages });
@@ -926,6 +966,7 @@ function WaggleApp() {
             onViewChange={setCurrentView}
             onCreateWorkspace={() => setShowCreateWorkspace(true)}
             onOpenSearch={() => setGlobalSearchOpen(true)}
+            microStatus={workspaceMicroStatus}
           />
         }
         content={
@@ -951,6 +992,7 @@ function WaggleApp() {
                 onToolDeny={handleToolDeny}
                 workspaceContext={workspaceContext}
                 onThreadSelect={handleSessionSelect}
+                workspaceName={activeWorkspace?.name}
               />
             )}
             {currentView === 'settings' && (

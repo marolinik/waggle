@@ -24,6 +24,8 @@ export interface ChatViewProps {
   onToolDeny?: (tool: ToolUseEvent, reason?: string) => void;
   workspaceContext?: WorkspaceContext | null;
   onThreadSelect?: (sessionId: string) => void;
+  /** F7: Active workspace name for contextual empty state */
+  workspaceName?: string;
 }
 
 export function ChatView({
@@ -42,6 +44,7 @@ export function ChatView({
   onToolDeny,
   workspaceContext,
   onThreadSelect,
+  workspaceName,
 }: ChatViewProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -66,6 +69,7 @@ export function ChatView({
             onToolDeny={onToolDeny}
             workspaceContext={workspaceContext}
             onThreadSelect={onThreadSelect}
+            workspaceName={workspaceName}
           />
         </FileDropZone>
       </div>

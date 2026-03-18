@@ -3,7 +3,7 @@
  * Uses the official Waggle bee logo (amber on dark).
  */
 
-import type { Workspace } from '@waggle/ui';
+import type { Workspace, WorkspaceMicroStatus } from '@waggle/ui';
 import { Sidebar, WorkspaceTree } from '@waggle/ui';
 
 type AppView = 'chat' | 'memory' | 'events' | 'capabilities' | 'cockpit' | 'settings';
@@ -19,6 +19,8 @@ export interface AppSidebarProps {
   onCreateWorkspace: () => void;
   /** F6: Open global search */
   onOpenSearch?: () => void;
+  /** F7: Micro-status data keyed by workspace ID */
+  microStatus?: Record<string, WorkspaceMicroStatus>;
 }
 
 const NAV_ITEMS: { view: AppView; label: string; shortcut: string }[] = [
@@ -54,6 +56,7 @@ export function AppSidebar({
   onViewChange,
   onCreateWorkspace,
   onOpenSearch,
+  microStatus,
 }: AppSidebarProps) {
   const bottomItems = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', padding: '0 4px' }}>
@@ -233,6 +236,7 @@ export function AppSidebar({
           workspaces={workspaces}
           activeId={activeWorkspaceId}
           onSelect={onSelectWorkspace}
+          microStatus={microStatus}
         />
       ) : (
         !collapsed && (

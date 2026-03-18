@@ -385,6 +385,35 @@ button.workspace-card[class*="bg-blue"] {
   font-weight: 600;
 }
 
+/* F7: Suggestion chips in empty state */
+.chat-area__suggestion-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 8px;
+}
+.chat-area__suggestion-chip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+.chat-area__suggestion-chip:hover:not(:disabled) {
+  background: var(--brand, var(--primary));
+  color: var(--text-inverse, #fff);
+  border-color: var(--brand, var(--primary));
+}
+.chat-area__suggestion-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Workspace Home — catch-up block shown on workspace open */
 .chat-area__workspace-home {
   display: flex;

@@ -88,6 +88,7 @@ export type {
   TeamTask,
   TeamMessagesProps,
   TeamMessage,
+  WorkspaceMicroStatus,
 } from './components/workspace/index.js';
 
 // Components — common
