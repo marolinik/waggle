@@ -49,6 +49,7 @@ import { MemoryView } from './views/MemoryView';
 import { EventsView } from './views/EventsView';
 import { CapabilitiesView } from './views/CapabilitiesView';
 import { CockpitView } from './views/CockpitView';
+import { MissionControlView } from './views/MissionControlView';
 import { GlobalSearch } from './components/GlobalSearch';
 import type { GlobalSearchResultType } from './components/GlobalSearch';
 
@@ -76,7 +77,7 @@ function friendlyModelName(model: string): string {
   return parts[parts.length - 1];
 }
 
-type AppView = 'chat' | 'memory' | 'events' | 'capabilities' | 'cockpit' | 'settings';
+type AppView = 'chat' | 'memory' | 'events' | 'capabilities' | 'cockpit' | 'mission-control' | 'settings';
 
 function WaggleApp() {
   const service = useService();
@@ -1033,6 +1034,9 @@ function WaggleApp() {
             )}
             {currentView === 'cockpit' && (
               <CockpitView />
+            )}
+            {currentView === 'mission-control' && (
+              <MissionControlView />
             )}
           </div>
         }
