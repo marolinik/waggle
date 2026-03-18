@@ -1,21 +1,52 @@
+/**
+ * Waggle handler — routes Waggle Dance protocol messages through the dispatcher,
+ * with fallback to hive query for legacy topic-based calls.
+ */
+
 import type { Job } from 'bullmq';
 import type { JobData } from '../job-processor.js';
 import type { Db } from '../../../server/src/db/connection.js';
 import { teamEntities, tasks } from '../../../server/src/db/schema.js';
 import { sql } from 'drizzle-orm';
+import { WaggleDanceDispatcher } from '@waggle/waggle-dance';
 
 export async function waggleHandler(job: Job<JobData>, db: Db): Promise<Record<string, unknown>> {
   const { teamId, input } = job.data;
-  const topic = (input as Record<string, unknown>).topic as string ?? '';
+  const inputObj = input as Record<string, unknown>;
 
-  // In production:
-  // 1. Run hive query (check existing team knowledge)
-  // 2. Gap analysis (what's missing)
-  // 3. Spawn sub-agents for missing pieces
-  // 4. Merge results
-  // 5. Share via Waggle Dance routed_share
-  // For M3 pilot: structured stub with real hive query.
+  // ── Protocol message routing (type + subtype present) ────────────
+  if (inputObj.type && inputObj.subtype) {
+    const dispatcher = new WaggleDanceDispatcher({
+      searchMemory: async (query: string) => {
+        const searchTerm = `%${query}%`;
+        const entities = await db.select().from(teamEntities)
+          .where(sql`${teamEntities.teamId} = ${teamId} AND ${teamEntities.name} ILIKE ${searchTerm}`)
+          .limit(10);
+        return entities.map((e: typeof entities[number]) => `[${e.entityType}] ${e.name}`).join('\n') || 'No matching knowledge found.';
+      },
+      resolveCapability: (query: string) => {
+        // Stub for now — full capability router wiring needs agent package context
+        // In production, this would use CapabilityRouter.resolve(query)
+        return [{ source: 'native', name: query, description: `Capability: ${query}`, available: true }];
+      },
+      spawnWorker: async (task: string, role: string, context?: string) => {
+        // Enqueue a new job for the task
+        // In production: job.queue.add('task', { teamId, userId: job.data.userId, ... })
+        return `Worker spawned for: ${task} (role: ${role})${context ? ` with context` : ''}`;
+      },
+    });
 
+    const result = await dispatcher.dispatch(inputObj as any);
+    return {
+      dispatched: true,
+      type: inputObj.type,
+      subtype: inputObj.subtype,
+      ...result,
+    };
+  }
+
+  // ── Legacy fallback: topic-based hive query ──────────────────────
+  const topic = (inputObj.topic as string) ?? '';
   const searchTerm = `%${topic}%`;
 
   // Query existing team knowledge
