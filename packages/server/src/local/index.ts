@@ -187,7 +187,7 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
     cronStore.create({
       name: 'Marketplace sync',
       cronExpr: '0 2 * * 0', // Sunday 2 AM
-      jobType: 'agent_task',
+      jobType: 'memory_consolidation', // system-level maintenance (no workspace needed)
       jobConfig: { action: 'marketplace_sync' },
     });
   }
@@ -623,9 +623,34 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   // Local scheduler — runs cron jobs in-process (Solo, no Redis/BullMQ)
   const scheduler = new LocalScheduler(cronStore, async (schedule) => {
     switch (schedule.job_type) {
-      case 'memory_consolidation':
-        try { runPersonalConsolidation(); } catch { /* non-blocking */ }
+      case 'memory_consolidation': {
+        // Check if this is a marketplace sync (uses memory_consolidation type for system-level scheduling)
+        const mcJobConfig = JSON.parse(schedule.job_config || '{}');
+        if (mcJobConfig.action === 'marketplace_sync' && marketplaceDb) {
+          try {
+            const sync = new MarketplaceSync(marketplaceDb);
+            const results = await sync.syncAll();
+            const totalAdded = results.reduce((sum, r) => sum + r.added, 0);
+            if (totalAdded > 0) {
+              eventBus.emit('notification', {
+                type: 'notification',
+                timestamp: new Date().toISOString(),
+                title: 'Marketplace sync complete',
+                body: `${totalAdded} new capability${totalAdded === 1 ? '' : 's'} discovered`,
+                category: 'agent',
+                actionUrl: '/capabilities',
+              });
+            }
+            console.log(`[cron] Marketplace sync: ${totalAdded} added across ${results.length} sources`);
+          } catch (err) {
+            console.warn(`[cron] Marketplace sync failed: ${(err as Error).message}`);
+          }
+        } else {
+          // Normal memory consolidation
+          try { runPersonalConsolidation(); } catch { /* non-blocking */ }
+        }
         break;
+      }
       case 'workspace_health':
         // Log stale frame count per workspace as awareness flag
         try {
@@ -647,31 +672,6 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
           }
         } catch { /* non-blocking */ }
         break;
-      case 'agent_task': {
-        // Handle marketplace sync cron job
-        const jobConfig = JSON.parse(schedule.job_config || '{}');
-        if (jobConfig.action === 'marketplace_sync' && marketplaceDb) {
-          try {
-            const sync = new MarketplaceSync(marketplaceDb);
-            const results = await sync.syncAll();
-            const totalAdded = results.reduce((sum, r) => sum + r.added, 0);
-            if (totalAdded > 0) {
-              eventBus.emit('notification', {
-                type: 'notification',
-                timestamp: new Date().toISOString(),
-                title: 'Marketplace sync complete',
-                body: `${totalAdded} new capability${totalAdded === 1 ? '' : 's'} discovered`,
-                category: 'agent',
-                actionUrl: '/capabilities',
-              });
-            }
-            console.log(`[cron] Marketplace sync: ${totalAdded} added across ${results.length} sources`);
-          } catch (err) {
-            console.warn(`[cron] Marketplace sync failed: ${(err as Error).message}`);
-          }
-        }
-        break;
-      }
     }
   });
   scheduler.start();
