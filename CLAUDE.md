@@ -7,7 +7,8 @@
 - **Stack**: Tauri 2.0 (Rust + WebView2), React + TypeScript, Fastify, SQLite + FTS5 + sqlite-vec, Claude Agent SDK
 - **Run server**: `cd packages/server && npx tsx src/local/start.ts`
 - **Run desktop**: `cd app && npm run tauri dev`
-- **Run tests**: `npx vitest run` (root — runs all ~1645 tests)
+- **Run tests**: `npx vitest run` (root — runs all ~2583 tests, target 2900+ after Phase 8)
+- **Test baseline**: 2583 tests across 190 files, ALL PASSING (as of Phase 8 start)
 
 ---
 
@@ -160,37 +161,43 @@ No new code until audit is complete.
 
 ## Architecture Overview
 
-### 14 Packages
-- `@waggle/core` — memory, embeddings, .mind files
-- `@waggle/agent` — agent loop, tools, sub-agents
-- `@waggle/server` — Fastify local server (localhost:3333)
-- `@waggle/ui` — React component library
+### 15 Packages
+- `@waggle/core` — memory, embeddings, .mind files, vault (AES-256-GCM), cron-store
+- `@waggle/agent` — agent loop, 53 tools, sub-agents, capability router, workflow composer, trust model, hooks
+- `@waggle/server` — Fastify local server (localhost:3333), 20 route modules, KVARK client, daemons, scheduler
+- `@waggle/ui` — React component library (chat, memory, settings, workspace, onboarding, events, cockpit)
 - `@waggle/cli` — CLI REPL
-- `@waggle/sdk` — plugin/skill SDK
+- `@waggle/sdk` — plugin/skill SDK, capability packs (5 packs), starter skills
+- `@waggle/marketplace` — marketplace catalog (120 packages, 17 packs, 40 sources, SecurityGate)
 - `@waggle/optimizer` — prompt optimization (Ax/GEPA)
 - `@waggle/weaver` — memory consolidation daemon
-- `@waggle/worker` — background task processing
+- `@waggle/worker` — background task processing (BullMQ), execution strategies (parallel/sequential/coordinator)
 - `@waggle/shared` — shared types/utilities
-- `@waggle/admin-web` — admin dashboard (scaffold)
-- `@waggle/waggle-dance` — swarm orchestration (scaffold)
+- `@waggle/admin-web` — admin dashboard
+- `@waggle/waggle-dance` — swarm orchestration (protocol, dispatcher, hive-query)
 - `@waggle/sidecar` — Node.js agent sidecar for Tauri
 - `app` — Tauri desktop app
 
 ### Key Paths
-- Server routes: `packages/server/src/local/routes/`
-- Agent tools: `packages/agent/src/tools/`
+- Server routes: `packages/server/src/local/routes/` (20 route modules)
+- Agent tools: `packages/agent/src/` (system-tools, tools, subagent-tools, plan-tools, kvark-tools, team-tools, skill-tools, workflow-tools, git-tools, audit-tools, document-tools)
 - UI components: `packages/ui/src/components/`
 - Memory/mind: `packages/core/src/`
-- Desktop app: `app/src/`
+- Desktop app views: `app/src/views/` (Chat, Cockpit, Capabilities, Memory, Events, Settings)
+- Desktop app components: `app/src/components/`
 - Tauri backend: `app/src-tauri/src/`
+- Marketplace: `packages/marketplace/src/` (db, installer, security, sync, cli)
+- Connector types: `packages/shared/src/types.ts` (ConnectorDefinition, ConnectorHealth, etc.)
 
 ### Runtime
 - Local server: Fastify on `localhost:3333`, SSE streaming
 - Built-in Anthropic proxy: `/v1/chat/completions` (OpenAI → Anthropic translation)
-- Agent: 25+ real tools, approval gates, 200 max turns
+- Agent: 53 tools across 12 categories, approval gates, 200 max turns
+- 13 slash commands: /catchup, /now, /research, /draft, /decide, /review, /spawn, /skills, /status, /memory, /plan, /focus, /help
 - Session persistence: `.jsonl` files in `~/.waggle/workspaces/{id}/sessions/`
 - Config: `~/.waggle/config.json`
 - Mind DB: `~/.waggle/default.mind`
+- Marketplace DB: `~/.waggle/marketplace.db` (auto-seeded from package)
 
 ---
 
@@ -210,15 +217,26 @@ No new code until audit is complete.
 ## V1 Build Order (strategic priority)
 
 **Authoritative plan**: `docs/plans/2026-03-11-waggle-v1-revised-plan.md`
+**Phase 8 design spec**: `docs/superpowers/specs/2026-03-18-phase8-activate-execute-harden-design.md`
 
-1. **Phase 1 — Memory truth** — memory actually improves responses, personal/workspace split, catch-up experience
-2. **Phase 2 — Execution truth** — agent does useful work, drafts from context, decision compression, research in context
-3. **Phase 3 — Screenflow & UX truth** — workspace re-entry, three-zone layout, onboarding, installer
-4. **Phase 4 — Habit formation** — background memory improvement, personal continuity, progress tracking, polish
-5. **Phase 5 — Team mode** — multi-user workspaces, shared memory, Waggle Dance basics
-6. **Phase 6 — KVARK integration** — enterprise retrieval bridge, governed actions, source-aware synthesis
+1. **Phase 1 — Memory truth** — COMPLETE
+2. **Phase 2 — Execution truth** — COMPLETE
+3. **Phase 3 — Screenflow & UX truth** — COMPLETE
+4. **Phase 4 — Habit formation** — COMPLETE
+5. **Phase 5 — Team mode** — COMPLETE
+6. **Phase 6 — Capability truth** — COMPLETE
+7. **Phase 7 — KVARK integration** — IN PROGRESS (Milestone A done, B in progress)
+8. **Phase 8 — Activate, Execute, Harden** — NOT STARTED (design approved)
+   - 8F: UI/UX Overhaul (shadcn/ui, surface hidden features)
+   - 8A: Activate the Arsenal (marketplace live, auto-routing, agent intelligence)
+   - 8B: Tool Parity + Extensions (LSP, browser, Tavily/Brave, enhanced grep)
+   - 8C: Execution Layer (connector SDK, 5 core connectors, CLI-Anything)
+   - 8D: Swarm & Parallel (Waggle Dance live, parallel workspaces, Mission Control)
+   - 8G: Fortify (code review, security audit, dependency cleanup)
+   - 8E: Harden & Ship (E2E scenarios, benchmarks, installer, regression)
+9. **Phase 9 — Comprehensive Testing** — TBD (separate planning session)
 
-Order: **Standalone → Teams → KVARK**. Do not skip ahead.
+Order: **Standalone → Teams → KVARK → Activate → Ship**.
 
 ## V1 Kill List (must-win use cases)
 
@@ -227,6 +245,9 @@ Order: **Standalone → Teams → KVARK**. Do not skip ahead.
 3. Decision compression / next-step thinking
 4. Research and synthesis in context
 5. Ongoing project memory for solo operators
+6. Capability discovery and installation (marketplace → install → use)
+7. External action execution (email, Jira, GitHub, Slack via connectors)
+8. Multi-agent workflows (research → analyze → draft using swarm)
 
 ## Daily-Use Loop (the product standard)
 
@@ -243,14 +264,16 @@ Never: lost, overloaded, buried in architecture, managing the system to get valu
 
 ## Feature Priority
 
-- **P0**: workspace model, persistent memory, instant catch-up, useful output, low friction, basic transparency
-- **P1**: memory browser, event visibility, sessions model, workspace home, drafting workflows
-- **P2**: file workflows, planning modes, personalization, local polish
-- **P3** (NOT NOW): swarm, multi-channel, marketplace, computer use, enterprise admin, KG perfectionism
+- **P0**: workspace model, persistent memory, instant catch-up, useful output, low friction, basic transparency, **marketplace activation**, **connector execution**
+- **P1**: memory browser, event visibility, sessions model, workspace home, drafting workflows, **browser automation**, **swarm orchestration**, **agent personas**, **Mission Control**
+- **P2**: file workflows, planning modes, personalization, local polish, **LSP integration**, **CLI-Anything**
+- **P3** (NOT NOW): multi-channel messaging (Slack/Teams/WhatsApp as user channels), mobile native apps, enterprise admin (SSO/SAML, on-prem docs), voice interaction, full connector catalog (250+), KG perfectionism
 
 ## Not-Now List
 
-Do not let these hijack V1: swarm, multi-agent choreography, multi-channel, plugin marketplace, enterprise admin, computer use, self-improvement as headline, excessive settings, KG perfectionism, competing with coding tools on their turf.
+Do not let these hijack V1: multi-channel messaging, mobile native apps, enterprise SSO/SAML, on-prem deployment, voice interaction, full connector catalog (250+ — V1 ships 5 core + adapter bridge), competing with coding tools on their turf, KG perfectionism.
+
+**Moved to Phase 8 (no longer NOT-NOW)**: swarm/Waggle Dance (8D), marketplace activation (8A), browser automation (8B), connectors (8C). Rationale: infrastructure is 100% built from Phases 1-7. Phase 8 activates dormant systems, not building new ones. See design spec for full justification.
 
 ## Information Architecture
 
