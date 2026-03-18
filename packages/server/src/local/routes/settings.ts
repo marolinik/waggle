@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import type { FastifyPluginAsync } from 'fastify';
 import { WaggleConfig } from '@waggle/core';
 
@@ -116,7 +118,70 @@ export const settingsRoutes: FastifyPluginAsync = async (server) => {
     const result = validateApiKeyFormat(provider, apiKey);
     return result;
   });
+
+  // ── Permission settings ─────────────────────────────────────────────
+
+  const DEFAULTS: PermissionsData = {
+    yoloMode: false,
+    externalGates: [],
+    workspaceOverrides: {},
+  };
+
+  function getPermissionsPath(): string {
+    return path.join(server.localConfig.dataDir, 'permissions.json');
+  }
+
+  function readPermissions(): PermissionsData {
+    const filePath = getPermissionsPath();
+    try {
+      if (fs.existsSync(filePath)) {
+        const raw = fs.readFileSync(filePath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        return {
+          yoloMode: parsed.yoloMode ?? DEFAULTS.yoloMode,
+          externalGates: parsed.externalGates ?? DEFAULTS.externalGates,
+          workspaceOverrides: parsed.workspaceOverrides ?? DEFAULTS.workspaceOverrides,
+        };
+      }
+    } catch {
+      // Corrupted file — return defaults
+    }
+    return { ...DEFAULTS };
+  }
+
+  function writePermissions(data: PermissionsData): void {
+    const filePath = getPermissionsPath();
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+  }
+
+  // GET /api/settings/permissions — read permission settings
+  server.get('/api/settings/permissions', async () => {
+    return readPermissions();
+  });
+
+  // PUT /api/settings/permissions — save permission settings
+  server.put<{
+    Body: { yoloMode?: boolean; externalGates?: string[]; workspaceOverrides?: Record<string, string[]> };
+  }>('/api/settings/permissions', async (request) => {
+    const { yoloMode, externalGates, workspaceOverrides } = request.body ?? {};
+    const current = readPermissions();
+
+    const updated: PermissionsData = {
+      yoloMode: yoloMode ?? current.yoloMode,
+      externalGates: externalGates ?? current.externalGates,
+      workspaceOverrides: workspaceOverrides ?? current.workspaceOverrides,
+    };
+
+    writePermissions(updated);
+    return updated;
+  });
 };
+
+interface PermissionsData {
+  yoloMode: boolean;
+  externalGates: string[];
+  workspaceOverrides: Record<string, string[]>;
+}
 
 /**
  * Validate API key format without making real API calls.

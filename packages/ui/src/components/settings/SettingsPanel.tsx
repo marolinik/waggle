@@ -1,18 +1,19 @@
 /**
- * SettingsPanel — tabbed settings container component.
+ * SettingsPanel -- tabbed settings container component.
  *
- * Renders a tabbed interface with General, API Keys, Models, Permissions, and Advanced tabs.
+ * Renders a tabbed interface with General, Models & Providers, Vault & Credentials,
+ * Permissions, Team, and Advanced tabs.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import type { WaggleConfig, TeamConnection } from '../../services/types.js';
 import { SETTINGS_TABS } from './utils.js';
-import { ApiKeySection } from './ApiKeySection.js';
-import { ModelSection } from './ModelSection.js';
+import { ModelsSection } from './ModelsSection.js';
 import { PermissionSection } from './PermissionSection.js';
 import { ThemeSection } from './ThemeSection.js';
 import { AdvancedSection } from './AdvancedSection.js';
 import { TeamSection } from './TeamSection.js';
+import { VaultSection } from './VaultSection.js';
 
 export interface SettingsPanelProps {
   activeTab?: string;
@@ -20,10 +21,15 @@ export interface SettingsPanelProps {
   config: WaggleConfig;
   onConfigUpdate: (config: Partial<WaggleConfig>) => void;
   onTestApiKey?: (provider: string, key: string) => Promise<{ valid: boolean; error?: string }>;
-  onRestartLiteLLM?: () => Promise<void>;
   teamConnection?: TeamConnection | null;
   onTeamConnect?: (serverUrl: string, token: string) => Promise<void>;
   onTeamDisconnect?: () => Promise<void>;
+}
+
+interface PermissionsData {
+  yoloMode: boolean;
+  externalGates: string[];
+  workspaceOverrides: Record<string, string[]>;
 }
 
 export function SettingsPanel({
@@ -32,15 +38,58 @@ export function SettingsPanel({
   config,
   onConfigUpdate,
   onTestApiKey,
-  onRestartLiteLLM,
   teamConnection,
   onTeamConnect,
   onTeamDisconnect,
 }: SettingsPanelProps) {
   const [internalTab, setInternalTab] = useState('general');
-  const [yoloMode, setYoloMode] = useState(true);
+  const [yoloMode, setYoloMode] = useState(false);
   const [externalGates, setExternalGates] = useState<string[]>([]);
   const activeTab = controlledTab ?? internalTab;
+
+  // Load permissions from server
+  useEffect(() => {
+    let cancelled = false;
+    async function loadPermissions() {
+      try {
+        const res = await fetch('http://127.0.0.1:3333/api/settings/permissions');
+        if (res.ok) {
+          const data = (await res.json()) as PermissionsData;
+          if (!cancelled) {
+            setYoloMode(data.yoloMode);
+            setExternalGates(data.externalGates);
+          }
+        }
+      } catch {
+        // Use defaults on error
+      }
+    }
+    loadPermissions();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Save permissions to server
+  const savePermissions = useCallback(async (yolo: boolean, gates: string[]) => {
+    try {
+      await fetch('http://127.0.0.1:3333/api/settings/permissions', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ yoloMode: yolo, externalGates: gates, workspaceOverrides: {} }),
+      });
+    } catch {
+      // Silent failure — permissions will be retried on next save
+    }
+  }, []);
+
+  const handleYoloModeChange = useCallback((enabled: boolean) => {
+    setYoloMode(enabled);
+    savePermissions(enabled, externalGates);
+  }, [externalGates, savePermissions]);
+
+  const handleExternalGatesChange = useCallback((gates: string[]) => {
+    setExternalGates(gates);
+    savePermissions(yoloMode, gates);
+  }, [yoloMode, savePermissions]);
 
   const handleTabChange = (tab: string) => {
     setInternalTab(tab);
@@ -69,26 +118,24 @@ export function SettingsPanel({
       {/* Tab content */}
       <div className="settings-panel__content flex-1 overflow-y-auto p-6">
         {activeTab === 'general' && (
-          <>
-            <ThemeSection config={config} onConfigUpdate={onConfigUpdate} />
-            <div style={{ marginTop: 24 }}>
-              <ModelSection config={config} onConfigUpdate={onConfigUpdate} />
-            </div>
-          </>
+          <ThemeSection config={config} onConfigUpdate={onConfigUpdate} />
         )}
-        {activeTab === 'api-keys' && (
-          <ApiKeySection
+        {activeTab === 'models' && (
+          <ModelsSection
             config={config}
             onConfigUpdate={onConfigUpdate}
             onTestApiKey={onTestApiKey}
           />
         )}
+        {activeTab === 'vault' && (
+          <VaultSection />
+        )}
         {activeTab === 'permissions' && (
           <PermissionSection
             yoloMode={yoloMode}
-            onYoloModeChange={setYoloMode}
+            onYoloModeChange={handleYoloModeChange}
             externalGates={externalGates}
-            onExternalGatesChange={setExternalGates}
+            onExternalGatesChange={handleExternalGatesChange}
           />
         )}
         {activeTab === 'team' && onTeamConnect && onTeamDisconnect && (
@@ -102,7 +149,6 @@ export function SettingsPanel({
           <AdvancedSection
             config={config}
             onConfigUpdate={onConfigUpdate}
-            onRestartLiteLLM={onRestartLiteLLM}
           />
         )}
       </div>

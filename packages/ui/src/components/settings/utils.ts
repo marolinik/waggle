@@ -57,7 +57,8 @@ export interface SettingsTab {
 
 export const SETTINGS_TABS: SettingsTab[] = [
   { id: 'general', label: 'General' },
-  { id: 'api-keys', label: 'API Keys' },
+  { id: 'models', label: 'Models & Providers' },
+  { id: 'vault', label: 'Vault & Credentials' },
   { id: 'permissions', label: 'Permissions' },
   { id: 'team', label: 'Team' },
   { id: 'advanced', label: 'Advanced' },

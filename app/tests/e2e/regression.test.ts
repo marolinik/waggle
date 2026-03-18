@@ -67,7 +67,7 @@ import {
 
   // Settings
   SettingsPanel,
-  ApiKeySection,
+  ModelsSection,
   ModelSection,
   PermissionSection,
   ThemeSection,
@@ -219,7 +219,7 @@ describe('Regression: @waggle/ui component exports', () => {
       ApprovalGate, FileDropZone,
       WorkspaceTree, WorkspaceCard, GroupHeader, CreateWorkspaceDialog,
       Sidebar, Tabs, StatusBar, Modal, ThemeProvider,
-      SettingsPanel, ApiKeySection, ModelSection, PermissionSection,
+      SettingsPanel, ModelsSection, ModelSection, PermissionSection,
       ThemeSection, AdvancedSection,
       OnboardingWizard, NameStep, ApiKeyStep, WorkspaceStep, ReadyStep,
       SplashScreen,

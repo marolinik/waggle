@@ -1,8 +1,8 @@
 export { SettingsPanel } from './SettingsPanel.js';
 export type { SettingsPanelProps } from './SettingsPanel.js';
 
-export { ApiKeySection } from './ApiKeySection.js';
-export type { ApiKeySectionProps } from './ApiKeySection.js';
+export { ModelsSection } from './ModelsSection.js';
+export type { ModelsSectionProps } from './ModelsSection.js';
 
 export { ModelSection } from './ModelSection.js';
 export type { ModelSectionProps } from './ModelSection.js';
@@ -16,8 +16,8 @@ export type { ThemeSectionProps } from './ThemeSection.js';
 export { AdvancedSection } from './AdvancedSection.js';
 export type { AdvancedSectionProps, MindFileInfo } from './AdvancedSection.js';
 
-export { SkillsSection } from './SkillsSection.js';
-export type { SkillsSectionProps, SkillInfo, PluginInfo } from './SkillsSection.js';
+export { VaultSection } from './VaultSection.js';
+export type { VaultSectionProps } from './VaultSection.js';
 
 export { InstallCenter } from './InstallCenter.js';
 export type { InstallCenterProps } from './InstallCenter.js';

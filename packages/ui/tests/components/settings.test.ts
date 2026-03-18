@@ -8,11 +8,12 @@
 import { describe, it, expect } from 'vitest';
 import {
   SettingsPanel,
-  ApiKeySection,
+  ModelsSection,
   ModelSection,
   PermissionSection,
   ThemeSection,
   AdvancedSection,
+  VaultSection,
   maskApiKey,
   getProviderDisplayName,
   getProviderKeyPrefix,
@@ -188,14 +189,15 @@ describe('SETTINGS_TABS', () => {
     expect(SETTINGS_TABS.length).toBeGreaterThan(0);
   });
 
-  it('has General, API Keys, Permissions, Team, Advanced tabs', () => {
+  it('has General, Models & Providers, Vault & Credentials, Permissions, Team, Advanced tabs', () => {
     const labels = SETTINGS_TABS.map((t) => t.label);
     expect(labels).toContain('General');
-    expect(labels).toContain('API Keys');
+    expect(labels).toContain('Models & Providers');
+    expect(labels).toContain('Vault & Credentials');
     expect(labels).toContain('Permissions');
     expect(labels).toContain('Team');
     expect(labels).toContain('Advanced');
-    expect(labels).not.toContain('Models');
+    expect(labels).not.toContain('API Keys');
     expect(labels).not.toContain('Skills & Plugins');
     expect(labels).not.toContain('Capabilities');
   });
@@ -306,8 +308,12 @@ describe('Settings component exports', () => {
     expect(typeof SettingsPanel).toBe('function');
   });
 
-  it('exports ApiKeySection as a function', () => {
-    expect(typeof ApiKeySection).toBe('function');
+  it('exports ModelsSection as a function', () => {
+    expect(typeof ModelsSection).toBe('function');
+  });
+
+  it('exports VaultSection as a function', () => {
+    expect(typeof VaultSection).toBe('function');
   });
 
   it('exports ModelSection as a function', () => {

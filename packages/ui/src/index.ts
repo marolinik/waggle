@@ -125,12 +125,12 @@ export type {
 // Components — settings
 export {
   SettingsPanel,
-  ApiKeySection,
+  ModelsSection,
   ModelSection,
   PermissionSection,
   ThemeSection,
   AdvancedSection,
-  SkillsSection,
+  VaultSection,
   maskApiKey,
   getProviderDisplayName,
   getProviderKeyPrefix,
@@ -144,14 +144,12 @@ export {
 } from './components/settings/index.js';
 export type {
   SettingsPanelProps,
-  ApiKeySectionProps,
+  ModelsSectionProps,
   ModelSectionProps,
   PermissionSectionProps,
   ThemeSectionProps,
   AdvancedSectionProps,
-  SkillsSectionProps,
-  SkillInfo,
-  PluginInfo,
+  VaultSectionProps,
   MindFileInfo,
   ProviderConfig,
   SettingsTab,

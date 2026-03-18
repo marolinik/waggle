@@ -1,5 +1,7 @@
 /**
- * AdvancedSection — LiteLLM status, data directory, config export/import, debug settings.
+ * AdvancedSection -- data directory, config export/import, debug settings.
+ *
+ * LiteLLM proxy controls removed (replaced by built-in Anthropic proxy post-M4).
  */
 
 import React from 'react';
@@ -14,8 +16,6 @@ export interface MindFileInfo {
 export interface AdvancedSectionProps {
   config: WaggleConfig;
   onConfigUpdate: (config: Partial<WaggleConfig>) => void;
-  litellmStatus?: 'running' | 'stopped' | 'error';
-  onRestartLiteLLM?: () => Promise<void>;
   dataDirectory?: string;
   onExportConfig?: () => void;
   onImportConfig?: () => void;
@@ -33,8 +33,6 @@ function formatBytes(bytes: number): string {
 export function AdvancedSection({
   config,
   onConfigUpdate,
-  litellmStatus = 'stopped',
-  onRestartLiteLLM,
   dataDirectory = '~/.waggle',
   onExportConfig,
   onImportConfig,
@@ -45,48 +43,6 @@ export function AdvancedSection({
   return (
     <div className="advanced-section space-y-6">
       <h2 className="text-lg font-semibold">Advanced</h2>
-
-      {/* LiteLLM status */}
-      <div className="rounded-lg border border-gray-700 p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-medium">LiteLLM Proxy</h3>
-            <p className="text-xs text-gray-400 mt-1">
-              Model routing proxy for multi-provider support.
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <span
-              className={`inline-flex items-center gap-1 text-sm ${
-                litellmStatus === 'running'
-                  ? 'text-green-400'
-                  : litellmStatus === 'error'
-                    ? 'text-red-400'
-                    : 'text-gray-400'
-              }`}
-            >
-              <span
-                className={`inline-block h-2 w-2 rounded-full ${
-                  litellmStatus === 'running'
-                    ? 'bg-green-400'
-                    : litellmStatus === 'error'
-                      ? 'bg-red-400'
-                      : 'bg-gray-400'
-                }`}
-              />
-              {litellmStatus === 'running' ? 'Running' : litellmStatus === 'error' ? 'Error' : 'Stopped'}
-            </span>
-            {onRestartLiteLLM && (
-              <button
-                onClick={onRestartLiteLLM}
-                className="rounded bg-gray-700 px-3 py-1 text-sm text-gray-300 hover:bg-gray-600"
-              >
-                Restart
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
 
       {/* Data directory */}
       <div className="rounded-lg border border-gray-700 p-4">
