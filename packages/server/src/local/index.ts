@@ -64,8 +64,10 @@ import { notificationRoutes } from './routes/notifications.js';
 import { marketplaceDevRoutes } from './routes/marketplace-dev.js';
 import { marketplaceRoutes } from './routes/marketplace.js';
 import { connectorRoutes } from './routes/connectors.js';
+import { fleetRoutes } from './routes/fleet.js';
 import { importRoutes } from './routes/import.js';
 import { LocalScheduler } from './cron.js';
+import { WorkspaceSessionManager } from './workspace-sessions.js';
 import { EventEmitter } from 'node:events';
 
 export interface LocalConfig {
@@ -502,9 +504,13 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
     return [...wsBase, ...wsSub, ...wsWorkflow];
   };
 
-  // ── Workspace mind cache ─────────────────────────────────────────
-  // Open workspace .mind files on demand and keep them cached.
-  // Closed on server shutdown via onClose hook.
+  // ── Workspace Session Manager ────────────────────────────────────
+  // Manages concurrent workspace sessions (max 3) with independent minds and tools.
+  const sessionManager = new WorkspaceSessionManager(3);
+  server.decorate('sessionManager', sessionManager);
+
+  // ── Workspace mind cache (legacy — being replaced by sessionManager) ──
+  // Kept for backward compatibility during transition.
   const workspaceMindCache = new Map<string, MindDB>();
   let activeWorkspaceId: string | null = null;
 
@@ -749,6 +755,7 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   await server.register(marketplaceDevRoutes);
   await server.register(marketplaceRoutes);
   await server.register(connectorRoutes);
+  await server.register(fleetRoutes);
   await server.register(importRoutes);
 
   // WebSocket endpoint — event bus relay to frontend
@@ -883,7 +890,10 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
     }
     workspaceWeavers.clear();
 
-    // Close all cached workspace minds
+    // Close all workspace sessions (new concurrent model)
+    sessionManager.closeAll();
+
+    // Close all cached workspace minds (legacy)
     for (const [, wsDb] of workspaceMindCache) {
       try { wsDb.close(); } catch { /* already closed */ }
     }
