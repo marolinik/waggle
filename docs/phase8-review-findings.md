@@ -6,13 +6,37 @@
 
 ---
 
-## Critical Findings
+## Critical Findings (all FIXED)
 
-None found.
+### C1: LLM-injectable _connectorMeta bypasses approval gates
+**Status**: FIXED — removed _connectorMeta from schema, risk determined by tool name only
+**Files**: `confirmation.ts`, `connector-registry.ts`
 
-## High Findings
+### C3: Unencoded URL path params enable endpoint traversal
+**Status**: FIXED — `encodeURIComponent()` applied to all path params (issueKey, eventId, message_id)
+**Files**: `jira-connector.ts`, `gcal-connector.ts`, `email-connector.ts`
 
-None found.
+### S1: Map mutation during iteration in closeIdleSessions
+**Status**: FIXED — snapshot keys with spread before iterating
+**Files**: `workspace-sessions.ts`
+
+## High Findings (all FIXED)
+
+### C4: Disconnect leaves orphaned vault entries
+**Status**: FIXED — disconnect now cleans all `connector:<id>:*` sub-keys
+**Files**: `connectors.ts` (routes)
+
+### S3: Sequential finalOutput returns '' not null on chain break
+**Status**: FIXED — filter error results, return last successful output or null
+**Files**: `sequential.ts`
+
+### S5: Coordinator synthesis hides failed workers
+**Status**: FIXED — failure notices included in synthesis context
+**Files**: `coordinator.ts`
+
+### S2: Persona truncation marker hardcoded
+**Status**: FIXED — marker length derived from actual marker string
+**Files**: `personas.ts`
 
 ## Medium Findings
 
