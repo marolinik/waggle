@@ -53,7 +53,7 @@ const agentResults = new Map<string, SubAgentResult>();
 let agentCounter = 0;
 
 /** Role → tool name filter mapping for common specialist roles */
-const ROLE_TOOL_PRESETS: Record<string, string[]> = {
+export const ROLE_TOOL_PRESETS: Record<string, string[]> = {
   researcher: ['web_search', 'web_fetch', 'search_memory', 'save_memory', 'read_file', 'search_files', 'search_content'],
   writer: ['read_file', 'write_file', 'edit_file', 'search_files', 'search_memory', 'save_memory', 'generate_docx'],
   coder: ['bash', 'read_file', 'write_file', 'edit_file', 'search_files', 'search_content', 'git_status', 'git_diff', 'git_log', 'git_commit'],

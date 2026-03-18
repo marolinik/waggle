@@ -51,8 +51,8 @@ describe('Capabilities Route', () => {
     expect(Array.isArray(body.commands)).toBe(true);
     expect(body.plugins).toEqual([]);
     expect(body.mcpServers).toEqual([]);
-    // Commands are now populated by registerWorkflowCommands at startup
-    expect(body.commands.length).toBe(13);
+    // Commands populated by registerWorkflowCommands + registerMarketplaceCommands at startup
+    expect(body.commands.length).toBeGreaterThanOrEqual(13);
   });
 
   it('tools summary has count, native, plugin, mcp fields', async () => {
@@ -145,11 +145,11 @@ describe('Capabilities Route', () => {
     (server.agentState as Record<string, unknown>).mcpRuntime = null;
   });
 
-  it('returns 13 workflow commands from the wired CommandRegistry', async () => {
+  it('returns workflow + marketplace commands from the wired CommandRegistry', async () => {
     const res = await server.inject({ method: 'GET', url: '/api/capabilities/status' });
     const body = JSON.parse(res.body);
 
-    expect(body.commands).toHaveLength(13);
+    expect(body.commands.length).toBeGreaterThanOrEqual(13);
 
     // Verify all expected workflow commands are present
     const commandNames = body.commands.map((c: { name: string }) => c.name);

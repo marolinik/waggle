@@ -371,3 +371,6 @@ export type { NotificationEvent, UseNotificationsResult } from './hooks/useNotif
 // Components — notifications
 export { ToastContainer } from './components/ToastContainer.js';
 export type { Toast } from './components/ToastContainer.js';
+
+// Utilities — attribution badge rendering
+export { renderAttributionBadges } from './utils/attribution-badges.js';

@@ -132,7 +132,7 @@ describe('Marketplace sync cron job', () => {
     const content = fs.readFileSync(indexPath, 'utf-8');
 
     // Verify the cron executor handles marketplace_sync
-    expect(content).toContain("jobConfig.action === 'marketplace_sync'");
+    expect(content).toContain("mcJobConfig.action === 'marketplace_sync'");
     expect(content).toContain('new MarketplaceSync');
   });
 

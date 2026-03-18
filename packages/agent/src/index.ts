@@ -1,5 +1,5 @@
 export { Orchestrator, type OrchestratorConfig } from './orchestrator.js';
-export { createMindTools, createToolUtilizationTracker, type ToolDefinition, type MindToolDeps, type ToolUtilizationTracker } from './tools.js';
+export { createMindTools, createToolUtilizationTracker, formatCombinedResult, type ToolDefinition, type MindToolDeps, type ToolUtilizationTracker } from './tools.js';
 export { createSystemTools } from './system-tools.js';
 export {
   ModelRouter,
@@ -38,7 +38,7 @@ export { createAuditTools } from './audit-tools.js';
 export { createDocumentTools } from './document-tools.js';
 export { createSkillTools, type SkillToolsDeps } from './skill-tools.js';
 export { SkillRecommender, type SkillRecommendation, type SkillRecommenderDeps } from './skill-recommender.js';
-export { createSubAgentTools, type SubAgentToolsDeps, type SubAgentDef, type SubAgentResult } from './subagent-tools.js';
+export { createSubAgentTools, ROLE_TOOL_PRESETS, type SubAgentToolsDeps, type SubAgentDef, type SubAgentResult } from './subagent-tools.js';
 export { MemoryLinker, type MemoryLink } from './memory-linker.js';
 export { CapabilityRouter, type CapabilityRoute, type CapabilitySource, type CapabilityRouterDeps, type ConnectorInfo } from './capability-router.js';
 export {
@@ -60,6 +60,11 @@ export { CommandRegistry, type CommandDefinition, type CommandContext } from './
 export { registerWorkflowCommands } from './commands/workflow-commands.js';
 export { registerMarketplaceCommands } from './commands/marketplace-commands.js';
 export { createCronTools } from './cron-tools.js';
+export {
+  createKvarkTools, parseSearchResults,
+  type KvarkClientLike, type KvarkToolsDeps, type KvarkSearchResponseLike,
+  type KvarkAskResponseLike, type KvarkStructuredResult, type KvarkFeedbackResponseLike, type KvarkActionResponseLike,
+} from './kvark-tools.js';
 export { PERSONAS, getPersona, listPersonas, composePersonaPrompt, type AgentPersona } from './personas.js';
 export { AgentMessageBus, type AgentMessage } from './agent-message-bus.js';
 export { createAgentCommsTools } from './agent-comms-tools.js';
