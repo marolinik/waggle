@@ -13,6 +13,7 @@ import { SkillRecommender } from './skill-recommender.js';
 import { searchCapabilities, validateInstallCandidate, type MarketplaceCandidate } from './capability-acquisition.js';
 import { assessTrust, formatTrustSummary } from './trust-model.js';
 import type { InstallAuditStore } from '@waggle/core';
+import { SecurityGate } from '@waggle/marketplace';
 
 export interface SkillToolsDeps {
   /** Path to ~/.waggle directory */
@@ -436,6 +437,72 @@ Only use this after acquire_capability has identified a specific installable can
         // Read content from starter pack for trust assessment
         const sourceContent = fs.readFileSync(validation.starterPath!, 'utf-8');
 
+        // ── SecurityGate scan (heuristics-only) ──────────────────────
+        let securityNote = '';
+        try {
+          const gate = new SecurityGate({
+            enable_gen_trust_hub: false,
+            enable_cisco_scanner: false,
+            enable_mcp_guardian: false,
+            enable_heuristics: true,
+          });
+          const scanResult = await gate.scan(
+            { name, package_type: 'skill', waggle_install_type: 'skill' } as any,
+            sourceContent,
+          );
+
+          // CRITICAL: refuse installation
+          if (scanResult.overall_severity === 'CRITICAL') {
+            deps.auditStore?.record({
+              capabilityName: name,
+              capabilityType: 'skill',
+              source,
+              riskLevel: 'critical',
+              trustSource: 'security-gate',
+              approvalClass: 'blocked',
+              action: 'blocked',
+              initiator: 'system',
+              detail: `SecurityGate blocked: ${scanResult.findings.length} CRITICAL finding(s)`,
+            });
+            const findingsText = scanResult.findings.map(f => `- [${f.severity}] ${f.title}: ${f.description}`).join('\n');
+            return (
+              `## Installation Blocked — CRITICAL Security Finding\n\n` +
+              `**${name}** cannot be installed due to critical security issues:\n\n` +
+              `${findingsText}\n\n` +
+              `Security score: ${scanResult.security_score}/100\n\n` +
+              `This skill has been blocked for your protection. Do NOT attempt to bypass this gate.`
+            );
+          }
+
+          // HIGH: include warning note — the agent should inform the user
+          if (scanResult.overall_severity === 'HIGH') {
+            const findingsText = scanResult.findings.map(f => `- [${f.severity}] ${f.title}`).join('\n');
+            securityNote = (
+              `\n### Security Warning\n` +
+              `SecurityGate found HIGH severity issues (score: ${scanResult.security_score}/100):\n` +
+              `${findingsText}\n` +
+              `The user should review these findings before relying on this skill.\n`
+            );
+          }
+
+          // MEDIUM: include informational note
+          if (scanResult.overall_severity === 'MEDIUM') {
+            securityNote = (
+              `\n### Security Note\n` +
+              `SecurityGate found minor issues (score: ${scanResult.security_score}/100, ${scanResult.findings.length} finding(s)). ` +
+              `Review recommended but not blocking.\n`
+            );
+          }
+
+          // LOW/CLEAN: include score in summary
+          if (scanResult.overall_severity === 'LOW' || scanResult.overall_severity === 'CLEAN') {
+            securityNote = `\n- **Security Score**: ${scanResult.security_score}/100 (${scanResult.overall_severity})\n`;
+          }
+        } catch {
+          // SecurityGate scan failure is non-blocking — proceed with install
+          securityNote = '\n- **Security Scan**: Unavailable (scan engine error)\n';
+        }
+
         // Assess trust before installing
         const trust = assessTrust({
           capabilityType: 'skill',
@@ -485,7 +552,8 @@ Only use this after acquire_capability has identified a specific installable can
           `**${name}** has been installed from the ${source} and is now active.\n\n` +
           `- **Location**: ${targetPath}\n` +
           `- **Status**: Active — loaded into your system prompt\n` +
-          `- **Runtime**: Available immediately for this and all future sessions\n\n` +
+          `- **Runtime**: Available immediately for this and all future sessions\n` +
+          securityNote + `\n` +
           `### Trust Assessment\n${trustSummary}\n\n` +
           `### Skill Content\n\nUse the following instructions to complete the current task:\n\n` +
           `---\n\n${content}\n\n---\n\n` +
