@@ -58,6 +58,8 @@ export {
 } from './workflow-composer.js';
 export { CommandRegistry, type CommandDefinition, type CommandContext } from './commands/command-registry.js';
 export { registerWorkflowCommands } from './commands/workflow-commands.js';
+export { registerMarketplaceCommands } from './commands/marketplace-commands.js';
+export { createCronTools } from './cron-tools.js';
 export {
   assessTrust, resolveTrustSource, detectPermissions, classifyRisk, deriveApprovalClass, formatTrustSummary,
   type TrustAssessment, type TrustSource, type RiskLevel, type RiskFactor, type PermissionSummary,

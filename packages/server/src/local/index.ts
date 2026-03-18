@@ -24,6 +24,8 @@ import {
   CostTracker,
   CommandRegistry,
   registerWorkflowCommands,
+  registerMarketplaceCommands,
+  createCronTools,
   McpRuntime,
   type ToolDefinition,
   type LoadedSkill,
@@ -298,8 +300,11 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
     },
   });
 
+  // Cron tools — let the agent manage cron schedules (via REST API)
+  const cronTools = createCronTools();
+
   // Collect all non-subagent tools first (sub-agent tools need the full list)
-  const baseTools = [...mindTools, ...systemTools, ...planTools, ...gitTools, ...documentTools, ...skillTools];
+  const baseTools = [...mindTools, ...systemTools, ...planTools, ...gitTools, ...documentTools, ...skillTools, ...cronTools];
 
   // Sub-agent tools — let the main agent spawn specialist sub-agents
   const subAgentTools = createSubAgentTools({
@@ -359,6 +364,7 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   // Command registry — workflow-native slash commands
   const commandRegistry = new CommandRegistry();
   registerWorkflowCommands(commandRegistry);
+  registerMarketplaceCommands(commandRegistry);
 
   // Plugin runtime manager — lifecycle, tools, skills from plugins
   const pluginRuntimeManager = new PluginRuntimeManager();
@@ -421,6 +427,7 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
       ...createGitTools(wsPath),
       ...createDocumentTools(wsPath),
       ...skillTools,
+      ...cronTools,
     ];
     const wsSub = createSubAgentTools({
       availableTools: wsBase,
