@@ -702,6 +702,43 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
         ? 'unavailable'
         : 'degraded';
 
+    // Memory stats — frame count + mind file size
+    const memoryStats = (() => {
+      try {
+        const db = multiMind.personal.getDatabase();
+        const row = db.prepare('SELECT COUNT(*) as cnt FROM memory_frames').get() as { cnt: number } | undefined;
+        const frameCount = row?.cnt ?? 0;
+
+        // Get mind file size from the known personal mind path
+        let mindSizeBytes = 0;
+        try {
+          const stat = fs.statSync(personalPath);
+          mindSizeBytes = stat.size;
+        } catch { /* file may not exist yet */ }
+
+        // Embedding coverage — frames with vectors vs total frames
+        let embeddingCoverage = 0;
+        try {
+          const totalRow = db.prepare('SELECT COUNT(*) as cnt FROM memory_frames').get() as { cnt: number };
+          const vecRow = db.prepare('SELECT COUNT(*) as cnt FROM memory_frames_vec').get() as { cnt: number } | undefined;
+          const vecCount = vecRow?.cnt ?? 0;
+          if (totalRow.cnt > 0) {
+            embeddingCoverage = Math.round((vecCount / totalRow.cnt) * 100);
+          }
+        } catch { /* vec table may not exist */ }
+
+        return { frameCount, mindSizeBytes, embeddingCoverage };
+      } catch {
+        return { frameCount: 0, mindSizeBytes: 0, embeddingCoverage: 0 };
+      }
+    })();
+
+    // Service health — watchdog and notification SSE status
+    const serviceHealth = {
+      watchdogRunning: scheduler.isRunning(),
+      notificationSSEActive: eventBus.listenerCount('notification') > 0,
+    };
+
     return {
       status: overallStatus,
       mode: 'local',
@@ -713,6 +750,9 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
         checkedAt: llm.checkedAt,
       },
       database: { healthy: dbHealthy },
+      memoryStats,
+      serviceHealth,
+      defaultModel: server.agentState.currentModel,
     };
   });
 
