@@ -7,6 +7,8 @@
  *   5. Cron Schedules       6. Capability Overview
  *   7. Agent Topology        8. Connectors
  *   9. Audit Trail
+ *
+ * F8: Skeleton loading state while data is fetching, error recovery with retry.
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -28,11 +30,54 @@ import type {
   CapabilitiesData,
   ConnectorData,
 } from '@/components/cockpit';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 // ── Constants ────────────────────────────────────────────────────────────
 
 const BASE_URL = 'http://127.0.0.1:3333';
 const REFRESH_INTERVAL = 30_000;
+
+// ── F8: Skeleton loading cards ───────────────────────────────────────────
+
+function CockpitSkeleton() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fit,minmax(420px,1fr))] gap-4">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <Card key={i} size="sm">
+          <CardHeader>
+            <Skeleton className="h-4 w-32" />
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-3">
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// ── F8: Error state with retry ───────────────────────────────────────────
+
+function CockpitError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 py-16">
+      <div className="text-muted-foreground text-sm">
+        Failed to load cockpit data. Is the server running?
+      </div>
+      <button
+        onClick={onRetry}
+        className="px-4 py-2 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+      >
+        Retry
+      </button>
+    </div>
+  );
+}
 
 // ── Component ────────────────────────────────────────────────────────────
 
@@ -40,6 +85,8 @@ export function CockpitView() {
   // ── State ──────────────────────────────────────────────────────────────
   const [health, setHealth] = useState<HealthData | null>(null);
   const [healthError, setHealthError] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [schedules, setSchedules] = useState<CronSchedule[]>([]);
   const [schedulesLoading, setSchedulesLoading] = useState(true);
   const [capabilities, setCapabilities] = useState<CapabilitiesData | null>(null);
@@ -58,6 +105,7 @@ export function CockpitView() {
       if (res.ok) {
         setHealth(await res.json());
         setHealthError(false);
+        setFetchError(false);
       } else {
         setHealthError(true);
       }
@@ -116,18 +164,34 @@ export function CockpitView() {
     }
   }, []);
 
+  // ── F8: Fetch all data with error tracking ─────────────────────────────
+
+  const fetchAll = useCallback(async () => {
+    setInitialLoading(true);
+    setFetchError(false);
+    try {
+      await Promise.all([
+        fetchHealth(),
+        fetchSchedules(),
+        fetchCapabilities(),
+        fetchAudit(),
+        fetchConnectors(),
+      ]);
+    } catch {
+      setFetchError(true);
+    } finally {
+      setInitialLoading(false);
+    }
+  }, [fetchHealth, fetchSchedules, fetchCapabilities, fetchAudit, fetchConnectors]);
+
   // ── Effects ────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    fetchHealth();
-    fetchSchedules();
-    fetchCapabilities();
-    fetchAudit();
-    fetchConnectors();
+    fetchAll();
 
     const interval = setInterval(fetchHealth, REFRESH_INTERVAL);
     return () => clearInterval(interval);
-  }, [fetchHealth, fetchSchedules, fetchCapabilities, fetchAudit, fetchConnectors]);
+  }, [fetchAll, fetchHealth]);
 
   // ── Actions ────────────────────────────────────────────────────────────
 
@@ -209,37 +273,48 @@ export function CockpitView() {
   // ── Render ─────────────────────────────────────────────────────────────
 
   return (
-    <div className="px-8 py-6 max-w-[960px] mx-auto h-full overflow-y-auto font-mono">
+    <div className="px-6 py-6 max-w-[960px] mx-auto h-full overflow-y-auto font-mono">
       <h1 className="text-lg font-semibold mb-1">Cockpit</h1>
       <p className="text-xs text-muted-foreground mb-6">
         Health, schedules, runtime status, memory, services, and audit trail.
       </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fit,minmax(420px,1fr))] gap-4">
-        <SystemHealthCard health={health} healthError={healthError} />
-        <ServiceHealthCard health={health} />
-        <MemoryStatsCard health={health} />
-        <VaultSummaryCard connectors={connectors} />
-        <CronSchedulesCard
-          schedules={schedules}
-          schedulesLoading={schedulesLoading}
-          togglingId={togglingId}
-          triggeringId={triggeringId}
-          onToggle={toggleSchedule}
-          onTrigger={triggerSchedule}
-        />
-        <CapabilityOverviewCard capabilities={capabilities} />
-        <AgentTopologyCard health={health} capabilities={capabilities} />
-        <ConnectorsCard
-          connectors={connectors}
-          connectingId={connectingId}
-          connectToken={connectToken}
-          onConnectTokenChange={setConnectToken}
-          onConnect={connectConnector}
-          onDisconnect={disconnectConnector}
-        />
-        <AuditTrailCard auditEntries={auditEntries} />
-      </div>
+      {/* F8: Show skeleton while initial load is in progress */}
+      {initialLoading && !health && <CockpitSkeleton />}
+
+      {/* F8: Show error state with retry when all fetches fail */}
+      {!initialLoading && fetchError && healthError && !health && (
+        <CockpitError onRetry={fetchAll} />
+      )}
+
+      {/* Main content — shown once data starts arriving */}
+      {(!initialLoading || health) && !(fetchError && healthError && !health) && (
+        <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fit,minmax(420px,1fr))] gap-4">
+          <SystemHealthCard health={health} healthError={healthError} />
+          <ServiceHealthCard health={health} />
+          <MemoryStatsCard health={health} />
+          <VaultSummaryCard connectors={connectors} />
+          <CronSchedulesCard
+            schedules={schedules}
+            schedulesLoading={schedulesLoading}
+            togglingId={togglingId}
+            triggeringId={triggeringId}
+            onToggle={toggleSchedule}
+            onTrigger={triggerSchedule}
+          />
+          <CapabilityOverviewCard capabilities={capabilities} />
+          <AgentTopologyCard health={health} capabilities={capabilities} />
+          <ConnectorsCard
+            connectors={connectors}
+            connectingId={connectingId}
+            connectToken={connectToken}
+            onConnectTokenChange={setConnectToken}
+            onConnect={connectConnector}
+            onDisconnect={disconnectConnector}
+          />
+          <AuditTrailCard auditEntries={auditEntries} />
+        </div>
+      )}
     </div>
   );
 }

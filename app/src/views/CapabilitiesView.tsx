@@ -36,15 +36,24 @@ export function CapabilitiesView() {
   const [packError, setPackError] = useState<string | null>(null);
   const baseUrl = 'http://127.0.0.1:3333';
 
+  const [fetchFailed, setFetchFailed] = useState(false);
+
   const fetchPacks = useCallback(async () => {
+    setPacksLoading(true);
+    setFetchFailed(false);
     try {
       const res = await fetch(`${baseUrl}/api/skills/capability-packs/catalog`);
       if (res.ok) {
         const data = await res.json();
         setPacks(data.packs ?? []);
+      } else {
+        setFetchFailed(true);
       }
-    } catch { /* silent */ }
-    finally { setPacksLoading(false); }
+    } catch {
+      setFetchFailed(true);
+    } finally {
+      setPacksLoading(false);
+    }
   }, []);
 
   useEffect(() => { fetchPacks(); }, [fetchPacks]);
@@ -70,7 +79,7 @@ export function CapabilitiesView() {
   // ── Styles ─────────────────────────────────────────────────────────────
 
   const containerStyle: React.CSSProperties = {
-    padding: '24px 32px',
+    padding: '24px',
     maxWidth: 960,
     margin: '0 auto',
     fontFamily: 'var(--font-mono, "JetBrains Mono", monospace)',
@@ -197,6 +206,29 @@ export function CapabilitiesView() {
         <div>
           {packsLoading ? (
             <div style={{ color: 'var(--text-muted)', fontSize: 12, padding: 24 }}>Loading packs...</div>
+          ) : fetchFailed && packs.length === 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: 32 }}>
+              <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                Failed to load capability packs. Is the server running?
+              </div>
+              <button
+                onClick={fetchPacks}
+                style={{
+                  padding: '6px 16px',
+                  fontSize: 11,
+                  fontWeight: 500,
+                  borderRadius: 6,
+                  border: 'none',
+                  background: 'var(--primary, #58a6ff)',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  transition: 'background 0.15s',
+                }}
+              >
+                Retry
+              </button>
+            </div>
           ) : packs.length === 0 ? (
             <div style={{ color: 'var(--text-muted)', fontSize: 12, padding: 24 }}>No capability packs available.</div>
           ) : (
