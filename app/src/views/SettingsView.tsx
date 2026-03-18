@@ -12,6 +12,9 @@ export interface SettingsViewProps {
   teamConnection?: TeamConnection | null;
   onTeamConnect?: (serverUrl: string, token: string) => Promise<void>;
   onTeamDisconnect?: () => Promise<void>;
+  /** F5: Controlled active tab for ContextPanel sync */
+  activeTab?: string;
+  onTabChange?: (tab: string) => void;
 }
 
 export function SettingsView({
@@ -21,6 +24,8 @@ export function SettingsView({
   teamConnection,
   onTeamConnect,
   onTeamDisconnect,
+  activeTab,
+  onTabChange,
 }: SettingsViewProps) {
   if (!config) {
     return (
@@ -39,6 +44,8 @@ export function SettingsView({
         teamConnection={teamConnection}
         onTeamConnect={onTeamConnect}
         onTeamDisconnect={onTeamDisconnect}
+        activeTab={activeTab}
+        onTabChange={onTabChange}
       />
     </div>
   );

@@ -3,9 +3,13 @@
  *
  * Chat view: SessionList + optional document preview
  * Memory view: FrameDetail (selected frame)
- * Other views: nothing (panel hidden)
+ * Capabilities view: installed packs + marketplace placeholder
+ * Cockpit view: quick actions
+ * Events view: filter checkboxes + stats
+ * Settings view: contextual help per tab
  */
 
+import { useState, useCallback } from 'react';
 import type { Session, SessionSearchResult, Frame, FileEntry, TeamMember, ActivityItem, TeamMessage } from '@waggle/ui';
 import { SessionList, FrameDetail, FilePreview, TeamPresence, ActivityFeed, TeamMessages } from '@waggle/ui';
 
@@ -39,6 +43,13 @@ export interface ContextPanelProps {
   teamActivityLoading?: boolean;
   /** Wave 2.4: Waggle Dance messages */
   teamMessages?: TeamMessage[];
+  /** F5: Cockpit health refresh callback */
+  onRefreshHealth?: () => void;
+  /** F5: Active settings tab for contextual help */
+  settingsTab?: string;
+  /** F5: Event filter state for context panel checkboxes */
+  eventFilters?: Record<string, boolean>;
+  onEventFiltersChange?: (filters: Record<string, boolean>) => void;
 }
 
 function PanelHeader({ label, action }: { label: string; action?: { label: string; onClick: () => void } }) {
@@ -97,6 +108,10 @@ export function ContextPanel({
   teamActivity,
   teamActivityLoading,
   teamMessages,
+  onRefreshHealth,
+  settingsTab,
+  eventFilters,
+  onEventFiltersChange,
 }: ContextPanelProps) {
   if (currentView === 'chat') {
     // If there's a file to preview, show it above sessions
@@ -237,5 +252,285 @@ export function ContextPanel({
     );
   }
 
+  // ── F5: Capabilities view context ──────────────────────────────────
+  if (currentView === 'capabilities') {
+    return <CapabilitiesContext />;
+  }
+
+  // ── F5: Cockpit view context ───────────────────────────────────────
+  if (currentView === 'cockpit') {
+    return <CockpitContext onRefreshHealth={onRefreshHealth} />;
+  }
+
+  // ── F5: Events view context ────────────────────────────────────────
+  if (currentView === 'events') {
+    return (
+      <EventsContext
+        filters={eventFilters}
+        onFiltersChange={onEventFiltersChange}
+      />
+    );
+  }
+
+  // ── F5: Settings view context ──────────────────────────────────────
+  if (currentView === 'settings') {
+    return <SettingsContext activeTab={settingsTab} />;
+  }
+
   return null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// F5: Sub-components for each view's context panel
+// ═══════════════════════════════════════════════════════════════════════
+
+const BUILT_IN_PACKS = [
+  { name: 'Research Workflow', id: 'research-workflow' },
+  { name: 'Writing Suite', id: 'writing-suite' },
+  { name: 'Planning Master', id: 'planning-master' },
+  { name: 'Team Collaboration', id: 'team-collaboration' },
+  { name: 'Decision Framework', id: 'decision-framework' },
+];
+
+function CapabilitiesContext() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <PanelHeader label="Installed" />
+      <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)' }}>
+        {BUILT_IN_PACKS.map((pack) => (
+          <div
+            key={pack.id}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '5px 0',
+              fontSize: '11px',
+              color: 'var(--text-muted)',
+              fontFamily: "'JetBrains Mono', monospace",
+            }}
+          >
+            <span style={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: '#3fb950',
+              flexShrink: 0,
+            }} />
+            <span style={{ flex: 1 }}>{pack.name}</span>
+            <span style={{
+              fontSize: '9px',
+              color: 'var(--text-dim)',
+              opacity: 0.6,
+            }}>
+              built-in
+            </span>
+          </div>
+        ))}
+      </div>
+      <PanelHeader label="Suggested" />
+      <div style={{
+        padding: '12px',
+        fontSize: '11px',
+        color: 'var(--text-dim)',
+        lineHeight: 1.5,
+        fontFamily: "'JetBrains Mono', monospace",
+      }}>
+        Marketplace suggestions will appear here after Wave 8A.
+      </div>
+    </div>
+  );
+}
+
+function CockpitContext({ onRefreshHealth }: { onRefreshHealth?: () => void }) {
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    if (!onRefreshHealth || refreshing) return;
+    setRefreshing(true);
+    try {
+      onRefreshHealth();
+    } finally {
+      // Brief visual feedback then reset
+      setTimeout(() => setRefreshing(false), 1000);
+    }
+  }, [onRefreshHealth, refreshing]);
+
+  const btnBase: React.CSSProperties = {
+    width: '100%',
+    padding: '7px 12px',
+    fontSize: '11px',
+    fontWeight: 500,
+    fontFamily: "'JetBrains Mono', monospace",
+    borderRadius: '4px',
+    border: '1px solid var(--border)',
+    cursor: 'pointer',
+    textAlign: 'left',
+    transition: 'background 0.12s',
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <PanelHeader label="Quick Actions" />
+      <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <button
+          style={{
+            ...btnBase,
+            background: refreshing ? 'var(--primary-muted)' : 'var(--bg-secondary, #161b22)',
+            color: refreshing ? 'var(--primary)' : 'var(--text-muted)',
+          }}
+          onClick={handleRefresh}
+          disabled={refreshing}
+        >
+          {refreshing ? 'Refreshing...' : 'Refresh Health'}
+        </button>
+        <button
+          style={{
+            ...btnBase,
+            background: 'var(--bg-secondary, #161b22)',
+            color: 'var(--text-dim)',
+            cursor: 'not-allowed',
+            opacity: 0.5,
+          }}
+          disabled
+          title="Available after Wave 8A"
+        >
+          Trigger Sync
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const EVENT_TYPES = ['Tool Call', 'Memory', 'Search', 'File', 'Response'] as const;
+
+function EventsContext({
+  filters,
+  onFiltersChange,
+}: {
+  filters?: Record<string, boolean>;
+  onFiltersChange?: (filters: Record<string, boolean>) => void;
+}) {
+  // Local state for checkboxes (all on by default)
+  const effectiveFilters = filters ?? Object.fromEntries(EVENT_TYPES.map(t => [t, true]));
+
+  const handleToggle = (type: string) => {
+    const updated = { ...effectiveFilters, [type]: !effectiveFilters[type] };
+    onFiltersChange?.(updated);
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <PanelHeader label="Filter" />
+      <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)' }}>
+        {EVENT_TYPES.map((type) => (
+          <label
+            key={type}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '4px 0',
+              fontSize: '11px',
+              color: 'var(--text-muted)',
+              fontFamily: "'JetBrains Mono', monospace",
+              cursor: 'pointer',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={effectiveFilters[type] !== false}
+              onChange={() => handleToggle(type)}
+              style={{
+                accentColor: 'var(--primary)',
+                width: 13,
+                height: 13,
+                cursor: 'pointer',
+              }}
+            />
+            {type}
+          </label>
+        ))}
+      </div>
+      <PanelHeader label="Stats" />
+      <div style={{
+        padding: '12px',
+        fontSize: '11px',
+        color: 'var(--text-dim)',
+        lineHeight: 1.8,
+        fontFamily: "'JetBrains Mono', monospace",
+      }}>
+        <div>Event statistics available during active agent sessions.</div>
+      </div>
+    </div>
+  );
+}
+
+const SETTINGS_HELP: Record<string, string> = {
+  general: 'Configure appearance and startup behavior.',
+  models: 'Set your default AI model and API keys.',
+  vault: 'Manage encrypted credentials for connectors.',
+  permissions: 'Control what the agent can do without asking.',
+  team: 'Connect to your team server.',
+  advanced: 'Data management and debugging.',
+};
+
+function SettingsContext({ activeTab }: { activeTab?: string }) {
+  const tab = activeTab ?? 'general';
+  const help = SETTINGS_HELP[tab] ?? SETTINGS_HELP.general;
+  const tabName = tab.charAt(0).toUpperCase() + tab.slice(1);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <PanelHeader label="Help" />
+      <div style={{ padding: '12px' }}>
+        <div style={{
+          fontSize: '12px',
+          fontWeight: 600,
+          color: 'var(--text, #e6edf3)',
+          marginBottom: '6px',
+          fontFamily: "'JetBrains Mono', monospace",
+        }}>
+          {tabName}
+        </div>
+        <div style={{
+          fontSize: '11px',
+          color: 'var(--text-muted)',
+          lineHeight: 1.5,
+          fontFamily: "'JetBrains Mono', monospace",
+        }}>
+          {help}
+        </div>
+      </div>
+      <PanelHeader label="All Sections" />
+      <div style={{ padding: '8px 12px' }}>
+        {Object.entries(SETTINGS_HELP).map(([key, desc]) => (
+          <div
+            key={key}
+            style={{
+              padding: '5px 0',
+              fontSize: '11px',
+              fontFamily: "'JetBrains Mono', monospace",
+              color: key === tab ? 'var(--primary)' : 'var(--text-dim)',
+              borderLeft: key === tab ? '2px solid var(--primary)' : '2px solid transparent',
+              paddingLeft: '8px',
+              transition: 'all 0.12s',
+            }}
+          >
+            <div style={{ fontWeight: key === tab ? 600 : 400 }}>
+              {key.charAt(0).toUpperCase() + key.slice(1)}
+            </div>
+            <div style={{
+              fontSize: '9px',
+              color: 'var(--text-dim)',
+              opacity: 0.7,
+              marginTop: '1px',
+            }}>
+              {desc}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }

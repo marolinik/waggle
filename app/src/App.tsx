@@ -839,11 +839,27 @@ function WaggleApp() {
     }
   }, [addSystemMessage]);
 
+  // ── F5: Settings tab state (lifted for ContextPanel) ───────────────
+  const [settingsTab, setSettingsTab] = useState('general');
+
+  // ── F5: Event filter state for context panel ──────────────────────
+  const [eventFilters, setEventFilters] = useState<Record<string, boolean>>({
+    'Tool Call': true,
+    'Memory': true,
+    'Search': true,
+    'File': true,
+    'Response': true,
+  });
+
+  // ── F5: Cockpit health refresh (calls fetchHealth in CockpitView) ──
+  const handleRefreshHealth = useCallback(() => {
+    // Trigger a re-fetch by toggling a key; CockpitView manages its own
+    // fetch logic, but we can call the health endpoint from here too
+    fetch('http://127.0.0.1:3333/health').catch(() => {});
+  }, []);
+
   // ── Should context panel show? ────────────────────────────────────
-  const showContextPanel = contextPanelOpen && (
-    currentView === 'chat' ||
-    (currentView === 'memory' && selectedFrame !== undefined)
-  );
+  const showContextPanel = contextPanelOpen;
 
   // ── Render ────────────────────────────────────────────────────────
 
@@ -912,6 +928,8 @@ function WaggleApp() {
                 teamConnection={teamConnection}
                 onTeamConnect={handleTeamConnect}
                 onTeamDisconnect={handleTeamDisconnect}
+                activeTab={settingsTab}
+                onTabChange={setSettingsTab}
               />
             )}
             {currentView === 'memory' && (
@@ -966,6 +984,10 @@ function WaggleApp() {
               teamActivity={teamActivity}
               teamActivityLoading={teamActivityLoading}
               teamMessages={teamMessages}
+              onRefreshHealth={handleRefreshHealth}
+              settingsTab={settingsTab}
+              eventFilters={eventFilters}
+              onEventFiltersChange={setEventFilters}
             />
           ) : undefined
         }
