@@ -71,7 +71,7 @@ export {
 export { parseSkillFrontmatter, type SkillFrontmatter } from './skill-frontmatter.js';
 export { BaseConnector, type WaggleConnector, type ConnectorAction, type ConnectorResult } from './connector-sdk.js';
 export { ConnectorRegistry, type AuditLogger } from './connector-registry.js';
-export { GitHubConnector, SlackConnector, JiraConnector, EmailConnector } from './connectors/index.js';
+export { GitHubConnector, SlackConnector, JiraConnector, EmailConnector, GoogleCalendarConnector } from './connectors/index.js';
 export { detectCorrection, detectCorrectionsInHistory, type DetectedCorrection, type CorrectionDurability } from './correction-detector.js';
 export {
   recordCapabilityGap, analyzeAndRecordCorrection, recordWorkflowPattern,

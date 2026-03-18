@@ -35,6 +35,7 @@ import {
   SlackConnector,
   JiraConnector,
   EmailConnector,
+  GoogleCalendarConnector,
   type ToolDefinition,
   type LoadedSkill,
 } from '@waggle/agent';
@@ -224,6 +225,7 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   connectorRegistry.register(new SlackConnector());
   connectorRegistry.register(new JiraConnector());
   connectorRegistry.register(new EmailConnector());
+  connectorRegistry.register(new GoogleCalendarConnector());
   server.decorate('connectorRegistry', connectorRegistry);
 
   // Seed marketplace.db if not present, then open it for production routes
