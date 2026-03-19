@@ -1,21 +1,58 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useCallback } from 'react';
 import { MessageBubble } from './MessageBubble';
 import type { ChatMessage } from '../../lib/types';
 
 interface MessageListProps {
   messages: ChatMessage[];
   isLoading?: boolean;
+  /** Session ID for scroll position persistence */
+  sessionId?: string;
 }
 
-export function MessageList({ messages, isLoading }: MessageListProps) {
-  const bottomRef = useRef<HTMLDivElement>(null);
+/** Scroll positions keyed by session ID */
+const scrollPositions = new Map<string, number>();
 
+export function MessageList({ messages, isLoading, sessionId }: MessageListProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const prevMessageCount = useRef(messages.length);
+  const isInitialMount = useRef(true);
+
+  // Restore scroll position on session switch
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (!containerRef.current || !sessionId) return;
+
+    const saved = scrollPositions.get(sessionId);
+    if (saved !== undefined && isInitialMount.current) {
+      containerRef.current.scrollTop = saved;
+    }
+    isInitialMount.current = false;
+
+    return () => {
+      // Save scroll position when unmounting / switching away
+      if (containerRef.current && sessionId) {
+        scrollPositions.set(sessionId, containerRef.current.scrollTop);
+      }
+    };
+  }, [sessionId]);
+
+  // Auto-scroll to bottom only on NEW messages (not on session restore)
+  useEffect(() => {
+    if (messages.length > prevMessageCount.current) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+    prevMessageCount.current = messages.length;
   }, [messages]);
 
+  // Save scroll position on scroll (debounced via passive listener)
+  const handleScroll = useCallback(() => {
+    if (containerRef.current && sessionId) {
+      scrollPositions.set(sessionId, containerRef.current.scrollTop);
+    }
+  }, [sessionId]);
+
   return (
-    <div className="flex-1 overflow-y-auto p-4">
+    <div ref={containerRef} className="flex-1 overflow-y-auto p-4" onScroll={handleScroll}>
       <div className="max-w-3xl mx-auto">
         {messages.length === 0 && (
           <div className="flex items-center justify-center h-full text-[hsl(var(--muted-foreground))]">

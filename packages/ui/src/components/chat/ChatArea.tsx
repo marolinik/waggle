@@ -8,10 +8,13 @@
  * "Workspace Now" block with summary, suggested prompts, and recent threads.
  */
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import type { Message, ToolUseEvent, WorkspaceContext } from '../../services/types.js';
 import { ChatMessage } from './ChatMessage.js';
 import { ChatInput, CLIENT_COMMANDS, type SlashCommand } from './ChatInput.js';
+
+/** Scroll positions keyed by workspace/session for persistence across switches */
+const scrollPositions = new Map<string, number>();
 
 function formatRelativeTime(isoDate: string): string {
   const diff = Date.now() - new Date(isoDate).getTime();
@@ -64,10 +67,13 @@ export interface ChatAreaProps {
   onThreadSelect?: (sessionId: string) => void;
   /** F7: Active workspace name for contextual empty state suggestions */
   workspaceName?: string;
+  /** Session key for scroll position persistence (workspace ID or session ID) */
+  scrollKey?: string;
 }
 
-export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, onFileSelect, onToolApprove, onToolDeny, workspaceContext, onThreadSelect, workspaceName }: ChatAreaProps) {
+export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, onFileSelect, onToolApprove, onToolDeny, workspaceContext, onThreadSelect, workspaceName, scrollKey }: ChatAreaProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const prevMessageCount = useRef(messages.length);
   const [mergedCommands, setMergedCommands] = useState<SlashCommand[] | undefined>(undefined);
 
   // Fetch server commands on mount and merge with client-only commands
@@ -107,12 +113,32 @@ export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, o
     return () => { cancelled = true; };
   }, []);
 
-  // Auto-scroll to bottom when messages change
+  // Restore scroll position when switching sessions
   useEffect(() => {
     const el = scrollRef.current;
-    if (el) {
+    if (!el || !scrollKey) return;
+    const saved = scrollPositions.get(scrollKey);
+    if (saved !== undefined) {
+      el.scrollTop = saved;
+    } else {
+      // New session — scroll to bottom
       el.scrollTop = el.scrollHeight;
     }
+    return () => {
+      // Save position when unmounting / switching away
+      if (scrollRef.current && scrollKey) {
+        scrollPositions.set(scrollKey, scrollRef.current.scrollTop);
+      }
+    };
+  }, [scrollKey]);
+
+  // Auto-scroll to bottom only when NEW messages arrive
+  useEffect(() => {
+    if (messages.length > prevMessageCount.current) {
+      const el = scrollRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    }
+    prevMessageCount.current = messages.length;
   }, [messages]);
 
   const showWorkspaceHome = messages.length === 0 && workspaceContext;

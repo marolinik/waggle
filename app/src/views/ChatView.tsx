@@ -70,6 +70,7 @@ export function ChatView({
             workspaceContext={workspaceContext}
             onThreadSelect={onThreadSelect}
             workspaceName={workspaceName}
+            scrollKey={activeTabId ?? undefined}
           />
         </FileDropZone>
       </div>
