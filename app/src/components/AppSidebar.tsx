@@ -4,7 +4,7 @@
  */
 
 import type { Workspace, WorkspaceMicroStatus } from '@waggle/ui';
-import { Sidebar, WorkspaceTree } from '@waggle/ui';
+import { Sidebar, WorkspaceTree, useTheme } from '@waggle/ui';
 
 type AppView = 'chat' | 'memory' | 'events' | 'capabilities' | 'cockpit' | 'mission-control' | 'settings';
 
@@ -59,6 +59,7 @@ export function AppSidebar({
   onOpenSearch,
   microStatus,
 }: AppSidebarProps) {
+  const { theme, toggleTheme } = useTheme();
   const bottomItems = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', padding: '0 4px' }}>
       {NAV_ITEMS.map(({ view, label, shortcut }) => (
@@ -137,6 +138,34 @@ export function AppSidebar({
         >
           <span style={{ fontSize: '13px', lineHeight: 1 }}>+</span>
           {!collapsed && <span>new workspace</span>}
+        </button>
+        {/* Theme toggle */}
+        <button
+          onClick={toggleTheme}
+          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--text-dim)',
+            cursor: 'pointer',
+            padding: collapsed ? '6px 0' : '5px 10px',
+            width: '100%',
+            textAlign: collapsed ? 'center' : 'left',
+            fontSize: '11px',
+            fontFamily: "'JetBrains Mono', monospace",
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: collapsed ? 'center' : 'flex-start',
+            gap: '6px',
+            borderRadius: '3px',
+            marginTop: '2px',
+            transition: 'color 0.15s',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--primary)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-dim)'; }}
+        >
+          <span style={{ fontSize: '13px', lineHeight: 1 }}>{theme === 'dark' ? '☀' : '☾'}</span>
+          {!collapsed && <span>{theme === 'dark' ? 'light mode' : 'dark mode'}</span>}
         </button>
       </div>
     </div>
