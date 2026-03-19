@@ -19,6 +19,17 @@ export const KEYBOARD_SHORTCUTS: Record<string, KeyCombo> = {
   toggleWorkspace: { key: 'w', ctrl: true, shift: true },
   newTab:          { key: 't', ctrl: true },
   closeTab:        { key: 'w', ctrl: true },
+  newWorkspace:    { key: 'n', ctrl: true },
+  openSettings:    { key: ',', ctrl: true },
+  showHelp:        { key: '/', ctrl: true },
+  switchView1:     { key: '1', ctrl: true, shift: true },
+  switchView2:     { key: '2', ctrl: true, shift: true },
+  switchView3:     { key: '3', ctrl: true, shift: true },
+  switchView4:     { key: '4', ctrl: true, shift: true },
+  switchView5:     { key: '5', ctrl: true, shift: true },
+  switchView6:     { key: '6', ctrl: true, shift: true },
+  switchView7:     { key: '7', ctrl: true, shift: true },
+  switchPersona:   { key: 'p', ctrl: true, shift: true },
 } as const;
 
 export type ShortcutName = keyof typeof KEYBOARD_SHORTCUTS;

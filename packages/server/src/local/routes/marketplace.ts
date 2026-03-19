@@ -9,9 +9,12 @@
  */
 
 import type { FastifyInstance } from 'fastify';
-import { MarketplaceDB, MarketplaceInstaller, MarketplaceSync, SecurityGate } from '@waggle/marketplace';
-import type { InstallationType, ScanResult } from '@waggle/marketplace';
+import { MarketplaceDB, MarketplaceInstaller, MarketplaceSync, SecurityGate, ENTERPRISE_PACKS, PACKAGE_CATEGORIES, recategorizeAll, isCiscoScannerAvailable } from '@waggle/marketplace';
+import type { InstallationType, SearchSort, ScanResult } from '@waggle/marketplace';
+import { getKvarkConfig } from '../../kvark/kvark-config.js';
 import { emitNotification } from './notifications.js';
+
+type ScanStatus = 'passed' | 'failed' | 'not_scanned' | 'unavailable';
 
 export async function marketplaceRoutes(fastify: FastifyInstance) {
   // ── Helpers ──────────────────────────────────────────────────────────
@@ -39,15 +42,21 @@ export async function marketplaceRoutes(fastify: FastifyInstance) {
     const db = requireDb(reply);
     if (!db) return;
 
-    const { query, type, category, pack, source, limit, offset } = request.query as {
+    const { query, type, category, pack, source, sort, limit, offset } = request.query as {
       query?: string;
       type?: string;
       category?: string;
       pack?: string;
       source?: string;
+      sort?: string;
       limit?: string;
       offset?: string;
     };
+
+    const validSorts: SearchSort[] = ['relevance', 'popular', 'recent', 'name'];
+    const sortParam = sort && validSorts.includes(sort as SearchSort)
+      ? sort as SearchSort
+      : undefined;
 
     const results = db.search({
       query: query || '',
@@ -55,11 +64,41 @@ export async function marketplaceRoutes(fastify: FastifyInstance) {
       category,
       pack,
       source,
+      sort: sortParam,
       limit: limit ? parseInt(limit, 10) : 20,
       offset: offset ? parseInt(offset, 10) : 0,
     });
 
-    return results;
+    // Annotate each package with installation status and scan status
+    const annotated = results.packages.map(pkg => {
+      const rawPkg = pkg as any;
+      const secStatus = rawPkg.security_status as string | undefined;
+      const secScore = rawPkg.security_score as number | undefined;
+
+      let scanStatus: ScanStatus = 'not_scanned';
+      if (secStatus && secStatus !== 'unscanned') {
+        if (secStatus === 'clean' || secStatus === 'low') {
+          scanStatus = 'passed';
+        } else if (secStatus === 'critical' || secStatus === 'high') {
+          scanStatus = 'failed';
+        } else if (secStatus === 'medium') {
+          scanStatus = 'passed'; // medium = passed with warnings
+        }
+      }
+
+      return {
+        ...pkg,
+        installed: db.isInstalled(pkg.id),
+        scanStatus,
+        scanScore: (secScore != null && secScore >= 0) ? secScore : undefined,
+      };
+    });
+
+    return {
+      ...results,
+      packages: annotated,
+      categories: PACKAGE_CATEGORIES,
+    };
   });
 
   // ── GET /api/marketplace/packs ──────────────────────────────────────
@@ -88,6 +127,30 @@ export async function marketplaceRoutes(fastify: FastifyInstance) {
     }
 
     return result;
+  });
+
+  // ── GET /api/marketplace/enterprise-packs ─────────────────────────────
+  // Returns enterprise packs that require KVARK. Only populated when
+  // KVARK credentials are configured in the vault.
+
+  fastify.get('/api/marketplace/enterprise-packs', async (request, reply) => {
+    const vault = fastify.vault;
+    const kvarkConfigured = vault ? getKvarkConfig(vault) !== null : false;
+
+    if (!kvarkConfigured) {
+      return {
+        packs: [],
+        total: 0,
+        kvarkRequired: true,
+        hint: 'Enterprise packs require a KVARK connection. Configure KVARK credentials in the vault to unlock.',
+      };
+    }
+
+    return {
+      packs: ENTERPRISE_PACKS,
+      total: ENTERPRISE_PACKS.length,
+      kvarkRequired: false,
+    };
   });
 
   // ── POST /api/marketplace/install ───────────────────────────────────
@@ -363,14 +426,131 @@ export async function marketplaceRoutes(fastify: FastifyInstance) {
   });
 
   // ── GET /api/marketplace/sources ────────────────────────────────────
-  // List all marketplace sources.
+  // List all marketplace sources with package counts.
 
   fastify.get('/api/marketplace/sources', async (request, reply) => {
     const db = requireDb(reply);
     if (!db) return;
 
-    const sources = db.listSources();
+    const sources = db.listSourcesWithCounts();
     return { sources, total: sources.length };
+  });
+
+  // ── POST /api/marketplace/sources ───────────────────────────────────
+  // Add a user-defined source and trigger an immediate sync for it.
+
+  fastify.post('/api/marketplace/sources', async (request, reply) => {
+    const db = requireDb(reply);
+    if (!db) return;
+
+    const body = request.body as {
+      name?: string;
+      url?: string;
+      displayName?: string;
+    };
+
+    if (!body.name || !body.url) {
+      return reply.code(400).send({ error: 'name and url are required' });
+    }
+
+    // Validate URL format
+    try {
+      new URL(body.url);
+    } catch {
+      return reply.code(400).send({ error: 'Invalid URL format' });
+    }
+
+    // Check for duplicate name
+    const existing = db.getSourceByName(body.name);
+    if (existing) {
+      return reply.code(409).send({ error: `Source "${body.name}" already exists` });
+    }
+
+    // Auto-detect source_type from URL
+    const sourceType = body.url.includes('github.com') ? 'community_repo' : 'aggregator';
+
+    // Ensure the is_custom column exists (safe migration)
+    db.ensureIsCustomColumn();
+
+    // Insert the source
+    const sourceId = db.addSource({
+      name: body.name,
+      display_name: body.displayName || body.name.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+      url: body.url,
+      source_type: sourceType,
+      platform: 'waggle',
+      install_method: sourceType === 'community_repo' ? 'git_clone' : 'api_fetch',
+    });
+
+    const source = db.getSource(sourceId);
+
+    // Trigger immediate sync for the new source
+    const vaultLookup = fastify.vault ? (key: string) => fastify.vault!.get(key)?.value ?? null : undefined;
+    const sync = new MarketplaceSync(db, vaultLookup);
+    let syncResult = null;
+    try {
+      const results = await sync.syncAll({ sources: [body.name] });
+      syncResult = results[0] ?? null;
+
+      // Re-categorize any new packages
+      if (syncResult && syncResult.added > 0) {
+        recategorizeAll(db);
+      }
+    } catch (err) {
+      syncResult = {
+        source: body.name,
+        added: 0,
+        updated: 0,
+        removed: 0,
+        errors: [(err as Error).message],
+      };
+    }
+
+    return reply.code(201).send({
+      source,
+      syncResult,
+    });
+  });
+
+  // ── DELETE /api/marketplace/sources/:id ─────────────────────────────
+  // Remove a user-added source (cannot delete built-in sources).
+
+  fastify.delete('/api/marketplace/sources/:id', async (request, reply) => {
+    const db = requireDb(reply);
+    if (!db) return;
+
+    const { id } = request.params as { id: string };
+    const sourceId = parseInt(id, 10);
+
+    if (isNaN(sourceId)) {
+      return reply.code(400).send({ error: 'Invalid source ID' });
+    }
+
+    const source = db.getSource(sourceId);
+    if (!source) {
+      return reply.code(404).send({ error: `Source ID ${sourceId} not found` });
+    }
+
+    if (!source.is_custom) {
+      return reply.code(403).send({
+        error: 'Cannot delete built-in source',
+        hint: 'Only user-added sources can be removed',
+      });
+    }
+
+    const deleted = db.deleteSource(sourceId);
+    if (!deleted) {
+      return reply.code(500).send({ error: 'Failed to delete source' });
+    }
+
+    return { deleted: true, sourceId, name: source.name };
+  });
+
+  // ── GET /api/marketplace/categories ─────────────────────────────────
+  // Return the category taxonomy for UI rendering.
+
+  fastify.get('/api/marketplace/categories', async (_request, reply) => {
+    return { categories: PACKAGE_CATEGORIES, total: PACKAGE_CATEGORIES.length };
   });
 
   // ── POST /api/marketplace/sync ──────────────────────────────────────
@@ -384,7 +564,8 @@ export async function marketplaceRoutes(fastify: FastifyInstance) {
 
     const body = (request.body ?? {}) as { sources?: string[] };
 
-    const sync = new MarketplaceSync(db);
+    const vaultLookup = fastify.vault ? (key: string) => fastify.vault!.get(key)?.value ?? null : undefined;
+    const sync = new MarketplaceSync(db, vaultLookup);
 
     try {
       const results = await sync.syncAll(body.sources ? { sources: body.sources } : {});
@@ -393,6 +574,11 @@ export async function marketplaceRoutes(fastify: FastifyInstance) {
       const packagesAdded = results.reduce((sum, r) => sum + r.added, 0);
       const packagesUpdated = results.reduce((sum, r) => sum + r.updated, 0);
       const errors = results.flatMap(r => r.errors.map(e => `[${r.source}] ${e}`));
+
+      // Re-categorize packages after sync
+      if (packagesAdded > 0 || packagesUpdated > 0) {
+        try { recategorizeAll(db); } catch { /* non-blocking */ }
+      }
 
       // Emit notification if new packages were discovered
       if (packagesAdded > 0) {
@@ -421,5 +607,58 @@ export async function marketplaceRoutes(fastify: FastifyInstance) {
         errors: [(err as Error).message],
       });
     }
+  });
+
+  // ── GET /api/marketplace/security-status ──────────────────────────
+  // Returns overall security scanning status: Cisco scanner availability,
+  // JS gate version, and aggregate scan counts across the catalog.
+  // Used by the Capabilities view to show an install hint when the
+  // Cisco scanner is not installed.
+
+  fastify.get('/api/marketplace/security-status', async (request, reply) => {
+    const db = getDb();
+
+    let ciscoScannerAvailable = false;
+    try {
+      ciscoScannerAvailable = await isCiscoScannerAvailable();
+    } catch {
+      // Check failed — report as unavailable
+    }
+
+    let totalScanned = 0;
+    let totalPassed = 0;
+    let totalFailed = 0;
+
+    if (db) {
+      try {
+        const rawDb = (db as any).db;
+        if (rawDb?.prepare) {
+          const row = rawDb.prepare(`
+            SELECT
+              COUNT(CASE WHEN security_status != 'unscanned' AND security_status IS NOT NULL THEN 1 END) as scanned,
+              COUNT(CASE WHEN security_status IN ('clean', 'low', 'medium') THEN 1 END) as passed,
+              COUNT(CASE WHEN security_status IN ('critical', 'high') THEN 1 END) as failed
+            FROM packages
+          `).get() as { scanned: number; passed: number; failed: number } | undefined;
+
+          if (row) {
+            totalScanned = row.scanned;
+            totalPassed = row.passed;
+            totalFailed = row.failed;
+          }
+        }
+      } catch { /* non-blocking */ }
+    }
+
+    return {
+      ciscoScannerAvailable,
+      jsSecurityGateVersion: '1.0',
+      totalScanned,
+      totalPassed,
+      totalFailed,
+      hint: ciscoScannerAvailable
+        ? undefined
+        : 'For enhanced security scanning, install the Cisco skill-scanner: pip install cisco-ai-skill-scanner',
+    };
   });
 }

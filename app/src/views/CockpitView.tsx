@@ -1,12 +1,12 @@
 /**
  * CockpitView — Control Cockpit dashboard.
  *
- * Composes 9 card sub-components in a responsive 2-column grid:
+ * Composes 10 card sub-components in a responsive 2-column grid:
  *   1. System Health        2. Service Health
- *   3. Memory Stats         4. Vault Summary
- *   5. Cron Schedules       6. Capability Overview
- *   7. Agent Topology        8. Connectors
- *   9. Audit Trail
+ *   3. Cost Estimates       4. Memory Stats
+ *   5. Vault Summary        6. Cron Schedules
+ *   7. Capability Overview  8. Agent Topology
+ *   9. Connectors          10. Audit Trail
  *
  * F8: Skeleton loading state while data is fetching, error recovery with retry.
  */
@@ -22,6 +22,7 @@ import {
   MemoryStatsCard,
   ServiceHealthCard,
   VaultSummaryCard,
+  CostDashboardCard,
 } from '@/components/cockpit';
 import type {
   HealthData,
@@ -29,13 +30,17 @@ import type {
   AuditEntry,
   CapabilitiesData,
   ConnectorData,
+  CostSummaryData,
+  WorkspaceCostData,
 } from '@/components/cockpit';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 // ── Constants ────────────────────────────────────────────────────────────
 
-const BASE_URL = 'http://127.0.0.1:3333';
+import { getServerBaseUrl } from '@/lib/ipc';
+
+const BASE_URL = getServerBaseUrl();
 const REFRESH_INTERVAL = 30_000;
 
 // ── F8: Skeleton loading cards ───────────────────────────────────────────
@@ -96,6 +101,8 @@ export function CockpitView() {
   const [connectors, setConnectors] = useState<ConnectorData[]>([]);
   const [connectingId, setConnectingId] = useState<string | null>(null);
   const [connectToken, setConnectToken] = useState('');
+  const [costSummary, setCostSummary] = useState<CostSummaryData | null>(null);
+  const [workspaceCosts, setWorkspaceCosts] = useState<WorkspaceCostData | null>(null);
 
   // ── Fetchers ───────────────────────────────────────────────────────────
 
@@ -164,6 +171,28 @@ export function CockpitView() {
     }
   }, []);
 
+  const fetchCostSummary = useCallback(async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/api/cost/summary`);
+      if (res.ok) {
+        setCostSummary(await res.json());
+      }
+    } catch {
+      /* silent */
+    }
+  }, []);
+
+  const fetchWorkspaceCosts = useCallback(async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/api/cost/by-workspace`);
+      if (res.ok) {
+        setWorkspaceCosts(await res.json());
+      }
+    } catch {
+      /* silent */
+    }
+  }, []);
+
   // ── F8: Fetch all data with error tracking ─────────────────────────────
 
   const fetchAll = useCallback(async () => {
@@ -176,13 +205,15 @@ export function CockpitView() {
         fetchCapabilities(),
         fetchAudit(),
         fetchConnectors(),
+        fetchCostSummary(),
+        fetchWorkspaceCosts(),
       ]);
     } catch {
       setFetchError(true);
     } finally {
       setInitialLoading(false);
     }
-  }, [fetchHealth, fetchSchedules, fetchCapabilities, fetchAudit, fetchConnectors]);
+  }, [fetchHealth, fetchSchedules, fetchCapabilities, fetchAudit, fetchConnectors, fetchCostSummary, fetchWorkspaceCosts]);
 
   // ── Effects ────────────────────────────────────────────────────────────
 
@@ -276,7 +307,7 @@ export function CockpitView() {
     <div className="px-6 py-6 max-w-[960px] mx-auto h-full overflow-y-auto font-mono">
       <h1 className="text-lg font-semibold mb-1">Cockpit</h1>
       <p className="text-xs text-muted-foreground mb-6">
-        Health, schedules, runtime status, memory, services, and audit trail.
+        Health, costs, schedules, runtime status, memory, services, and audit trail.
       </p>
 
       {/* F8: Show skeleton while initial load is in progress */}
@@ -292,6 +323,7 @@ export function CockpitView() {
         <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fit,minmax(420px,1fr))] gap-4">
           <SystemHealthCard health={health} healthError={healthError} />
           <ServiceHealthCard health={health} />
+          <CostDashboardCard costSummary={costSummary} workspaceCosts={workspaceCosts} />
           <MemoryStatsCard health={health} />
           <VaultSummaryCard connectors={connectors} />
           <CronSchedulesCard

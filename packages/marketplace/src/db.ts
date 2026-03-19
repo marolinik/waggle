@@ -15,6 +15,7 @@ import type {
   Installation,
   SearchOptions,
   SearchResult,
+  SearchSort,
 } from './types';
 
 const DEFAULT_DB_PATH = join(homedir(), '.waggle', 'marketplace.db');
@@ -26,6 +27,36 @@ export class MarketplaceDB {
     this.db = new Database(dbPath, { readonly: false });
     this.db.pragma('journal_mode = WAL');
     this.db.pragma('foreign_keys = ON');
+    // Auto-migrate: ensure is_custom column exists on sources table
+    this.migrateSchema();
+  }
+
+  /**
+   * Apply any necessary schema migrations.
+   * Safe to call on all database versions.
+   */
+  private migrateSchema(): void {
+    // Migration: add is_custom column to sources
+    try {
+      this.db.prepare("SELECT is_custom FROM sources LIMIT 0").run();
+    } catch {
+      try {
+        this.db.prepare("ALTER TABLE sources ADD COLUMN is_custom BOOLEAN DEFAULT 0").run();
+      } catch {
+        // Table might not exist yet (empty DB) — skip migration
+      }
+    }
+
+    // Migration: add sync_state column to sources (JSON blob for resumable sync)
+    try {
+      this.db.prepare("SELECT sync_state FROM sources LIMIT 0").run();
+    } catch {
+      try {
+        this.db.prepare("ALTER TABLE sources ADD COLUMN sync_state TEXT DEFAULT NULL").run();
+      } catch {
+        // Table might not exist yet (empty DB) — skip migration
+      }
+    }
   }
 
   // ─── Package Queries ──────────────────────────────────────────────
@@ -34,7 +65,7 @@ export class MarketplaceDB {
    * Search packages using FTS5 full-text search + faceted filtering.
    */
   search(options: SearchOptions = {}): SearchResult {
-    const { query, type, category, pack, source, limit = 50, offset = 0 } = options;
+    const { query, type, category, pack, source, sort, limit = 50, offset = 0 } = options;
     const conditions: string[] = [];
     const params: Record<string, unknown> = {};
 
@@ -62,7 +93,7 @@ export class MarketplaceDB {
     }
     if (pack) {
       conditions.push(`EXISTS (
-        SELECT 1 FROM pack_packages pp 
+        SELECT 1 FROM pack_packages pp
         INNER JOIN packs pk ON pk.id = pp.pack_id
         WHERE pp.package_id = p.id AND pk.slug = @pack
       )`);
@@ -70,7 +101,7 @@ export class MarketplaceDB {
     }
     if (source) {
       conditions.push(`EXISTS (
-        SELECT 1 FROM sources s 
+        SELECT 1 FROM sources s
         WHERE s.id = p.source_id AND s.name = @source
       )`);
       params.source = source;
@@ -84,8 +115,11 @@ export class MarketplaceDB {
     const countQuery = baseQuery.replace('SELECT p.*', 'SELECT COUNT(*) as total') + whereClause;
     const total = (this.db.prepare(countQuery).get(params) as { total: number }).total;
 
+    // Determine sort order
+    const orderClause = this.buildOrderClause(sort, !!query);
+
     // Get packages
-    const fullQuery = baseQuery + whereClause + ` ORDER BY p.downloads DESC, p.stars DESC LIMIT @limit OFFSET @offset`;
+    const fullQuery = baseQuery + whereClause + ` ${orderClause} LIMIT @limit OFFSET @offset`;
     params.limit = limit;
     params.offset = offset;
     const packages = this.db.prepare(fullQuery).all(params) as MarketplacePackage[];
@@ -96,7 +130,10 @@ export class MarketplaceDB {
     // Build facets (on unfiltered result set)
     const facets = this.buildFacets(baseQuery + whereClause, params);
 
-    return { packages: parsed, total, facets };
+    // Get installed count
+    const installedCount = this.getInstalledCount();
+
+    return { packages: parsed, total, facets, installedCount };
   }
 
   /**
@@ -150,7 +187,131 @@ export class MarketplaceDB {
    * List all sources.
    */
   listSources(): MarketplaceSource[] {
-    return this.db.prepare('SELECT * FROM sources ORDER BY total_packages DESC').all() as MarketplaceSource[];
+    return this.db.prepare(`
+      SELECT *, COALESCE(is_custom, 0) as is_custom FROM sources ORDER BY total_packages DESC
+    `).all() as MarketplaceSource[];
+  }
+
+  /**
+   * List all sources with package counts derived from the packages table.
+   */
+  listSourcesWithCounts(): (MarketplaceSource & { package_count: number })[] {
+    return this.db.prepare(`
+      SELECT s.*, COALESCE(s.is_custom, 0) as is_custom,
+             COUNT(p.id) as package_count
+      FROM sources s
+      LEFT JOIN packages p ON p.source_id = s.id
+      GROUP BY s.id
+      ORDER BY package_count DESC, s.display_name ASC
+    `).all() as (MarketplaceSource & { package_count: number })[];
+  }
+
+  /**
+   * Get a single source by ID.
+   */
+  getSource(id: number): MarketplaceSource | null {
+    const row = this.db.prepare(
+      'SELECT *, COALESCE(is_custom, 0) as is_custom FROM sources WHERE id = ?'
+    ).get(id) as MarketplaceSource | undefined;
+    return row ?? null;
+  }
+
+  /**
+   * Get a single source by name.
+   */
+  getSourceByName(name: string): MarketplaceSource | null {
+    const row = this.db.prepare(
+      'SELECT *, COALESCE(is_custom, 0) as is_custom FROM sources WHERE name = ?'
+    ).get(name) as MarketplaceSource | undefined;
+    return row ?? null;
+  }
+
+  /**
+   * Add a new user-defined source.
+   * Returns the source ID.
+   */
+  addSource(source: {
+    name: string;
+    display_name: string;
+    url: string;
+    source_type: string;
+    platform?: string;
+    install_method?: string;
+    api_endpoint?: string | null;
+    description?: string;
+  }): number {
+    const stmt = this.db.prepare(`
+      INSERT INTO sources (name, display_name, url, source_type, platform, total_packages, install_method, api_endpoint, description, is_custom)
+      VALUES (@name, @display_name, @url, @source_type, @platform, 0, @install_method, @api_endpoint, @description, 1)
+    `);
+    const result = stmt.run({
+      name: source.name,
+      display_name: source.display_name,
+      url: source.url,
+      source_type: source.source_type,
+      platform: source.platform || 'waggle',
+      install_method: source.install_method || 'git_clone',
+      api_endpoint: source.api_endpoint ?? null,
+      description: source.description || '',
+    });
+    return result.lastInsertRowid as number;
+  }
+
+  /**
+   * Delete a user-defined source and all its packages.
+   * Returns true if deleted, false if source not found or is built-in.
+   */
+  deleteSource(id: number): boolean {
+    const source = this.getSource(id);
+    if (!source) return false;
+    if (!source.is_custom) return false;
+
+    // Delete packages belonging to this source first
+    this.db.prepare('DELETE FROM packages WHERE source_id = ?').run(id);
+    // Delete the source
+    const result = this.db.prepare('DELETE FROM sources WHERE id = ? AND is_custom = 1').run(id);
+    return result.changes > 0;
+  }
+
+  /**
+   * Ensure the sources table has the is_custom column.
+   * Safe to call on existing databases — no-ops if column already exists.
+   */
+  ensureIsCustomColumn(): void {
+    try {
+      this.db.prepare("SELECT is_custom FROM sources LIMIT 1").get();
+    } catch {
+      // Column doesn't exist — add it
+      this.db.prepare("ALTER TABLE sources ADD COLUMN is_custom BOOLEAN DEFAULT 0").run();
+    }
+  }
+
+  // ─── Sync State (resumable sync for rate-limited sources) ────────
+
+  /**
+   * Get the sync state for a source (used for resumable pagination).
+   * Returns null if no state is saved.
+   */
+  getSyncState(sourceId: number): Record<string, unknown> | null {
+    const row = this.db.prepare(
+      'SELECT sync_state FROM sources WHERE id = ?'
+    ).get(sourceId) as { sync_state: string | null } | undefined;
+    if (!row || !row.sync_state) return null;
+    try {
+      return JSON.parse(row.sync_state);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Save sync state for a source (used for resumable pagination).
+   * Pass null to clear the state (e.g., when a full sync completes).
+   */
+  setSyncState(sourceId: number, state: Record<string, unknown> | null): void {
+    this.db.prepare(
+      'UPDATE sources SET sync_state = ? WHERE id = ?'
+    ).run(state ? JSON.stringify(state) : null, sourceId);
   }
 
   // ─── Installation Tracking ────────────────────────────────────────
@@ -267,6 +428,33 @@ export class MarketplaceDB {
         ? JSON.parse(pkg.packs)
         : pkg.packs || [],
     };
+  }
+
+  private buildOrderClause(sort?: SearchSort, hasQuery?: boolean): string {
+    switch (sort) {
+      case 'popular':
+        return 'ORDER BY p.downloads DESC, p.stars DESC';
+      case 'recent':
+        return 'ORDER BY p.updated_at DESC, p.created_at DESC';
+      case 'name':
+        return 'ORDER BY p.display_name ASC';
+      case 'relevance':
+        // When using FTS, the default rank is relevance; fallback to downloads
+        return hasQuery ? 'ORDER BY rank, p.downloads DESC' : 'ORDER BY p.downloads DESC, p.stars DESC';
+      default:
+        // Default: if query present use relevance, else popularity
+        return hasQuery ? 'ORDER BY rank, p.downloads DESC' : 'ORDER BY p.downloads DESC, p.stars DESC';
+    }
+  }
+
+  /**
+   * Count the total number of installed packages.
+   */
+  getInstalledCount(): number {
+    const row = this.db.prepare(
+      `SELECT COUNT(*) as cnt FROM installations WHERE status = 'installed'`
+    ).get() as { cnt: number };
+    return row.cnt;
   }
 
   private buildFacets(baseQuery: string, params: Record<string, unknown>) {

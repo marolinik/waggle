@@ -16,6 +16,8 @@ export interface ToolDefinition {
   description: string;
   parameters: Record<string, unknown>;
   execute: (args: Record<string, unknown>) => Promise<string>;
+  /** PM-6: Whether this tool can operate without LLM connectivity (default: false) */
+  offlineCapable?: boolean;
 }
 
 /** Workspace-specific layers for dual-mind routing */
@@ -79,6 +81,7 @@ export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
     {
       name: 'get_identity',
       description: 'Get the agent identity (who am I, what is my role)',
+      offlineCapable: true,
       parameters: {},
       execute: async () => {
         if (!deps.identity.exists()) return 'No identity configured yet.';
@@ -88,6 +91,7 @@ export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
     {
       name: 'get_awareness',
       description: 'Get current awareness state (active tasks, recent actions, pending items, flags, tool utilization)',
+      offlineCapable: true,
       parameters: {},
       execute: async () => {
         let context = deps.awareness.toContext();
@@ -112,6 +116,7 @@ export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
     {
       name: 'search_memory',
       description: 'Search through memory for relevant past experiences and knowledge. Searches both personal and workspace memory when a workspace is active.',
+      offlineCapable: true,
       parameters: {
         type: 'object',
         properties: {
@@ -197,6 +202,7 @@ export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
     {
       name: 'save_memory',
       description: 'Save a new memory. Defaults to workspace mind when active. Use target="personal" for user preferences, communication style, cross-workspace knowledge.',
+      offlineCapable: true,
       parameters: {
         type: 'object',
         properties: {
@@ -254,6 +260,7 @@ export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
     {
       name: 'query_knowledge',
       description: 'Query the knowledge graph for entities and their relationships',
+      offlineCapable: true,
       parameters: {
         type: 'object',
         properties: {
@@ -293,6 +300,7 @@ export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
     {
       name: 'add_task',
       description: 'Add a task to the awareness layer for tracking',
+      offlineCapable: true,
       parameters: {
         type: 'object',
         properties: {

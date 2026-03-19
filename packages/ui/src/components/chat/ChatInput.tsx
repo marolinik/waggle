@@ -146,57 +146,33 @@ export function ChatInput({
     [handleSubmit, showCommands, filteredCommands, selectedIndex, selectCommand],
   );
 
+  const isDisabledOrEmpty = disabled || !text.trim();
+
   return (
-    <div className="chat-input" style={{ position: 'relative', borderTop: '1px solid var(--border, #333)', background: 'var(--bg-secondary, #111)', padding: 12 }}>
+    <div className="chat-input relative border-t border-border bg-card p-3">
       {/* Slash command autocomplete popup */}
       {showCommands && (
         <div
           ref={commandsRef}
-          style={{
-            position: 'absolute',
-            bottom: '100%',
-            left: 12,
-            right: 12,
-            background: 'var(--bg-tertiary, #1a1a2e)',
-            border: '1px solid var(--border, #333)',
-            borderRadius: 8,
-            padding: 4,
-            marginBottom: 4,
-            maxHeight: 240,
-            overflowY: 'auto',
-            zIndex: 50,
-            boxShadow: '0 -4px 16px rgba(0,0,0,0.4)',
-          }}
+          className="absolute bottom-full left-3 right-3 bg-muted border border-border rounded-lg p-1 mb-1 max-h-60 overflow-y-auto z-50 shadow-[0_-4px_16px_rgba(0,0,0,0.4)]"
         >
           {filteredCommands.map((cmd, i) => (
             <button
               key={cmd.name}
               onClick={() => selectCommand(cmd)}
               onMouseEnter={() => setSelectedIndex(i)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                width: '100%',
-                padding: '8px 12px',
-                border: 'none',
-                borderRadius: 6,
-                background: i === selectedIndex ? 'var(--brand-dim, rgba(232,146,15,0.15))' : 'transparent',
-                color: 'var(--text, #e0e0e0)',
-                cursor: 'pointer',
-                textAlign: 'left',
-                fontSize: 13,
-                fontFamily: "'JetBrains Mono', monospace",
-              }}
+              className={`flex items-center gap-3 w-full py-2 px-3 border-none rounded-md text-foreground cursor-pointer text-left text-[13px] font-mono ${
+                i === selectedIndex ? 'bg-primary/15' : 'bg-transparent'
+              }`}
             >
-              <span style={{ color: 'var(--brand, #E8920F)', fontWeight: 600, minWidth: 90 }}>
+              <span className="text-primary font-semibold min-w-[90px]">
                 {cmd.name}
               </span>
-              <span style={{ color: 'var(--text-muted, #888)', fontSize: 12, fontFamily: 'inherit' }}>
+              <span className="text-muted-foreground text-xs font-[inherit]">
                 {cmd.description}
               </span>
               {cmd.args && (
-                <span style={{ color: 'var(--text-dim, #555)', fontSize: 11, marginLeft: 'auto' }}>
+                <span className="text-muted-foreground/30 text-[11px] ml-auto">
                   {cmd.args}
                 </span>
               )}
@@ -210,7 +186,7 @@ export function ChatInput({
         ref={fileInputRef}
         type="file"
         multiple
-        style={{ display: 'none' }}
+        className="hidden"
         onChange={(e) => {
           const files = e.target.files;
           if (files && files.length > 0 && onFileSelect) {
@@ -221,27 +197,18 @@ export function ChatInput({
         }}
       />
 
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+      <div className="flex items-end gap-2">
         {/* Attachment button */}
         {onFileSelect && (
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={disabled}
             title="Attach files"
-            className="chat-input__attach-btn"
-            style={{
-              borderRadius: 8,
-              border: '1px solid var(--border, #444)',
-              background: 'var(--bg-input, #1a1a2e)',
-              color: disabled ? 'var(--text-dim, #555)' : 'var(--text-muted, #888)',
-              padding: '10px 12px',
-              cursor: disabled ? 'not-allowed' : 'pointer',
-              fontSize: 18,
-              lineHeight: 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            className={`chat-input__attach-btn rounded-lg border border-border bg-muted text-lg leading-none flex items-center justify-center py-2.5 px-3 ${
+              disabled
+                ? 'text-muted-foreground/30 cursor-not-allowed'
+                : 'text-muted-foreground cursor-pointer'
+            }`}
           >
             +
           </button>
@@ -254,34 +221,16 @@ export function ChatInput({
           disabled={disabled}
           placeholder={placeholder}
           rows={1}
-          style={{
-            flex: 1,
-            resize: 'none',
-            borderRadius: 8,
-            border: '1px solid var(--border, #444)',
-            background: 'var(--bg-input, #1a1a2e)',
-            padding: '10px 14px',
-            color: 'var(--text, #e0e0e0)',
-            fontSize: 14,
-            fontFamily: "'JetBrains Mono', system-ui, sans-serif",
-            outline: 'none',
-            lineHeight: 1.5,
-          }}
+          className="flex-1 resize-none rounded-lg border border-border bg-muted py-2.5 px-3.5 text-foreground text-sm font-mono outline-none leading-normal"
         />
         <button
           onClick={handleSubmit}
-          disabled={disabled || !text.trim()}
-          style={{
-            borderRadius: 8,
-            border: 'none',
-            background: disabled || !text.trim() ? 'var(--bg-tertiary, #333)' : 'var(--brand, #E8920F)',
-            color: disabled || !text.trim() ? 'var(--text-dim, #555)' : '#000',
-            padding: '10px 20px',
-            fontWeight: 600,
-            fontSize: 13,
-            cursor: disabled || !text.trim() ? 'not-allowed' : 'pointer',
-            fontFamily: "'JetBrains Mono', monospace",
-          }}
+          disabled={isDisabledOrEmpty}
+          className={`rounded-lg border-none font-semibold text-[13px] font-mono py-2.5 px-5 ${
+            isDisabledOrEmpty
+              ? 'bg-muted text-muted-foreground/30 cursor-not-allowed'
+              : 'bg-primary text-primary-foreground cursor-pointer'
+          }`}
         >
           Send
         </button>

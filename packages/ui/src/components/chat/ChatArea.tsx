@@ -12,6 +12,8 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import type { Message, ToolUseEvent, WorkspaceContext } from '../../services/types.js';
 import { ChatMessage } from './ChatMessage.js';
 import { ChatInput, CLIENT_COMMANDS, type SlashCommand } from './ChatInput.js';
+import { SubAgentProgress, type SubAgentInfo } from './SubAgentProgress.js';
+import type { FeedbackRating, FeedbackReason } from './FeedbackButtons.js';
 
 /** Scroll positions keyed by workspace/session for persistence across switches */
 const scrollPositions = new Map<string, number>();
@@ -69,9 +71,15 @@ export interface ChatAreaProps {
   workspaceName?: string;
   /** Session key for scroll position persistence (workspace ID or session ID) */
   scrollKey?: string;
+  /** Active sub-agents for SubAgentProgress panel */
+  subAgents?: SubAgentInfo[];
+  /** Session ID for feedback attribution */
+  sessionId?: string;
+  /** Called when user submits feedback on a message (thumbs up/down) */
+  onFeedback?: (messageIndex: number, rating: FeedbackRating, reason?: FeedbackReason, detail?: string) => void;
 }
 
-export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, onFileSelect, onToolApprove, onToolDeny, workspaceContext, onThreadSelect, workspaceName, scrollKey }: ChatAreaProps) {
+export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, onFileSelect, onToolApprove, onToolDeny, workspaceContext, onThreadSelect, workspaceName, scrollKey, subAgents, sessionId, onFeedback }: ChatAreaProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevMessageCount = useRef(messages.length);
   const [mergedCommands, setMergedCommands] = useState<SlashCommand[] | undefined>(undefined);
@@ -149,6 +157,9 @@ export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, o
       <div
         ref={scrollRef}
         className="chat-area__messages"
+        role="log"
+        aria-label="Chat messages"
+        aria-live="polite"
       >
         {/* Workspace Home — shown when entering a workspace with no messages */}
         {showWorkspaceHome && (
@@ -350,16 +361,19 @@ export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, o
             </div>
           </div>
         )}
-        {messages.map((msg) => (
+        {messages.map((msg, index) => (
           <ChatMessage
             key={msg.id}
             message={msg}
+            messageIndex={index}
+            sessionId={sessionId}
             onToolApprove={onToolApprove}
             onToolDeny={onToolDeny}
+            onFeedback={onFeedback ? (rating, reason, detail) => onFeedback(index, rating, reason, detail) : undefined}
           />
         ))}
         {isLoading && (
-          <div className="chat-area__loading">
+          <div className="chat-area__loading" role="status" aria-label="Agent is thinking">
             <div className="chat-area__loading-indicator">
               <span className="chat-area__loading-dot" />
               <span className="chat-area__loading-dot" />
@@ -368,6 +382,9 @@ export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, o
           </div>
         )}
       </div>
+
+      {/* Sub-agent progress panel — above input, hidden when no agents */}
+      <SubAgentProgress agents={subAgents ?? []} />
 
       {/* Input */}
       <ChatInput

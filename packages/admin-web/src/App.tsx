@@ -5,11 +5,13 @@ import { Audit } from './pages/Audit.js';
 import { Members } from './pages/Members.js';
 import { Capabilities } from './pages/Capabilities.js';
 import { TeamSettings } from './pages/TeamSettings.js';
+import { Analytics } from './pages/Analytics.js';
 
-type Page = 'dashboard' | 'jobs' | 'audit' | 'members' | 'capabilities' | 'settings';
+type Page = 'dashboard' | 'analytics' | 'jobs' | 'audit' | 'members' | 'capabilities' | 'settings';
 
 const NAV_ITEMS: { key: Page; label: string }[] = [
   { key: 'dashboard', label: 'Dashboard' },
+  { key: 'analytics', label: 'Analytics' },
   { key: 'members', label: 'Members' },
   { key: 'capabilities', label: 'Capabilities' },
   { key: 'jobs', label: 'Jobs' },
@@ -113,6 +115,7 @@ export function App() {
         ) : (
           <>
             {page === 'dashboard' && <Dashboard token={token} teamSlug={teamSlug} />}
+            {page === 'analytics' && <Analytics token={token} teamSlug={teamSlug} />}
             {page === 'members' && <Members token={token} teamSlug={teamSlug} />}
             {page === 'capabilities' && <Capabilities token={token} teamSlug={teamSlug} />}
             {page === 'jobs' && <Jobs token={token} teamSlug={teamSlug} />}

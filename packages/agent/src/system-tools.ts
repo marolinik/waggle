@@ -42,6 +42,7 @@ export function createSystemTools(workspace: string): ToolDefinition[] {
     {
       name: 'bash',
       description: 'Execute a shell command in the workspace directory',
+      offlineCapable: true,
       parameters: {
         type: 'object',
         properties: {
@@ -119,6 +120,7 @@ export function createSystemTools(workspace: string): ToolDefinition[] {
     {
       name: 'read_file',
       description: 'Read the contents of a file (path relative to workspace). Supports offset/limit for partial reads and line numbers.',
+      offlineCapable: true,
       parameters: {
         type: 'object',
         properties: {
@@ -192,6 +194,7 @@ export function createSystemTools(workspace: string): ToolDefinition[] {
     {
       name: 'write_file',
       description: 'Write content to a file, creating parent directories if needed',
+      offlineCapable: true,
       parameters: {
         type: 'object',
         properties: {
@@ -216,6 +219,7 @@ export function createSystemTools(workspace: string): ToolDefinition[] {
     {
       name: 'edit_file',
       description: 'Replace an exact string in a file. old_string must appear exactly once unless replace_all is true.',
+      offlineCapable: true,
       parameters: {
         type: 'object',
         properties: {
@@ -261,6 +265,7 @@ export function createSystemTools(workspace: string): ToolDefinition[] {
     {
       name: 'search_files',
       description: 'Search for files matching a glob pattern in the workspace',
+      offlineCapable: true,
       parameters: {
         type: 'object',
         properties: {
@@ -287,6 +292,7 @@ export function createSystemTools(workspace: string): ToolDefinition[] {
     {
       name: 'search_content',
       description: 'Search file contents using a regex pattern. Returns file:line: match format. Supports context lines, output modes, file type filter, and max results.',
+      offlineCapable: true,
       parameters: {
         type: 'object',
         properties: {
@@ -571,6 +577,7 @@ export function createSystemTools(workspace: string): ToolDefinition[] {
     {
       name: 'multi_edit',
       description: 'Apply multiple edits atomically across one or more files. If any edit fails validation, none are applied.',
+      offlineCapable: true,
       parameters: {
         type: 'object',
         properties: {
@@ -653,6 +660,7 @@ export function createSystemTools(workspace: string): ToolDefinition[] {
     {
       name: 'get_task_output',
       description: 'Get the current output and status of a background task started with run_in_background.',
+      offlineCapable: true,
       parameters: {
         type: 'object',
         properties: {
@@ -692,6 +700,7 @@ export function createSystemTools(workspace: string): ToolDefinition[] {
     {
       name: 'kill_task',
       description: 'Kill a running background task.',
+      offlineCapable: true,
       parameters: {
         type: 'object',
         properties: {

@@ -34,6 +34,8 @@ export {
   ApprovalGate,
   getToolStatusColor,
   formatDuration,
+  SubAgentProgress,
+  formatElapsed,
   FileDropZone,
   categorizeFile,
   isSupported,
@@ -44,6 +46,8 @@ export {
   parseCsvPreview,
   SUPPORTED_EXTENSIONS,
   MAX_FILE_SIZE,
+  FeedbackButtons,
+  WorkflowSuggestionCard,
 } from './components/chat/index.js';
 export type {
   ChatAreaProps,
@@ -53,9 +57,15 @@ export type {
   ToolCardProps,
   ToolResultRendererProps,
   ApprovalGateProps,
+  SubAgentProgressProps,
+  SubAgentInfo,
   FileDropZoneProps,
   DroppedFile,
   FileCategory,
+  FeedbackButtonsProps,
+  FeedbackRating,
+  FeedbackReason,
+  WorkflowSuggestionProps,
 } from './components/chat/index.js';
 
 // Components — workspace
@@ -82,6 +92,7 @@ export type {
   WorkspaceCardProps,
   GroupHeaderProps,
   CreateWorkspaceDialogProps,
+  PersonaOption,
   TeamPresenceProps,
   TeamInfo,
   TaskBoardProps,
@@ -114,6 +125,7 @@ export type {
   Tab,
   TabsProps,
   StatusBarProps,
+  OfflineStatus,
   ModalProps,
   Theme,
   ThemeContextValue,
@@ -247,6 +259,10 @@ export {
   filterSteps,
   ActivityFeed,
   formatActivityTime,
+  SessionTimeline,
+  getToolIcon,
+  formatTimelineDuration,
+  formatTimelineTimestamp,
 } from './components/events/index.js';
 export type {
   EventStreamProps,
@@ -255,6 +271,8 @@ export type {
   StepFilter,
   ActivityFeedProps,
   ActivityItem,
+  SessionTimelineProps,
+  TimelineEvent,
 } from './components/events/index.js';
 
 // Components — sessions
@@ -367,6 +385,9 @@ export type { UseTeamActivityOptions, UseTeamActivityReturn } from './hooks/useT
 
 export { useNotifications } from './hooks/useNotifications.js';
 export type { NotificationEvent, UseNotificationsResult } from './hooks/useNotifications.js';
+
+export { useSubAgentStatus } from './hooks/useSubAgentStatus.js';
+export type { WorkflowSuggestion, UseSubAgentStatusResult } from './hooks/useSubAgentStatus.js';
 
 // Components — notifications
 export { ToastContainer } from './components/ToastContainer.js';

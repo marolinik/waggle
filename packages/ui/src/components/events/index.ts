@@ -21,3 +21,6 @@ export type { AgentStep, StepFilter } from './utils.js';
 
 export { ActivityFeed, formatActivityTime } from './ActivityFeed.js';
 export type { ActivityFeedProps, ActivityItem } from './ActivityFeed.js';
+
+export { SessionTimeline, getToolIcon, formatTimelineDuration, formatTimelineTimestamp } from './SessionTimeline.js';
+export type { SessionTimelineProps, TimelineEvent } from './SessionTimeline.js';

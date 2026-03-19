@@ -3,8 +3,9 @@ import os from 'node:os';
 import path from 'node:path';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import fastifyStatic from '@fastify/static';
 import websocket from '@fastify/websocket';
-import { MindDB, MultiMind, WorkspaceManager, WaggleConfig, createLiteLLMEmbedder, FrameStore, SessionStore, InstallAuditStore, CronStore, AwarenessLayer, VaultStore, SkillHashStore } from '@waggle/core';
+import { MindDB, MultiMind, WorkspaceManager, WaggleConfig, createLiteLLMEmbedder, FrameStore, SessionStore, InstallAuditStore, CronStore, AwarenessLayer, VaultStore, SkillHashStore, OptimizationLogStore } from '@waggle/core';
 import { MemoryWeaver } from '@waggle/weaver';
 import {
   Orchestrator,
@@ -37,11 +38,37 @@ import {
   JiraConnector,
   EmailConnector,
   GoogleCalendarConnector,
+  DiscordConnector,
+  LinearConnector,
+  AsanaConnector,
+  TrelloConnector,
+  MondayConnector,
+  NotionConnector,
+  ConfluenceConnector,
+  ObsidianConnector,
+  HubSpotConnector,
+  SalesforceConnector,
+  PipedriveConnector,
+  AirtableConnector,
+  GitLabConnector,
+  BitbucketConnector,
+  DropboxConnector,
+  PostgresConnector,
+  GmailConnector,
+  GoogleDocsConnector,
+  GoogleDriveConnector,
+  GoogleSheetsConnector,
+  MSTeamsConnector,
+  OutlookConnector,
+  OneDriveConnector,
+  ComposioConnector,
+  isWithinBudget,
+  getRecentLogs,
   type ToolDefinition,
   type LoadedSkill,
 } from '@waggle/agent';
 import { PluginRuntimeManager, getStarterSkillsDir, validatePluginManifest } from '@waggle/sdk';
-import { MarketplaceDB, MarketplaceSync } from '@waggle/marketplace';
+import { MarketplaceDB, MarketplaceSync, seedMcpServers, seedNewSources } from '@waggle/marketplace';
 import { workspaceRoutes } from './routes/workspaces.js';
 import { chatRoutes, type AgentRunner } from './routes/chat.js';
 import { memoryRoutes } from './routes/memory.js';
@@ -60,13 +87,32 @@ import { taskRoutes } from './routes/tasks.js';
 import { capabilitiesRoutes } from './routes/capabilities.js';
 import { commandRoutes } from './routes/commands.js';
 import { cronRoutes } from './routes/cron.js';
-import { notificationRoutes } from './routes/notifications.js';
+import { notificationRoutes, emitNotification, emitSubagentStatus } from './routes/notifications.js';
 import { marketplaceDevRoutes } from './routes/marketplace-dev.js';
 import { marketplaceRoutes } from './routes/marketplace.js';
 import { connectorRoutes } from './routes/connectors.js';
 import { fleetRoutes } from './routes/fleet.js';
 import { importRoutes } from './routes/import.js';
+import { vaultRoutes } from './routes/vault.js';
+import { personaRoutes } from './routes/personas.js';
+import { feedbackRoutes } from './routes/feedback.js';
+import { workspaceTemplateRoutes } from './routes/workspace-templates.js';
+import { exportRoutes } from './routes/export.js';
+import { costRoutes } from './routes/cost.js';
+import { backupRoutes } from './routes/backup.js';
+import { offlineRoutes } from './routes/offline.js';
+import { OfflineManager } from './offline-manager.js';
+import { securityMiddleware } from './security-middleware.js';
 import { LocalScheduler } from './cron.js';
+import {
+  generateMorningBriefing,
+  checkStaleWorkspaces,
+  checkPendingTasks,
+  suggestCapabilities,
+  type ProactiveContext,
+  type ProactiveMessage,
+} from './proactive-handlers.js';
+import { generateMonthlyAssessment, saveAssessmentToMind } from './monthly-assessment.js';
 import { WorkspaceSessionManager } from './workspace-sessions.js';
 import { EventEmitter } from 'node:events';
 
@@ -149,6 +195,7 @@ declare module 'fastify' {
     skillHashStore: import('@waggle/core').SkillHashStore;
     scheduler: import('./cron.js').LocalScheduler;
     marketplace: import('@waggle/marketplace').MarketplaceDB | null;
+    offlineManager: OfflineManager;
   }
 }
 
@@ -204,6 +251,56 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
     });
   }
 
+  // Ensure proactive behavior cron routines exist (added separately so existing installs get them)
+  const existingCrons = cronStore.list();
+  if (!existingCrons.find(s => s.name === 'Morning briefing')) {
+    cronStore.create({
+      name: 'Morning briefing',
+      cronExpr: '0 8 * * *', // daily at 8:00 AM
+      jobType: 'proactive',
+      jobConfig: { action: 'morning_briefing' },
+    });
+  }
+  if (!existingCrons.find(s => s.name === 'Stale workspace check')) {
+    cronStore.create({
+      name: 'Stale workspace check',
+      cronExpr: '0 9 * * 1', // weekly on Monday at 9:00 AM
+      jobType: 'proactive',
+      jobConfig: { action: 'stale_workspace_check' },
+    });
+  }
+  if (!existingCrons.find(s => s.name === 'Task reminder')) {
+    cronStore.create({
+      name: 'Task reminder',
+      cronExpr: '30 8 * * *', // daily at 8:30 AM (30 min after briefing)
+      jobType: 'proactive',
+      jobConfig: { action: 'task_reminder' },
+    });
+  }
+  if (!existingCrons.find(s => s.name === 'Capability suggestion')) {
+    cronStore.create({
+      name: 'Capability suggestion',
+      cronExpr: '0 10 * * 3', // weekly on Wednesday at 10:00 AM
+      jobType: 'proactive',
+      jobConfig: { action: 'capability_suggestion' },
+    });
+  }
+  if (!existingCrons.find(s => s.name === 'Prompt optimization')) {
+    cronStore.create({
+      name: 'Prompt optimization',
+      cronExpr: '0 2 * * *', // daily at 2:00 AM
+      jobType: 'prompt_optimization',
+      enabled: false,         // opt-in — only runs when workspace has optimizationEnabled
+    });
+  }
+  if (!existingCrons.find(s => s.name === 'Monthly assessment')) {
+    cronStore.create({
+      name: 'Monthly assessment',
+      cronExpr: '0 6 1 * *', // 1st of each month at 6:00 AM
+      jobType: 'monthly_assessment',
+    });
+  }
+
   // Vault — encrypted secret storage
   const vault = new VaultStore(fullConfig.dataDir);
   server.decorate('vault', vault);
@@ -229,6 +326,30 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   connectorRegistry.register(new JiraConnector());
   connectorRegistry.register(new EmailConnector());
   connectorRegistry.register(new GoogleCalendarConnector());
+  connectorRegistry.register(new DiscordConnector());
+  connectorRegistry.register(new LinearConnector());
+  connectorRegistry.register(new AsanaConnector());
+  connectorRegistry.register(new TrelloConnector());
+  connectorRegistry.register(new MondayConnector());
+  connectorRegistry.register(new NotionConnector());
+  connectorRegistry.register(new ConfluenceConnector());
+  connectorRegistry.register(new ObsidianConnector());
+  connectorRegistry.register(new HubSpotConnector());
+  connectorRegistry.register(new SalesforceConnector());
+  connectorRegistry.register(new PipedriveConnector());
+  connectorRegistry.register(new AirtableConnector());
+  connectorRegistry.register(new GitLabConnector());
+  connectorRegistry.register(new BitbucketConnector());
+  connectorRegistry.register(new DropboxConnector());
+  connectorRegistry.register(new PostgresConnector());
+  connectorRegistry.register(new GmailConnector());
+  connectorRegistry.register(new GoogleDocsConnector());
+  connectorRegistry.register(new GoogleDriveConnector());
+  connectorRegistry.register(new GoogleSheetsConnector());
+  connectorRegistry.register(new MSTeamsConnector());
+  connectorRegistry.register(new OutlookConnector());
+  connectorRegistry.register(new OneDriveConnector());
+  connectorRegistry.register(new ComposioConnector());
   server.decorate('connectorRegistry', connectorRegistry);
 
   // Seed marketplace.db if not present, then open it for production routes
@@ -251,6 +372,24 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
     }
     if (fs.existsSync(marketplaceDbTarget)) {
       marketplaceDb = new MarketplaceDB(marketplaceDbTarget);
+      // Seed MCP server registry entries if not already present
+      try {
+        const mcpAdded = seedMcpServers(marketplaceDb);
+        if (mcpAdded > 0) {
+          console.log(`[waggle] Seeded ${mcpAdded} MCP servers into marketplace`);
+        }
+      } catch (err) {
+        console.warn(`[waggle] MCP registry seed failed: ${(err as Error).message}`);
+      }
+      // Seed new marketplace sources (skills.sh, mcpmarket, npm, awesome-mcp-servers, etc.)
+      try {
+        const sourcesAdded = seedNewSources(marketplaceDb);
+        if (sourcesAdded > 0) {
+          console.log(`[waggle] Seeded ${sourcesAdded} new marketplace sources`);
+        }
+      } catch (err) {
+        console.warn(`[waggle] Source seed failed: ${(err as Error).message}`);
+      }
       console.log('[waggle] Marketplace DB loaded');
     }
   } catch (err) {
@@ -372,6 +511,30 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
     litellmUrl: fullConfig.litellmUrl,
     litellmApiKey: litellmApiKey,
     defaultModel: 'claude-sonnet-4-6',
+    onWorkerStatus: (event) => {
+      // Relay sub-agent status to eventBus for SSE notification stream
+      const orch = server.agentState.subagentOrchestrator;
+      const agents = orch ? orch.getWorkers().map(w => ({
+        id: w.id,
+        name: w.name,
+        role: w.role,
+        status: w.status,
+        task: w.task,
+        toolsUsed: w.toolsUsed,
+        startedAt: w.startedAt,
+        completedAt: w.completedAt,
+      })) : [{
+        id: event.workerId,
+        name: event.workerState.name,
+        role: event.workerState.role,
+        status: event.workerState.status,
+        task: event.workerState.task,
+        toolsUsed: event.workerState.toolsUsed,
+        startedAt: event.workerState.startedAt,
+        completedAt: event.workerState.completedAt,
+      }];
+      emitSubagentStatus(server, server.agentState.activeWorkspaceId ?? 'default', agents);
+    },
   });
 
   const allTools = [...baseTools, ...subAgentTools, ...workflowTools];
@@ -500,6 +663,19 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
       litellmUrl: fullConfig.litellmUrl,
       litellmApiKey: litellmApiKey,
       defaultModel: 'claude-sonnet-4-6',
+      onWorkerStatus: (event) => {
+        const orch = server.agentState.subagentOrchestrator;
+        const agents = orch ? orch.getWorkers().map(w => ({
+          id: w.id, name: w.name, role: w.role, status: w.status,
+          task: w.task, toolsUsed: w.toolsUsed, startedAt: w.startedAt, completedAt: w.completedAt,
+        })) : [{
+          id: event.workerId, name: event.workerState.name, role: event.workerState.role,
+          status: event.workerState.status, task: event.workerState.task,
+          toolsUsed: event.workerState.toolsUsed, startedAt: event.workerState.startedAt,
+          completedAt: event.workerState.completedAt,
+        }];
+        emitSubagentStatus(server, server.agentState.activeWorkspaceId ?? 'default', agents);
+      },
     });
     return [...wsBase, ...wsSub, ...wsWorkflow];
   };
@@ -679,7 +855,8 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
         const mcJobConfig = JSON.parse(schedule.job_config || '{}');
         if (mcJobConfig.action === 'marketplace_sync' && marketplaceDb) {
           try {
-            const sync = new MarketplaceSync(marketplaceDb);
+            const vaultLookup = server.vault ? (key: string) => server.vault!.get(key)?.value ?? null : undefined;
+            const sync = new MarketplaceSync(marketplaceDb, vaultLookup);
             const results = await sync.syncAll();
             const totalAdded = results.reduce((sum, r) => sum + r.added, 0);
             if (totalAdded > 0) {
@@ -723,14 +900,230 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
           }
         } catch { /* non-blocking */ }
         break;
+      case 'proactive': {
+        const proactiveConfig = JSON.parse(schedule.job_config || '{}');
+        const proactiveCtx: ProactiveContext = {
+          dataDir: fullConfig.dataDir,
+          workspaceManager: wsManager,
+          getWorkspaceMindDb,
+        };
+
+        /** Emit a ProactiveMessage through the notification pipeline. */
+        const emitProactive = (msg: ProactiveMessage) => {
+          const categoryMap: Record<ProactiveMessage['type'], 'cron' | 'task' | 'agent'> = {
+            morning_briefing: 'cron',
+            stale_workspace: 'agent',
+            task_reminder: 'task',
+            capability_suggestion: 'agent',
+          };
+          emitNotification(server, {
+            title: msg.title,
+            body: msg.body,
+            category: categoryMap[msg.type],
+            actionUrl: msg.actionUrl,
+          });
+        };
+
+        try {
+          switch (proactiveConfig.action) {
+            case 'morning_briefing': {
+              const briefing = generateMorningBriefing(proactiveCtx);
+              if (briefing) emitProactive(briefing);
+              break;
+            }
+            case 'stale_workspace_check': {
+              const staleAlerts = checkStaleWorkspaces(proactiveCtx);
+              for (const alert of staleAlerts) emitProactive(alert);
+              break;
+            }
+            case 'task_reminder': {
+              const reminders = checkPendingTasks(proactiveCtx);
+              for (const reminder of reminders) emitProactive(reminder);
+              break;
+            }
+            case 'capability_suggestion': {
+              const suggestion = suggestCapabilities(proactiveCtx);
+              if (suggestion) emitProactive(suggestion);
+              break;
+            }
+            default:
+              console.warn(`[cron] Unknown proactive action: ${proactiveConfig.action}`);
+          }
+        } catch (err) {
+          console.warn(`[cron] Proactive handler failed: ${(err as Error).message}`);
+        }
+        break;
+      }
+      case 'prompt_optimization': {
+        // Background GEPA/Ax prompt optimization — runs daily at 2 AM.
+        // Iterates workspaces with optimizationEnabled, checks budget, reads logs,
+        // and invokes PromptOptimizer for variant generation.
+        try {
+          const workspaces = wsManager.list().filter(ws => ws.optimizationEnabled);
+          for (const ws of workspaces) {
+            const wsDb = getWorkspaceMindDb(ws.id);
+            if (!wsDb) continue;
+
+            const optStore = new OptimizationLogStore(wsDb);
+            const budget = ws.optimizationBudget ?? 100; // cents, default $1/day
+
+            // Check budget before spending any tokens
+            if (!isWithinBudget(optStore, budget)) {
+              console.log(`[cron] Prompt optimization: workspace "${ws.name}" over budget, skipping`);
+              continue;
+            }
+
+            // Read recent logs for analysis
+            const recentLogs = getRecentLogs(optStore, 100);
+            if (recentLogs.length < 5) {
+              // Not enough data to optimize yet
+              continue;
+            }
+
+            // Analyze patterns: high correction rate, common tools, avg turn count
+            const stats = optStore.getStats();
+            const correctionRate = stats.correctionRate;
+            const avgTurns = stats.avgTurnCount;
+
+            // Only trigger optimization if correction rate is above threshold
+            // or turn count is significantly above average (indicating inefficiency)
+            if (correctionRate > 0.2 || avgTurns > 15) {
+              const rate = (correctionRate * 100).toFixed(1);
+              console.log(`[cron] Prompt optimization: workspace "${ws.name}" — correction rate ${rate}%, avg turns ${avgTurns.toFixed(1)}`);
+
+              // Re-check budget before the LLM call (another workspace may have consumed tokens)
+              if (!isWithinBudget(optStore, budget)) {
+                console.log(`[waggle] GEPA optimization skipped — daily budget exceeded`);
+                continue;
+              }
+
+              // Get the most recent system prompt from the workspace's logs
+              const currentSystemPrompt = recentLogs[0]?.system_prompt ?? '';
+              if (!currentSystemPrompt) {
+                console.log(`[cron] Prompt optimization: no system prompt in logs, skipping`);
+                continue;
+              }
+
+              // Generate variant via the built-in Anthropic proxy (localhost)
+              try {
+                const proxyUrl = `http://127.0.0.1:${fullConfig.port ?? 3333}/v1/chat/completions`;
+                const variantResponse = await fetch(proxyUrl, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    model: 'claude-sonnet-4-6',
+                    max_tokens: 4096,
+                    messages: [
+                      {
+                        role: 'system',
+                        content: `You are a prompt optimization specialist. Your task is to improve an AI agent's system prompt based on performance signals.
+
+The agent's correction rate is ${rate}% (target: under 20%) and average turn count is ${avgTurns.toFixed(1)} (target: under 15).
+
+A high correction rate means the agent frequently misunderstands instructions or produces wrong outputs.
+A high turn count means the agent takes too many steps to complete tasks.
+
+Analyze the current system prompt and generate an improved variant that:
+1. Adds clearer instructions for areas where corrections are common
+2. Reduces unnecessary verbosity that inflates turn count
+3. Preserves the core identity and capabilities
+4. Is production-ready (not a draft or explanation)
+
+Return ONLY the improved system prompt text. No commentary, no markdown fences, no explanation.`,
+                      },
+                      {
+                        role: 'user',
+                        content: `Here is the current system prompt to improve:\n\n${currentSystemPrompt.slice(0, 12000)}`,
+                      },
+                    ],
+                  }),
+                  signal: AbortSignal.timeout(60_000),
+                });
+
+                if (!variantResponse.ok) {
+                  console.warn(`[cron] GEPA variant generation failed: HTTP ${variantResponse.status}`);
+                } else {
+                  const variantBody = await variantResponse.json() as {
+                    choices?: Array<{ message?: { content?: string } }>;
+                  };
+                  const variantText = variantBody.choices?.[0]?.message?.content ?? '';
+
+                  if (variantText.length > 100) {
+                    // Store the variant in the optimization_log with a marker
+                    optStore.insert({
+                      sessionId: `gepa-variant-${Date.now()}`,
+                      workspaceId: ws.id,
+                      systemPrompt: variantText,
+                      toolsUsed: ['gepa_variant'],
+                      turnCount: 0,
+                      wasCorrection: false,
+                      inputTokens: currentSystemPrompt.length,
+                      outputTokens: variantText.length,
+                    });
+                    console.log(`[waggle] GEPA generated prompt variant (correction_rate=${rate}%)`);
+                  } else {
+                    console.warn(`[cron] GEPA variant too short (${variantText.length} chars), discarding`);
+                  }
+                }
+              } catch (variantErr) {
+                console.warn(`[cron] GEPA variant generation error: ${(variantErr as Error).message}`);
+              }
+
+              eventBus.emit('notification', {
+                type: 'notification',
+                timestamp: new Date().toISOString(),
+                title: 'Prompt optimization signal',
+                body: `Workspace "${ws.name}" has ${(correctionRate * 100).toFixed(0)}% correction rate — optimization candidate`,
+                category: 'agent',
+              });
+            }
+
+            // Prune old logs (>30 days) to keep the .mind file lean
+            optStore.pruneOlderThan(30);
+          }
+        } catch (err) {
+          console.warn(`[cron] Prompt optimization failed: ${(err as Error).message}`);
+        }
+        break;
+      }
+      case 'monthly_assessment': {
+        try {
+          const assessment = generateMonthlyAssessment(fullConfig, multiMind.personal);
+          saveAssessmentToMind(multiMind.personal, assessment);
+          console.log(`[cron] Monthly assessment for ${assessment.period}: ${assessment.totalInteractions} interactions, ${(assessment.correctionRate * 100).toFixed(1)}% correction rate`);
+          emitNotification(server, {
+            title: 'Monthly agent assessment ready',
+            body: `${assessment.period} report: ${assessment.totalInteractions} interactions, ${(assessment.correctionRate * 100).toFixed(1)}% correction rate — check your workspace home`,
+            category: 'agent',
+            actionUrl: '/',
+          });
+        } catch (err) {
+          console.warn(`[cron] Monthly assessment failed: ${(err as Error).message}`);
+        }
+        break;
+      }
     }
   });
   scheduler.start();
   server.decorate('scheduler', scheduler);
 
+  // PM-6: Offline manager — periodic LLM health checks
+  const offlineManager = new OfflineManager({
+    dataDir: fullConfig.dataDir,
+    getLlmEndpoint: () => fullConfig.litellmUrl,
+    getLlmApiKey: () => server.agentState?.litellmApiKey ?? '',
+    eventBus,
+    checkIntervalMs: 30_000,
+  });
+  offlineManager.start();
+  server.decorate('offlineManager', offlineManager);
+
   // Plugins
   await server.register(cors, { origin: true });
   await server.register(websocket);
+
+  // Security middleware — headers + rate limiting (local server only)
+  await server.register(securityMiddleware);
 
   // Routes
   await server.register(workspaceRoutes);
@@ -757,6 +1150,38 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   await server.register(connectorRoutes);
   await server.register(fleetRoutes);
   await server.register(importRoutes);
+  await server.register(vaultRoutes);
+  await server.register(personaRoutes);
+  await server.register(feedbackRoutes);
+  await server.register(workspaceTemplateRoutes);
+  await server.register(exportRoutes);
+  await server.register(costRoutes);
+  await server.register(backupRoutes);
+  await server.register(offlineRoutes);
+
+  // ── Static file serving for web mode ──────────────────────────
+  // When WAGGLE_FRONTEND_DIR is set (or app/dist exists), serve the React frontend
+  // as static files. This enables `npx waggle` and Docker web mode.
+  const frontendDir = process.env.WAGGLE_FRONTEND_DIR
+    ?? path.resolve(process.cwd(), 'app', 'dist');
+  if (fs.existsSync(frontendDir) && fs.existsSync(path.join(frontendDir, 'index.html'))) {
+    await server.register(fastifyStatic, {
+      root: frontendDir,
+      prefix: '/',
+      wildcard: false,
+    });
+
+    // SPA fallback: serve index.html for all non-API, non-static routes
+    server.setNotFoundHandler((request, reply) => {
+      // Don't intercept API routes or WebSocket upgrades
+      if (request.url.startsWith('/api/') || request.url.startsWith('/v1/') ||
+          request.url === '/health' || request.url === '/ws') {
+        reply.code(404).send({ error: 'Not found' });
+        return;
+      }
+      reply.sendFile('index.html', frontendDir);
+    });
+  }
 
   // WebSocket endpoint — event bus relay to frontend
   server.get('/ws', { websocket: true }, (socket) => {
@@ -867,11 +1292,14 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
         health: llm.health,
         detail: llm.detail,
         checkedAt: llm.checkedAt,
+        reachable: !offlineManager.state.offline,
+        lastCheck: new Date().toISOString(),
       },
       database: { healthy: dbHealthy },
       memoryStats,
       serviceHealth,
       defaultModel: server.agentState.currentModel,
+      offline: offlineManager.state,
     };
   });
 
@@ -879,6 +1307,7 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   server.addHook('onClose', async () => {
     // Stop cron scheduler
     scheduler.stop();
+    offlineManager.stop();
 
     // Stop MCP servers
     await mcpRuntime.stopAll().catch(() => {});

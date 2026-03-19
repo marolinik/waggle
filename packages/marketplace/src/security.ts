@@ -24,6 +24,12 @@ import { homedir } from 'os';
 import { execSync } from 'child_process';
 import { createHash } from 'crypto';
 import type { MarketplacePackage, InstallManifest, McpServerConfig } from './types';
+import {
+  isCiscoScannerAvailable,
+  ciscoScan,
+  getCiscoScannerVersion,
+  type CiscoScanResult,
+} from './cisco-scanner';
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -70,6 +76,8 @@ export interface ScanResult {
   content_hash: string;            // SHA-256 of scanned content
   blocked: boolean;
   scan_duration_ms: number;
+  /** Detailed result from the Cisco skill-scanner, when available */
+  ciscoScanResult?: CiscoScanResult;
 }
 
 export interface SecurityGateConfig {
@@ -179,10 +187,13 @@ export class SecurityGate {
     }
 
     // Layer 2: Cisco Skill Scanner (local, deep analysis for skills)
+    let ciscoResult: CiscoScanResult | undefined;
     if (this.config.enable_cisco_scanner && content && pkg.waggle_install_type === 'skill') {
       enginesUsed.push('cisco_skill_scanner');
-      const ciscoFindings = await this.scanWithCiscoScanner(pkg, content);
+      const { findings: ciscoFindings, ciscoScanResult: csResult } =
+        await this.scanWithCiscoScannerAdapter(pkg, content);
       findings.push(...ciscoFindings);
+      ciscoResult = csResult;
     }
 
     // Layer 3: MCP Guardian (pattern matching for MCP servers)
@@ -221,6 +232,7 @@ export class SecurityGate {
       content_hash: contentHash,
       blocked: shouldBlock(overallSeverity, this.config.block_threshold),
       scan_duration_ms: Date.now() - startTime,
+      ciscoScanResult: ciscoResult,
     };
 
     // Cache the result
@@ -473,6 +485,68 @@ export class SecurityGate {
       'file_access': 'sensitive_path_access',
     };
     return map[(type || '').toLowerCase()] || 'malicious_code';
+  }
+
+  // ─── Layer 2b: Cisco Scanner via Adapter ────────────────────────
+
+  /**
+   * Scan using the cisco-scanner.ts adapter module.
+   * This is the preferred path — uses async execFile (safer than execSync),
+   * proper temp file management in os.tmpdir(), and 30s timeout.
+   *
+   * Falls back gracefully if the scanner is not installed.
+   */
+  private async scanWithCiscoScannerAdapter(
+    pkg: MarketplacePackage,
+    content: string,
+  ): Promise<{ findings: SecurityFinding[]; ciscoScanResult?: CiscoScanResult }> {
+    const findings: SecurityFinding[] = [];
+
+    // Check availability via the adapter (cached, fast)
+    const available = await isCiscoScannerAvailable();
+    if (!available) {
+      console.warn('[security] Cisco Skill Scanner not installed. Run: pip install cisco-ai-skill-scanner');
+      return { findings };
+    }
+
+    try {
+      const ciscoResult = await ciscoScan(content, pkg.name);
+
+      // Scanner returned but was unable to actually scan (score = -1)
+      if (ciscoResult.score === -1) {
+        return { findings, ciscoScanResult: ciscoResult };
+      }
+
+      // Map Cisco issues to SecurityFinding format
+      for (const issue of ciscoResult.issues) {
+        findings.push({
+          rule_id: issue.rule_id || `CISCO-${findings.length}`,
+          severity: this.mapCiscoSeverity(issue.severity),
+          category: this.mapCiscoCategory(issue.type),
+          title: issue.message || issue.type || 'Cisco scanner finding',
+          description: issue.description || '',
+          location: issue.location || (issue.line ? `line ${issue.line}` : undefined),
+          engine: 'cisco_skill_scanner',
+        });
+      }
+
+      // If the scan failed overall but no individual issues, add a summary finding
+      if (!ciscoResult.passed && findings.length === 0) {
+        findings.push({
+          rule_id: 'CISCO-VERDICT',
+          severity: 'HIGH',
+          category: 'malicious_code',
+          title: 'Cisco Skill Scanner: Overall verdict FAIL',
+          description: 'Scanner returned FAIL verdict without specific findings.',
+          engine: 'cisco_skill_scanner',
+        });
+      }
+
+      return { findings, ciscoScanResult: ciscoResult };
+    } catch (err) {
+      console.warn(`[security] Cisco scanner adapter error: ${(err as Error).message}`);
+      return { findings };
+    }
   }
 
   // ─── Layer 3: MCP Guardian ────────────────────────────────────

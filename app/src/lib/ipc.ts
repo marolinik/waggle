@@ -1,34 +1,69 @@
-const SERVICE_URL = 'http://localhost:3333';
+/** Detect whether we're running inside Tauri (desktop) or plain browser (web mode). */
+export function isTauri(): boolean {
+  return typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
+}
+
+/**
+ * Determine the server base URL:
+ * - Tauri desktop or Vite dev server (port 1420): always localhost:3333
+ * - Web production (served by Fastify): same origin as the page
+ */
+export function getServerBaseUrl(): string {
+  const port = typeof window !== 'undefined' ? window.location?.port : '';
+  if (port === '1420' || isTauri()) {
+    return 'http://127.0.0.1:3333';
+  }
+  return typeof window !== 'undefined' ? window.location.origin : 'http://127.0.0.1:3333';
+}
+
+const SERVICE_URL = getServerBaseUrl();
 
 /**
  * Ensure the local agent service is running.
- * First tries a direct health check; falls back to Tauri command to start it.
+ * In web mode the server is already running (it's serving this page).
+ * In Tauri mode, falls back to the Tauri command to start the sidecar.
  */
 export async function ensureService(): Promise<string> {
   try {
     const res = await fetch(`${SERVICE_URL}/health`);
     if (res.ok) return 'Service running';
   } catch {
-    // Service not running — ask Tauri to start it
+    // Service not running — try Tauri to start it (desktop only)
   }
 
-  const { invoke } = await import('@tauri-apps/api/core');
+  if (!isTauri()) {
+    throw new Error('Service not reachable. Start the server with `npx waggle` or `npx tsx packages/server/src/local/start.ts`');
+  }
+
+  const coreModule = '@tauri-apps/' + 'api/core';
+  const { invoke } = await import(/* @vite-ignore */ coreModule);
   return invoke('ensure_service');
 }
 
 /**
- * Stop the local agent service via Tauri.
+ * Stop the local agent service.
+ * Only works in Tauri mode — in web mode the server lifecycle is external.
  */
 export async function stopService(): Promise<string> {
-  const { invoke } = await import('@tauri-apps/api/core');
+  if (!isTauri()) return 'Web mode — server lifecycle managed externally';
+
+  const coreModule = '@tauri-apps/' + 'api/core';
+  const { invoke } = await import(/* @vite-ignore */ coreModule);
   return invoke('stop_service');
 }
 
 /**
  * Get the configured service port.
+ * In web mode, inferred from the current origin.
  */
 export async function getServicePort(): Promise<number> {
-  const { invoke } = await import('@tauri-apps/api/core');
+  if (!isTauri()) {
+    const port = parseInt(window.location.port || '3333');
+    return port;
+  }
+
+  const coreModule = '@tauri-apps/' + 'api/core';
+  const { invoke } = await import(/* @vite-ignore */ coreModule);
   return invoke('get_service_port');
 }
 

@@ -255,7 +255,8 @@ describe('SecurityGate in install_capability tool', () => {
     );
     const content = fs.readFileSync(toolsPath, 'utf-8');
 
-    expect(content).toContain("import { SecurityGate } from '@waggle/marketplace'");
+    // SecurityGate is loaded lazily to avoid circular dependency
+    expect(content).toContain('SecurityGate');
     expect(content).toContain('gate.scan');
   });
 

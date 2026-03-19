@@ -1,0 +1,270 @@
+/**
+ * Security Middleware Tests
+ *
+ * Tests for:
+ *   - Security headers are present on responses
+ *   - Rate limiter returns 429 after limit exceeded
+ *   - Rate limiter resets after window expires
+ *   - CSP header has expected directives
+ *   - Vault reveal origin enforcement
+ */
+
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import Fastify from 'fastify';
+import { securityMiddleware, RateLimiter } from '../../src/local/security-middleware.js';
+
+// ── Helper: create a test server with security middleware ─────────────
+
+async function createTestServer(rateLimiterConfig?: { maxRequests?: number; windowMs?: number }) {
+  const server = Fastify({ logger: false });
+  await server.register(securityMiddleware, { rateLimiter: rateLimiterConfig });
+
+  // A simple test route
+  server.get('/api/test', async () => {
+    return { ok: true };
+  });
+
+  server.post('/api/test', async () => {
+    return { ok: true };
+  });
+
+  await server.ready();
+  return server;
+}
+
+// ── Security Headers ────────────────────────────────────────────────────
+
+describe('Security Headers', () => {
+  let server: ReturnType<typeof Fastify>;
+
+  beforeEach(async () => {
+    server = await createTestServer();
+  });
+
+  afterEach(async () => {
+    await server.close();
+  });
+
+  it('includes X-Content-Type-Options: nosniff', async () => {
+    const res = await server.inject({ method: 'GET', url: '/api/test' });
+    expect(res.headers['x-content-type-options']).toBe('nosniff');
+  });
+
+  it('includes X-Frame-Options: DENY', async () => {
+    const res = await server.inject({ method: 'GET', url: '/api/test' });
+    expect(res.headers['x-frame-options']).toBe('DENY');
+  });
+
+  it('includes X-XSS-Protection', async () => {
+    const res = await server.inject({ method: 'GET', url: '/api/test' });
+    expect(res.headers['x-xss-protection']).toBe('1; mode=block');
+  });
+
+  it('includes Referrer-Policy', async () => {
+    const res = await server.inject({ method: 'GET', url: '/api/test' });
+    expect(res.headers['referrer-policy']).toBe('strict-origin-when-cross-origin');
+  });
+
+  it('includes Content-Security-Policy with expected directives', async () => {
+    const res = await server.inject({ method: 'GET', url: '/api/test' });
+    const csp = res.headers['content-security-policy'] as string;
+    expect(csp).toBeDefined();
+    expect(csp).toContain("default-src 'self'");
+    expect(csp).toContain("script-src 'self'");
+    expect(csp).toContain("frame-ancestors 'none'");
+    expect(csp).toContain("connect-src 'self'");
+    expect(csp).toContain('https://api.anthropic.com');
+    expect(csp).toContain("img-src 'self' data: blob:");
+    expect(csp).toContain('https://fonts.googleapis.com');
+  });
+
+  it('includes rate limit headers on normal responses', async () => {
+    const res = await server.inject({ method: 'GET', url: '/api/test' });
+    expect(res.headers['x-ratelimit-limit']).toBeDefined();
+    expect(res.headers['x-ratelimit-remaining']).toBeDefined();
+  });
+});
+
+// ── Rate Limiter (unit tests) ───────────────────────────────────────────
+
+describe('RateLimiter', () => {
+  let limiter: RateLimiter;
+
+  afterEach(() => {
+    if (limiter) limiter.destroy();
+  });
+
+  it('allows requests within the limit', () => {
+    limiter = new RateLimiter({ maxRequests: 5, windowMs: 60_000 });
+    for (let i = 0; i < 5; i++) {
+      const result = limiter.check('test-key');
+      expect(result.allowed).toBe(true);
+    }
+  });
+
+  it('blocks requests after limit exceeded', () => {
+    limiter = new RateLimiter({ maxRequests: 3, windowMs: 60_000 });
+    limiter.check('test-key');
+    limiter.check('test-key');
+    limiter.check('test-key');
+
+    const result = limiter.check('test-key');
+    expect(result.allowed).toBe(false);
+    if (!result.allowed) {
+      expect(result.retryAfterMs).toBeGreaterThan(0);
+    }
+  });
+
+  it('tracks different keys independently', () => {
+    limiter = new RateLimiter({ maxRequests: 2, windowMs: 60_000 });
+    limiter.check('key-a');
+    limiter.check('key-a');
+
+    const resultA = limiter.check('key-a');
+    expect(resultA.allowed).toBe(false);
+
+    const resultB = limiter.check('key-b');
+    expect(resultB.allowed).toBe(true);
+  });
+
+  it('resets after window expires', async () => {
+    limiter = new RateLimiter({ maxRequests: 2, windowMs: 50 });
+    limiter.check('test-key');
+    limiter.check('test-key');
+
+    const blocked = limiter.check('test-key');
+    expect(blocked.allowed).toBe(false);
+
+    // Wait for window to expire
+    await new Promise(resolve => setTimeout(resolve, 80));
+
+    const afterReset = limiter.check('test-key');
+    expect(afterReset.allowed).toBe(true);
+  });
+
+  it('returns correct remaining count', () => {
+    limiter = new RateLimiter({ maxRequests: 5, windowMs: 60_000 });
+
+    const r1 = limiter.check('test-key');
+    expect(r1.allowed).toBe(true);
+    if (r1.allowed) expect(r1.remaining).toBe(4);
+
+    const r2 = limiter.check('test-key');
+    expect(r2.allowed).toBe(true);
+    if (r2.allowed) expect(r2.remaining).toBe(3);
+  });
+});
+
+// ── Rate Limiter (integration via Fastify) ──────────────────────────────
+
+describe('Rate Limiter Integration', () => {
+  let server: ReturnType<typeof Fastify>;
+
+  beforeEach(async () => {
+    server = await createTestServer({ maxRequests: 3, windowMs: 60_000 });
+  });
+
+  afterEach(async () => {
+    await server.close();
+  });
+
+  it('returns 429 after limit exceeded', async () => {
+    // Make 3 allowed requests
+    for (let i = 0; i < 3; i++) {
+      const res = await server.inject({ method: 'GET', url: '/api/test' });
+      expect(res.statusCode).toBe(200);
+    }
+
+    // 4th request should be rate-limited
+    const res = await server.inject({ method: 'GET', url: '/api/test' });
+    expect(res.statusCode).toBe(429);
+    const body = res.json();
+    expect(body.error).toBe('Too Many Requests');
+    expect(body.retryAfterMs).toBeGreaterThan(0);
+    expect(res.headers['retry-after']).toBeDefined();
+    expect(res.headers['x-ratelimit-remaining']).toBe('0');
+  });
+
+  it('tracks different endpoints separately', async () => {
+    // Exhaust GET /api/test
+    for (let i = 0; i < 3; i++) {
+      await server.inject({ method: 'GET', url: '/api/test' });
+    }
+    const blocked = await server.inject({ method: 'GET', url: '/api/test' });
+    expect(blocked.statusCode).toBe(429);
+
+    // POST /api/test should still work (different key)
+    const postRes = await server.inject({ method: 'POST', url: '/api/test' });
+    expect(postRes.statusCode).toBe(200);
+  });
+
+  it('includes security headers even on 429 responses', async () => {
+    for (let i = 0; i < 3; i++) {
+      await server.inject({ method: 'GET', url: '/api/test' });
+    }
+    const res = await server.inject({ method: 'GET', url: '/api/test' });
+    expect(res.statusCode).toBe(429);
+    expect(res.headers['x-content-type-options']).toBe('nosniff');
+    expect(res.headers['x-frame-options']).toBe('DENY');
+  });
+});
+
+// ── Vault Reveal Origin Enforcement ─────────────────────────────────────
+
+describe('Vault Reveal Origin Enforcement', () => {
+  it('blocks requests with external origin header', async () => {
+    // This tests the vault route directly — import and set up a minimal server
+    const { vaultRoutes } = await import('../../src/local/routes/vault.js');
+    const { VaultStore } = await import('@waggle/core');
+    const path = await import('node:path');
+    const os = await import('node:os');
+    const fs = await import('node:fs');
+
+    const tmpDir = path.join(os.tmpdir(), `waggle-vault-origin-test-${Date.now()}`);
+    fs.mkdirSync(tmpDir, { recursive: true });
+    const vault = new VaultStore(tmpDir);
+    vault.set('MY_SECRET', 'hidden-value', { credentialType: 'api_key' });
+
+    const server = Fastify({ logger: false });
+    server.decorate('vault', vault);
+    server.register(vaultRoutes);
+
+    try {
+      // Allowed: no origin header (local call)
+      const allowedRes = await server.inject({
+        method: 'POST',
+        url: '/api/vault/MY_SECRET/reveal',
+      });
+      expect(allowedRes.statusCode).toBe(200);
+      expect(allowedRes.json().value).toBe('hidden-value');
+
+      // Allowed: localhost origin
+      const localRes = await server.inject({
+        method: 'POST',
+        url: '/api/vault/MY_SECRET/reveal',
+        headers: { origin: 'http://127.0.0.1:1420' },
+      });
+      expect(localRes.statusCode).toBe(200);
+
+      // Allowed: tauri origin
+      const tauriRes = await server.inject({
+        method: 'POST',
+        url: '/api/vault/MY_SECRET/reveal',
+        headers: { origin: 'tauri://localhost' },
+      });
+      expect(tauriRes.statusCode).toBe(200);
+
+      // Blocked: external origin
+      const blockedRes = await server.inject({
+        method: 'POST',
+        url: '/api/vault/MY_SECRET/reveal',
+        headers: { origin: 'https://evil.example.com' },
+      });
+      expect(blockedRes.statusCode).toBe(403);
+      expect(blockedRes.json().error).toContain('external origin');
+    } finally {
+      await server.close();
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});

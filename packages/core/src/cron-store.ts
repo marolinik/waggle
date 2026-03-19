@@ -12,12 +12,15 @@ import type { MindDB } from './mind/db.js';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
-export type CronJobType = 'agent_task' | 'memory_consolidation' | 'workspace_health';
+export type CronJobType = 'agent_task' | 'memory_consolidation' | 'workspace_health' | 'proactive' | 'prompt_optimization' | 'monthly_assessment';
 
 export const VALID_JOB_TYPES: Set<string> = new Set([
   'agent_task',
   'memory_consolidation',
   'workspace_health',
+  'proactive',
+  'prompt_optimization',
+  'monthly_assessment',
 ]);
 
 export interface CronSchedule {

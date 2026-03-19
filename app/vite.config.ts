@@ -16,6 +16,20 @@ export default defineConfig({
   // Prevent vite from obscuring Rust errors
   clearScreen: false,
 
+  build: {
+    // Output to dist/ for both Tauri and web mode
+    outDir: "dist",
+    // Generate source maps for debugging (stripped by Tauri for production)
+    sourcemap: true,
+    rollupOptions: {
+      // Mark Tauri packages as external — they're loaded dynamically at runtime
+      // and only available in the Tauri desktop environment
+      external: [
+        /^@tauri-apps\/.*/,
+      ],
+    },
+  },
+
   server: {
     port: 1420,
     strictPort: true,

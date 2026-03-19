@@ -1,40 +1,32 @@
 # Contributing to Waggle
 
-## Prerequisites
-
-- **Node.js 20+** (required)
-- **Rust** (only needed for the desktop app)
-
-## Setup
+## Quick Setup
 
 ```bash
-git clone https://github.com/user/waggle.git
+git clone https://github.com/marolinik/waggle.git
 cd waggle
 npm install
-npm test
+npx vitest run   # Run all 3000+ tests
 ```
 
-## Running Tests
+## Development
 
 ```bash
-npx vitest run
+# Local server
+cd packages/server && npx tsx src/local/start.ts
+
+# Desktop app (requires Rust)
+cd app && npm run tauri dev
 ```
 
-To run tests in watch mode during development:
+## PR Requirements
 
-```bash
-npx vitest
-```
+1. Fork and create a feature branch from `master`
+2. Write tests for new functionality
+3. All existing tests must pass: `npx vitest run`
+4. Build must pass: `npx tsc --noEmit`
+5. Submit a PR with a descriptive title and summary
 
-## Pull Request Process
+## Detailed Guide
 
-1. Fork the repository and create a feature branch
-2. Make your changes
-3. Ensure all tests pass (`npx vitest run`)
-4. Submit a pull request against `master`
-
-## Code Style
-
-- TypeScript with ESM modules
-- Vitest for all tests
-- Keep imports explicit (no barrel re-exports)
+See **[docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)** for the full contributing guide including code style, package structure, and product rules.

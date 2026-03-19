@@ -12,6 +12,7 @@ import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import type { Message, ToolUseEvent } from '../../services/types.js';
 import { ToolCard, AUTO_HIDE_TOOLS } from './ToolCard.js';
+import { FeedbackButtons, type FeedbackRating, type FeedbackReason } from './FeedbackButtons.js';
 
 // Configure marked for safe rendering
 marked.setOptions({
@@ -112,11 +113,17 @@ function groupToolCards(
 
 export interface ChatMessageProps {
   message: Message;
+  /** Index of this message in the session (for feedback tracking). */
+  messageIndex?: number;
+  /** Session ID for feedback attribution. */
+  sessionId?: string;
   onToolApprove?: (tool: ToolUseEvent) => void;
   onToolDeny?: (tool: ToolUseEvent, reason?: string) => void;
+  /** Called when the user submits thumbs up/down feedback on this message. */
+  onFeedback?: (rating: FeedbackRating, reason?: FeedbackReason, detail?: string) => void;
 }
 
-export function ChatMessage({ message, onToolApprove, onToolDeny }: ChatMessageProps) {
+export function ChatMessage({ message, messageIndex, sessionId, onToolApprove, onToolDeny, onFeedback }: ChatMessageProps) {
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
   const [trailExpanded, setTrailExpanded] = useState(false);
@@ -153,7 +160,7 @@ export function ChatMessage({ message, onToolApprove, onToolDeny }: ChatMessageP
   // System messages — centered, compact, muted
   if (isSystem) {
     return (
-      <div className="chat-message chat-message--system flex justify-center">
+      <div className="chat-message chat-message--system flex justify-center" role="article" aria-label="System message">
         <div
           style={{
             maxWidth: '90%',
@@ -180,6 +187,8 @@ export function ChatMessage({ message, onToolApprove, onToolDeny }: ChatMessageP
       className={`chat-message chat-message--${message.role} ${
         isUser ? 'flex justify-end' : 'flex justify-start'
       }`}
+      role="article"
+      aria-label={isUser ? 'Your message' : 'Agent message'}
     >
       <div
         className={`max-w-[80%] rounded-lg px-4 py-2 ${
@@ -207,7 +216,9 @@ export function ChatMessage({ message, onToolApprove, onToolDeny }: ChatMessageP
             {/* Trail toggle header */}
             <button
               onClick={() => setTrailExpanded(prev => !prev)}
-              className="chat-message__trail-toggle flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 mb-1"
+              className="chat-message__trail-toggle flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 mb-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+              aria-expanded={showTrail}
+              aria-label={`${message.toolUse?.length ?? 0} tools used. ${showTrail ? 'Collapse' : 'Expand'} details`}
             >
               <span style={{ fontSize: 8 }}>{showTrail ? '\u25BC' : '\u25B6'}</span>
               <span>
@@ -249,14 +260,15 @@ export function ChatMessage({ message, onToolApprove, onToolDeny }: ChatMessageP
           </div>
         )}
 
-        {/* Timestamp + copy button */}
+        {/* Timestamp + copy button + feedback */}
         <div className="chat-message__time mt-1 text-xs opacity-50 flex items-center gap-2">
           <span>{new Date(message.timestamp).toLocaleTimeString()}</span>
           {!isUser && message.content && (
             <button
               onClick={handleCopy}
-              className="chat-message__copy hover:opacity-100 opacity-60 transition-opacity"
+              className="chat-message__copy hover:opacity-100 opacity-60 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
               title="Copy message"
+              aria-label="Copy message to clipboard"
               style={{
                 background: 'none',
                 border: 'none',
@@ -268,6 +280,13 @@ export function ChatMessage({ message, onToolApprove, onToolDeny }: ChatMessageP
             >
               {copied ? '\u2713 Copied' : '\u2398 Copy'}
             </button>
+          )}
+          {!isUser && onFeedback && sessionId && messageIndex != null && (
+            <FeedbackButtons
+              sessionId={sessionId}
+              messageIndex={messageIndex}
+              onFeedback={onFeedback}
+            />
           )}
         </div>
       </div>

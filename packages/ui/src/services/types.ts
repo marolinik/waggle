@@ -56,6 +56,8 @@ export interface Workspace {
   icon?: string;
   model?: string;
   personality?: string;
+  /** Selected agent persona ID (from persona catalog) */
+  personaId?: string;
   tools?: string[];
   skills?: string[];
   team?: string | null;

@@ -12,13 +12,15 @@ export interface MarketplaceSource {
   name: string;
   display_name: string;
   url: string;
-  source_type: 'marketplace' | 'registry' | 'github_org' | 'community_repo' | 'curated_list';
+  source_type: 'marketplace' | 'registry' | 'github_org' | 'community_repo' | 'curated_list' | 'aggregator' | 'npm_registry' | 'official_marketplace' | 'commercial_marketplace' | 'tool' | 'specification';
   platform: string;
   total_packages: number;
   install_method: 'npm' | 'git_clone' | 'download' | 'api_fetch' | 'cli' | 'manual';
   api_endpoint: string | null;
   description: string;
   last_synced_at: string | null;
+  /** Whether this source was added by the user (vs. built-in seed data). */
+  is_custom: boolean;
 }
 
 export interface MarketplacePackage {
@@ -162,12 +164,15 @@ export interface PackInstallResult {
   failed: InstallResult[];
 }
 
+export type SearchSort = 'relevance' | 'popular' | 'recent' | 'name';
+
 export interface SearchOptions {
   query?: string;
   type?: InstallationType;
   category?: string;
   pack?: string;
   source?: string;
+  sort?: SearchSort;
   limit?: number;
   offset?: number;
 }
@@ -180,12 +185,20 @@ export interface SearchResult {
     categories: Record<string, number>;
     sources: Record<string, number>;
   };
+  /** Total number of installed packages across the whole catalog. */
+  installedCount: number;
 }
 
 export interface SyncOptions {
   sources?: string[];
   fullRefresh?: boolean;
   dryRun?: boolean;
+  /**
+   * Scan skill content during sync using SecurityGate.
+   * Default: false (scanning all packages during sync would be slow).
+   * Instead, packages are scanned on first install attempt, and the result is cached.
+   */
+  scanDuringSync?: boolean;
 }
 
 export interface SyncResult {

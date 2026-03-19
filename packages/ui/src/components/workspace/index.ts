@@ -8,7 +8,7 @@ export { GroupHeader } from './GroupHeader.js';
 export type { GroupHeaderProps } from './GroupHeader.js';
 
 export { CreateWorkspaceDialog } from './CreateWorkspaceDialog.js';
-export type { CreateWorkspaceDialogProps, TeamInfo } from './CreateWorkspaceDialog.js';
+export type { CreateWorkspaceDialogProps, TeamInfo, WorkspaceTemplate } from './CreateWorkspaceDialog.js';
 
 export { TeamPresence, getInitials } from './TeamPresence.js';
 export type { TeamPresenceProps } from './TeamPresence.js';

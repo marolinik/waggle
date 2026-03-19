@@ -28,8 +28,18 @@
 
 export { MarketplaceDB } from './db';
 export { MarketplaceInstaller } from './installer';
-export { MarketplaceSync } from './sync';
+export { MarketplaceSync, deduplicatePackages, parseAwesomeListMarkdown, parseNpmSearchResults, normalizeName } from './sync';
+export type { VaultLookupFn } from './sync';
+export { seedNewSources, NEW_SOURCES } from './sources-seed';
 export { SecurityGate } from './security';
+export { isCiscoScannerAvailable, ciscoScan, getCiscoScannerVersion, resetAvailabilityCache, setExecFile } from './cisco-scanner';
+export type { CiscoScanResult, CiscoScanIssue } from './cisco-scanner';
+export { ENTERPRISE_PACKS } from './enterprise-packs';
+export type { EnterprisePack } from './enterprise-packs';
+export { MCP_SERVERS, seedMcpServers } from './mcp-registry';
+export type { McpServerEntry } from './mcp-registry';
+export { PACKAGE_CATEGORIES, categorizePackage, recategorizeAll } from './categories';
+export type { PackageCategoryId } from './categories';
 
 export type {
   MarketplaceSource,
@@ -47,6 +57,7 @@ export type {
   PackInstallResult,
   SearchOptions,
   SearchResult,
+  SearchSort,
   SyncOptions,
   SyncResult,
 } from './types';

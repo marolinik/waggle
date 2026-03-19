@@ -18,6 +18,9 @@ export type { ToolResultRendererProps } from './ToolResultRenderer.js';
 
 export { getToolStatusColor, formatDuration } from './utils.js';
 
+export { SubAgentProgress, formatElapsed } from './SubAgentProgress.js';
+export type { SubAgentProgressProps, SubAgentInfo } from './SubAgentProgress.js';
+
 export { FileDropZone } from './FileDropZone.js';
 export type { FileDropZoneProps } from './FileDropZone.js';
 
@@ -33,3 +36,9 @@ export {
   MAX_FILE_SIZE,
 } from './drop-utils.js';
 export type { DroppedFile, FileCategory } from './drop-utils.js';
+
+export { FeedbackButtons } from './FeedbackButtons.js';
+export type { FeedbackButtonsProps, FeedbackRating, FeedbackReason } from './FeedbackButtons.js';
+
+export { WorkflowSuggestionCard } from './WorkflowSuggestionCard.js';
+export type { WorkflowSuggestionProps } from './WorkflowSuggestionCard.js';

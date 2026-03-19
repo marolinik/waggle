@@ -3,7 +3,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import type { FastifyPluginAsync } from 'fastify';
 import { PluginManager, getStarterSkillsDir, listStarterSkills, listCapabilityPacks, getPackManifest } from '@waggle/sdk';
-import { loadSkills, SkillRecommender, assessTrust } from '@waggle/agent';
+import { loadSkills, SkillRecommender, assessTrust, generateSkillMarkdown, type SkillTemplate } from '@waggle/agent';
 import { computeSkillHash } from '@waggle/core';
 
 /** Capability family definitions — user-job-first grouping */
@@ -399,6 +399,90 @@ export const skillRoutes: FastifyPluginAsync = async (server) => {
     server.agentState.skills.push(...loadSkills(waggleHome));
 
     return { ok: true, name, path: filePath };
+  });
+
+  // POST /api/skills/create — create a skill from structured template (Skill Creator)
+  server.post<{
+    Body: {
+      name: string;
+      description: string;
+      steps: string[];
+      tools?: string[];
+      category?: string;
+    };
+  }>('/api/skills/create', async (request, reply) => {
+    const { name, description, steps, tools, category } = request.body ?? {};
+
+    if (!name || !description || !steps || steps.length === 0) {
+      return reply.status(400).send({ error: 'name, description, and steps (non-empty array) are required' });
+    }
+
+    // Validate and normalize name to kebab-case
+    const kebabName = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    if (!kebabName || kebabName.length === 0) {
+      return reply.status(400).send({ error: 'Invalid skill name — must contain at least one alphanumeric character' });
+    }
+
+    // Prevent path traversal
+    if (kebabName.includes('..') || kebabName.includes('/') || kebabName.includes('\\')) {
+      return reply.status(400).send({ error: 'Invalid skill name' });
+    }
+
+    // Generate SKILL.md from structured template
+    const template: SkillTemplate = {
+      name: kebabName,
+      description,
+      triggerPatterns: [],
+      steps,
+      tools: tools ?? [],
+      category: category ?? 'general',
+    };
+
+    const content = generateSkillMarkdown(template);
+    const filePath = path.join(skillsDir, `${kebabName}.md`);
+
+    fs.writeFileSync(filePath, content, 'utf-8');
+
+    // Record content hash for change detection
+    try {
+      server.skillHashStore.setHash(kebabName, computeSkillHash(content));
+    } catch { /* best-effort */ }
+
+    // Record audit trail
+    try {
+      server.auditStore.record({
+        capabilityName: kebabName,
+        capabilityType: 'skill',
+        source: 'local-created',
+        riskLevel: 'low',
+        trustSource: 'local_user',
+        approvalClass: 'standard',
+        action: 'installed',
+        initiator: 'user',
+        detail: `Created via Skill Creator. Category: ${category ?? 'general'}`,
+      });
+    } catch { /* audit is best-effort */ }
+
+    // Reload skills into agent state
+    server.agentState.skills.length = 0;
+    server.agentState.skills.push(...loadSkills(waggleHome));
+
+    return {
+      success: true,
+      path: filePath,
+      registered: true,
+      skill: {
+        name: kebabName,
+        description,
+        steps,
+        tools: tools ?? [],
+        category: category ?? 'general',
+      },
+    };
   });
 
   // PUT /api/skills/:name — update an existing skill

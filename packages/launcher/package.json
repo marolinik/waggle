@@ -1,0 +1,29 @@
+{
+  "name": "waggle",
+  "version": "1.0.0",
+  "description": "Waggle — Your personal AI agent swarm. Start with `npx waggle`.",
+  "type": "module",
+  "bin": {
+    "waggle": "./src/cli.ts"
+  },
+  "scripts": {
+    "start": "tsx src/cli.ts"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "swarm",
+    "memory",
+    "waggle",
+    "llm",
+    "personal-assistant"
+  ],
+  "author": "Marko Markovic",
+  "license": "MIT",
+  "dependencies": {
+    "@waggle/server": "*"
+  },
+  "devDependencies": {
+    "tsx": "^4.21.0"
+  }
+}

@@ -35,11 +35,12 @@ import {
   useTeamPresence,
   useTeamActivity,
   useNotifications,
+  useSubAgentStatus,
   ToastContainer,
   matchesNamedShortcut,
   categorizeFile,
 } from '@waggle/ui';
-import type { Toast } from '@waggle/ui';
+import type { Toast, PersonaOption, OfflineStatus } from '@waggle/ui';
 import { ServiceProvider, useService } from './providers/ServiceProvider';
 import { AppSidebar } from './components/AppSidebar';
 import { ContextPanel } from './components/ContextPanel';
@@ -52,8 +53,12 @@ import { CockpitView } from './views/CockpitView';
 import { MissionControlView } from './views/MissionControlView';
 import { GlobalSearch } from './components/GlobalSearch';
 import type { GlobalSearchResultType } from './components/GlobalSearch';
+import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
+import { PersonaSwitcher } from './components/PersonaSwitcher';
+import { getServerBaseUrl } from './lib/ipc';
 
-const adapter = new LocalAdapter({ baseUrl: 'http://127.0.0.1:3333' });
+const SERVER_BASE = getServerBaseUrl();
+const adapter = new LocalAdapter({ baseUrl: SERVER_BASE });
 
 /** Derive a stable hue (0-360) from a workspace name for visual identity */
 function workspaceHue(name: string): number {
@@ -93,6 +98,10 @@ function WaggleApp() {
   const [config, setConfig] = useState<WaggleConfig | null>(null);
   // F6: Global search state
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+  // Keyboard shortcuts help overlay
+  const [showHelp, setShowHelp] = useState(false);
+  // Persona switcher dialog state
+  const [showPersonaSwitcher, setShowPersonaSwitcher] = useState(false);
 
   // ── Workspaces ────────────────────────────────────────────────────
   const {
@@ -100,6 +109,7 @@ function WaggleApp() {
     activeWorkspace,
     setActiveWorkspace,
     createWorkspace,
+    updateWorkspace,
   } = useWorkspaces({ service });
 
   // ── Team presence (I4) ───────────────────────────────────────────
@@ -119,7 +129,7 @@ function WaggleApp() {
 
     const fetchMessages = async () => {
       try {
-        const res = await fetch(`http://127.0.0.1:3333/api/team/messages?workspaceId=${teamId}`);
+        const res = await fetch(`${SERVER_BASE}/api/team/messages?workspaceId=${teamId}`);
         if (res.ok) {
           const data = await res.json();
           setTeamMessages(data.messages ?? []);
@@ -132,9 +142,54 @@ function WaggleApp() {
     return () => clearInterval(interval);
   }, [activeWorkspace?.teamId]);
 
+  // ── Agent personas (for workspace creation) ────────────────────
+  const [personas, setPersonas] = useState<PersonaOption[]>([]);
+  useEffect(() => {
+    fetch(`${SERVER_BASE}/api/personas`)
+      .then(r => r.ok ? r.json() as Promise<{ personas: PersonaOption[] }> : null)
+      .then(data => { if (data?.personas) setPersonas(data.personas); })
+      .catch(() => { /* personas are optional — degrade gracefully */ });
+  }, []);
+
   // ── Notifications + Toasts ──────────────────────────────────────
-  const { notifications } = useNotifications('http://127.0.0.1:3333');
+  const { notifications } = useNotifications(SERVER_BASE);
   const [toasts, setToasts] = useState<Toast[]>([]);
+
+  // ── Sub-agent status + Workflow suggestions (via SSE) ──────────
+  const { subAgents, workflowSuggestion, dismissSuggestion } = useSubAgentStatus(
+    SERVER_BASE,
+    activeWorkspace?.id,
+  );
+
+  const handleWorkflowAccept = useCallback(async (pattern: { name: string; description: string; steps: string[]; tools: string[]; category: string }) => {
+    try {
+      await fetch(`${SERVER_BASE}/api/skills/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: pattern.name,
+          description: pattern.description,
+          steps: pattern.steps,
+          tools: pattern.tools,
+          category: pattern.category,
+        }),
+      });
+      dismissSuggestion();
+      setToasts(prev => [{
+        id: `wf-${Date.now()}`,
+        category: 'agent',
+        title: 'Skill saved',
+        body: `"${pattern.name}" is now a reusable skill.`,
+      }, ...prev]);
+    } catch {
+      setToasts(prev => [{
+        id: `wf-err-${Date.now()}`,
+        category: 'agent',
+        title: 'Failed to save skill',
+        body: 'Could not create skill from workflow pattern.',
+      }, ...prev]);
+    }
+  }, [dismissSuggestion]);
 
   // Convert focused notifications to toasts
   useEffect(() => {
@@ -238,7 +293,7 @@ function WaggleApp() {
       await Promise.allSettled(
         workspaces.map(async (ws) => {
           try {
-            const res = await fetch(`http://127.0.0.1:3333/api/workspaces/${ws.id}/context`);
+            const res = await fetch(`${SERVER_BASE}/api/workspaces/${ws.id}/context`);
             if (res.ok) {
               const ctx = await res.json();
               status[ws.id] = {
@@ -318,7 +373,7 @@ function WaggleApp() {
   useEffect(() => {
     const checkPending = async () => {
       try {
-        const res = await fetch('http://127.0.0.1:3333/api/approval/pending');
+        const res = await fetch(`${SERVER_BASE}/api/approval/pending`);
         if (res.ok) {
           const data = await res.json() as { pending: Array<{ requestId: string; toolName: string; input: Record<string, unknown> }> };
           if (data.pending?.length > 0) {
@@ -386,6 +441,25 @@ function WaggleApp() {
   const [agentModel, setAgentModel] = useState('claude-sonnet-4-6');
   const [availableModels, setAvailableModels] = useState<string[]>([]);
 
+  // ── PM-6: Offline state ────────────────────────────────────────
+  const [offlineStatus, setOfflineStatus] = useState<OfflineStatus>({ offline: false, since: null, queuedMessages: 0 });
+
+  useEffect(() => {
+    const fetchOfflineStatus = async () => {
+      try {
+        const res = await fetch(`${SERVER_BASE}/api/offline/status`);
+        if (res.ok) {
+          setOfflineStatus(await res.json() as OfflineStatus);
+        }
+      } catch {
+        setOfflineStatus(prev => prev.offline ? prev : { offline: true, since: new Date().toISOString(), queuedMessages: prev.queuedMessages });
+      }
+    };
+    fetchOfflineStatus();
+    const interval = setInterval(fetchOfflineStatus, 15_000);
+    return () => clearInterval(interval);
+  }, []);
+
   // ── Slash commands ──────────────────────────────────────────────
   const addSystemMessage = useCallback((content: string) => {
     const msg: Message = {
@@ -398,7 +472,7 @@ function WaggleApp() {
   }, []);
 
   const handleSlashCommand = useCallback(async (command: string, args: string) => {
-    const baseUrl = 'http://127.0.0.1:3333';
+    const baseUrl = SERVER_BASE;
     try {
       switch (command) {
         case '/model': {
@@ -604,7 +678,7 @@ function WaggleApp() {
       try {
         const userName = (data as Record<string, unknown>).name ?? (data as Record<string, unknown>).displayName;
         if (userName) {
-          await fetch('http://127.0.0.1:3333/api/chat', {
+          await fetch(`${SERVER_BASE}/api/chat`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -657,6 +731,43 @@ function WaggleApp() {
           setActiveWorkspace(workspaces[idx]);
         }
       }
+      // Cmd+N — create workspace
+      if (matchesNamedShortcut(e, 'newWorkspace')) {
+        e.preventDefault();
+        setShowCreateWorkspace(true);
+      }
+      // Cmd+, — open settings
+      if (matchesNamedShortcut(e, 'openSettings')) {
+        e.preventDefault();
+        setCurrentView('settings');
+      }
+      // Cmd+/ — show help overlay
+      if (matchesNamedShortcut(e, 'showHelp')) {
+        e.preventDefault();
+        setShowHelp(prev => !prev);
+      }
+      // Ctrl+Shift+P — switch persona
+      if (matchesNamedShortcut(e, 'switchPersona')) {
+        e.preventDefault();
+        setShowPersonaSwitcher(prev => !prev);
+      }
+      // Ctrl+Shift+1-7 — switch views
+      const viewMap: Record<string, AppView> = {
+        switchView1: 'chat',
+        switchView2: 'memory',
+        switchView3: 'events',
+        switchView4: 'capabilities',
+        switchView5: 'cockpit',
+        switchView6: 'mission-control',
+        switchView7: 'settings',
+      };
+      for (const [shortcutName, view] of Object.entries(viewMap)) {
+        if (matchesNamedShortcut(e, shortcutName)) {
+          e.preventDefault();
+          setCurrentView(view);
+          break;
+        }
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
@@ -694,7 +805,7 @@ function WaggleApp() {
     }
 
     try {
-      const response = await fetch('http://127.0.0.1:3333/api/ingest', {
+      const response = await fetch(`${SERVER_BASE}/api/ingest`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -821,6 +932,7 @@ function WaggleApp() {
     group: string;
     model?: string;
     personality?: string;
+    personaId?: string;
     directory?: string;
     teamId?: string;
     teamServerUrl?: string;
@@ -857,7 +969,7 @@ function WaggleApp() {
     }).catch(() => {});
 
     // Fetch available models for the picker
-    fetch('http://127.0.0.1:3333/api/litellm/models')
+    fetch(`${SERVER_BASE}/api/litellm/models`)
       .then(r => r.ok ? r.json() as Promise<{ models: string[] }> : null)
       .then(data => { if (data?.models) setAvailableModels(data.models); })
       .catch(() => {});
@@ -877,7 +989,7 @@ function WaggleApp() {
   // ── Model selection ──────────────────────────────────────────────
   const handleModelSelect = useCallback(async (newModel: string) => {
     try {
-      await fetch('http://127.0.0.1:3333/api/agent/model', {
+      await fetch(`${SERVER_BASE}/api/agent/model`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: newModel }),
@@ -888,6 +1000,23 @@ function WaggleApp() {
       addSystemMessage('Failed to switch model.');
     }
   }, [addSystemMessage]);
+
+  // ── Persona switching (mid-conversation) ─────────────────────────
+  const currentPersona = personas.find(p => p.id === activeWorkspace?.personaId) ?? null;
+
+  const handlePersonaSwitch = useCallback(async (personaId: string | null) => {
+    if (!activeWorkspace?.id) return;
+    try {
+      // Update workspace config via hook (calls PUT /api/workspaces/:id and updates local state)
+      await updateWorkspace(activeWorkspace.id, { personaId: personaId ?? undefined });
+      const personaName = personaId
+        ? personas.find(p => p.id === personaId)?.name ?? personaId
+        : 'Default';
+      addSystemMessage(`Switched persona to **${personaName}**. Messages preserved — the next response will use the new persona.`);
+    } catch {
+      addSystemMessage('Failed to switch persona.');
+    }
+  }, [activeWorkspace?.id, updateWorkspace, personas, addSystemMessage]);
 
   // ── F5: Settings tab state (lifted for ContextPanel) ───────────────
   const [settingsTab, setSettingsTab] = useState('general');
@@ -928,7 +1057,7 @@ function WaggleApp() {
   const handleRefreshHealth = useCallback(() => {
     // Trigger a re-fetch by toggling a key; CockpitView manages its own
     // fetch logic, but we can call the health endpoint from here too
-    fetch('http://127.0.0.1:3333/health').catch(() => {});
+    fetch(`${SERVER_BASE}/health`).catch(() => {});
   }, []);
 
   // ── Should context panel show? ────────────────────────────────────
@@ -994,6 +1123,12 @@ function WaggleApp() {
                 workspaceContext={workspaceContext}
                 onThreadSelect={handleSessionSelect}
                 workspaceName={activeWorkspace?.name}
+                currentPersona={currentPersona}
+                onPersonaClick={() => setShowPersonaSwitcher(true)}
+                subAgents={subAgents}
+                workflowSuggestion={workflowSuggestion}
+                onWorkflowAccept={handleWorkflowAccept}
+                onWorkflowDismiss={dismissSuggestion}
               />
             )}
             {currentView === 'settings' && (
@@ -1079,6 +1214,7 @@ function WaggleApp() {
             mode="local"
             availableModels={availableModels}
             onModelSelect={handleModelSelect}
+            offlineStatus={offlineStatus}
           />
         }
       />
@@ -1091,6 +1227,21 @@ function WaggleApp() {
         workspaces={workspaces}
       />
 
+      {/* Keyboard shortcuts help overlay */}
+      <KeyboardShortcutsHelp
+        open={showHelp}
+        onClose={() => setShowHelp(false)}
+      />
+
+      {/* Persona switcher dialog (Ctrl+Shift+P) */}
+      <PersonaSwitcher
+        open={showPersonaSwitcher}
+        onClose={() => setShowPersonaSwitcher(false)}
+        onSelect={handlePersonaSwitch}
+        currentPersonaId={activeWorkspace?.personaId ?? null}
+        personas={personas}
+      />
+
       {/* Create workspace modal */}
       <CreateWorkspaceDialog
         isOpen={showCreateWorkspace}
@@ -1100,6 +1251,7 @@ function WaggleApp() {
         teamServerUrl={teamConnection?.serverUrl}
         teamUserId={teamConnection?.userId}
         onFetchTeams={handleFetchTeams}
+        personas={personas}
       />
 
       {/* File preview modal — B6: with "Open" button via Tauri shell */}

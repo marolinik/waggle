@@ -17,47 +17,28 @@ export interface SidebarProps {
 export function Sidebar({ collapsed, onToggle, children, bottomItems }: SidebarProps) {
   return (
     <aside
-      className="waggle-sidebar"
-      style={{
-        width: collapsed ? 48 : 200,
-        minWidth: collapsed ? 48 : 200,
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        borderRight: '1px solid var(--waggle-border, #333)',
-        background: 'var(--waggle-sidebar-bg, #1a1a2e)',
-        transition: 'width 0.2s ease, min-width 0.2s ease',
-        overflow: 'hidden',
-      }}
+      className={`waggle-sidebar flex flex-col h-full border-r border-border bg-card transition-[width,min-width] duration-200 ease-in-out overflow-hidden ${
+        collapsed ? 'w-12 min-w-12' : 'w-[200px] min-w-[200px]'
+      }`}
+      role="navigation"
+      aria-label="Main navigation"
     >
       <button
-        className="waggle-sidebar-toggle"
+        className="waggle-sidebar-toggle bg-transparent border-none text-foreground cursor-pointer p-3 text-left text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
         onClick={onToggle}
         aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        style={{
-          background: 'none',
-          border: 'none',
-          color: 'var(--waggle-text, #e0e0e0)',
-          cursor: 'pointer',
-          padding: '12px',
-          textAlign: 'left',
-          fontSize: '16px',
-        }}
+        aria-expanded={!collapsed}
       >
         {collapsed ? '\u25B6' : '\u25C0'}
       </button>
 
-      <div style={{ flex: 1, overflow: 'auto' }}>
+      <div className="flex-1 overflow-auto">
         {children}
       </div>
 
       {bottomItems && (
         <div
-          className="waggle-sidebar-bottom"
-          style={{
-            borderTop: '1px solid var(--waggle-border, #333)',
-            padding: '8px 0',
-          }}
+          className="waggle-sidebar-bottom border-t border-border py-2"
         >
           {bottomItems}
         </div>

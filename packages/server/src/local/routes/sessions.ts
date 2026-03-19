@@ -922,6 +922,175 @@ export function exportSessionToMarkdown(filePath: string, sessionId: string): st
   return parts.join('\n');
 }
 
+// ── PM-3: Session Timeline — tool event extraction ───────────────────
+
+export interface TimelineEvent {
+  id: string;
+  timestamp: string;
+  toolName: string;
+  status: 'success' | 'error';
+  durationMs: number | null;
+  inputPreview: string;
+  outputPreview: string;
+  fullInput: Record<string, unknown>;
+  fullOutput: Record<string, unknown>;
+  children?: TimelineEvent[];
+}
+
+/**
+ * Known tool names from the agent loop's describeToolUse function.
+ * Used to detect tool mentions in assistant content.
+ */
+const KNOWN_TOOLS = [
+  'web_search', 'web_fetch', 'search_memory', 'save_memory', 'get_identity',
+  'get_awareness', 'query_knowledge', 'add_task', 'correct_knowledge',
+  'bash', 'read_file', 'write_file', 'edit_file', 'search_files',
+  'search_content', 'git_status', 'git_diff', 'git_log', 'git_commit',
+  'create_plan', 'add_plan_step', 'execute_step', 'show_plan',
+  'generate_docx', 'list_skills', 'create_skill', 'delete_skill',
+  'read_skill', 'search_skills', 'suggest_skill', 'acquire_capability',
+  'install_capability', 'compose_workflow', 'orchestrate_workflow',
+  'spawn_agent', 'list_agents', 'get_agent_result',
+];
+
+/**
+ * Extract tool mentions from assistant message content.
+ * The agent loop sends SSE events for tool use, but the JSONL only stores
+ * {role, content, timestamp}. We detect tool references heuristically from
+ * patterns like "Using <tool_name>..." or "Searching memory for..." in the content.
+ */
+const TOOL_CONTENT_PATTERNS: Array<{ pattern: RegExp; tool: string }> = [
+  { pattern: /Searching the web for "([^"]*)"/, tool: 'web_search' },
+  { pattern: /Reading web page: (.+?)\.\.\./, tool: 'web_fetch' },
+  { pattern: /Searching memory for "([^"]*)"/, tool: 'search_memory' },
+  { pattern: /Saving to memory/, tool: 'save_memory' },
+  { pattern: /Checking identity/, tool: 'get_identity' },
+  { pattern: /Checking current awareness/, tool: 'get_awareness' },
+  { pattern: /Querying knowledge graph/, tool: 'query_knowledge' },
+  { pattern: /Adding task: "([^"]*)"/, tool: 'add_task' },
+  { pattern: /Updating knowledge graph/, tool: 'correct_knowledge' },
+  { pattern: /Running command: (.+?)\.\.\./, tool: 'bash' },
+  { pattern: /Reading file: (.+?)\.\.\./, tool: 'read_file' },
+  { pattern: /Writing file: (.+?)\.\.\./, tool: 'write_file' },
+  { pattern: /Editing file: (.+?)\.\.\./, tool: 'edit_file' },
+  { pattern: /Searching for files matching "([^"]*)"/, tool: 'search_files' },
+  { pattern: /Searching file contents for "([^"]*)"/, tool: 'search_content' },
+  { pattern: /Checking git status/, tool: 'git_status' },
+  { pattern: /Checking git diff/, tool: 'git_diff' },
+  { pattern: /Checking git log/, tool: 'git_log' },
+  { pattern: /Creating git commit/, tool: 'git_commit' },
+  { pattern: /Creating plan: "([^"]*)"/, tool: 'create_plan' },
+  { pattern: /Adding plan step/, tool: 'add_plan_step' },
+  { pattern: /Executing plan step/, tool: 'execute_step' },
+  { pattern: /Showing current plan/, tool: 'show_plan' },
+  { pattern: /Generating document: (.+?)\.\.\./, tool: 'generate_docx' },
+  { pattern: /Checking installed skills/, tool: 'list_skills' },
+  { pattern: /Creating skill: (.+?)\.\.\./, tool: 'create_skill' },
+  { pattern: /Deleting skill: (.+?)\.\.\./, tool: 'delete_skill' },
+  { pattern: /Reading skill: (.+?)\.\.\./, tool: 'read_skill' },
+  { pattern: /Searching for skills: "([^"]*)"/, tool: 'search_skills' },
+  { pattern: /Looking for relevant skills/, tool: 'suggest_skill' },
+  { pattern: /Searching for capabilities: "([^"]*)"/, tool: 'acquire_capability' },
+  { pattern: /Installing capability: (.+?)\.\.\./, tool: 'install_capability' },
+  { pattern: /Analyzing task and composing workflow/, tool: 'compose_workflow' },
+  { pattern: /Running workflow/, tool: 'orchestrate_workflow' },
+  { pattern: /Spawning sub-agent "([^"]*)"/, tool: 'spawn_agent' },
+  { pattern: /Checking sub-agents/, tool: 'list_agents' },
+  { pattern: /Getting sub-agent result/, tool: 'get_agent_result' },
+  { pattern: /Using (\w+)\.\.\./, tool: '__dynamic__' },
+];
+
+/**
+ * Parse a session JSONL file and extract a timeline of tool events.
+ * Messages in the JSONL have {role, content, timestamp} format.
+ * Tool references are detected from assistant content patterns.
+ * Sub-agent calls (spawn_agent) are nested as children.
+ */
+export function parseSessionTimeline(filePath: string): TimelineEvent[] {
+  if (!fs.existsSync(filePath)) return [];
+
+  const content = fs.readFileSync(filePath, 'utf-8').trim();
+  if (!content) return [];
+
+  const lines = content.split('\n').filter(l => l.trim());
+  const events: TimelineEvent[] = [];
+  let eventCounter = 0;
+
+  // Track sub-agent context: when we see spawn_agent, subsequent tool calls
+  // until the next user message belong to that sub-agent
+  let currentSubAgentEvent: TimelineEvent | null = null;
+
+  for (const line of lines) {
+    try {
+      const parsed = JSON.parse(line);
+      if (parsed.type === 'meta') continue;
+      if (!parsed.role || !parsed.content) continue;
+
+      const msgContent = parsed.content as string;
+      const timestamp = parsed.timestamp ?? new Date().toISOString();
+
+      if (parsed.role === 'user') {
+        // User message resets sub-agent context
+        currentSubAgentEvent = null;
+        continue;
+      }
+
+      if (parsed.role !== 'assistant') continue;
+
+      // Scan content for tool use patterns
+      for (const { pattern, tool } of TOOL_CONTENT_PATTERNS) {
+        const match = msgContent.match(pattern);
+        if (!match) continue;
+
+        const resolvedTool = tool === '__dynamic__'
+          ? (KNOWN_TOOLS.includes(match[1]) ? match[1] : match[1])
+          : tool;
+
+        // Determine if this looks like an error
+        const isError = /error|failed|could not|unable to/i.test(msgContent);
+
+        // Extract a preview of the input from the pattern match
+        const inputPreview = match[1]
+          ? match[1].slice(0, 120)
+          : resolvedTool;
+
+        // The output preview is the rest of the message (truncated)
+        const outputPreview = msgContent.length > 200
+          ? msgContent.slice(0, 197) + '...'
+          : msgContent;
+
+        const event: TimelineEvent = {
+          id: `tl-${eventCounter++}`,
+          timestamp,
+          toolName: resolvedTool,
+          status: isError ? 'error' : 'success',
+          durationMs: null,
+          inputPreview,
+          outputPreview,
+          fullInput: match[1] ? { query: match[1] } : {},
+          fullOutput: { content: msgContent },
+        };
+
+        if (resolvedTool === 'spawn_agent') {
+          // Start sub-agent context
+          event.children = [];
+          currentSubAgentEvent = event;
+          events.push(event);
+        } else if (currentSubAgentEvent) {
+          // Nest under current sub-agent
+          currentSubAgentEvent.children!.push(event);
+        } else {
+          events.push(event);
+        }
+      }
+    } catch {
+      // Skip malformed lines
+    }
+  }
+
+  return events;
+}
+
 export const sessionRoutes: FastifyPluginAsync = async (server) => {
   // GET /api/workspaces/:workspaceId/sessions — list sessions for a workspace
   server.get<{
@@ -1013,6 +1182,30 @@ export const sessionRoutes: FastifyPluginAsync = async (server) => {
     return reply
       .header('Content-Type', 'text/markdown; charset=utf-8')
       .send(markdown);
+  });
+
+  // PM-3: GET /api/workspaces/:workspaceId/sessions/:sessionId/timeline — tool event timeline
+  server.get<{
+    Params: { workspaceId: string; sessionId: string };
+  }>('/api/workspaces/:workspaceId/sessions/:sessionId/timeline', async (request, reply) => {
+    const { workspaceId, sessionId } = request.params;
+    assertSafeSegment(workspaceId, 'workspaceId');
+    assertSafeSegment(sessionId, 'sessionId');
+
+    const ws = server.workspaceManager.get(workspaceId);
+    if (!ws) {
+      return reply.status(404).send({ error: 'Workspace not found' });
+    }
+
+    const filePath = path.join(
+      server.localConfig.dataDir, 'workspaces', workspaceId, 'sessions', `${sessionId}.jsonl`
+    );
+    if (!fs.existsSync(filePath)) {
+      return reply.status(404).send({ error: 'Session not found' });
+    }
+
+    const timeline = parseSessionTimeline(filePath);
+    return timeline;
   });
 
   // POST /api/workspaces/:workspaceId/sessions — create a new session

@@ -23,12 +23,14 @@ describe('CostTracker', () => {
     expect(stats.estimatedCost).toBeCloseTo(0.018, 4);
   });
 
-  it('handles unknown models gracefully', () => {
+  it('handles unknown models with fallback Sonnet pricing', () => {
     const tracker = new CostTracker(pricing);
     tracker.addUsage('unknown-model', 1000, 500);
     const stats = tracker.getStats();
     expect(stats.totalInputTokens).toBe(1000);
-    expect(stats.estimatedCost).toBe(0);
+    // Fallback: Sonnet pricing ($0.003/1K in, $0.015/1K out)
+    // 1K input = $0.003, 0.5K output = $0.0075 -> total $0.0105
+    expect(stats.estimatedCost).toBeCloseTo(0.0105, 4);
   });
 
   it('formats summary', () => {

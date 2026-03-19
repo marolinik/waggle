@@ -7,8 +7,9 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { getServerBaseUrl } from '@/lib/ipc';
 
-const BASE_URL = 'http://127.0.0.1:3333';
+const BASE_URL = getServerBaseUrl();
 const REFRESH_INTERVAL = 3_000; // 3s for live agent status
 
 interface FleetSession {
@@ -136,6 +137,7 @@ function AgentFleetCard({
 export function MissionControlView() {
   const [fleet, setFleet] = useState<FleetData>({ sessions: [], count: 0, maxSessions: 3 });
   const [error, setError] = useState<string | null>(null);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   const fetchFleet = useCallback(async () => {
     try {
@@ -146,6 +148,8 @@ export function MissionControlView() {
       }
     } catch {
       setError('Cannot reach server');
+    } finally {
+      setInitialLoading(false);
     }
   }, []);
 
@@ -174,25 +178,40 @@ export function MissionControlView() {
         </p>
       </div>
 
-      {error && (
-        <Card className="direction-d-card" style={{ marginBottom: '16px', borderLeft: '3px solid #ef4444' }}>
-          <CardContent style={{ padding: '12px 16px', fontSize: '13px', color: '#ef4444' }}>
-            {error}
-          </CardContent>
-        </Card>
+      {/* Error state with retry */}
+      {error && !initialLoading && (
+        <div className="flex flex-col items-center justify-center gap-3 text-center py-8">
+          <p className="text-sm text-destructive">{error}</p>
+          <button
+            onClick={fetchFleet}
+            className="rounded border border-border px-3 py-1.5 text-sm text-foreground hover:bg-muted"
+          >
+            Retry
+          </button>
+        </div>
       )}
 
-      {/* Agent Fleet */}
+      {/* Loading state */}
+      {initialLoading && !error && (
+        <div className="flex items-center justify-center h-64">
+          <p className="text-sm text-muted-foreground animate-pulse">Loading fleet data...</p>
+        </div>
+      )}
+
+      {/* Agent Fleet — shown after initial load */}
+      {!initialLoading && !error && (<>
       <div style={{ marginBottom: '24px' }}>
         <h2 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', opacity: 0.8 }}>
           Active Agents
         </h2>
         {fleet.sessions.length === 0 ? (
-          <Card className="direction-d-card">
-            <CardContent style={{ padding: '24px', textAlign: 'center', fontSize: '13px', opacity: 0.5 }}>
-              No active agents. Open a workspace and start chatting to see agents here.
-            </CardContent>
-          </Card>
+          <div className="flex flex-col items-center justify-center gap-3 text-center py-12">
+            <div className="text-4xl">🐝</div>
+            <h3 className="text-base font-medium text-foreground">No active agents</h3>
+            <p className="text-sm text-muted-foreground max-w-xs">
+              Spawn sub-agents from chat or start parallel workspaces.
+            </p>
+          </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {fleet.sessions.map((session) => (
@@ -235,6 +254,7 @@ export function MissionControlView() {
           </CardContent>
         </Card>
       </div>
+      </>)}
     </div>
   );
 }

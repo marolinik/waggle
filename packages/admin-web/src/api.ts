@@ -132,6 +132,22 @@ export interface CapabilityRequestResponse {
   decidedAt?: string;
 }
 
+export interface AnalyticsResponse {
+  activeUsers: { daily: number; weekly: number; monthly: number };
+  tokenUsage: {
+    total: number;
+    byUser: Array<{ userId: string; name: string; tokens: number; cost: number }>;
+  };
+  topTools: Array<{ name: string; invocations: number }>;
+  topCommands: Array<{ name: string; count: number }>;
+  capabilityGaps: Array<{ tool: string; requestCount: number; suggestion: string }>;
+  performanceTrends: {
+    correctionRate: number;
+    correctionTrend: number;
+    avgResponseTime: number;
+  };
+}
+
 export const api = {
   listTeams: (token: string) => apiFetch<TeamResponse[]>('/api/teams', token),
   getTeam: (token: string, slug: string) =>
@@ -160,6 +176,8 @@ export const api = {
     apiFetch<AuditEntryResponse[]>(`/api/admin/teams/${encodeURIComponent(slug)}/audit`, token),
   getStats: (token: string, slug: string) =>
     apiFetch(`/api/admin/teams/${encodeURIComponent(slug)}/usage`, token),
+  getAnalytics: (token: string, slug: string) =>
+    apiFetch<AnalyticsResponse>(`/api/admin/teams/${encodeURIComponent(slug)}/analytics`, token),
   listTasks: (token: string, slug: string) =>
     apiFetch<TaskResponse[]>(`/api/teams/${encodeURIComponent(slug)}/tasks`, token),
   listScoutFindings: (token: string) => apiFetch('/api/scout/findings', token),

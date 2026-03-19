@@ -71,6 +71,7 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
       group: string;
       icon?: string;
       model?: string;
+      personaId?: string;
       directory?: string;
       teamId?: string;
       teamServerUrl?: string;
@@ -78,12 +79,12 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
       teamUserId?: string;
     };
   }>('/api/workspaces', async (request, reply) => {
-    const { name, group, icon, model, directory, teamId, teamServerUrl, teamRole, teamUserId } = request.body;
+    const { name, group, icon, model, personaId, directory, teamId, teamServerUrl, teamRole, teamUserId } = request.body;
     if (!name || !group) {
       return reply.status(400).send({ error: 'name and group are required' });
     }
     const ws = server.workspaceManager.create({
-      name, group, icon, model, directory,
+      name, group, icon, model, personaId, directory,
       teamId, teamServerUrl, teamRole, teamUserId,
     });
 
@@ -374,7 +375,7 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
   // PUT /api/workspaces/:id — update workspace
   server.put<{
     Params: { id: string };
-    Body: { name?: string; group?: string; icon?: string; model?: string };
+    Body: { name?: string; group?: string; icon?: string; model?: string; personaId?: string | null };
   }>('/api/workspaces/:id', async (request, reply) => {
     assertSafeSegment(request.params.id, 'id');
     const existing = server.workspaceManager.get(request.params.id);

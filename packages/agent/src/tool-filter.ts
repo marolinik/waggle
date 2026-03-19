@@ -42,3 +42,18 @@ export function filterToolsForContext(
 
   return filtered;
 }
+
+/**
+ * PM-6: Filter tools to only those that work offline (no LLM needed).
+ * Returns tools where offlineCapable is explicitly true.
+ */
+export function filterOfflineTools(tools: ToolDefinition[]): ToolDefinition[] {
+  return tools.filter(t => t.offlineCapable === true);
+}
+
+/**
+ * PM-6: Get the list of tool names that are offline-capable.
+ */
+export function getOfflineCapableToolNames(tools: ToolDefinition[]): string[] {
+  return tools.filter(t => t.offlineCapable === true).map(t => t.name);
+}

@@ -32,66 +32,32 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
 
   return (
     <div
-      className="waggle-modal-backdrop"
+      className="waggle-modal-backdrop fixed inset-0 bg-black/60 flex items-center justify-center z-[1000]"
       onClick={onClose}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0, 0, 0, 0.6)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1000,
-      }}
     >
       <div
-        className="waggle-modal-card"
+        className="waggle-modal-card bg-card border border-border rounded-lg min-w-[320px] max-w-[90vw] max-h-[80vh] flex flex-col overflow-hidden"
         role="dialog"
         aria-modal="true"
         aria-label={title}
         onClick={(e) => e.stopPropagation()}
-        style={{
-          background: 'var(--waggle-surface, #1a1a2e)',
-          border: '1px solid var(--waggle-border, #333)',
-          borderRadius: 8,
-          minWidth: 320,
-          maxWidth: '90vw',
-          maxHeight: '80vh',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-        }}
       >
         <div
-          className="waggle-modal-header"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '12px 16px',
-            borderBottom: '1px solid var(--waggle-border, #333)',
-          }}
+          className="waggle-modal-header flex items-center justify-between px-4 py-3 border-b border-border"
         >
-          <h2 style={{ margin: 0, fontSize: '16px', color: 'var(--waggle-text, #e0e0e0)' }}>
+          <h2 className="m-0 text-base text-foreground">
             {title}
           </h2>
           <button
             onClick={onClose}
             aria-label="Close"
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--waggle-text-muted, #888)',
-              cursor: 'pointer',
-              fontSize: '18px',
-            }}
+            className="bg-transparent border-none text-muted-foreground cursor-pointer text-lg"
           >
             {'\u00D7'}
           </button>
         </div>
         <div
-          className="waggle-modal-body"
-          style={{ padding: '16px', overflow: 'auto', color: 'var(--waggle-text, #e0e0e0)' }}
+          className="waggle-modal-body p-4 overflow-auto text-foreground"
         >
           {children}
         </div>

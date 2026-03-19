@@ -4,7 +4,7 @@
  * LiteLLM proxy controls removed (replaced by built-in Anthropic proxy post-M4).
  */
 
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import type { WaggleConfig } from '../../services/types.js';
 
 export interface MindFileInfo {
@@ -90,6 +90,9 @@ export function AdvancedSection({
         </div>
       )}
 
+      {/* Download My Data (GDPR export) */}
+      <DataExportSection />
+
       {/* Debug log toggle */}
       <div className="rounded-lg border border-gray-700 p-4">
         <div className="flex items-center justify-between">
@@ -113,6 +116,93 @@ export function AdvancedSection({
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Data Export Section (GDPR compliance) ─────────────────────────────
+
+function DataExportSection() {
+  const [exporting, setExporting] = useState(false);
+  const [exportResult, setExportResult] = useState<{ sizeBytes: number } | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const handleExport = useCallback(async () => {
+    setExporting(true);
+    setExportResult(null);
+    setExportError(null);
+
+    try {
+      const res = await fetch('http://127.0.0.1:3333/api/export', {
+        method: 'POST',
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Export failed' }));
+        throw new Error((err as { error?: string }).error || `HTTP ${res.status}`);
+      }
+
+      const blob = await res.blob();
+      const sizeBytes = blob.size;
+
+      // Trigger browser download
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const today = new Date().toISOString().slice(0, 10);
+      a.download = `waggle-export-${today}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      setExportResult({ sizeBytes });
+    } catch (err) {
+      setExportError((err as Error).message || 'Export failed');
+    } finally {
+      setExporting(false);
+    }
+  }, []);
+
+  return (
+    <div className="rounded-lg border border-gray-700 p-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-medium">Download My Data</h3>
+          <p className="text-xs text-gray-400 mt-1">
+            Export all your data as a ZIP file (memories, sessions, workspaces, settings).
+            API keys are masked. Vault secrets are excluded.
+          </p>
+        </div>
+        <button
+          onClick={handleExport}
+          disabled={exporting}
+          className={`rounded px-4 py-2 text-sm font-medium transition-colors ${
+            exporting
+              ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+              : 'bg-blue-600 text-white hover:bg-blue-500'
+          }`}
+        >
+          {exporting ? (
+            <span className="flex items-center gap-2">
+              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-gray-400 border-t-white" />
+              Exporting...
+            </span>
+          ) : (
+            'Export All Data'
+          )}
+        </button>
+      </div>
+      {exportResult && (
+        <p className="mt-2 text-xs text-green-400">
+          Export complete — {formatBytes(exportResult.sizeBytes)}
+        </p>
+      )}
+      {exportError && (
+        <p className="mt-2 text-xs text-red-400">
+          Export failed: {exportError}
+        </p>
+      )}
     </div>
   );
 }

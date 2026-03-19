@@ -61,10 +61,10 @@ export function ApprovalGate({ tool, onApprove, onDeny }: ApprovalGateProps) {
   const { title, detail } = describeApproval(tool.name, tool.input);
 
   return (
-    <div className="approval-gate rounded-lg border border-yellow-600 bg-yellow-950 p-3">
+    <div className="approval-gate rounded-lg border border-yellow-600/50 bg-yellow-950/30 p-3">
       {/* Header */}
       <div className="approval-gate__header mb-2 flex items-center gap-2">
-        <span className="text-yellow-400 text-lg">{'\u26A0'}</span>
+        <span className="text-yellow-500 text-lg">{'\u26A0'}</span>
         <span className="font-semibold text-yellow-200">
           Approval Required
         </span>
@@ -72,22 +72,22 @@ export function ApprovalGate({ tool, onApprove, onDeny }: ApprovalGateProps) {
 
       {/* Tool info — human-readable */}
       <div className="approval-gate__info mb-3">
-        <div className="text-sm font-medium text-gray-200 mb-1">
+        <div className="text-sm font-medium text-foreground mb-1">
           {title}
         </div>
-        <pre className="mt-1 overflow-x-auto rounded bg-gray-900 px-3 py-2 text-xs text-gray-300 whitespace-pre-wrap">
+        <pre className="mt-1 overflow-x-auto rounded bg-background px-3 py-2 text-xs text-foreground/80 whitespace-pre-wrap">
           {detail}
         </pre>
         {/* Toggle for raw JSON */}
         <button
           onClick={() => setShowRaw(!showRaw)}
-          className="mt-1 text-[10px] text-gray-500 hover:text-gray-300"
+          className="mt-1 text-[10px] text-muted-foreground hover:text-foreground"
           type="button"
         >
           {showRaw ? 'Hide raw data' : 'Show raw data'}
         </button>
         {showRaw && (
-          <pre className="mt-1 overflow-x-auto rounded bg-gray-950 px-3 py-2 text-[10px] text-gray-500">
+          <pre className="mt-1 overflow-x-auto rounded bg-background px-3 py-2 text-[10px] text-muted-foreground">
             {JSON.stringify(tool.input, null, 2)}
           </pre>
         )}
@@ -103,7 +103,7 @@ export function ApprovalGate({ tool, onApprove, onDeny }: ApprovalGateProps) {
         </button>
         <button
           onClick={() => onDeny()}
-          className="rounded bg-red-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-red-600"
+          className="rounded bg-destructive px-4 py-1.5 text-sm font-medium text-destructive-foreground hover:bg-destructive/90"
         >
           Deny
         </button>

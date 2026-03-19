@@ -13,7 +13,16 @@ import { SkillRecommender } from './skill-recommender.js';
 import { searchCapabilities, validateInstallCandidate, type MarketplaceCandidate } from './capability-acquisition.js';
 import { assessTrust, formatTrustSummary } from './trust-model.js';
 import type { InstallAuditStore } from '@waggle/core';
-import { SecurityGate } from '@waggle/marketplace';
+// Lazy import to avoid circular dependency (agent ↔ marketplace)
+let _SecurityGate: any = null;
+async function getSecurityGate() {
+  if (!_SecurityGate) {
+    const mod = await import('@waggle/marketplace');
+    _SecurityGate = mod.SecurityGate;
+  }
+  return _SecurityGate;
+}
+import { generateSkillMarkdown, type SkillTemplate } from './skill-creator.js';
 
 export interface SkillToolsDeps {
   /** Path to ~/.waggle directory */
@@ -111,25 +120,51 @@ export function createSkillTools(deps: SkillToolsDeps): ToolDefinition[] {
       },
     },
 
-    // 2. create_skill — Create a new skill on the fly
+    // 2. create_skill — Create a new skill on the fly (supports raw content OR structured template)
     {
       name: 'create_skill',
-      description: 'Create a new skill (markdown file) that extends your capabilities. Skills are loaded into your system prompt and persist across sessions. Use this when you need a reusable instruction set for a domain (e.g., code review guidelines, writing style, project conventions).',
+      description: 'Create a new reusable skill from a workflow description or raw markdown content. Skills are loaded into your system prompt and persist across sessions. You can provide either raw `content` (markdown) or structured fields (`description`, `steps`, `tools`, `category`) and the skill markdown will be generated automatically.',
       parameters: {
         type: 'object',
         properties: {
-          name: { type: 'string', description: 'Skill name (alphanumeric + hyphens, no spaces)' },
-          content: { type: 'string', description: 'Skill content in markdown. Should include clear instructions for how you should behave when this skill applies.' },
+          name: { type: 'string', description: 'Skill name (kebab-case, alphanumeric + hyphens, no spaces)' },
+          content: { type: 'string', description: 'Raw skill content in markdown. If provided, steps/tools/category are ignored.' },
+          description: { type: 'string', description: 'What this skill does (used when generating from structured input)' },
+          steps: { type: 'array', items: { type: 'string' }, description: 'Step-by-step workflow instructions' },
+          tools: { type: 'array', items: { type: 'string' }, description: 'Tools this skill uses (e.g., web_search, save_memory)' },
+          category: { type: 'string', description: 'Category (coding, research, writing, planning, knowledge, general)' },
         },
-        required: ['name', 'content'],
+        required: ['name'],
       },
       execute: async (args) => {
         const name = args.name as string;
-        const content = args.content as string;
+        const rawContent = args.content as string | undefined;
+        const description = args.description as string | undefined;
+        const steps = args.steps as string[] | undefined;
+        const tools = args.tools as string[] | undefined;
+        const category = args.category as string | undefined;
 
         // Validate name
         if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
           return 'Error: Skill name must contain only letters, numbers, hyphens, and underscores.';
+        }
+
+        // Determine content: raw content takes priority, otherwise generate from template
+        let content: string;
+        if (rawContent) {
+          content = rawContent;
+        } else if (description && steps && steps.length > 0) {
+          const template: SkillTemplate = {
+            name,
+            description,
+            triggerPatterns: [],
+            steps,
+            tools: tools ?? [],
+            category: category ?? 'general',
+          };
+          content = generateSkillMarkdown(template);
+        } else {
+          return 'Error: Provide either "content" (raw markdown) or "description" + "steps" (structured input).';
         }
 
         const filePath = path.join(skillsDir, `${name}.md`);
@@ -440,7 +475,8 @@ Only use this after acquire_capability has identified a specific installable can
         // ── SecurityGate scan (heuristics-only) ──────────────────────
         let securityNote = '';
         try {
-          const gate = new SecurityGate({
+          const SGClass = await getSecurityGate();
+          const gate = new SGClass({
             enable_gen_trust_hub: false,
             enable_cisco_scanner: false,
             enable_mcp_guardian: false,

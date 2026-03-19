@@ -14,6 +14,7 @@ import { ThemeSection } from './ThemeSection.js';
 import { AdvancedSection } from './AdvancedSection.js';
 import { TeamSection } from './TeamSection.js';
 import { VaultSection } from './VaultSection.js';
+import { BackupSection } from './BackupSection.js';
 
 export interface SettingsPanelProps {
   activeTab?: string;
@@ -144,6 +145,9 @@ export function SettingsPanel({
             onConnect={onTeamConnect}
             onDisconnect={onTeamDisconnect}
           />
+        )}
+        {activeTab === 'backup' && (
+          <BackupSection />
         )}
         {activeTab === 'advanced' && (
           <AdvancedSection

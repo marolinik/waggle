@@ -19,6 +19,9 @@ export type { AdvancedSectionProps, MindFileInfo } from './AdvancedSection.js';
 export { VaultSection } from './VaultSection.js';
 export type { VaultSectionProps } from './VaultSection.js';
 
+export { BackupSection } from './BackupSection.js';
+export type { BackupSectionProps } from './BackupSection.js';
+
 export { InstallCenter } from './InstallCenter.js';
 export type { InstallCenterProps } from './InstallCenter.js';
 

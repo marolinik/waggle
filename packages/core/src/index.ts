@@ -49,3 +49,7 @@ export {
 } from './skill-hashes.js';
 export { processImport, parseChatGPTExport, parseClaudeExport, extractKnowledge } from './memory-import.js';
 export type { ImportSource, ImportResult, ExtractedKnowledge, ParsedConversation, ConversationMessage } from './memory-import.js';
+export {
+  OptimizationLogStore, OPTIMIZATION_LOG_TABLE_SQL,
+  type OptimizationLogEntry, type CreateOptimizationLogInput,
+} from './optimization-log.js';

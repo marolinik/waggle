@@ -3,6 +3,7 @@ dist/
 *.db
 *.mind
 .env
+.env.*
 coverage/
 *.tsbuildinfo
 
@@ -16,3 +17,24 @@ app/src-tauri/resources/
 
 # Git worktrees
 .worktrees/
+.claude/worktrees/
+
+# Temporary files
+tmp-*
+*.png
+*.jpeg
+*.ps1
+
+# Session/continuation prompts
+CONTINUE-PHASE9.md
+
+# Generated docs/artifacts
+waggle-architecture.docx
+waggle-capability-mental-model.html
+waggle-marketplace-architecture.html
+waggle-technical-architecture.docx
+
+# Planning docs (not shipped)
+docs/plans/
+docs/phase8-*.md
+docs/m3-setup.md

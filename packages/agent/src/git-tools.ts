@@ -14,6 +14,7 @@ export function createGitTools(workspace: string): ToolDefinition[] {
     {
       name: 'git_status',
       description: 'Show git status (modified/untracked files and current branch)',
+      offlineCapable: true,
       parameters: { type: 'object', properties: {} },
       execute: async () => {
         const branch = runGit(workspace, ['branch', '--show-current']);
@@ -24,6 +25,7 @@ export function createGitTools(workspace: string): ToolDefinition[] {
     {
       name: 'git_diff',
       description: 'Show git diff (unstaged changes, or --staged)',
+      offlineCapable: true,
       parameters: {
         type: 'object',
         properties: {
@@ -42,6 +44,7 @@ export function createGitTools(workspace: string): ToolDefinition[] {
     {
       name: 'git_log',
       description: 'Show recent git log',
+      offlineCapable: true,
       parameters: {
         type: 'object',
         properties: {
@@ -57,6 +60,7 @@ export function createGitTools(workspace: string): ToolDefinition[] {
     {
       name: 'git_commit',
       description: 'Stage files and create an atomic git commit',
+      offlineCapable: true,
       parameters: {
         type: 'object',
         properties: {

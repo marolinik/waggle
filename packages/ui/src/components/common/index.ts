@@ -5,7 +5,7 @@ export { Tabs } from './Tabs.js';
 export type { Tab, TabsProps } from './Tabs.js';
 
 export { StatusBar } from './StatusBar.js';
-export type { StatusBarProps } from './StatusBar.js';
+export type { StatusBarProps, OfflineStatus } from './StatusBar.js';
 
 export { Modal } from './Modal.js';
 export type { ModalProps } from './Modal.js';

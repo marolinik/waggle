@@ -12,6 +12,8 @@ export interface WorkflowToolsConfig extends OrchestratorConfig {
   skills?: LoadedSkill[];
   /** Whether sub-agent spawning is available in this environment */
   subAgentsAvailable?: boolean;
+  /** Optional callback for worker status changes — used by server to relay events to UI via SSE */
+  onWorkerStatus?: (event: { workerId: string; status: string; workerState: import('./subagent-orchestrator.js').WorkerState }) => void;
 }
 
 export function createWorkflowTools(config: WorkflowToolsConfig): ToolDefinition[] {
@@ -152,9 +154,11 @@ export function createWorkflowTools(config: WorkflowToolsConfig): ToolDefinition
           }
         }
 
-        // Emit progress updates
-        orchestrator.on('worker:status', (_event) => {
-          // Status tracking is internal -- the tool result will contain the summary
+        // Emit progress updates — relay to external callback if provided
+        orchestrator.on('worker:status', (event) => {
+          if (config.onWorkerStatus) {
+            config.onWorkerStatus(event);
+          }
         });
 
         const { results, aggregated } = await orchestrator.runWorkflow(template);

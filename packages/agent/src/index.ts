@@ -21,7 +21,7 @@ export { buildSelfAwareness, type AgentCapabilities } from './self-awareness.js'
 export { loadSystemPrompt, loadSkills, type LoadedSkill } from './prompt-loader.js';
 export { LoopGuard, type LoopGuardConfig } from './loop-guard.js';
 export { scanForInjection, type ScanResult } from './injection-scanner.js';
-export { CostTracker, type ModelPricing, type UsageStats } from './cost-tracker.js';
+export { CostTracker, DEFAULT_MODEL_PRICING, type ModelPricing, type UsageStats, type UsageEntry } from './cost-tracker.js';
 export { extractEntities, type ExtractedEntity } from './entity-extractor.js';
 export { CognifyPipeline, type CognifyConfig, type CognifyResult } from './cognify.js';
 export { FeedbackHandler } from './feedback-handler.js';
@@ -32,7 +32,7 @@ export { Plan, type PlanStep } from './plan.js';
 export { createPlanTools } from './plan-tools.js';
 export { createGitTools } from './git-tools.js';
 export { PermissionManager, READONLY_TOOLS } from './permissions.js';
-export { filterToolsForContext, type ToolContext, type ToolFilterConfig } from './tool-filter.js';
+export { filterToolsForContext, filterOfflineTools, getOfflineCapableToolNames, type ToolContext, type ToolFilterConfig } from './tool-filter.js';
 export { needsConfirmation, ConfirmationGate, getApprovalClass, type ConfirmationGateConfig, type ApprovalClass } from './confirmation.js';
 export { createAuditTools } from './audit-tools.js';
 export { createDocumentTools } from './document-tools.js';
@@ -78,9 +78,18 @@ export {
   type AssessmentMode, type AssessTrustInput,
 } from './trust-model.js';
 export { parseSkillFrontmatter, type SkillFrontmatter } from './skill-frontmatter.js';
+export { generateSkillMarkdown, type SkillTemplate } from './skill-creator.js';
 export { BaseConnector, type WaggleConnector, type ConnectorAction, type ConnectorResult } from './connector-sdk.js';
 export { ConnectorRegistry, type AuditLogger } from './connector-registry.js';
-export { GitHubConnector, SlackConnector, JiraConnector, EmailConnector, GoogleCalendarConnector } from './connectors/index.js';
+export {
+  GitHubConnector, SlackConnector, JiraConnector, EmailConnector, GoogleCalendarConnector,
+  DiscordConnector, LinearConnector, AsanaConnector, TrelloConnector, MondayConnector,
+  NotionConnector, ConfluenceConnector, ObsidianConnector, HubSpotConnector, SalesforceConnector,
+  PipedriveConnector, AirtableConnector, GitLabConnector, BitbucketConnector, DropboxConnector,
+  PostgresConnector, GmailConnector, GoogleDocsConnector, GoogleDriveConnector, GoogleSheetsConnector,
+  ComposioConnector, MSTeamsConnector, OutlookConnector, OneDriveConnector,
+} from './connectors/index.js';
+export { captureOptimizationLog, getRecentLogs, isWithinBudget, type OptimizationEntry } from './optimization-capture.js';
 export { detectCorrection, detectCorrectionsInHistory, type DetectedCorrection, type CorrectionDurability } from './correction-detector.js';
 export {
   recordCapabilityGap, analyzeAndRecordCorrection, recordWorkflowPattern,

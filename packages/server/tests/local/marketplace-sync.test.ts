@@ -5,9 +5,10 @@
  * and graceful handling of unreachable sync sources.
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import path from 'node:path';
 import fs from 'node:fs';
+import os from 'node:os';
 import { MarketplaceDB, MarketplaceSync } from '@waggle/marketplace';
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -169,5 +170,106 @@ describe('Sync result aggregation', () => {
     expect(sourcesChecked).toBeGreaterThan(0);
 
     db.close();
+  });
+});
+
+// ── Sync Endpoint Contract (mocked, isolated) ──────────────────────
+
+describe('POST /api/marketplace/sync — endpoint contract (mocked)', () => {
+  let db: MarketplaceDB;
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'waggle-sync-ep-'));
+    const dbPath = path.join(tmpDir, 'marketplace.db');
+    const bundled = getMarketplaceDbPath();
+    if (!bundled) return;
+    fs.copyFileSync(bundled, dbPath);
+    db = new MarketplaceDB(dbPath);
+
+    // Mock fetch to prevent real network calls
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+      json: async () => ({}),
+    }));
+  });
+
+  afterEach(() => {
+    if (db) db.close();
+    if (tmpDir) fs.rmSync(tmpDir, { recursive: true, force: true });
+    vi.restoreAllMocks();
+  });
+
+  it('endpoint response has all required fields', async () => {
+    if (!db) return;
+
+    const sync = new MarketplaceSync(db);
+    const results = await sync.syncAll();
+
+    // Replicate the exact route handler logic from marketplace.ts
+    const sourcesChecked = results.length;
+    const packagesAdded = results.reduce((sum, r) => sum + r.added, 0);
+    const packagesUpdated = results.reduce((sum, r) => sum + r.updated, 0);
+    const errors = results.flatMap(r => r.errors.map(e => `[${r.source}] ${e}`));
+
+    const response = {
+      sourcesChecked,
+      packagesAdded,
+      packagesUpdated,
+      errors,
+      details: results,
+    };
+
+    // Validate the full contract
+    expect(response).toHaveProperty('sourcesChecked');
+    expect(response).toHaveProperty('packagesAdded');
+    expect(response).toHaveProperty('packagesUpdated');
+    expect(response).toHaveProperty('errors');
+    expect(response).toHaveProperty('details');
+    expect(response.sourcesChecked).toBe(40);
+    expect(response.details.length).toBe(40);
+    expect(typeof response.packagesAdded).toBe('number');
+    expect(typeof response.packagesUpdated).toBe('number');
+    expect(Array.isArray(response.errors)).toBe(true);
+  });
+
+  it('filtered sync only processes requested sources', async () => {
+    if (!db) return;
+
+    const sync = new MarketplaceSync(db);
+    const results = await sync.syncAll({ sources: ['clawhub'] });
+
+    const response = {
+      sourcesChecked: results.length,
+      packagesAdded: results.reduce((sum, r) => sum + r.added, 0),
+      packagesUpdated: results.reduce((sum, r) => sum + r.updated, 0),
+      errors: results.flatMap(r => r.errors.map(e => `[${r.source}] ${e}`)),
+      details: results,
+    };
+
+    expect(response.sourcesChecked).toBe(1);
+    expect(response.details[0].source).toBe('clawhub');
+  });
+
+  it('each detail entry in response has SyncResult shape', async () => {
+    if (!db) return;
+
+    const sync = new MarketplaceSync(db);
+    const results = await sync.syncAll({ sources: ['clawhub', 'anthropics-skills'] });
+
+    for (const detail of results) {
+      expect(detail).toHaveProperty('source');
+      expect(detail).toHaveProperty('added');
+      expect(detail).toHaveProperty('updated');
+      expect(detail).toHaveProperty('removed');
+      expect(detail).toHaveProperty('errors');
+      expect(typeof detail.source).toBe('string');
+      expect(typeof detail.added).toBe('number');
+      expect(typeof detail.updated).toBe('number');
+      expect(typeof detail.removed).toBe('number');
+      expect(Array.isArray(detail.errors)).toBe(true);
+    }
   });
 });

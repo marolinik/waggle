@@ -5,7 +5,8 @@ mod service;
 mod tray;
 
 use service::ServiceState;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
+use tauri_plugin_updater::UpdaterExt;
 
 #[tauri::command]
 async fn show_notification(app: tauri::AppHandle, title: String, body: String) -> Result<(), String> {
@@ -29,6 +30,7 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec!["--minimized"]),
@@ -70,6 +72,38 @@ pub fn run() {
             let app_handle_watchdog = app.handle().clone();
             let port = app.state::<ServiceState>().port;
             service::start_watchdog(app_handle_watchdog, port);
+
+            // 9D-7: Check for updates on startup (non-blocking)
+            let app_handle_update = app.handle().clone();
+            tokio::spawn(async move {
+                // Wait 5s for UI to load before checking
+                tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+
+                match app_handle_update.updater() {
+                    Ok(updater) => match updater.check().await {
+                        Ok(Some(update)) => {
+                            let version = update.version.clone();
+                            let _ = app_handle_update.emit(
+                                "waggle://update-available",
+                                serde_json::json!({
+                                    "version": version,
+                                    "body": update.body.clone().unwrap_or_default(),
+                                }),
+                            );
+                            eprintln!("[waggle] Update available: v{}", version);
+                        }
+                        Ok(None) => {
+                            eprintln!("[waggle] App is up to date");
+                        }
+                        Err(e) => {
+                            eprintln!("[waggle] Update check failed: {}", e);
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("[waggle] Updater init failed: {}", e);
+                    }
+                }
+            });
 
             Ok(())
         })

@@ -7,4 +7,5 @@ export { AuditTrailCard } from './AuditTrailCard';
 export { MemoryStatsCard } from './MemoryStatsCard';
 export { ServiceHealthCard } from './ServiceHealthCard';
 export { VaultSummaryCard } from './VaultSummaryCard';
-export type { HealthData, CronSchedule, AuditEntry, CapabilitiesData, ConnectorData } from './types';
+export { CostDashboardCard } from './CostDashboardCard';
+export type { HealthData, CronSchedule, AuditEntry, CapabilitiesData, ConnectorData, CostSummaryData, WorkspaceCostData } from './types';

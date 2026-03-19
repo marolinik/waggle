@@ -61,6 +61,7 @@ export const SETTINGS_TABS: SettingsTab[] = [
   { id: 'vault', label: 'Vault & Credentials' },
   { id: 'permissions', label: 'Permissions' },
   { id: 'team', label: 'Team' },
+  { id: 'backup', label: 'Backup & Restore' },
   { id: 'advanced', label: 'Advanced' },
 ];
 

@@ -781,8 +781,8 @@ When approaching any task:
         // Unregister the per-request approval hook
         if (unregisterHook) unregisterHook();
 
-        // Track cost (same as CLI)
-        costTracker.addUsage(resolvedModel, result.usage.inputTokens, result.usage.outputTokens);
+        // Track cost (same as CLI) — include workspace for per-workspace breakdown
+        costTracker.addUsage(resolvedModel, result.usage.inputTokens, result.usage.outputTokens, effectiveWorkspace);
 
         // ── Post-response memory write-back ──────────────────────
         // If the agent didn't save memory itself, check if the exchange

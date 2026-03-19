@@ -8,6 +8,8 @@ export interface WorkspaceConfig {
   icon?: string;
   model?: string;
   personality?: string;
+  /** Selected agent persona ID (from persona catalog) */
+  personaId?: string;
   tools?: string[];
   skills?: string[];
   team?: string | null;
@@ -24,6 +26,12 @@ export interface WorkspaceConfig {
   teamRole?: 'owner' | 'admin' | 'member' | 'viewer';
   /** Current user's ID on the team server. */
   teamUserId?: string;
+
+  // --- Optimization fields (GEPA/Ax) ---
+  /** Enable GEPA prompt optimization for this workspace (opt-in, default false). */
+  optimizationEnabled?: boolean;
+  /** Daily optimization budget in cents (default 100 = $1/day). Only used when optimizationEnabled is true. */
+  optimizationBudget?: number;
 }
 
 export interface CreateWorkspaceOptions {
@@ -32,6 +40,8 @@ export interface CreateWorkspaceOptions {
   icon?: string;
   model?: string;
   personality?: string;
+  /** Selected agent persona ID (from persona catalog) */
+  personaId?: string;
   tools?: string[];
   skills?: string[];
   team?: string | null;
@@ -43,6 +53,10 @@ export interface CreateWorkspaceOptions {
   teamServerUrl?: string;
   teamRole?: 'owner' | 'admin' | 'member' | 'viewer';
   teamUserId?: string;
+
+  // --- Optimization fields (GEPA/Ax) ---
+  optimizationEnabled?: boolean;
+  optimizationBudget?: number;
 }
 
 interface WorkspacesMeta {
@@ -89,6 +103,7 @@ export class WorkspaceManager {
       ...(options.icon !== undefined && { icon: options.icon }),
       ...(options.model !== undefined && { model: options.model }),
       ...(options.personality !== undefined && { personality: options.personality }),
+      ...(options.personaId !== undefined && { personaId: options.personaId }),
       ...(options.tools !== undefined && { tools: options.tools }),
       ...(options.skills !== undefined && { skills: options.skills }),
       ...(options.team !== undefined && { team: options.team }),
@@ -97,6 +112,8 @@ export class WorkspaceManager {
       ...(options.teamServerUrl !== undefined && { teamServerUrl: options.teamServerUrl }),
       ...(options.teamRole !== undefined && { teamRole: options.teamRole }),
       ...(options.teamUserId !== undefined && { teamUserId: options.teamUserId }),
+      ...(options.optimizationEnabled !== undefined && { optimizationEnabled: options.optimizationEnabled }),
+      ...(options.optimizationBudget !== undefined && { optimizationBudget: options.optimizationBudget }),
       created: new Date().toISOString(),
     };
 

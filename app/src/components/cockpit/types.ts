@@ -71,3 +71,53 @@ export interface ConnectorData {
   capabilities: string[];
   substrate: string;
 }
+
+/** Shape of GET /api/cost/summary response. */
+export interface CostSummaryData {
+  today: {
+    inputTokens: number;
+    outputTokens: number;
+    estimatedCost: number;
+    turns: number;
+  };
+  allTime: {
+    inputTokens: number;
+    outputTokens: number;
+    estimatedCost: number;
+    turns: number;
+    byModel: Record<string, { input: number; output: number; cost: number }>;
+  };
+  week: {
+    inputTokens: number;
+    outputTokens: number;
+    estimatedCost: number;
+    turns: number;
+  };
+  daily: Array<{
+    date: string;
+    inputTokens: number;
+    outputTokens: number;
+    cost: number;
+    turns: number;
+  }>;
+  budget: {
+    dailyBudget: number | null;
+    todayCost: number;
+    budgetStatus: 'ok' | 'warning' | 'exceeded';
+    budgetPercent: number;
+  };
+}
+
+/** Shape of GET /api/cost/by-workspace response. */
+export interface WorkspaceCostData {
+  workspaces: Array<{
+    workspaceId: string;
+    workspaceName: string;
+    inputTokens: number;
+    outputTokens: number;
+    estimatedCost: number;
+    turns: number;
+    percentOfTotal: number;
+  }>;
+  totalCost: number;
+}

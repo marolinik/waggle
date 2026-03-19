@@ -95,8 +95,16 @@ export function MemoryBrowser({
         {/* Timeline */}
         <div className="memory-browser__timeline w-1/2 overflow-y-auto border-r border-gray-700 p-2">
           {loading ? (
-            <div className="flex items-center justify-center p-8 text-gray-500">
-              Loading...
+            <div className="flex items-center justify-center p-8 text-muted-foreground">
+              <p className="text-sm animate-pulse">Loading memories...</p>
+            </div>
+          ) : frames.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full gap-3 text-center p-8">
+              <div className="text-4xl">🧠</div>
+              <h3 className="text-base font-medium text-foreground">No memories yet</h3>
+              <p className="text-sm text-muted-foreground max-w-xs">
+                As you chat, important context is automatically saved here.
+              </p>
             </div>
           ) : (
             <FrameTimeline

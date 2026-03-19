@@ -63,15 +63,15 @@ describe('priorityColor', () => {
   });
 
   it('returns blue for recommended priority', () => {
-    expect(priorityColor('recommended')).toBe('#58a6ff');
+    expect(priorityColor('recommended')).toContain('#58a6ff');
   });
 
   it('returns muted for optional priority', () => {
-    expect(priorityColor('optional')).toContain('text-muted');
+    expect(priorityColor('optional')).toContain('#8b949e');
   });
 
   it('returns muted for unknown priority', () => {
-    expect(priorityColor('unknown')).toContain('text-muted');
+    expect(priorityColor('unknown')).toContain('#8b949e');
   });
 });
 

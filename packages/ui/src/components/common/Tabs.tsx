@@ -23,78 +23,39 @@ export interface TabsProps {
 export function Tabs({ tabs, activeId, onSelect, onClose, onAdd }: TabsProps) {
   return (
     <div
-      className="waggle-tabs"
+      className="waggle-tabs flex items-center bg-card border-b border-border h-9 overflow-hidden"
       role="tablist"
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        background: 'var(--waggle-tabs-bg, #16213e)',
-        borderBottom: '1px solid var(--waggle-border, #333)',
-        height: 36,
-        overflow: 'hidden',
-      }}
     >
       {tabs.map((tab) => (
         <div
           key={tab.id}
           role="tab"
           aria-selected={tab.id === activeId}
-          className={`waggle-tab ${tab.id === activeId ? 'waggle-tab--active' : ''}`}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            padding: '0 12px',
-            height: '100%',
-            cursor: 'pointer',
-            background: tab.id === activeId
-              ? 'var(--waggle-bg, #0f3460)'
-              : 'transparent',
-            color: tab.id === activeId
-              ? 'var(--waggle-text, #e0e0e0)'
-              : 'var(--waggle-text-muted, #888)',
-            fontSize: '13px',
-            borderRight: '1px solid var(--waggle-border, #333)',
-            userSelect: 'none',
-          }}
+          className={`waggle-tab flex items-center px-3 h-full cursor-pointer text-[13px] border-r border-border select-none ${
+            tab.id === activeId
+              ? 'waggle-tab--active bg-background text-foreground'
+              : 'bg-transparent text-muted-foreground hover:text-foreground'
+          }`}
           onClick={() => onSelect(tab.id)}
         >
-          {tab.icon && <span style={{ marginRight: 6 }}>{tab.icon}</span>}
-          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 120 }}>
+          {tab.icon && <span className="mr-1.5">{tab.icon}</span>}
+          <span className="whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px]">
             {tab.label}
           </span>
           <button
-            className="waggle-tab-close"
+            className="waggle-tab-close bg-transparent border-none text-inherit ml-2 cursor-pointer text-sm leading-none px-0.5 opacity-60 hover:opacity-100"
             onClick={(e) => { e.stopPropagation(); onClose(tab.id); }}
             aria-label={`Close ${tab.label}`}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'inherit',
-              marginLeft: 8,
-              cursor: 'pointer',
-              fontSize: '14px',
-              lineHeight: 1,
-              padding: '0 2px',
-            }}
           >
-            \u00D7
+            {'\u00D7'}
           </button>
         </div>
       ))}
 
       <button
-        className="waggle-tab-add"
+        className="waggle-tab-add bg-transparent border-none text-muted-foreground hover:text-foreground cursor-pointer text-lg px-3 h-full"
         onClick={onAdd}
         aria-label="New tab"
-        style={{
-          background: 'none',
-          border: 'none',
-          color: 'var(--waggle-text-muted, #888)',
-          cursor: 'pointer',
-          fontSize: '18px',
-          padding: '0 12px',
-          height: '100%',
-        }}
       >
         +
       </button>

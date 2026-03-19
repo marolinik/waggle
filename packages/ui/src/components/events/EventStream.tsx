@@ -112,8 +112,12 @@ export function EventStream({
       {/* Steps list */}
       <div className="event-stream__list flex-1 overflow-y-auto p-2">
         {filtered.length === 0 ? (
-          <div className="flex items-center justify-center p-8 text-gray-500 text-sm">
-            No events yet
+          <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
+            <div className="text-4xl">📋</div>
+            <h3 className="text-base font-medium text-foreground">No events recorded</h3>
+            <p className="text-sm text-muted-foreground max-w-xs">
+              Tool calls, agent actions, and system events will appear here.
+            </p>
           </div>
         ) : (
           filtered.map((step) => (
