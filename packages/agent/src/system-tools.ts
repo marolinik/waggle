@@ -13,6 +13,62 @@ const searchRateLimiter = new RateLimiter(10, 60_000); // 10 searches per minute
 /** Image file extensions (binary, should not be read as text) */
 const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp']);
 
+/** Denylist of dangerous binaries that must not appear anywhere in a bash command */
+const DENIED_BINARIES = [
+  'powershell', 'pwsh', 'cmd.exe',   // shell escape
+  'certutil',                          // Windows download/decode
+  'bitsadmin',                         // Windows download
+  'mshta',                             // Windows script host
+  'regsvr32',                          // DLL registration
+  'rundll32',                          // DLL execution
+  'wscript', 'cscript',               // Windows Script Host
+];
+
+/** Environment variables to strip from child processes for security */
+const SENSITIVE_ENV_VARS = [
+  'ANTHROPIC_API_KEY',
+  'OPENAI_API_KEY',
+  'CLERK_SECRET_KEY',
+  'DATABASE_URL',
+  'REDIS_URL',
+];
+
+/** Maximum output size per stream (stdout/stderr) in bytes — 1 MB */
+const MAX_OUTPUT_SIZE = 1024 * 1024;
+
+/**
+ * Check if a command contains any denied binary (case-insensitive).
+ * Returns the matched binary name or null if the command is safe.
+ */
+function checkDeniedBinaries(command: string): string | null {
+  const lowerCmd = command.toLowerCase();
+  for (const bin of DENIED_BINARIES) {
+    if (lowerCmd.includes(bin)) {
+      return bin;
+    }
+  }
+  return null;
+}
+
+/**
+ * Create a sanitized copy of the process environment with sensitive vars removed.
+ */
+function createSanitizedEnv(): Record<string, string | undefined> {
+  const sanitizedEnv = { ...process.env };
+  for (const key of SENSITIVE_ENV_VARS) {
+    delete sanitizedEnv[key];
+  }
+  return sanitizedEnv;
+}
+
+/**
+ * Truncate output to MAX_OUTPUT_SIZE, appending a warning if truncated.
+ */
+function truncateOutput(output: string): string {
+  if (output.length <= MAX_OUTPUT_SIZE) return output;
+  return output.slice(0, MAX_OUTPUT_SIZE) + '\n[output truncated — exceeded 1 MB limit]';
+}
+
 /** Background task tracking */
 interface BackgroundTask {
   process: ChildProcess;
@@ -98,15 +154,23 @@ export function createSystemTools(workspace: string): ToolDefinition[] {
         const timeout = (args.timeout as number) ?? 120_000;
         const runInBackground = (args.run_in_background as boolean) ?? false;
 
+        // Security: check denylist before executing
+        const deniedBin = checkDeniedBinaries(command);
+        if (deniedBin) {
+          return `Error: Blocked — '${deniedBin}' is not allowed for security reasons`;
+        }
+
         const isWindows = process.platform === 'win32';
         const shell = isWindows ? 'cmd.exe' : '/bin/sh';
         const shellArgs = isWindows ? ['/c', command] : ['-c', command];
+        const sanitizedEnv = createSanitizedEnv();
 
         if (runInBackground) {
           const taskId = crypto.randomUUID();
           const child = execFile(shell, shellArgs, {
             cwd: workspace,
             maxBuffer: 10 * 1024 * 1024,
+            env: sanitizedEnv,
           });
 
           const task: BackgroundTask = {
@@ -119,8 +183,18 @@ export function createSystemTools(workspace: string): ToolDefinition[] {
           backgroundTasks.set(taskId, task);
           evictOldestTask();
 
-          child.stdout?.on('data', (data: string) => { task.stdout += data; });
-          child.stderr?.on('data', (data: string) => { task.stderr += data; });
+          child.stdout?.on('data', (data: string) => {
+            task.stdout += data;
+            if (task.stdout.length > MAX_OUTPUT_SIZE) {
+              task.stdout = task.stdout.slice(0, MAX_OUTPUT_SIZE) + '\n[output truncated — exceeded 1 MB limit]';
+            }
+          });
+          child.stderr?.on('data', (data: string) => {
+            task.stderr += data;
+            if (task.stderr.length > MAX_OUTPUT_SIZE) {
+              task.stderr = task.stderr.slice(0, MAX_OUTPUT_SIZE) + '\n[output truncated — exceeded 1 MB limit]';
+            }
+          });
           child.on('close', (code) => {
             task.exitCode = code ?? undefined;
             task.status = code === 0 ? 'completed' : 'failed';
@@ -139,8 +213,9 @@ export function createSystemTools(workspace: string): ToolDefinition[] {
         return new Promise<string>((resolve) => {
           execFile(shell, shellArgs, {
             cwd: workspace,
-            maxBuffer: 1024 * 1024,
+            maxBuffer: MAX_OUTPUT_SIZE,
             signal: ac.signal,
+            env: sanitizedEnv,
           }, (error, stdout, stderr) => {
             clearTimeout(timer);
             if (error) {
@@ -148,12 +223,12 @@ export function createSystemTools(workspace: string): ToolDefinition[] {
                 resolve(`Error: Command timeout after ${timeout}ms`);
                 return;
               }
-              // Return stderr + stdout on non-zero exit
-              const output = (stderr || '') + (stdout || '');
+              // Return stderr + stdout on non-zero exit (truncated)
+              const output = truncateOutput((stderr || '') + (stdout || ''));
               resolve(output || `Error: ${error.message}`);
               return;
             }
-            resolve(stdout);
+            resolve(truncateOutput(stdout));
           });
         });
       },
@@ -771,5 +846,9 @@ export function createSystemTools(workspace: string): ToolDefinition[] {
   ];
 }
 
-/** Expose backgroundTasks and constants for testing */
-export { backgroundTasks, MAX_BACKGROUND_TASKS, STALE_TASK_THRESHOLD_MS };
+/** Expose internals for testing */
+export {
+  backgroundTasks, MAX_BACKGROUND_TASKS, STALE_TASK_THRESHOLD_MS,
+  DENIED_BINARIES, SENSITIVE_ENV_VARS, MAX_OUTPUT_SIZE,
+  checkDeniedBinaries, createSanitizedEnv, truncateOutput,
+};

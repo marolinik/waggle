@@ -20,6 +20,12 @@ const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
 const MAGIC_HEADER = 'WAGGLE-BACKUP-V1';
 
+/** Maximum total backup size in bytes (500 MB) */
+const MAX_BACKUP_SIZE = 500 * 1024 * 1024;
+
+/** Number of files to read per batch to limit memory pressure */
+const BATCH_SIZE = 10;
+
 /** Files/dirs to exclude from backup */
 const EXCLUDE_PATTERNS = [
   'node_modules',
@@ -51,11 +57,19 @@ interface BackupManifest {
   files: FileEntry[];
 }
 
+/** Lightweight file descriptor — path + size, no content loaded yet */
+interface FileMeta {
+  relativePath: string;
+  fullPath: string;
+  sizeBytes: number;
+}
+
 /**
- * Recursively collect all files in a directory, respecting exclusion rules.
+ * Recursively enumerate files in a directory, collecting paths and sizes
+ * without reading content into memory. Respects exclusion rules.
  */
-function collectFiles(baseDir: string, currentDir: string = baseDir): FileEntry[] {
-  const entries: FileEntry[] = [];
+function enumerateFiles(baseDir: string, currentDir: string = baseDir): FileMeta[] {
+  const entries: FileMeta[] = [];
 
   let items: fs.Dirent[];
   try {
@@ -73,22 +87,48 @@ function collectFiles(baseDir: string, currentDir: string = baseDir): FileEntry[
     if (EXCLUDE_EXTENSIONS.some(ext => item.name.endsWith(ext))) continue;
 
     if (item.isDirectory()) {
-      entries.push(...collectFiles(baseDir, fullPath));
+      entries.push(...enumerateFiles(baseDir, fullPath));
     } else if (item.isFile()) {
       try {
-        const content = fs.readFileSync(fullPath);
-        entries.push({
-          relativePath,
-          content: content.toString('base64'),
-          sizeBytes: content.length,
-        });
+        const stat = fs.statSync(fullPath);
+        entries.push({ relativePath, fullPath, sizeBytes: stat.size });
       } catch {
-        // Skip files we can't read (locked, permission denied)
+        // Skip files we can't stat (locked, permission denied)
       }
     }
   }
 
   return entries;
+}
+
+/**
+ * Read file content for a batch of FileMeta entries, returning FileEntry[].
+ * Only loads `batchSize` files into memory at a time.
+ */
+function readFileBatch(metas: FileMeta[]): FileEntry[] {
+  const entries: FileEntry[] = [];
+  for (const meta of metas) {
+    try {
+      const content = fs.readFileSync(meta.fullPath);
+      entries.push({
+        relativePath: meta.relativePath,
+        content: content.toString('base64'),
+        sizeBytes: content.length,
+      });
+    } catch {
+      // Skip files we can't read (locked, permission denied)
+    }
+  }
+  return entries;
+}
+
+/**
+ * Legacy helper kept for backward compatibility with tests and internal callers.
+ * Collects all files in one pass (loads content into memory).
+ */
+function collectFiles(baseDir: string, currentDir: string = baseDir): FileEntry[] {
+  const metas = enumerateFiles(baseDir, currentDir);
+  return readFileBatch(metas);
 }
 
 /**
@@ -151,19 +191,36 @@ export const backupRoutes: FastifyPluginAsync = async (server) => {
       return reply.status(500).send({ error: 'Data directory not found' });
     }
 
-    // Collect files
-    const files = collectFiles(dataDir);
+    // Phase 1: Enumerate files (paths + sizes only — no content in memory)
+    const fileMetas = enumerateFiles(dataDir);
 
-    if (files.length === 0) {
+    if (fileMetas.length === 0) {
       return reply.status(400).send({ error: 'No files found to backup' });
+    }
+
+    // Phase 2: Check size cap before reading any content
+    const totalSize = fileMetas.reduce((sum, m) => sum + m.sizeBytes, 0);
+    if (totalSize > MAX_BACKUP_SIZE) {
+      const sizeMB = Math.round(totalSize / (1024 * 1024));
+      return reply.status(413).send({
+        error: `Backup would be ${sizeMB} MB which exceeds the 500 MB limit. Remove large files from your data directory or contact support.`,
+      });
+    }
+
+    // Phase 3: Read files in batches to limit peak memory usage
+    const allFiles: FileEntry[] = [];
+    for (let i = 0; i < fileMetas.length; i += BATCH_SIZE) {
+      const batch = fileMetas.slice(i, i + BATCH_SIZE);
+      const entries = readFileBatch(batch);
+      allFiles.push(...entries);
     }
 
     // Build manifest
     const manifest: BackupManifest = {
       version: 1,
       createdAt: new Date().toISOString(),
-      fileCount: files.length,
-      files,
+      fileCount: allFiles.length,
+      files: allFiles,
     };
 
     // Serialize and compress
@@ -192,7 +249,7 @@ export const backupRoutes: FastifyPluginAsync = async (server) => {
     const metadata: BackupMetadata = {
       lastBackupAt: manifest.createdAt,
       sizeBytes: archiveData.length,
-      fileCount: files.length,
+      fileCount: allFiles.length,
     };
     try {
       fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2), 'utf-8');
@@ -205,7 +262,7 @@ export const backupRoutes: FastifyPluginAsync = async (server) => {
     reply.header('Content-Type', 'application/octet-stream');
     reply.header('Content-Disposition', `attachment; filename="waggle-backup-${date}.waggle-backup"`);
     reply.header('X-Waggle-Backup-Encrypted', encrypted ? 'true' : 'false');
-    reply.header('X-Waggle-Backup-Files', String(files.length));
+    reply.header('X-Waggle-Backup-Files', String(allFiles.length));
     return reply.send(archiveData);
   });
 
@@ -371,3 +428,6 @@ export const backupRoutes: FastifyPluginAsync = async (server) => {
     return reply.status(404).send({ error: 'No backup metadata found' });
   });
 };
+
+/** Exported for testing */
+export { MAX_BACKUP_SIZE, BATCH_SIZE, enumerateFiles };
