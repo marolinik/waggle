@@ -183,7 +183,7 @@ export const ChatMessage = memo(function ChatMessage({ message, messageIndex, se
         <div className="max-w-[90%] rounded-xl px-5 py-3 bg-muted border border-border text-[13px]">
           {/* Content sanitized with DOMPurify */}
           <div
-            className="chat-message__content prose prose-invert prose-sm max-w-none prose-p:mb-1 prose-p:text-[13px]"
+            className="chat-message__content prose dark:prose-invert prose-sm max-w-none prose-p:mb-1 prose-p:text-[13px]"
             dangerouslySetInnerHTML={{ __html: renderedContent ?? '' }}
           />
         </div>

@@ -161,11 +161,22 @@ export class MultiMind {
    * Sanitizes the query by wrapping each word in double quotes.
    */
   private ftsSearch(db: MindDB, query: string, limit: number): MemoryFrame[] {
+    // F6: OR-based search with stop word filtering (matches HybridSearch.keywordSearch fix)
+    const FTS_STOP_WORDS = new Set([
+      'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+      'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
+      'should', 'may', 'might', 'shall', 'can', 'to', 'of', 'in', 'for',
+      'on', 'with', 'at', 'by', 'from', 'as', 'into', 'about', 'this',
+      'that', 'these', 'those', 'it', 'its', 'my', 'your', 'our', 'their',
+      'what', 'which', 'who', 'whom', 'how', 'when', 'where', 'why', 'all',
+      'each', 'every', 'both', 'some', 'any', 'no', 'not', 'and', 'or', 'but',
+    ]);
     const safeQuery = query
       .split(/\s+/)
-      .filter(w => w.length > 0)
+      .map(w => w.replace(/[^\w]/g, ''))
+      .filter(w => w.length > 2 && !FTS_STOP_WORDS.has(w.toLowerCase()))
       .map(w => `"${w.replace(/"/g, '')}"`)
-      .join(' ');
+      .join(' OR ');
 
     if (!safeQuery) return [];
 

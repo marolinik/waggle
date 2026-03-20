@@ -1210,9 +1210,11 @@ Return ONLY the improved system prompt text. No commentary, no markdown fences, 
   // as static files. This enables `npx waggle` and Docker web mode.
   const frontendDir = process.env.WAGGLE_FRONTEND_DIR
     ?? [
-      path.resolve(process.cwd(), 'app', 'dist'),          // from monorepo root
-      path.resolve(process.cwd(), '..', '..', 'app', 'dist'), // from packages/server/
-      path.resolve(process.cwd(), '..', 'app', 'dist'),    // from packages/
+      path.resolve(process.cwd(), 'app', 'dist'),              // from monorepo root
+      path.resolve(process.cwd(), '..', '..', 'app', 'dist'),  // from packages/server/
+      path.resolve(process.cwd(), '..', 'app', 'dist'),        // from packages/
+      // F1: script-relative fallback — works regardless of CWD
+      ...(typeof process.argv[1] === 'string' ? [path.resolve(path.dirname(process.argv[1]), '..', '..', '..', '..', 'app', 'dist')] : []),
     ].find(d => fs.existsSync(path.join(d, 'index.html'))) ?? path.resolve(process.cwd(), 'app', 'dist');
   if (fs.existsSync(frontendDir) && fs.existsSync(path.join(frontendDir, 'index.html'))) {
     await server.register(fastifyStatic, {

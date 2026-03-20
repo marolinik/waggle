@@ -7,7 +7,9 @@ function normalizeFrame(raw: Record<string, unknown>): Record<string, unknown> {
   return {
     id: raw.id,
     content: raw.content,
-    source: raw.source ?? 'personal',
+    // F7: Preserve provenance source from DB; use 'mind' for routing label
+    source: raw.source ?? 'user_stated',
+    mind: raw._mind ?? 'personal', // routing label set by GET /api/memory/frames
     frameType: raw.frame_type ?? raw.frameType ?? 'I',
     importance: raw.importance ?? 'normal',
     timestamp: raw.created_at ?? raw.timestamp ?? new Date().toISOString(),
@@ -74,7 +76,7 @@ export const memoryRoutes: FastifyPluginAsync = async (server) => {
     const personalStore = server.multiMind.getFrameStore('personal');
     if (personalStore) {
       const pFrames = personalStore.getRecent(maxResults);
-      raw.push(...pFrames.map(f => ({ ...(f as unknown as Record<string, unknown>), source: 'personal' })));
+      raw.push(...pFrames.map(f => ({ ...(f as unknown as Record<string, unknown>), _mind: 'personal' })));
     }
 
     // Workspace mind frames (use cached MindDB directly — no switchWorkspace needed)
@@ -83,7 +85,7 @@ export const memoryRoutes: FastifyPluginAsync = async (server) => {
       if (wsDb) {
         const wsStore = new FrameStore(wsDb);
         const wFrames = wsStore.getRecent(maxResults);
-        raw.push(...wFrames.map(f => ({ ...(f as unknown as Record<string, unknown>), source: 'workspace' })));
+        raw.push(...wFrames.map(f => ({ ...(f as unknown as Record<string, unknown>), _mind: 'workspace' })));
       }
     }
 
