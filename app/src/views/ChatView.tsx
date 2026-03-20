@@ -68,7 +68,7 @@ export function ChatView({
   onWorkflowDismiss,
 }: ChatViewProps) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div className="flex flex-col h-full">
       {/* Chat header: tabs + persona indicator */}
       <div className="flex items-center gap-2">
         {tabs.length > 0 && (
@@ -107,7 +107,7 @@ export function ChatView({
           </button>
         )}
       </div>
-      <div style={{ flex: 1, overflow: 'hidden' }}>
+      <div className="flex-1 overflow-hidden">
         <FileDropZone onDrop={onFileDrop} disabled={isLoading}>
           <ChatArea
             messages={messages}

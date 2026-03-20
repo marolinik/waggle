@@ -33,9 +33,9 @@ function ToolGroup({ tools }: { tools: ToolUseEvent[] }) {
           onClick={() => setExpanded(false)}
           className="text-xs text-gray-600 hover:text-gray-400 flex items-center gap-1 mb-1"
         >
-          <span style={{ fontSize: 8, color: '#3fb950' }}>{'\u25CF'}</span>
+          <span className="text-[8px] text-[#3fb950]">{'\u25CF'}</span>
           {tools.length} tools completed
-          <span style={{ fontSize: 8 }}>{'\u25B2'}</span>
+          <span className="text-[8px]">{'\u25B2'}</span>
         </button>
         <div className="space-y-0.5">
           {tools.map((tool, i) => (
@@ -52,7 +52,7 @@ function ToolGroup({ tools }: { tools: ToolUseEvent[] }) {
       className="tool-group--collapsed flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-400 transition-colors py-0.5"
       title={tools.map(t => t.name).join(', ')}
     >
-      <span style={{ fontSize: 8, color: '#3fb950' }}>{'\u25CF'}</span>
+      <span className="text-[8px] text-[#3fb950]">{'\u25CF'}</span>
       <span className="font-mono">
         {tools.length} tools completed ({tools.map(t => t.name.replace(/_/g, ' ')).join(', ')})
       </span>
@@ -161,17 +161,7 @@ export function ChatMessage({ message, messageIndex, sessionId, onToolApprove, o
   if (isSystem) {
     return (
       <div className="chat-message chat-message--system flex justify-center" role="article" aria-label="System message">
-        <div
-          style={{
-            maxWidth: '90%',
-            borderRadius: 8,
-            padding: '8px 16px',
-            background: 'var(--bg-tertiary, #1a1a2e)',
-            border: '1px solid var(--border, #333)',
-            fontSize: 13,
-            fontFamily: "'JetBrains Mono', monospace",
-          }}
-        >
+        <div className="max-w-[90%] rounded-lg px-4 py-2 bg-muted border border-border text-[13px] font-mono">
           {/* Content sanitized with DOMPurify */}
           <div
             className="chat-message__content prose prose-invert prose-sm max-w-none"
@@ -220,7 +210,7 @@ export function ChatMessage({ message, messageIndex, sessionId, onToolApprove, o
               aria-expanded={showTrail}
               aria-label={`${message.toolUse?.length ?? 0} tools used. ${showTrail ? 'Collapse' : 'Expand'} details`}
             >
-              <span style={{ fontSize: 8 }}>{showTrail ? '\u25BC' : '\u25B6'}</span>
+              <span className="text-[8px]">{showTrail ? '\u25BC' : '\u25B6'}</span>
               <span>
                 {message.toolUse?.length ?? 0} tool{(message.toolUse?.length ?? 0) !== 1 ? 's' : ''}
                 {hasSteps ? ` \u00B7 ${message.steps!.length} step${message.steps!.length !== 1 ? 's' : ''}` : ''}
@@ -239,10 +229,9 @@ export function ChatMessage({ message, messageIndex, sessionId, onToolApprove, o
                     {message.steps!.map((step, i) => (
                       <div
                         key={i}
-                        className="chat-message__step flex items-center gap-1.5 text-xs"
-                        style={{ color: 'var(--text-muted, #888)', fontFamily: "'JetBrains Mono', monospace" }}
+                        className="chat-message__step flex items-center gap-1.5 text-xs text-muted-foreground font-mono"
                       >
-                        <span style={{ color: 'var(--brand, #7c3aed)', fontSize: '8px' }}>{'\u25CF'}</span>
+                        <span className="text-primary text-[8px]">{'\u25CF'}</span>
                         {step}
                       </div>
                     ))}
@@ -266,17 +255,9 @@ export function ChatMessage({ message, messageIndex, sessionId, onToolApprove, o
           {!isUser && message.content && (
             <button
               onClick={handleCopy}
-              className="chat-message__copy hover:opacity-100 opacity-60 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+              className="chat-message__copy hover:opacity-100 opacity-60 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded bg-transparent border-none cursor-pointer text-inherit text-[11px] px-0.5 py-0"
               title="Copy message"
               aria-label="Copy message to clipboard"
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: 'inherit',
-                fontSize: '11px',
-                padding: '0 2px',
-              }}
             >
               {copied ? '\u2713 Copied' : '\u2398 Copy'}
             </button>

@@ -22,72 +22,27 @@ export function SplashScreen({ phase, message, progress, error }: SplashScreenPr
   const percentage = Math.round(progress * 100);
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100vh',
-        background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
-        color: '#e0e0e0',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-      }}
-    >
+    <div className="flex flex-col items-center justify-center h-screen bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] text-gray-200 font-sans">
       {/* Logo area */}
-      <div
-        style={{
-          fontSize: '3rem',
-          fontWeight: 700,
-          marginBottom: '2rem',
-          letterSpacing: '0.05em',
-          color: '#f5a623',
-        }}
-      >
+      <div className="text-5xl font-bold mb-8 tracking-wide text-[#f5a623]">
         Waggle
       </div>
 
       {/* Phase message */}
-      <div
-        style={{
-          fontSize: '1rem',
-          marginBottom: '1.5rem',
-          opacity: 0.9,
-          minHeight: '1.5em',
-        }}
-      >
+      <div className="text-base mb-6 opacity-90 min-h-[1.5em]">
         {error ? error : message}
       </div>
 
       {/* Progress bar */}
-      <div
-        style={{
-          width: '300px',
-          height: '6px',
-          borderRadius: '3px',
-          background: 'rgba(255, 255, 255, 0.1)',
-          overflow: 'hidden',
-        }}
-      >
+      <div className="w-[300px] h-1.5 rounded-sm bg-white/10 overflow-hidden">
         <div
-          style={{
-            width: `${percentage}%`,
-            height: '100%',
-            borderRadius: '3px',
-            background: error ? '#e74c3c' : '#f5a623',
-            transition: 'width 0.3s ease',
-          }}
+          className={`h-full rounded-sm transition-[width] duration-300 ease-in-out ${error ? 'bg-red-500' : 'bg-[#f5a623]'}`}
+          style={{ width: `${percentage}%` }}
         />
       </div>
 
       {/* Percentage */}
-      <div
-        style={{
-          fontSize: '0.85rem',
-          marginTop: '0.75rem',
-          opacity: 0.7,
-        }}
-      >
+      <div className="text-sm mt-3 opacity-70">
         {error ? 'Error' : `${percentage}%`}
       </div>
     </div>

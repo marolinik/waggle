@@ -89,13 +89,6 @@ export function formatTimelineTimestamp(iso: string): string {
   return date.toLocaleDateString();
 }
 
-// ── Status colors (Direction D: amber accent, zinc neutrals) ─────────
-
-const STATUS_COLORS = {
-  success: '#22c55e',
-  error: '#ef4444',
-};
-
 // ── Single Event Row ──────────────────────────────────────────────────
 
 function TimelineEventRow({
@@ -109,198 +102,77 @@ function TimelineEventRow({
   onToggle: () => void;
   nested?: boolean;
 }) {
-  const statusColor = STATUS_COLORS[event.status];
-
   return (
     <div
       className="session-timeline__event"
-      style={{
-        marginLeft: nested ? 28 : 0,
-        marginBottom: 2,
-      }}
+      className={nested ? 'ml-7 mb-0.5' : 'mb-0.5'}
     >
       {/* Clickable header row */}
       <button
-        className="session-timeline__event-header"
+        className="session-timeline__event-header flex items-center gap-2 w-full px-2.5 py-1.5 bg-transparent border border-transparent rounded-md cursor-pointer text-xs text-left text-foreground transition-colors hover:bg-white/[0.04] hover:border-primary/20"
         onClick={onToggle}
         type="button"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          width: '100%',
-          padding: '6px 10px',
-          background: 'transparent',
-          border: '1px solid transparent',
-          borderRadius: 6,
-          cursor: 'pointer',
-          fontSize: 12,
-          textAlign: 'left',
-          color: 'var(--text-primary, #e4e4e7)',
-          transition: 'background 0.15s, border-color 0.15s',
-        }}
-        onMouseEnter={(e) => {
-          (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)';
-          (e.currentTarget as HTMLElement).style.borderColor = 'rgba(212,168,67,0.2)';
-        }}
-        onMouseLeave={(e) => {
-          (e.currentTarget as HTMLElement).style.background = 'transparent';
-          (e.currentTarget as HTMLElement).style.borderColor = 'transparent';
-        }}
       >
         {/* Status dot */}
         <span
-          className="session-timeline__status-dot"
-          style={{
-            width: 8,
-            height: 8,
-            borderRadius: '50%',
-            backgroundColor: statusColor,
-            flexShrink: 0,
-          }}
+          className={`session-timeline__status-dot w-2 h-2 rounded-full shrink-0 ${
+            event.status === 'success' ? 'bg-green-500' : 'bg-destructive'
+          }`}
           title={event.status}
         />
 
         {/* Timestamp */}
-        <span
-          style={{
-            fontSize: 10,
-            color: 'var(--text-dim, #71717a)',
-            fontFamily: 'JetBrains Mono, monospace',
-            flexShrink: 0,
-          }}
-        >
+        <span className="text-[10px] text-muted-foreground/70 font-mono shrink-0">
           {formatTimelineTimestamp(event.timestamp)}
         </span>
 
         {/* Tool icon + name */}
-        <span style={{ fontSize: 10, flexShrink: 0 }}>
+        <span className="text-[10px] shrink-0">
           {getToolIcon(event.toolName)}
         </span>
-        <span
-          style={{
-            fontWeight: 600,
-            color: 'var(--text-primary, #e4e4e7)',
-            flexShrink: 0,
-          }}
-        >
+        <span className="font-semibold text-foreground shrink-0">
           {event.toolName}
         </span>
 
         {/* Input preview */}
-        <span
-          style={{
-            flex: 1,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            color: 'var(--text-muted, #a1a1aa)',
-            fontSize: 11,
-          }}
-        >
+        <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-muted-foreground text-[11px]">
           {event.inputPreview}
         </span>
 
         {/* Duration */}
         {event.durationMs !== null && (
-          <span
-            style={{
-              fontSize: 10,
-              color: 'var(--text-dim, #71717a)',
-              fontFamily: 'JetBrains Mono, monospace',
-              flexShrink: 0,
-            }}
-          >
+          <span className="text-[10px] text-muted-foreground/70 font-mono shrink-0">
             {formatTimelineDuration(event.durationMs)}
           </span>
         )}
 
         {/* Expand indicator */}
-        <span style={{ fontSize: 10, color: 'var(--text-dim, #71717a)', flexShrink: 0 }}>
+        <span className="text-[10px] text-muted-foreground/70 shrink-0">
           {expanded ? '\u25BC' : '\u25B6'}
         </span>
       </button>
 
       {/* Expanded details */}
       {expanded && (
-        <div
-          className="session-timeline__details"
-          style={{
-            marginLeft: 18,
-            marginTop: 4,
-            marginBottom: 8,
-            padding: 12,
-            background: 'rgba(0,0,0,0.3)',
-            borderRadius: 6,
-            border: '1px solid rgba(212,168,67,0.15)',
-          }}
-        >
+        <div className="session-timeline__details ml-[18px] mt-1 mb-2 p-3 bg-black/30 rounded-md border border-primary/15">
           {/* Full Input */}
-          <div style={{ marginBottom: 8 }}>
-            <div
-              style={{
-                fontSize: 10,
-                fontWeight: 600,
-                color: 'var(--text-dim, #71717a)',
-                marginBottom: 4,
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-              }}
-            >
+          <div className="mb-2">
+            <div className="text-[10px] font-semibold text-muted-foreground/70 mb-1 uppercase tracking-wide">
               Input
             </div>
-            <pre
-              className="session-timeline__json"
-              style={{
-                margin: 0,
-                padding: 8,
-                background: 'rgba(0,0,0,0.4)',
-                borderRadius: 4,
-                fontSize: 11,
-                fontFamily: 'JetBrains Mono, monospace',
-                color: 'var(--text-muted, #a1a1aa)',
-                overflow: 'auto',
-                maxHeight: 200,
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-              }}
-            >
+            <pre className="session-timeline__json m-0 p-2 bg-black/40 rounded text-[11px] font-mono text-muted-foreground overflow-auto max-h-[200px] whitespace-pre-wrap break-words">
               {JSON.stringify(event.fullInput, null, 2)}
             </pre>
           </div>
 
           {/* Full Output */}
           <div>
-            <div
-              style={{
-                fontSize: 10,
-                fontWeight: 600,
-                color: 'var(--text-dim, #71717a)',
-                marginBottom: 4,
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-              }}
-            >
+            <div className="text-[10px] font-semibold text-muted-foreground/70 mb-1 uppercase tracking-wide">
               Output
             </div>
-            <pre
-              className="session-timeline__json"
-              style={{
-                margin: 0,
-                padding: 8,
-                background: 'rgba(0,0,0,0.4)',
-                borderRadius: 4,
-                fontSize: 11,
-                fontFamily: 'JetBrains Mono, monospace',
-                color: event.status === 'error'
-                  ? '#fca5a5'
-                  : 'var(--text-muted, #a1a1aa)',
-                overflow: 'auto',
-                maxHeight: 200,
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-              }}
-            >
+            <pre className={`session-timeline__json m-0 p-2 bg-black/40 rounded text-[11px] font-mono overflow-auto max-h-[200px] whitespace-pre-wrap break-words ${
+              event.status === 'error' ? 'text-red-300' : 'text-muted-foreground'
+            }`}>
               {JSON.stringify(event.fullOutput, null, 2)}
             </pre>
           </div>
@@ -336,10 +208,7 @@ export function SessionTimeline({ events, loading }: SessionTimelineProps) {
 
   if (loading) {
     return (
-      <div
-        className="session-timeline"
-        style={{ padding: 16, color: 'var(--text-dim, #71717a)', fontSize: 12 }}
-      >
+      <div className="session-timeline p-4 text-muted-foreground/70 text-xs">
         Loading timeline...
       </div>
     );
@@ -347,41 +216,16 @@ export function SessionTimeline({ events, loading }: SessionTimelineProps) {
 
   if (events.length === 0) {
     return (
-      <div
-        className="session-timeline session-timeline--empty"
-        style={{
-          padding: 24,
-          textAlign: 'center',
-          color: 'var(--text-dim, #71717a)',
-          fontSize: 12,
-        }}
-      >
+      <div className="session-timeline session-timeline--empty p-6 text-center text-muted-foreground/70 text-xs">
         No events
       </div>
     );
   }
 
   return (
-    <div
-      className="session-timeline"
-      style={{
-        position: 'relative',
-        paddingLeft: 12,
-      }}
-    >
+    <div className="session-timeline relative pl-3">
       {/* Vertical timeline line */}
-      <div
-        className="session-timeline__line"
-        style={{
-          position: 'absolute',
-          left: 15,
-          top: 8,
-          bottom: 8,
-          width: 2,
-          background: 'var(--border-subtle, #52525b)',
-          borderRadius: 1,
-        }}
-      />
+      <div className="session-timeline__line absolute left-[15px] top-2 bottom-2 w-0.5 bg-border rounded-sm" />
 
       {events.map((event) => {
         const hasChildren = event.children && event.children.length > 0;
@@ -397,21 +241,11 @@ export function SessionTimeline({ events, loading }: SessionTimelineProps) {
 
             {/* Sub-agent children */}
             {hasChildren && (
-              <div className="session-timeline__subagent" style={{ marginLeft: 4 }}>
+              <div className="session-timeline__subagent ml-1">
                 <button
                   type="button"
                   onClick={() => toggleSubAgent(event.id)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    padding: '2px 8px 2px 28px',
-                    background: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: 10,
-                    color: 'var(--accent, #d4a843)',
-                  }}
+                  className="flex items-center gap-1 py-0.5 pr-2 pl-7 bg-transparent border-none cursor-pointer text-[10px] text-primary"
                 >
                   {isSubAgentCollapsed ? '\u25B6' : '\u25BC'}{' '}
                   {event.children!.length} sub-agent event{event.children!.length !== 1 ? 's' : ''}

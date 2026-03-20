@@ -31,8 +31,9 @@ export function FrameDetail({ frame }: FrameDetailProps) {
           </span>
         </div>
         <span
-          className="frame-detail__importance rounded px-2 py-0.5 text-xs font-medium"
-          style={{ color: badge.color === 'red' ? '#f87171' : badge.color === 'yellow' ? '#fbbf24' : badge.color === 'gray' ? '#9ca3af' : '#60a5fa' }}
+          className={`frame-detail__importance rounded px-2 py-0.5 text-xs font-medium ${
+            badge.color === 'red' ? 'text-red-400' : badge.color === 'yellow' ? 'text-amber-400' : badge.color === 'gray' ? 'text-gray-400' : 'text-blue-400'
+          }`}
         >
           {badge.label}
         </span>

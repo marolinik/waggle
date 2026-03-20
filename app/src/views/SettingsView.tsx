@@ -29,14 +29,14 @@ export function SettingsView({
 }: SettingsViewProps) {
   if (!config) {
     return (
-      <div style={{ padding: 24, color: 'var(--text-dim)' }}>
+      <div className="p-6 text-muted-foreground/40">
         Loading settings...
       </div>
     );
   }
 
   return (
-    <div style={{ height: '100%', overflow: 'hidden' }}>
+    <div className="h-full overflow-hidden">
       <SettingsPanel
         config={config}
         onConfigUpdate={onConfigUpdate}

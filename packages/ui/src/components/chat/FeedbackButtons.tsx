@@ -67,17 +67,7 @@ export function FeedbackButtons({ sessionId, messageIndex, onFeedback }: Feedbac
   // After submission, show a brief thanks message
   if (state === 'submitted') {
     return (
-      <div
-        className="feedback-buttons feedback-buttons--submitted"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 4,
-          fontSize: 11,
-          color: 'var(--text-muted, #888)',
-          padding: '2px 0',
-        }}
-      >
+      <div className="feedback-buttons feedback-buttons--submitted inline-flex items-center gap-1 text-[11px] text-muted-foreground py-0.5">
         <span>Thanks for the feedback!</span>
       </div>
     );
@@ -86,30 +76,12 @@ export function FeedbackButtons({ sessionId, messageIndex, onFeedback }: Feedbac
   // Reason form (shown after thumbs down)
   if (state === 'reason_form') {
     return (
-      <div
-        className="feedback-buttons feedback-buttons--form"
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 6,
-          padding: '6px 0',
-          maxWidth: 280,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div className="feedback-buttons feedback-buttons--form flex flex-col gap-1.5 py-1.5 max-w-[280px]">
+        <div className="flex items-center gap-1.5">
           <select
             value={reason}
             onChange={(e) => setReason(e.target.value as FeedbackReason)}
-            style={{
-              fontSize: 11,
-              padding: '2px 6px',
-              borderRadius: 4,
-              border: '1px solid var(--border, #444)',
-              background: 'var(--bg-secondary, #1a1a2e)',
-              color: 'var(--text-primary, #e0e0e0)',
-              outline: 'none',
-              flex: 1,
-            }}
+            className="text-[11px] px-1.5 py-0.5 rounded border border-border bg-muted text-foreground outline-none flex-1"
           >
             {REASON_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -122,42 +94,18 @@ export function FeedbackButtons({ sessionId, messageIndex, onFeedback }: Feedbac
           onChange={(e) => setDetail(e.target.value)}
           placeholder="Optional detail..."
           maxLength={200}
-          style={{
-            fontSize: 11,
-            padding: '3px 6px',
-            borderRadius: 4,
-            border: '1px solid var(--border, #444)',
-            background: 'var(--bg-secondary, #1a1a2e)',
-            color: 'var(--text-primary, #e0e0e0)',
-            outline: 'none',
-          }}
+          className="text-[11px] px-1.5 py-[3px] rounded border border-border bg-muted text-foreground outline-none"
         />
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div className="flex gap-1.5">
           <button
             onClick={handleSubmitReason}
-            style={{
-              fontSize: 11,
-              padding: '2px 10px',
-              borderRadius: 4,
-              border: '1px solid var(--border, #444)',
-              background: 'var(--brand, #7c3aed)',
-              color: '#fff',
-              cursor: 'pointer',
-            }}
+            className="text-[11px] px-2.5 py-0.5 rounded border border-border bg-primary text-white cursor-pointer"
           >
             Submit
           </button>
           <button
             onClick={handleCancel}
-            style={{
-              fontSize: 11,
-              padding: '2px 10px',
-              borderRadius: 4,
-              border: '1px solid var(--border, #444)',
-              background: 'transparent',
-              color: 'var(--text-muted, #888)',
-              cursor: 'pointer',
-            }}
+            className="text-[11px] px-2.5 py-0.5 rounded border border-border bg-transparent text-muted-foreground cursor-pointer"
           >
             Cancel
           </button>
@@ -168,64 +116,18 @@ export function FeedbackButtons({ sessionId, messageIndex, onFeedback }: Feedbac
 
   // Default idle state: thumbs up / thumbs down buttons
   return (
-    <div
-      className="feedback-buttons feedback-buttons--idle"
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 4,
-        padding: '2px 0',
-      }}
-    >
+    <div className="feedback-buttons feedback-buttons--idle inline-flex items-center gap-1 py-0.5">
       <button
         onClick={handleThumbsUp}
         title="Good response"
-        className="feedback-btn feedback-btn--up"
-        style={{
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: 13,
-          padding: '1px 4px',
-          borderRadius: 4,
-          color: 'var(--text-muted, #888)',
-          opacity: 0.6,
-          transition: 'opacity 0.15s, color 0.15s',
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.opacity = '1';
-          e.currentTarget.style.color = '#3fb950';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.opacity = '0.6';
-          e.currentTarget.style.color = 'var(--text-muted, #888)';
-        }}
+        className="feedback-btn feedback-btn--up bg-transparent border-none cursor-pointer text-[13px] px-1 py-px rounded text-muted-foreground opacity-60 transition-[opacity,color] duration-150 hover:opacity-100 hover:text-[#3fb950]"
       >
         {'\u25B2'}
       </button>
       <button
         onClick={handleThumbsDown}
         title="Needs improvement"
-        className="feedback-btn feedback-btn--down"
-        style={{
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: 13,
-          padding: '1px 4px',
-          borderRadius: 4,
-          color: 'var(--text-muted, #888)',
-          opacity: 0.6,
-          transition: 'opacity 0.15s, color 0.15s',
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.opacity = '1';
-          e.currentTarget.style.color = '#f85149';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.opacity = '0.6';
-          e.currentTarget.style.color = 'var(--text-muted, #888)';
-        }}
+        className="feedback-btn feedback-btn--down bg-transparent border-none cursor-pointer text-[13px] px-1 py-px rounded text-muted-foreground opacity-60 transition-[opacity,color] duration-150 hover:opacity-100 hover:text-[#f85149]"
       >
         {'\u25BC'}
       </button>

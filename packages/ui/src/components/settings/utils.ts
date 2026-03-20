@@ -4,11 +4,16 @@
 
 // ── Provider Definitions ────────────────────────────────────────────
 
+export interface ModelInfo {
+  id: string;         // API model ID sent to the provider
+  displayName: string; // Human-friendly name shown in UI
+}
+
 export interface ProviderConfig {
   id: string;
   name: string;
   keyPrefix: string | null;
-  models: string[];
+  models: ModelInfo[];
 }
 
 export const SUPPORTED_PROVIDERS: ProviderConfig[] = [
@@ -17,32 +22,113 @@ export const SUPPORTED_PROVIDERS: ProviderConfig[] = [
     name: 'Anthropic',
     keyPrefix: 'sk-ant-',
     models: [
-      'claude-opus-4-20250514',
-      'claude-sonnet-4-20250514',
-      'claude-haiku-3-20250307',
+      { id: 'claude-opus-4-6', displayName: 'Claude Opus 4.6' },
+      { id: 'claude-sonnet-4-6', displayName: 'Claude Sonnet 4.6' },
+      { id: 'claude-haiku-4-5', displayName: 'Claude Haiku 4.5' },
     ],
   },
   {
     id: 'openai',
     name: 'OpenAI',
     keyPrefix: 'sk-',
-    models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+    models: [
+      { id: 'gpt-5.4', displayName: 'GPT-5.4' },
+      { id: 'gpt-4.1', displayName: 'GPT-4.1' },
+      { id: 'gpt-4.1-mini', displayName: 'GPT-4.1 Mini' },
+      { id: 'gpt-4.1-nano', displayName: 'GPT-4.1 Nano' },
+      { id: 'o4-mini', displayName: 'o4 Mini' },
+      { id: 'o3', displayName: 'o3' },
+    ],
   },
   {
     id: 'google',
     name: 'Google',
     keyPrefix: null,
-    models: ['gemini-2.0-flash', 'gemini-2.0-pro', 'gemini-1.5-pro'],
+    models: [
+      { id: 'gemini-3.1-flash', displayName: 'Gemini 3.1 Flash' },
+      { id: 'gemini-3.1-pro', displayName: 'Gemini 3.1 Pro' },
+      { id: 'gemini-2.5-flash', displayName: 'Gemini 2.5 Flash' },
+      { id: 'gemini-2.5-pro', displayName: 'Gemini 2.5 Pro' },
+    ],
   },
   {
     id: 'mistral',
     name: 'Mistral',
     keyPrefix: null,
-    models: ['mistral-large', 'mistral-medium', 'mistral-small'],
+    models: [
+      { id: 'mistral-large-latest', displayName: 'Mistral Large' },
+      { id: 'mistral-medium-latest', displayName: 'Mistral Medium' },
+      { id: 'mistral-small-latest', displayName: 'Mistral Small' },
+      { id: 'codestral-latest', displayName: 'Codestral' },
+    ],
+  },
+  {
+    id: 'deepseek',
+    name: 'DeepSeek',
+    keyPrefix: null,
+    models: [
+      { id: 'deepseek-chat', displayName: 'DeepSeek V3' },
+      { id: 'deepseek-reasoner', displayName: 'DeepSeek R1' },
+    ],
+  },
+  {
+    id: 'xai',
+    name: 'xAI',
+    keyPrefix: null,
+    models: [
+      { id: 'grok-3', displayName: 'Grok 3' },
+      { id: 'grok-3-mini', displayName: 'Grok 3 Mini' },
+    ],
+  },
+  {
+    id: 'alibaba',
+    name: 'Alibaba Cloud',
+    keyPrefix: null,
+    models: [
+      { id: 'qwen-max', displayName: 'Qwen 3.5' },
+      { id: 'qwen-turbo', displayName: 'Qwen 3.5 Turbo' },
+      { id: 'qwen-coder', displayName: 'Qwen 2.5 Coder' },
+    ],
+  },
+  {
+    id: 'zhipu',
+    name: 'Zhipu AI',
+    keyPrefix: null,
+    models: [
+      { id: 'glm-5', displayName: 'GLM-5' },
+      { id: 'glm-4-plus', displayName: 'GLM-4 Plus' },
+    ],
+  },
+  {
+    id: 'minimax',
+    name: 'MiniMax',
+    keyPrefix: null,
+    models: [
+      { id: 'minimax-2.7', displayName: 'MiniMax 2.7' },
+      { id: 'minimax-2.7-lite', displayName: 'MiniMax 2.7 Lite' },
+    ],
+  },
+  {
+    id: 'moonshot',
+    name: 'Moonshot AI',
+    keyPrefix: null,
+    models: [
+      { id: 'kimi-2.5', displayName: 'Kimi 2.5' },
+      { id: 'kimi-2.5-thinking', displayName: 'Kimi 2.5 Thinking' },
+    ],
+  },
+  {
+    id: 'zai',
+    name: 'Z.AI',
+    keyPrefix: null,
+    models: [
+      { id: 'z1-preview', displayName: 'Z1 Preview' },
+      { id: 'z1-mini', displayName: 'Z1 Mini' },
+    ],
   },
   {
     id: 'custom',
-    name: 'Custom (OpenAI-compatible)',
+    name: 'Custom / Local (Ollama, LM Studio, etc.)',
     keyPrefix: null,
     models: [],
   },
@@ -94,50 +180,38 @@ export function getProviderKeyPrefix(provider: string): string | null {
 
 // ── Model Classification ────────────────────────────────────────────
 
-const COST_MAP: Record<string, '$' | '$$' | '$$$'> = {
-  'claude-opus-4-20250514': '$$$',
-  'gpt-4o': '$$$',
-  'gpt-4-turbo': '$$$',
-  'gemini-2.0-pro': '$$$',
-  'mistral-large': '$$$',
-  'claude-sonnet-4-20250514': '$$',
-  'gpt-4o-mini': '$$',
-  'gemini-2.0-flash': '$$',
-  'gemini-1.5-pro': '$$',
-  'mistral-medium': '$$',
-  'claude-haiku-3-20250307': '$',
-  'gpt-3.5-turbo': '$',
-  'mistral-small': '$',
-};
-
-const SPEED_MAP: Record<string, 'fast' | 'medium' | 'slow'> = {
-  'claude-opus-4-20250514': 'slow',
-  'gpt-4o': 'slow',
-  'gpt-4-turbo': 'slow',
-  'gemini-2.0-pro': 'slow',
-  'mistral-large': 'slow',
-  'claude-sonnet-4-20250514': 'medium',
-  'gpt-4o-mini': 'medium',
-  'gemini-2.0-flash': 'medium',
-  'gemini-1.5-pro': 'medium',
-  'mistral-medium': 'medium',
-  'claude-haiku-3-20250307': 'fast',
-  'gpt-3.5-turbo': 'fast',
-  'mistral-small': 'fast',
-};
-
 /**
- * Returns cost tier for a model name.
+ * Derive cost tier from model name patterns (no hardcoded map needed).
  */
 export function getCostTier(model: string): '$' | '$$' | '$$$' {
-  return COST_MAP[model] ?? '$$';
+  const m = model.toLowerCase();
+  // Premium/flagship models (check first)
+  if (m.includes('opus') || m.includes('gpt-5') || m.includes('o3') ||
+      /\bpro\b/.test(m) || m.includes('large') || (m.includes('grok-3') && !/\bmini\b/.test(m))) return '$$$';
+  // Budget/small models (word boundary for 'mini' to avoid matching 'gemini')
+  if (m.includes('haiku') || m.includes('nano') || m.includes('small') ||
+      /\bmini\b/.test(m) || m.includes('-mini') || m.includes('flash')) return '$';
+  // Mid-tier default
+  return '$$';
 }
 
 /**
  * Returns speed tier for a model name.
  */
+/**
+ * Derive speed tier from model name patterns.
+ */
 export function getSpeedTier(model: string): 'fast' | 'medium' | 'slow' {
-  return SPEED_MAP[model] ?? 'medium';
+  const m = model.toLowerCase();
+  // Slow: premium/reasoning models (check first to avoid false positives)
+  if (m.includes('opus') || m.includes('gpt-5') || m.includes('o3') ||
+      m.includes('reasoner') || m.includes('large') ||
+      /\bpro\b/.test(m)) return 'slow';
+  // Fast: budget/small models (use word boundary for 'mini' to avoid matching 'gemini')
+  if (m.includes('flash') || m.includes('haiku') || m.includes('nano') ||
+      m.includes('small') || /\bmini\b/.test(m) || m.includes('-mini')) return 'fast';
+  // Medium default
+  return 'medium';
 }
 
 // ── Permission Gate Merging ─────────────────────────────────────────

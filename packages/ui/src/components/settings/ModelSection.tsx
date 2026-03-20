@@ -24,11 +24,12 @@ export function ModelSection({
   // Collect all available models from configured providers
   const allModels = SUPPORTED_PROVIDERS.flatMap((provider) =>
     provider.models.map((model) => ({
-      name: model,
+      name: model.id,
+      displayName: model.displayName,
       provider: provider.id,
       providerName: provider.name,
-      cost: getCostTier(model),
-      speed: getSpeedTier(model),
+      cost: getCostTier(model.id),
+      speed: getSpeedTier(model.id),
     })),
   );
 

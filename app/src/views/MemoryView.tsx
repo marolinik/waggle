@@ -27,7 +27,7 @@ export function MemoryView({
   loading,
 }: MemoryViewProps) {
   return (
-    <div style={{ height: '100%', overflow: 'hidden' }}>
+    <div className="h-full overflow-hidden">
       <MemoryBrowser
         frames={frames}
         selectedFrame={selectedFrame}

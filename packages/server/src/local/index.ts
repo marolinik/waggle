@@ -1163,7 +1163,11 @@ Return ONLY the improved system prompt text. No commentary, no markdown fences, 
   // When WAGGLE_FRONTEND_DIR is set (or app/dist exists), serve the React frontend
   // as static files. This enables `npx waggle` and Docker web mode.
   const frontendDir = process.env.WAGGLE_FRONTEND_DIR
-    ?? path.resolve(process.cwd(), 'app', 'dist');
+    ?? [
+      path.resolve(process.cwd(), 'app', 'dist'),          // from monorepo root
+      path.resolve(process.cwd(), '..', '..', 'app', 'dist'), // from packages/server/
+      path.resolve(process.cwd(), '..', 'app', 'dist'),    // from packages/
+    ].find(d => fs.existsSync(path.join(d, 'index.html'))) ?? path.resolve(process.cwd(), 'app', 'dist');
   if (fs.existsSync(frontendDir) && fs.existsSync(path.join(frontendDir, 'index.html'))) {
     await server.register(fastifyStatic, {
       root: frontendDir,

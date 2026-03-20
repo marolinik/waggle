@@ -2,7 +2,7 @@
  * InstallCenter — main Install Center component providing curated skill
  * browsing with runtime status and governed install flow.
  *
- * Matches the dark-theme inline-style pattern used by CapabilitySection.
+ * Uses Tailwind utility classes for styling.
  */
 
 import React, { useState, useCallback, useEffect } from 'react';
@@ -24,57 +24,6 @@ interface CapabilityData {
   hooks: { registered: number; recentActivity: Array<{ event: string; timestamp: number; cancelled: boolean; reason?: string }> };
   workflows: Array<{ name: string; description: string; steps: number }>;
 }
-
-// ── Styles ───────────────────────────────────────────────────────────────
-
-const sectionStyle: React.CSSProperties = { marginBottom: 32 };
-
-const headingStyle: React.CSSProperties = {
-  fontSize: 16,
-  fontWeight: 600,
-  color: 'var(--text, #e0e0e0)',
-  marginBottom: 8,
-};
-
-const subStyle: React.CSSProperties = {
-  fontSize: 12,
-  color: 'var(--text-muted, #888)',
-  marginBottom: 16,
-};
-
-const pillStyle: React.CSSProperties = {
-  display: 'inline-block',
-  background: 'var(--bg-tertiary, #1a1a2e)',
-  border: '1px solid var(--border, #333)',
-  borderRadius: 6,
-  padding: '6px 14px',
-  fontSize: 13,
-  fontFamily: "'JetBrains Mono', monospace",
-  color: 'var(--text, #e0e0e0)',
-};
-
-const pillValueStyle: React.CSSProperties = {
-  fontWeight: 700,
-  color: 'var(--brand, #E8920F)',
-  marginRight: 4,
-};
-
-const familyTabStyle: React.CSSProperties = {
-  background: 'var(--bg-secondary, #222)',
-  border: '1px solid var(--border, #333)',
-  borderRadius: 16,
-  padding: '4px 14px',
-  fontSize: 12,
-  fontWeight: 500,
-  color: 'var(--text-muted, #888)',
-  cursor: 'pointer',
-};
-
-const familyTabActiveStyle: React.CSSProperties = {
-  borderColor: '#3b82f6',
-  color: '#3b82f6',
-  background: '#3b82f622',
-};
 
 // ── Component ────────────────────────────────────────────────────────────
 
@@ -159,31 +108,15 @@ export function InstallCenter({ baseUrl = 'http://127.0.0.1:3333' }: InstallCent
   // ── Loading / error guards ───────────────────────────────────────────
 
   if (loading) {
-    return <div style={{ color: 'var(--text-dim, #555)', padding: 24 }}>Loading Install Center...</div>;
+    return <div className="text-muted-foreground/40 p-6">Loading Install Center...</div>;
   }
 
   if (error && !catalog) {
     return (
-      <div style={{ padding: 24 }}>
-        <div style={{
-          background: '#3b1818',
-          border: '1px solid #7f1d1d',
-          borderRadius: 8,
-          padding: '8px 12px',
-          color: '#f87171',
-          fontSize: 13,
-        }}>
+      <div className="p-6">
+        <div className="bg-destructive/20 border border-destructive/60 rounded-lg px-3 py-2 text-destructive text-[13px]">
           {error}
-          <button onClick={fetchData} style={{
-            float: 'right',
-            background: 'none',
-            border: '1px solid #7f1d1d',
-            borderRadius: 4,
-            color: '#f87171',
-            cursor: 'pointer',
-            padding: '2px 8px',
-            fontSize: 11,
-          }}>Retry</button>
+          <button onClick={fetchData} className="float-right bg-transparent border border-destructive/60 rounded px-2 py-0.5 text-destructive cursor-pointer text-[11px]">Retry</button>
         </div>
       </div>
     );
@@ -207,78 +140,53 @@ export function InstallCenter({ baseUrl = 'http://127.0.0.1:3333' }: InstallCent
   return (
     <div>
       {/* 1. Runtime Status (collapsible) */}
-      <div style={sectionStyle}>
+      <div className="mb-8">
         <div
-          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+          className="flex justify-between items-center cursor-pointer"
           onClick={() => setRuntimeExpanded(!runtimeExpanded)}
         >
-          <div style={headingStyle}>Runtime Status</div>
-          <button style={{
-            background: 'none',
-            border: '1px solid var(--border, #333)',
-            borderRadius: 6,
-            padding: '4px 12px',
-            fontSize: 11,
-            fontWeight: 600,
-            cursor: 'pointer',
-            color: 'var(--text-muted, #888)',
-          }}>
+          <div className="text-base font-semibold text-foreground mb-2">Runtime Status</div>
+          <button className="bg-transparent border border-border rounded-md px-3 py-1 text-[11px] font-semibold cursor-pointer text-muted-foreground">
             {runtimeExpanded ? 'Collapse' : 'Expand'}
           </button>
         </div>
-        <div style={subStyle}>Current agent capabilities — tools, skills, plugins, and extensions.</div>
+        <div className="text-xs text-muted-foreground mb-4">Current agent capabilities — tools, skills, plugins, and extensions.</div>
         {runtimeExpanded && runtimeData && (
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
-            <span style={pillStyle}><span style={pillValueStyle}>{runtimeData.tools.count}</span> tools</span>
-            <span style={pillStyle}><span style={pillValueStyle}>{runtimeData.skills.length}</span> skills</span>
-            <span style={pillStyle}><span style={pillValueStyle}>{runtimeData.plugins.filter(p => p.state === 'active').length}</span> / {runtimeData.plugins.length} plugins</span>
-            <span style={pillStyle}><span style={pillValueStyle}>{runtimeData.mcpServers.filter(s => s.healthy).length}</span> / {runtimeData.mcpServers.length} MCP</span>
-            <span style={pillStyle}><span style={pillValueStyle}>{runtimeData.commands.length}</span> commands</span>
-            <span style={pillStyle}><span style={pillValueStyle}>{runtimeData.hooks.registered}</span> hooks</span>
-            <span style={pillStyle}><span style={pillValueStyle}>{runtimeData.workflows.length}</span> workflows</span>
+          <div className="flex gap-2.5 flex-wrap mt-2">
+            <span className="inline-block bg-muted border border-border rounded-md px-3.5 py-1.5 text-[13px] font-mono text-foreground"><span className="font-bold text-primary mr-1">{runtimeData.tools.count}</span> tools</span>
+            <span className="inline-block bg-muted border border-border rounded-md px-3.5 py-1.5 text-[13px] font-mono text-foreground"><span className="font-bold text-primary mr-1">{runtimeData.skills.length}</span> skills</span>
+            <span className="inline-block bg-muted border border-border rounded-md px-3.5 py-1.5 text-[13px] font-mono text-foreground"><span className="font-bold text-primary mr-1">{runtimeData.plugins.filter(p => p.state === 'active').length}</span> / {runtimeData.plugins.length} plugins</span>
+            <span className="inline-block bg-muted border border-border rounded-md px-3.5 py-1.5 text-[13px] font-mono text-foreground"><span className="font-bold text-primary mr-1">{runtimeData.mcpServers.filter(s => s.healthy).length}</span> / {runtimeData.mcpServers.length} MCP</span>
+            <span className="inline-block bg-muted border border-border rounded-md px-3.5 py-1.5 text-[13px] font-mono text-foreground"><span className="font-bold text-primary mr-1">{runtimeData.commands.length}</span> commands</span>
+            <span className="inline-block bg-muted border border-border rounded-md px-3.5 py-1.5 text-[13px] font-mono text-foreground"><span className="font-bold text-primary mr-1">{runtimeData.hooks.registered}</span> hooks</span>
+            <span className="inline-block bg-muted border border-border rounded-md px-3.5 py-1.5 text-[13px] font-mono text-foreground"><span className="font-bold text-primary mr-1">{runtimeData.workflows.length}</span> workflows</span>
           </div>
         )}
       </div>
 
       {/* 2. Install Center header */}
-      <div style={sectionStyle}>
-        <div style={headingStyle}>Install Center</div>
-        <div style={subStyle}>Browse and install curated skills to expand your agent's capabilities.</div>
+      <div className="mb-8">
+        <div className="text-base font-semibold text-foreground mb-2">Install Center</div>
+        <div className="text-xs text-muted-foreground mb-4">Browse and install curated skills to expand your agent's capabilities.</div>
       </div>
 
       {/* 3. Non-fatal error banner */}
       {error && (
-        <div style={{
-          background: '#3b1818',
-          border: '1px solid #7f1d1d',
-          borderRadius: 8,
-          padding: '8px 12px',
-          color: '#f87171',
-          fontSize: 13,
-          marginBottom: 12,
-        }}>
+        <div className="bg-destructive/20 border border-destructive/60 rounded-lg px-3 py-2 text-destructive text-[13px] mb-3">
           {error}
-          <button onClick={() => setError(null)} style={{
-            float: 'right',
-            background: 'none',
-            border: '1px solid #7f1d1d',
-            borderRadius: 4,
-            color: '#f87171',
-            cursor: 'pointer',
-            padding: '2px 8px',
-            fontSize: 11,
-          }}>Dismiss</button>
+          <button onClick={() => setError(null)} className="float-right bg-transparent border border-destructive/60 rounded px-2 py-0.5 text-destructive cursor-pointer text-[11px]">Dismiss</button>
         </div>
       )}
 
       {/* 4. Family tab bar */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+      <div className="flex gap-1.5 flex-wrap mb-4">
         <button
           onClick={() => setActiveFamily('all')}
-          style={{
-            ...familyTabStyle,
-            ...(activeFamily === 'all' ? familyTabActiveStyle : {}),
-          }}
+          className={`rounded-full px-3.5 py-1 text-xs font-medium cursor-pointer ${
+            activeFamily === 'all'
+              ? 'border border-primary text-primary bg-primary/10'
+              : 'bg-secondary border border-border text-muted-foreground'
+          }`}
         >
           All
         </button>
@@ -286,10 +194,11 @@ export function InstallCenter({ baseUrl = 'http://127.0.0.1:3333' }: InstallCent
           <button
             key={f.id}
             onClick={() => setActiveFamily(f.id)}
-            style={{
-              ...familyTabStyle,
-              ...(activeFamily === f.id ? familyTabActiveStyle : {}),
-            }}
+            className={`rounded-full px-3.5 py-1 text-xs font-medium cursor-pointer ${
+              activeFamily === f.id
+                ? 'border border-primary text-primary bg-primary/10'
+                : 'bg-secondary border border-border text-muted-foreground'
+            }`}
           >
             {f.label}
           </button>
@@ -302,62 +211,26 @@ export function InstallCenter({ baseUrl = 'http://127.0.0.1:3333' }: InstallCent
         placeholder="Search skills..."
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
-        style={{
-          width: '100%',
-          padding: '8px 12px',
-          fontSize: 13,
-          borderRadius: 6,
-          border: '1px solid var(--border, #333)',
-          background: 'var(--bg-secondary, #222)',
-          color: 'var(--text, #e0e0e0)',
-          marginBottom: 16,
-          outline: 'none',
-        }}
+        className="w-full px-3 py-2 text-[13px] rounded-md border border-border bg-secondary text-foreground mb-4 outline-none"
       />
 
       {/* 6. Confirmation dialog (inline) */}
       {confirmingSkillId && (
-        <div style={{
-          background: 'var(--bg-tertiary, #1a1a2e)',
-          border: '1px solid #3b82f6',
-          borderRadius: 8,
-          padding: '12px 16px',
-          marginBottom: 12,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}>
-          <span style={{ fontSize: 13, color: 'var(--text, #e0e0e0)' }}>
+        <div className="bg-muted border border-primary rounded-lg px-4 py-3 mb-3 flex justify-between items-center">
+          <span className="text-[13px] text-foreground">
             Install <strong>{catalog.skills.find(s => s.id === confirmingSkillId)?.name}</strong>?
             This will add the skill to your agent's capabilities.
           </span>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div className="flex gap-2">
             <button
               onClick={() => setConfirmingSkillId(null)}
-              style={{
-                background: 'none',
-                border: '1px solid var(--border, #333)',
-                borderRadius: 6,
-                padding: '4px 14px',
-                fontSize: 12,
-                color: 'var(--text-muted, #888)',
-                cursor: 'pointer',
-              }}
+              className="bg-transparent border border-border rounded-md px-3.5 py-1 text-xs text-muted-foreground cursor-pointer"
             >
               Cancel
             </button>
             <button
               onClick={() => handleConfirmInstall(confirmingSkillId)}
-              style={{
-                background: '#3b82f6',
-                border: 'none',
-                borderRadius: 6,
-                padding: '4px 14px',
-                fontSize: 12,
-                fontWeight: 600,
-                color: '#fff',
-                cursor: 'pointer',
-              }}
+              className="bg-primary border-none rounded-md px-3.5 py-1 text-xs font-semibold text-primary-foreground cursor-pointer"
             >
               Install
             </button>
@@ -367,11 +240,11 @@ export function InstallCenter({ baseUrl = 'http://127.0.0.1:3333' }: InstallCent
 
       {/* 7. Skill grid */}
       {filteredSkills.length === 0 ? (
-        <div style={{ textAlign: 'center', color: 'var(--text-dim, #555)', padding: 24 }}>
+        <div className="text-center text-muted-foreground/40 p-6">
           {searchQuery ? 'No skills match your search.' : 'All skills in this category are installed!'}
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 8 }}>
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-2">
           {filteredSkills.map(skill => (
             <SkillCard
               key={skill.id}

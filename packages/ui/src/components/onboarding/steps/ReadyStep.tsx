@@ -140,64 +140,14 @@ export function ReadyStep({ name, onComplete }: ReadyStepProps) {
     }
   }, [preview, importSource]);
 
-  const cardStyle: React.CSSProperties = {
-    background: 'var(--surface, #14141e)',
-    border: '1px solid var(--border, rgba(255,255,255,0.06))',
-    borderRadius: 12,
-    padding: '14px 16px',
-  };
-
-  const labelStyle: React.CSSProperties = {
-    fontSize: 10,
-    fontWeight: 600,
-    textTransform: 'uppercase' as const,
-    letterSpacing: '0.06em',
-    color: 'var(--text-dim)',
-    fontFamily: 'Inter, system-ui, sans-serif',
-  };
-
-  const btnPrimary: React.CSSProperties = {
-    background: 'var(--primary, #d4a843)',
-    color: '#0a0a12',
-    border: 'none',
-    borderRadius: 10,
-    padding: '10px 24px',
-    fontSize: 14,
-    fontWeight: 700,
-    fontFamily: 'Inter, system-ui, sans-serif',
-    cursor: 'pointer',
-    transition: 'all 0.15s',
-  };
-
-  const btnSecondary: React.CSSProperties = {
-    background: 'var(--surface-2, #1a1a26)',
-    color: 'var(--text-muted)',
-    border: '1px solid var(--border, rgba(255,255,255,0.06))',
-    borderRadius: 10,
-    padding: '8px 20px',
-    fontSize: 13,
-    fontWeight: 500,
-    fontFamily: 'Inter, system-ui, sans-serif',
-    cursor: 'pointer',
-    transition: 'all 0.15s',
-  };
-
   return (
-    <div className="ready-step flex flex-col items-center gap-6 p-8" style={{ maxWidth: 560, margin: '0 auto' }}>
+    <div className="ready-step flex flex-col items-center gap-6 p-8 max-w-[560px] mx-auto">
       {/* Header */}
-      <div style={{ textAlign: 'center' }}>
-        <div style={{
-          fontSize: 28, fontWeight: 700,
-          color: 'var(--text-bright, #ededef)',
-          fontFamily: 'Inter, system-ui, sans-serif',
-          letterSpacing: '-0.02em',
-        }}>
+      <div className="text-center">
+        <div className="text-[28px] font-bold text-foreground font-[Inter,system-ui,sans-serif] -tracking-wide">
           You're all set{name ? `, ${name}` : ''}
         </div>
-        <p style={{
-          fontSize: 14, color: 'var(--text-muted)',
-          fontFamily: 'Inter, system-ui, sans-serif', marginTop: 8,
-        }}>
+        <p className="text-sm text-muted-foreground font-[Inter,system-ui,sans-serif] mt-2">
           Your workspace is ready. Here's what makes Waggle different:
         </p>
       </div>
@@ -205,11 +155,11 @@ export function ReadyStep({ name, onComplete }: ReadyStepProps) {
       {/* Feature highlights */}
       <div className="flex w-full flex-col gap-3">
         {FEATURE_HIGHLIGHTS.map((f) => (
-          <div key={f.title} style={{ ...cardStyle, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-            <span style={{ color: f.color, fontSize: 14, flexShrink: 0, marginTop: 2 }}>{f.icon}</span>
+          <div key={f.title} className="bg-card border border-border rounded-xl px-4 py-3.5 flex gap-3 items-start">
+            <span className="text-sm shrink-0 mt-0.5" style={{ color: f.color }}>{f.icon}</span>
             <div>
-              <h3 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', fontFamily: 'Inter, system-ui, sans-serif', margin: 0 }}>{f.title}</h3>
-              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.5 }}>{f.description}</p>
+              <h3 className="text-[13px] font-semibold text-foreground font-[Inter,system-ui,sans-serif] m-0">{f.title}</h3>
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{f.description}</p>
             </div>
           </div>
         ))}
@@ -217,38 +167,31 @@ export function ReadyStep({ name, onComplete }: ReadyStepProps) {
 
       {/* ── Memory Import Section ──────────────────────────────── */}
       {!importDone && (
-        <div style={{ width: '100%', marginTop: 4 }}>
+        <div className="w-full mt-1">
           {!showImport ? (
             <button
               type="button"
               onClick={() => setShowImport(true)}
-              style={{
-                ...btnSecondary,
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-              }}
+              className="w-full flex items-center justify-center gap-2 bg-card border border-border rounded-[10px] px-5 py-2 text-[13px] font-medium text-muted-foreground font-[Inter,system-ui,sans-serif] cursor-pointer transition-all duration-150 hover:border-primary/30"
             >
-              <span style={{ color: 'var(--primary)', fontSize: 14 }}>◆</span>
+              <span className="text-primary text-sm">◆</span>
               Import memory from ChatGPT or Claude
             </button>
           ) : (
-            <div style={{ ...cardStyle, display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={labelStyle}>Import prior conversations</div>
-              <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
+            <div className="bg-card border border-border rounded-xl px-4 py-3.5 flex flex-col gap-3">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40 font-[Inter,system-ui,sans-serif]">Import prior conversations</div>
+              <p className="text-xs text-muted-foreground leading-relaxed m-0">
                 Waggle can extract decisions, preferences, and key facts from your ChatGPT or Claude conversation history.
                 Export your data from the source app, then select the JSON file here.
               </p>
 
               {/* Source selection */}
               {!importSource && (
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button type="button" onClick={() => setImportSource('chatgpt')} style={{ ...btnSecondary, flex: 1 }}>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setImportSource('chatgpt')} className="flex-1 bg-card border border-border rounded-[10px] px-5 py-2 text-[13px] font-medium text-muted-foreground font-[Inter,system-ui,sans-serif] cursor-pointer transition-all duration-150 hover:border-primary/30">
                     ChatGPT Export
                   </button>
-                  <button type="button" onClick={() => setImportSource('claude')} style={{ ...btnSecondary, flex: 1 }}>
+                  <button type="button" onClick={() => setImportSource('claude')} className="flex-1 bg-card border border-border rounded-[10px] px-5 py-2 text-[13px] font-medium text-muted-foreground font-[Inter,system-ui,sans-serif] cursor-pointer transition-all duration-150 hover:border-primary/30">
                     Claude Export
                   </button>
                 </div>
@@ -257,7 +200,7 @@ export function ReadyStep({ name, onComplete }: ReadyStepProps) {
               {/* File picker */}
               {importSource && !preview && (
                 <div>
-                  <p style={{ fontSize: 11, color: 'var(--text-dim)', marginBottom: 8 }}>
+                  <p className="text-[11px] text-muted-foreground/40 mb-2">
                     {importSource === 'chatgpt'
                       ? 'Select conversations.json from your ChatGPT export (Settings → Data Controls → Export Data)'
                       : 'Select the JSON file from your Claude export (Settings → Account → Export Data)'}
@@ -267,16 +210,7 @@ export function ReadyStep({ name, onComplete }: ReadyStepProps) {
                     type="file"
                     accept=".json"
                     onChange={handleFileSelect}
-                    style={{
-                      background: 'var(--surface-2)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 8,
-                      padding: '8px 12px',
-                      fontSize: 12,
-                      color: 'var(--text)',
-                      width: '100%',
-                      fontFamily: 'inherit',
-                    }}
+                    className="bg-card border border-border rounded-lg px-3 py-2 text-xs text-foreground w-full font-inherit"
                   />
                 </div>
               )}
@@ -284,38 +218,28 @@ export function ReadyStep({ name, onComplete }: ReadyStepProps) {
               {/* Preview */}
               {preview && !importDone && (
                 <div>
-                  <div style={{ ...labelStyle, marginBottom: 8 }}>
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40 font-[Inter,system-ui,sans-serif] mb-2">
                     Preview — {preview.conversationsParsed} conversations, {preview.knowledgeExtracted.length} items found
                   </div>
 
                   {preview.knowledgeExtracted.length === 0 ? (
-                    <p style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+                    <p className="text-xs text-muted-foreground/40">
                       No decisions, preferences, or facts found in these conversations.
                     </p>
                   ) : (
-                    <div style={{
-                      maxHeight: 180, overflowY: 'auto',
-                      display: 'flex', flexDirection: 'column', gap: 4,
-                    }}>
+                    <div className="max-h-[180px] overflow-y-auto flex flex-col gap-1">
                       {preview.knowledgeExtracted.slice(0, 15).map((item, i) => (
-                        <div key={i} style={{
-                          display: 'flex', gap: 8, alignItems: 'baseline',
-                          fontSize: 11, color: 'var(--text-muted)',
-                          padding: '3px 0',
-                        }}>
-                          <span style={{ color: TYPE_COLORS[item.type] ?? 'var(--text-dim)', flexShrink: 0, fontSize: 10 }}>
-                            {TYPE_ICONS[item.type] ?? '·'}
+                        <div key={i} className="flex gap-2 items-baseline text-[11px] text-muted-foreground py-[3px]">
+                          <span className="shrink-0 text-[10px]" style={{ color: TYPE_COLORS[item.type] ?? 'var(--text-dim)' }}>
+                            {TYPE_ICONS[item.type] ?? '\u00B7'}
                           </span>
-                          <span style={{
-                            overflow: 'hidden', textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap' as const,
-                          }}>
+                          <span className="overflow-hidden text-ellipsis whitespace-nowrap">
                             {item.content}
                           </span>
                         </div>
                       ))}
                       {preview.knowledgeExtracted.length > 15 && (
-                        <div style={{ fontSize: 10, color: 'var(--text-dim)', paddingTop: 4 }}>
+                        <div className="text-[10px] text-muted-foreground/40 pt-1">
                           + {preview.knowledgeExtracted.length - 15} more items
                         </div>
                       )}
@@ -323,19 +247,19 @@ export function ReadyStep({ name, onComplete }: ReadyStepProps) {
                   )}
 
                   {preview.knowledgeExtracted.length > 0 && (
-                    <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                    <div className="flex gap-2 mt-3">
                       <button
                         type="button"
                         onClick={handleCommit}
                         disabled={importing}
-                        style={{ ...btnPrimary, flex: 1, opacity: importing ? 0.6 : 1 }}
+                        className={`flex-1 bg-primary text-primary-foreground border-none rounded-[10px] px-6 py-2.5 text-sm font-bold font-[Inter,system-ui,sans-serif] cursor-pointer transition-all duration-150 ${importing ? 'opacity-60' : ''}`}
                       >
                         {importing ? 'Importing...' : `Import ${preview.knowledgeExtracted.length} items`}
                       </button>
                       <button
                         type="button"
                         onClick={() => { setPreview(null); setImportSource(null); }}
-                        style={btnSecondary}
+                        className="bg-card border border-border rounded-[10px] px-5 py-2 text-[13px] font-medium text-muted-foreground font-[Inter,system-ui,sans-serif] cursor-pointer transition-all duration-150 hover:border-primary/30"
                       >
                         Cancel
                       </button>
@@ -346,7 +270,7 @@ export function ReadyStep({ name, onComplete }: ReadyStepProps) {
 
               {/* Error */}
               {importError && (
-                <p style={{ fontSize: 11, color: 'var(--error, #ef4444)' }}>{importError}</p>
+                <p className="text-[11px] text-destructive">{importError}</p>
               )}
             </div>
           )}
@@ -355,36 +279,23 @@ export function ReadyStep({ name, onComplete }: ReadyStepProps) {
 
       {/* Import success message */}
       {importDone && (
-        <div style={{
-          ...cardStyle,
-          width: '100%',
-          borderColor: 'rgba(62, 207, 142, 0.2)',
-          display: 'flex', gap: 10, alignItems: 'center',
-        }}>
-          <span style={{ color: 'var(--success)', fontSize: 16 }}>✓</span>
-          <span style={{ fontSize: 13, color: 'var(--text)' }}>
+        <div className="bg-card border border-green-500/20 rounded-xl px-4 py-3.5 w-full flex gap-2.5 items-center">
+          <span className="text-green-500 text-base">&#10003;</span>
+          <span className="text-[13px] text-foreground">
             Imported {savedCount} items from {importSource === 'chatgpt' ? 'ChatGPT' : 'Claude'} into your memory
           </span>
         </div>
       )}
 
       {/* CTA */}
-      <div style={{ textAlign: 'center', marginTop: 4 }}>
-        <p style={{
-          fontSize: 12, color: 'var(--text-dim)',
-          marginBottom: 16, fontFamily: 'Inter, system-ui, sans-serif',
-        }}>
+      <div className="text-center mt-1">
+        <p className="text-xs text-muted-foreground/40 mb-4 font-[Inter,system-ui,sans-serif]">
           {importDone
             ? 'Your imported knowledge is ready. Start a conversation and I\'ll use it.'
             : 'Try asking: "What can you help me with?" or "Catch me up on this workspace"'}
         </p>
-        <button type="button" onClick={onComplete} style={{
-          ...btnPrimary,
-          padding: '12px 32px',
-          fontSize: 15,
-          boxShadow: '0 0 20px rgba(212, 168, 67, 0.15)',
-        }}>
-          Start working →
+        <button type="button" onClick={onComplete} className="bg-primary text-primary-foreground border-none rounded-[10px] px-8 py-3 text-[15px] font-bold font-[Inter,system-ui,sans-serif] cursor-pointer transition-all duration-150 shadow-[0_0_20px_rgba(212,168,67,0.15)]">
+          Start working &rarr;
         </button>
       </div>
     </div>

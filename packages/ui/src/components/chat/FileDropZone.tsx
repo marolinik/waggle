@@ -95,26 +95,15 @@ export const FileDropZone: React.FC<FileDropZoneProps> = ({ onDrop, disabled, ch
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
-      style={{ position: 'relative', height: '100%' }}
+      className="relative h-full"
     >
       {children}
       {dragActive && (
         <div
           data-testid="drop-overlay"
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background: 'rgba(99, 102, 241, 0.12)',
-            border: '2px dashed rgba(99, 102, 241, 0.6)',
-            borderRadius: 8,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            pointerEvents: 'none',
-            zIndex: 10,
-          }}
+          className="absolute inset-0 bg-indigo-500/[0.12] border-2 border-dashed border-indigo-500/60 rounded-lg flex items-center justify-center pointer-events-none z-10"
         >
-          <span style={{ color: '#6366f1', fontWeight: 600, fontSize: 14 }}>
+          <span className="text-indigo-500 font-semibold text-sm">
             Drop files here
           </span>
         </div>

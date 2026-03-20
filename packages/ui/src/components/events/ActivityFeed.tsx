@@ -47,7 +47,7 @@ export function formatActivityTime(iso: string): string {
 export function ActivityFeed({ items, loading }: ActivityFeedProps) {
   if (loading) {
     return (
-      <div className="activity-feed" style={{ padding: '12px', color: 'var(--text-dim)', fontSize: 11 }}>
+      <div className="activity-feed p-3 text-muted-foreground/70 text-[11px]">
         Loading team activity...
       </div>
     );
@@ -55,41 +55,29 @@ export function ActivityFeed({ items, loading }: ActivityFeedProps) {
 
   if (items.length === 0) {
     return (
-      <div className="activity-feed" style={{ padding: '12px', color: 'var(--text-dim)', fontSize: 11 }}>
+      <div className="activity-feed p-3 text-muted-foreground/70 text-[11px]">
         No recent team activity.
       </div>
     );
   }
 
   return (
-    <div className="activity-feed" style={{ maxHeight: 300, overflow: 'auto' }}>
+    <div className="activity-feed max-h-[300px] overflow-auto">
       {items.map((item) => (
         <div
           key={item.id}
-          className="activity-feed__item"
-          style={{
-            padding: '8px 12px',
-            borderBottom: '1px solid var(--border-subtle, rgba(255,255,255,0.05))',
-            fontSize: 11,
-          }}
+          className="activity-feed__item px-3 py-2 border-b border-border/20 text-[11px]"
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+          <div className="flex items-center gap-1.5 mb-0.5">
             <span>{TYPE_ICONS[item.type] ?? TYPE_ICONS.general}</span>
-            <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>
+            <span className="font-semibold text-muted-foreground">
               {item.authorName}
             </span>
-            <span style={{ color: 'var(--text-dim)', fontSize: 9, marginLeft: 'auto' }}>
+            <span className="text-muted-foreground/70 text-[9px] ml-auto">
               {formatActivityTime(item.timestamp)}
             </span>
           </div>
-          <div style={{
-            color: 'var(--text-muted)',
-            lineHeight: 1.4,
-            overflow: 'hidden',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical' as const,
-          }}>
+          <div className="text-muted-foreground leading-[1.4] overflow-hidden line-clamp-2">
             {item.summary}
           </div>
         </div>

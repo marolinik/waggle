@@ -38,7 +38,7 @@ function WifiOffIcon() {
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      style={{ verticalAlign: 'middle', marginRight: 4 }}
+      className="align-middle mr-1"
     >
       <line x1="1" y1="1" x2="23" y2="23" />
       <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55" />
@@ -86,63 +86,25 @@ export function StatusBar({
 
   return (
     <footer
-      className="waggle-statusbar"
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        height: 28,
-        padding: '0 12px',
-        fontSize: '12px',
-        background: 'var(--waggle-statusbar-bg, #0a0a1a)',
-        color: 'var(--waggle-text-muted, #888)',
-        borderTop: '1px solid var(--waggle-border, #333)',
-      }}
+      className="waggle-statusbar flex items-center justify-between h-7 px-3 text-xs bg-[#0a0a1a] text-muted-foreground border-t border-border"
     >
-      <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+      <div className="flex gap-4 items-center">
         <span>{workspace}</span>
         <span>{mode === 'team' ? 'Team' : 'Local'}</span>
 
         {/* PM-6: Offline indicator */}
         {isOffline && (
-          <div ref={offlineRef} style={{ position: 'relative' }}>
+          <div ref={offlineRef} className="relative">
             <button
-              className="waggle-offline-indicator"
+              className="waggle-offline-indicator inline-flex items-center gap-1 bg-[#d4a843] text-[#1a1a2e] border-none rounded px-2 py-0.5 text-[11px] font-semibold cursor-pointer animate-[waggle-offline-pulse_2s_ease-in-out_infinite]"
               onClick={() => setShowOfflineTooltip(prev => !prev)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4,
-                background: 'var(--waggle-amber, #d4a843)',
-                color: 'var(--waggle-text-dark, #1a1a2e)',
-                border: 'none',
-                borderRadius: 4,
-                padding: '2px 8px',
-                fontSize: 11,
-                fontWeight: 600,
-                cursor: 'pointer',
-                animation: 'waggle-offline-pulse 2s ease-in-out infinite',
-              }}
               title="LLM connection lost"
             >
               <WifiOffIcon />
               Offline
               {offlineStatus.queuedMessages > 0 && (
                 <span
-                  className="waggle-offline-badge"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: 'var(--waggle-text-dark, #1a1a2e)',
-                    color: 'var(--waggle-amber, #d4a843)',
-                    borderRadius: '50%',
-                    width: 16,
-                    height: 16,
-                    fontSize: 10,
-                    fontWeight: 700,
-                    marginLeft: 2,
-                  }}
+                  className="waggle-offline-badge inline-flex items-center justify-center bg-[#1a1a2e] text-[#d4a843] rounded-full w-4 h-4 text-[10px] font-bold ml-0.5"
                 >
                   {offlineStatus.queuedMessages}
                 </span>
@@ -151,34 +113,21 @@ export function StatusBar({
 
             {showOfflineTooltip && (
               <div
-                style={{
-                  position: 'absolute',
-                  bottom: 28,
-                  left: 0,
-                  minWidth: 260,
-                  background: 'var(--waggle-bg-secondary, #1a1a2e)',
-                  border: '1px solid var(--waggle-border, #333)',
-                  borderRadius: 6,
-                  boxShadow: '0 -4px 16px rgba(0,0,0,0.5)',
-                  zIndex: 1000,
-                  padding: '10px 14px',
-                  fontSize: 12,
-                  color: 'var(--waggle-text, #e0e0e0)',
-                }}
+                className="absolute bottom-7 left-0 min-w-[260px] bg-card border border-border rounded-md shadow-[0_-4px_16px_rgba(0,0,0,0.5)] z-[1000] px-3.5 py-2.5 text-xs text-foreground"
               >
-                <div style={{ fontWeight: 600, marginBottom: 6, color: 'var(--waggle-amber, #d4a843)' }}>
+                <div className="font-semibold mb-1.5 text-[#d4a843]">
                   LLM Connection Lost
                 </div>
-                <div style={{ marginBottom: 4, color: 'var(--waggle-text-muted, #888)' }}>
+                <div className="mb-1 text-muted-foreground">
                   Local tools (file ops, git, memory search) still work.
                 </div>
                 {offlineStatus.queuedMessages > 0 && (
-                  <div style={{ marginTop: 6 }}>
+                  <div className="mt-1.5">
                     {offlineStatus.queuedMessages} message{offlineStatus.queuedMessages === 1 ? '' : 's'} queued.
                   </div>
                 )}
                 {offlineStatus.since && (
-                  <div style={{ marginTop: 4, fontSize: 11, color: 'var(--waggle-text-muted, #666)' }}>
+                  <div className="mt-1 text-[11px] text-muted-foreground/60">
                     Since {new Date(offlineStatus.since).toLocaleTimeString()}
                   </div>
                 )}
@@ -187,21 +136,14 @@ export function StatusBar({
           </div>
         )}
       </div>
-      <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+      <div className="flex gap-4 items-center">
         {/* Model picker */}
-        <div ref={pickerRef} style={{ position: 'relative' }}>
+        <div ref={pickerRef} className="relative">
           <button
             onClick={() => canPickModel && setShowModelPicker(prev => !prev)}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: canPickModel ? 'var(--waggle-brand, #6366f1)' : 'inherit',
-              cursor: canPickModel ? 'pointer' : 'default',
-              fontSize: 'inherit',
-              fontFamily: 'inherit',
-              padding: '0 2px',
-              borderRadius: 3,
-            }}
+            className={`bg-transparent border-none text-[length:inherit] font-[family-name:inherit] px-0.5 rounded-sm ${
+              canPickModel ? 'text-primary cursor-pointer' : 'text-inherit cursor-default'
+            }`}
             title={canPickModel ? 'Click to switch model' : model}
           >
             {model}{canPickModel ? ' \u25BE' : ''}
@@ -209,20 +151,7 @@ export function StatusBar({
 
           {showModelPicker && availableModels && onModelSelect && (
             <div
-              style={{
-                position: 'absolute',
-                bottom: 24,
-                right: 0,
-                minWidth: 220,
-                maxHeight: 300,
-                overflowY: 'auto',
-                background: 'var(--waggle-bg-secondary, #1a1a2e)',
-                border: '1px solid var(--waggle-border, #333)',
-                borderRadius: 6,
-                boxShadow: '0 -4px 16px rgba(0,0,0,0.5)',
-                zIndex: 1000,
-                padding: '4px 0',
-              }}
+              className="absolute bottom-6 right-0 min-w-[220px] max-h-[300px] overflow-y-auto bg-card border border-border rounded-md shadow-[0_-4px_16px_rgba(0,0,0,0.5)] z-[1000] py-1"
             >
               {availableModels.map((m) => (
                 <button
@@ -231,24 +160,11 @@ export function StatusBar({
                     onModelSelect(m);
                     setShowModelPicker(false);
                   }}
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    textAlign: 'left',
-                    padding: '6px 12px',
-                    background: m === model ? 'var(--waggle-brand, #6366f1)' : 'transparent',
-                    color: m === model ? '#fff' : 'var(--waggle-text-muted, #ccc)',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: 12,
-                    fontFamily: "'JetBrains Mono', monospace",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (m !== model) (e.target as HTMLElement).style.background = 'var(--waggle-bg-tertiary, #252540)';
-                  }}
-                  onMouseLeave={(e) => {
-                    if (m !== model) (e.target as HTMLElement).style.background = 'transparent';
-                  }}
+                  className={`block w-full text-left px-3 py-1.5 border-none cursor-pointer text-xs font-mono ${
+                    m === model
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-transparent text-muted-foreground hover:bg-muted'
+                  }`}
                 >
                   {m}
                 </button>

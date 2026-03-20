@@ -123,7 +123,7 @@ export function GlobalSearch({
               value={`command ${cmd.name} ${cmd.description}`}
               onSelect={() => handleSelect('command', cmd.id)}
             >
-              <span className="font-mono text-xs" style={{ color: 'var(--primary)' }}>
+              <span className="font-mono text-xs text-primary">
                 {cmd.name}
               </span>
               <span className="text-xs text-muted-foreground">{cmd.description}</span>

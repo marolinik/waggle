@@ -32,7 +32,7 @@ function ReadFileResult({ input, result }: { input: Record<string, unknown>; res
   return (
     <div className="tool-result tool-result--read-file">
       <div className="flex items-center gap-2 text-xs text-gray-400">
-        <span style={{ fontSize: 14 }}>{'\uD83D\uDCC4'}</span>
+        <span className="text-sm">{'\uD83D\uDCC4'}</span>
         <span className="font-mono text-blue-300">{filePath}</span>
         {result && (
           <span className="text-gray-500">({lines} lines)</span>
@@ -49,7 +49,7 @@ function BashResult({ input, result }: { input: Record<string, unknown>; result?
   return (
     <div className="tool-result tool-result--bash">
       <div className="mb-1 flex items-center gap-2 text-xs">
-        <span style={{ fontSize: 14 }}>{'\u2728'}</span>
+        <span className="text-sm">{'\u2728'}</span>
         <code className="font-mono text-green-300">{truncate(command, 80)}</code>
       </div>
       {hasOutput && (
@@ -76,7 +76,7 @@ function WebSearchResult({ input, result }: { input: Record<string, unknown>; re
   return (
     <div className="tool-result tool-result--web-search">
       <div className="flex items-center gap-2 text-xs text-gray-400">
-        <span style={{ fontSize: 14 }}>{'\uD83D\uDD0D'}</span>
+        <span className="text-sm">{'\uD83D\uDD0D'}</span>
         <span>Searched: </span>
         <span className="font-medium text-purple-300">{query}</span>
         {resultCount > 0 && (
@@ -102,7 +102,7 @@ function SearchMemoryResult({ input, result }: { input: Record<string, unknown>;
   return (
     <div className="tool-result tool-result--search-memory">
       <div className="flex items-center gap-2 text-xs text-gray-400">
-        <span style={{ fontSize: 14 }}>{'\uD83E\uDDE0'}</span>
+        <span className="text-sm">{'\uD83E\uDDE0'}</span>
         <span>Memory: </span>
         <span className="font-medium text-cyan-300">{query}</span>
         {matchCount > 0 && (
@@ -119,7 +119,7 @@ function WriteFileResult({ input }: { input: Record<string, unknown> }) {
   return (
     <div className="tool-result tool-result--write-file">
       <div className="flex items-center gap-2 text-xs text-gray-400">
-        <span style={{ fontSize: 14 }}>{'\u270F\uFE0F'}</span>
+        <span className="text-sm">{'\u270F\uFE0F'}</span>
         <span>Wrote: </span>
         <span className="font-mono text-yellow-300">{filePath}</span>
       </div>
@@ -133,7 +133,7 @@ function EditFileResult({ input }: { input: Record<string, unknown> }) {
   return (
     <div className="tool-result tool-result--edit-file">
       <div className="flex items-center gap-2 text-xs text-gray-400">
-        <span style={{ fontSize: 14 }}>{'\u270F\uFE0F'}</span>
+        <span className="text-sm">{'\u270F\uFE0F'}</span>
         <span>Edited: </span>
         <span className="font-mono text-yellow-300">{filePath}</span>
       </div>
@@ -148,7 +148,7 @@ function SearchFilesResult({ input, result }: { input: Record<string, unknown>; 
   return (
     <div className="tool-result tool-result--search-files">
       <div className="flex items-center gap-2 text-xs text-gray-400">
-        <span style={{ fontSize: 14 }}>{'\uD83D\uDCC2'}</span>
+        <span className="text-sm">{'\uD83D\uDCC2'}</span>
         <span>Found: </span>
         <span className="font-mono text-orange-300">{pattern}</span>
         <span className="text-gray-500">({matchCount} files)</span>

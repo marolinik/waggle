@@ -44,39 +44,26 @@ export function TeamMessages({ messages, maxVisible = 10 }: TeamMessagesProps) {
   if (messages.length === 0) return null;
 
   return (
-    <div style={{ padding: '4px 0' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <div className="py-1">
+      <div className="flex flex-col gap-0.5">
         {messages.slice(0, maxVisible).map((msg, i) => (
-          <div key={msg.id ?? i} style={{
-            padding: '6px 12px',
-            fontSize: 11,
-            color: 'var(--text, #e6edf3)',
-            borderLeft: `2px solid ${TYPE_COLORS[msg.type] ?? '#484f58'}`,
-            marginLeft: 12,
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-              <span style={{
-                fontWeight: 600,
-                fontSize: 10,
-                color: TYPE_COLORS[msg.type] ?? '#8b949e',
-                textTransform: 'uppercase' as const,
-                letterSpacing: '0.03em',
-              }}>
+          <div
+            key={msg.id ?? i}
+            className="px-3 py-1.5 text-[11px] text-foreground ml-3 border-l-2"
+            style={{ borderLeftColor: TYPE_COLORS[msg.type] ?? '#484f58' }}
+          >
+            <div className="flex justify-between items-center mb-0.5">
+              <span
+                className="font-semibold text-[10px] uppercase tracking-wide"
+                style={{ color: TYPE_COLORS[msg.type] ?? '#8b949e' }}
+              >
                 {msg.type}{msg.senderName ? ` \u00B7 ${msg.senderName}` : ''}
               </span>
-              <span style={{ fontSize: 10, color: 'var(--text-dim, #484f58)' }}>
+              <span className="text-[10px] text-muted-foreground/50">
                 {formatRelativeTime(msg.createdAt)}
               </span>
             </div>
-            <div style={{
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical' as const,
-              lineHeight: 1.4,
-              color: 'var(--text-muted, #8b949e)',
-            }}>
+            <div className="overflow-hidden line-clamp-2 leading-[1.4] text-muted-foreground">
               {msg.content}
             </div>
           </div>

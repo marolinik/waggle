@@ -1,10 +1,13 @@
 /**
  * AppSidebar — Main sidebar with brand, workspace tree, and bottom navigation.
- * Uses the official Waggle bee logo (amber on dark).
+ * Phase 10: Full Tailwind rewrite — zero inline styles.
  */
 
 import type { Workspace, WorkspaceMicroStatus } from '@waggle/ui';
 import { Sidebar, WorkspaceTree, useTheme } from '@waggle/ui';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 type AppView = 'chat' | 'memory' | 'events' | 'capabilities' | 'cockpit' | 'mission-control' | 'settings';
 
@@ -17,9 +20,7 @@ export interface AppSidebarProps {
   currentView: AppView;
   onViewChange: (view: AppView) => void;
   onCreateWorkspace: () => void;
-  /** F6: Open global search */
   onOpenSearch?: () => void;
-  /** F7: Micro-status data keyed by workspace ID */
   microStatus?: Record<string, WorkspaceMicroStatus>;
 }
 
@@ -32,20 +33,6 @@ const NAV_ITEMS: { view: AppView; label: string; shortcut: string }[] = [
   { view: 'events', label: 'Events', shortcut: '6' },
   { view: 'settings', label: 'Settings', shortcut: '7' },
 ];
-
-/** Indicator dot for nav items */
-function NavDot({ active }: { active: boolean }) {
-  return (
-    <span style={{
-      width: 4,
-      height: 4,
-      borderRadius: '50%',
-      background: active ? 'var(--primary)' : 'transparent',
-      flexShrink: 0,
-      transition: 'background 0.15s',
-    }} />
-  );
-}
 
 export function AppSidebar({
   collapsed,
@@ -60,114 +47,71 @@ export function AppSidebar({
   microStatus,
 }: AppSidebarProps) {
   const { theme, toggleTheme } = useTheme();
+
   const bottomItems = (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', padding: '0 4px' }}>
-      {NAV_ITEMS.map(({ view, label, shortcut }) => (
-        <button
-          key={view}
-          onClick={() => onViewChange(view)}
-          title={`${label} (Ctrl+${shortcut})`}
-          style={{
-            background: currentView === view ? 'var(--primary-muted)' : 'none',
-            border: 'none',
-            borderLeft: currentView === view ? '2px solid var(--primary)' : '2px solid transparent',
-            color: currentView === view ? 'var(--primary)' : 'var(--text-muted)',
-            cursor: 'pointer',
-            padding: collapsed ? '8px 0' : '5px 10px',
-            width: '100%',
-            textAlign: collapsed ? 'center' : 'left',
-            fontSize: '11px',
-            fontFamily: "'JetBrains Mono', monospace",
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: collapsed ? 'center' : 'flex-start',
-            gap: '8px',
-            borderRadius: '3px',
-            transition: 'all 0.12s',
-          }}
-        >
-          <NavDot active={currentView === view} />
-          {!collapsed && (
-            <>
-              <span style={{ flex: 1 }}>{label}</span>
-              <span style={{
-                fontSize: '9px',
-                color: 'var(--text-dim)',
-                opacity: currentView === view ? 0.8 : 0.4,
-              }}>
-                ^{shortcut}
-              </span>
-            </>
-          )}
-        </button>
-      ))}
-      <div style={{
-        borderTop: '1px solid var(--border)',
-        marginTop: '4px',
-        paddingTop: '4px',
-      }}>
-        <button
-          onClick={onCreateWorkspace}
-          title="Create Workspace"
-          style={{
-            background: 'none',
-            border: '1px dashed var(--border)',
-            color: 'var(--text-dim)',
-            cursor: 'pointer',
-            padding: collapsed ? '6px 0' : '5px 10px',
-            width: '100%',
-            textAlign: collapsed ? 'center' : 'left',
-            fontSize: '10px',
-            fontFamily: "'JetBrains Mono', monospace",
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: collapsed ? 'center' : 'flex-start',
-            gap: '6px',
-            borderRadius: '3px',
-            transition: 'all 0.15s',
-            letterSpacing: '0.02em',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = 'var(--primary)';
-            e.currentTarget.style.color = 'var(--primary)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = 'var(--border)';
-            e.currentTarget.style.color = 'var(--text-dim)';
-          }}
-        >
-          <span style={{ fontSize: '13px', lineHeight: 1 }}>+</span>
-          {!collapsed && <span>new workspace</span>}
-        </button>
-        {/* Theme toggle */}
-        <button
-          onClick={toggleTheme}
-          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--text-dim)',
-            cursor: 'pointer',
-            padding: collapsed ? '6px 0' : '5px 10px',
-            width: '100%',
-            textAlign: collapsed ? 'center' : 'left',
-            fontSize: '11px',
-            fontFamily: "'JetBrains Mono', monospace",
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: collapsed ? 'center' : 'flex-start',
-            gap: '6px',
-            borderRadius: '3px',
-            marginTop: '2px',
-            transition: 'color 0.15s',
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--primary)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-dim)'; }}
-        >
-          <span style={{ fontSize: '13px', lineHeight: 1 }}>{theme === 'dark' ? '☀' : '☾'}</span>
-          {!collapsed && <span>{theme === 'dark' ? 'light mode' : 'dark mode'}</span>}
-        </button>
-      </div>
+    <div className="flex flex-col gap-px px-1">
+      {NAV_ITEMS.map(({ view, label, shortcut }) => {
+        const isActive = currentView === view;
+        return (
+          <button
+            key={view}
+            onClick={() => onViewChange(view)}
+            title={`${label} (Ctrl+${shortcut})`}
+            className={`
+              flex items-center gap-2 rounded-sm px-2.5 py-1.5 text-[11px] font-mono
+              border-l-2 transition-all duration-100 cursor-pointer
+              ${collapsed ? 'justify-center px-0 py-2' : 'justify-start'}
+              ${isActive
+                ? 'bg-primary/10 border-l-primary text-primary'
+                : 'bg-transparent border-l-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
+              }
+            `}
+          >
+            <span className={`w-1 h-1 rounded-full shrink-0 transition-colors ${isActive ? 'bg-primary' : 'bg-transparent'}`} />
+            {!collapsed && (
+              <>
+                <span className="flex-1">{label}</span>
+                <span className={`text-[9px] ${isActive ? 'opacity-80' : 'opacity-40'} text-muted-foreground`}>
+                  ^{shortcut}
+                </span>
+              </>
+            )}
+          </button>
+        );
+      })}
+
+      <Separator className="my-1" />
+
+      {/* Create Workspace */}
+      <Button
+        variant="ghost"
+        onClick={onCreateWorkspace}
+        title="Create Workspace"
+        className={`
+          w-full border border-dashed border-border text-muted-foreground
+          hover:border-primary hover:text-primary text-[10px] font-mono
+          ${collapsed ? 'justify-center px-0' : 'justify-start'}
+        `}
+        size="sm"
+      >
+        <span className="text-[13px] leading-none">+</span>
+        {!collapsed && <span>new workspace</span>}
+      </Button>
+
+      {/* Theme toggle */}
+      <Button
+        variant="ghost"
+        onClick={toggleTheme}
+        title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+        className={`
+          w-full text-muted-foreground hover:text-primary text-[11px] font-mono mt-0.5
+          ${collapsed ? 'justify-center px-0' : 'justify-start'}
+        `}
+        size="sm"
+      >
+        <span className="text-[13px] leading-none">{theme === 'dark' ? '\u2600' : '\u263E'}</span>
+        {!collapsed && <span>{theme === 'dark' ? 'light mode' : 'dark mode'}</span>}
+      </Button>
     </div>
   );
 
@@ -177,76 +121,31 @@ export function AppSidebar({
       onToggle={onToggle}
       bottomItems={bottomItems}
     >
-      {/* Brand: logo + WAGGLE + version */}
-      {!collapsed && (
-        <div className="waggle-brand" style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-        }}>
-          <img
-            src="/waggle-logo.svg"
-            alt="Waggle"
-            style={{ width: 24, height: 30, flexShrink: 0 }}
-          />
-          <span style={{ color: '#E8920F', letterSpacing: '0.15em', fontSize: '11px' }}>WAGGLE</span>
-          <span style={{
-            fontSize: '8px',
-            color: 'var(--text-dim)',
-            opacity: 0.5,
-            letterSpacing: '0.05em',
-            marginLeft: 'auto',
-          }}>
-            v0.4
-          </span>
+      {/* Brand */}
+      {!collapsed ? (
+        <div className="flex items-center gap-2">
+          <img src="/waggle-logo.svg" alt="Waggle" className="w-6 h-[30px] shrink-0" />
+          <span className="text-[#E8920F] tracking-[0.15em] text-[11px] font-medium">WAGGLE</span>
+          <span className="text-[8px] text-muted-foreground/50 tracking-wider ml-auto">v1.0</span>
         </div>
-      )}
-      {collapsed && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          padding: '6px 0',
-        }}>
-          <img
-            src="/waggle-logo.svg"
-            alt="W"
-            style={{ width: 26, height: 32 }}
-          />
+      ) : (
+        <div className="flex justify-center py-1.5">
+          <img src="/waggle-logo.svg" alt="W" className="w-[26px] h-8" />
         </div>
       )}
 
-      {/* F6: Search button */}
+      {/* Search */}
       {onOpenSearch && (
-        <button
+        <Button
+          variant="outline"
           onClick={onOpenSearch}
           title="Search (Ctrl+K)"
-          style={{
-            background: 'none',
-            border: '1px solid var(--border)',
-            color: 'var(--text-dim)',
-            cursor: 'pointer',
-            padding: collapsed ? '6px 0' : '5px 10px',
-            width: collapsed ? '80%' : 'calc(100% - 8px)',
-            margin: collapsed ? '4px auto' : '4px 4px',
-            textAlign: collapsed ? 'center' : 'left',
-            fontSize: '10px',
-            fontFamily: "'JetBrains Mono', monospace",
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: collapsed ? 'center' : 'flex-start',
-            gap: '6px',
-            borderRadius: '4px',
-            transition: 'all 0.15s',
-            letterSpacing: '0.02em',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = 'var(--primary)';
-            e.currentTarget.style.color = 'var(--text-muted)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = 'var(--border)';
-            e.currentTarget.style.color = 'var(--text-dim)';
-          }}
+          className={`
+            text-muted-foreground hover:text-foreground hover:border-primary
+            text-[10px] font-mono transition-colors
+            ${collapsed ? 'w-4/5 mx-auto justify-center' : 'w-[calc(100%-8px)] mx-1 justify-start'}
+          `}
+          size="sm"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="8" />
@@ -254,35 +153,29 @@ export function AppSidebar({
           </svg>
           {!collapsed && (
             <>
-              <span style={{ flex: 1 }}>Search</span>
-              <span style={{ fontSize: '9px', opacity: 0.5 }}>^K</span>
+              <span className="flex-1 text-left">Search</span>
+              <span className="text-[9px] opacity-50">^K</span>
             </>
           )}
-        </button>
+        </Button>
       )}
 
+      {/* Workspace tree */}
       {workspaces.length > 0 ? (
-        <WorkspaceTree
-          workspaces={workspaces}
-          activeId={activeWorkspaceId}
-          onSelect={onSelectWorkspace}
-          microStatus={microStatus}
-        />
+        <ScrollArea className="flex-1">
+          <WorkspaceTree
+            workspaces={workspaces}
+            activeId={activeWorkspaceId}
+            onSelect={onSelectWorkspace}
+            microStatus={microStatus}
+          />
+        </ScrollArea>
       ) : (
         !collapsed && (
-          <div style={{
-            padding: '12px',
-            color: 'var(--text-dim)',
-            fontSize: '10px',
-            lineHeight: 1.6,
-            fontFamily: "'JetBrains Mono', monospace",
-          }}>
-            <div style={{ marginBottom: '8px', opacity: 0.7 }}>
-              no workspaces
-            </div>
-            <div style={{ fontSize: '9px', opacity: 0.4, lineHeight: 1.5 }}>
-              Create one to organize your
-              conversations, memory, and files.
+          <div className="px-3 py-3 text-[10px] font-mono text-muted-foreground/40 leading-relaxed">
+            <div className="mb-2 opacity-70">no workspaces</div>
+            <div className="text-[9px] opacity-40 leading-relaxed">
+              Create one to organize your conversations, memory, and files.
             </div>
           </div>
         )

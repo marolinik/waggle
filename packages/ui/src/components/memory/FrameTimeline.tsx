@@ -58,8 +58,9 @@ export function FrameTimeline({ frames, selectedId, onSelect }: FrameTimelinePro
                 </span>
               </div>
               <span
-                className="rounded px-1.5 py-0.5 text-[10px] font-medium"
-                style={{ color: badge.color === 'red' ? '#f87171' : badge.color === 'yellow' ? '#fbbf24' : badge.color === 'gray' ? '#9ca3af' : '#60a5fa' }}
+                className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                  badge.color === 'red' ? 'text-red-400' : badge.color === 'yellow' ? 'text-amber-400' : badge.color === 'gray' ? 'text-gray-400' : 'text-blue-400'
+                }`}
               >
                 {badge.label}
               </span>

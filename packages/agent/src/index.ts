@@ -89,7 +89,7 @@ export {
   PostgresConnector, GmailConnector, GoogleDocsConnector, GoogleDriveConnector, GoogleSheetsConnector,
   ComposioConnector, MSTeamsConnector, OutlookConnector, OneDriveConnector,
 } from './connectors/index.js';
-export { captureOptimizationLog, getRecentLogs, isWithinBudget, type OptimizationEntry } from './optimization-capture.js';
+export { captureInteraction, getRecentLogs, isWithinBudget, type CaptureInteractionInput } from './optimization-capture.js';
 export { detectCorrection, detectCorrectionsInHistory, type DetectedCorrection, type CorrectionDurability } from './correction-detector.js';
 export {
   recordCapabilityGap, analyzeAndRecordCorrection, recordWorkflowPattern,

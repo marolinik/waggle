@@ -40,10 +40,16 @@ const PERSONA_ICONS: Record<string, string> = {
   marketer: '📢',
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  active: 'var(--accent, #d4a843)',
-  paused: 'var(--muted, #666)',
-  error: '#ef4444',
+const STATUS_CLASS: Record<string, string> = {
+  active: 'border-primary text-primary',
+  paused: 'border-muted-foreground text-muted-foreground',
+  error: 'border-destructive text-destructive',
+};
+
+const STATUS_DOT_CLASS: Record<string, string> = {
+  active: 'bg-primary',
+  paused: 'bg-muted-foreground',
+  error: 'bg-destructive',
 };
 
 function formatDuration(ms: number): string {
@@ -69,44 +75,40 @@ function AgentFleetCard({
   onKill: (id: string) => void;
 }) {
   const icon = session.personaId ? PERSONA_ICONS[session.personaId] ?? '🤖' : '🤖';
-  const statusColor = STATUS_COLORS[session.status] ?? '#666';
+  const borderClass = session.status === 'active'
+    ? 'border-l-primary'
+    : session.status === 'error'
+      ? 'border-l-destructive'
+      : 'border-l-muted-foreground';
 
   return (
-    <Card className="direction-d-card" style={{ borderLeft: `3px solid ${statusColor}` }}>
-      <CardContent style={{ padding: '12px 16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '20px' }}>{icon}</span>
+    <Card className={`rounded-lg border border-border bg-card transition-colors hover:border-primary/30 border-l-[3px] ${borderClass}`}>
+      <CardContent className="px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">{icon}</span>
             <div>
-              <div style={{ fontWeight: 600, fontSize: '13px' }}>
+              <div className="text-[13px] font-semibold">
                 {session.workspaceId.slice(0, 12)}
                 {session.personaId && (
-                  <span style={{ marginLeft: '6px', opacity: 0.7, fontWeight: 400, fontSize: '11px' }}>
+                  <span className="ml-1.5 text-[11px] font-normal opacity-70">
                     {session.personaId}
                   </span>
                 )}
               </div>
-              <div style={{ fontSize: '11px', opacity: 0.6 }}>
+              <div className="text-[11px] opacity-60">
                 <span
-                  style={{
-                    display: 'inline-block',
-                    width: '6px',
-                    height: '6px',
-                    borderRadius: '50%',
-                    backgroundColor: statusColor,
-                    marginRight: '4px',
-                    animation: session.status === 'active' ? 'pulse 2s infinite' : 'none',
-                  }}
+                  className={`inline-block w-1.5 h-1.5 rounded-full mr-1 ${STATUS_DOT_CLASS[session.status] ?? 'bg-muted-foreground'} ${session.status === 'active' ? 'animate-pulse' : ''}`}
                 />
                 {session.status} · {formatDuration(session.durationMs)} · {session.toolCount} tools
               </div>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '4px' }}>
+          <div className="flex gap-1">
             {session.status === 'active' && (
               <button
                 onClick={() => onPause(session.workspaceId)}
-                style={{ padding: '4px 8px', fontSize: '11px', borderRadius: '4px', border: '1px solid var(--border, #333)', background: 'transparent', cursor: 'pointer', color: 'inherit' }}
+                className="px-2 py-1 text-[11px] rounded border border-border bg-transparent cursor-pointer text-foreground hover:bg-muted transition-colors"
               >
                 Pause
               </button>
@@ -114,14 +116,14 @@ function AgentFleetCard({
             {session.status === 'paused' && (
               <button
                 onClick={() => onResume(session.workspaceId)}
-                style={{ padding: '4px 8px', fontSize: '11px', borderRadius: '4px', border: '1px solid var(--accent, #d4a843)', background: 'transparent', cursor: 'pointer', color: 'var(--accent, #d4a843)' }}
+                className="px-2 py-1 text-[11px] rounded border border-primary bg-transparent cursor-pointer text-primary hover:bg-primary/10 transition-colors"
               >
                 Resume
               </button>
             )}
             <button
               onClick={() => onKill(session.workspaceId)}
-              style={{ padding: '4px 8px', fontSize: '11px', borderRadius: '4px', border: '1px solid #ef4444', background: 'transparent', cursor: 'pointer', color: '#ef4444' }}
+              className="px-2 py-1 text-[11px] rounded border border-destructive bg-transparent cursor-pointer text-destructive hover:bg-destructive/10 transition-colors"
             >
               Kill
             </button>
@@ -167,13 +169,13 @@ export function MissionControlView() {
   };
 
   return (
-    <div style={{ padding: '24px', maxWidth: '900px', margin: '0 auto', height: '100%', overflow: 'auto' }}>
+    <div className="p-6 max-w-[900px] mx-auto h-full overflow-auto">
       {/* Header */}
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '4px' }}>
+      <div className="mb-6">
+        <h1 className="text-xl font-bold mb-1">
           Mission Control
         </h1>
-        <p style={{ fontSize: '13px', opacity: 0.6 }}>
+        <p className="text-[13px] opacity-60">
           Agent fleet overview · {fleet.count}/{fleet.maxSessions} sessions active
         </p>
       </div>
@@ -200,8 +202,8 @@ export function MissionControlView() {
 
       {/* Agent Fleet — shown after initial load */}
       {!initialLoading && !error && (<>
-      <div style={{ marginBottom: '24px' }}>
-        <h2 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', opacity: 0.8 }}>
+      <div className="mb-6">
+        <h2 className="text-sm font-semibold mb-3 opacity-80">
           Active Agents
         </h2>
         {fleet.sessions.length === 0 ? (
@@ -213,7 +215,7 @@ export function MissionControlView() {
             </p>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div className="flex flex-col gap-2">
             {fleet.sessions.map((session) => (
               <AgentFleetCard
                 key={session.workspaceId}
@@ -228,29 +230,29 @@ export function MissionControlView() {
       </div>
 
       {/* Resource Summary */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-        <Card className="direction-d-card">
-          <CardContent style={{ padding: '12px 16px', textAlign: 'center' }}>
-            <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--accent, #d4a843)' }}>
+      <div className="grid grid-cols-3 gap-3">
+        <Card className="rounded-lg border border-border bg-card">
+          <CardContent className="px-4 py-3 text-center">
+            <div className="text-2xl font-bold text-primary">
               {fleet.count}
             </div>
-            <div style={{ fontSize: '11px', opacity: 0.6 }}>Active Sessions</div>
+            <div className="text-[11px] opacity-60">Active Sessions</div>
           </CardContent>
         </Card>
-        <Card className="direction-d-card">
-          <CardContent style={{ padding: '12px 16px', textAlign: 'center' }}>
-            <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--accent, #d4a843)' }}>
+        <Card className="rounded-lg border border-border bg-card">
+          <CardContent className="px-4 py-3 text-center">
+            <div className="text-2xl font-bold text-primary">
               {fleet.maxSessions}
             </div>
-            <div style={{ fontSize: '11px', opacity: 0.6 }}>Max Concurrent</div>
+            <div className="text-[11px] opacity-60">Max Concurrent</div>
           </CardContent>
         </Card>
-        <Card className="direction-d-card">
-          <CardContent style={{ padding: '12px 16px', textAlign: 'center' }}>
-            <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--accent, #d4a843)' }}>
+        <Card className="rounded-lg border border-border bg-card">
+          <CardContent className="px-4 py-3 text-center">
+            <div className="text-2xl font-bold text-primary">
               {fleet.sessions.reduce((sum, s) => sum + s.toolCount, 0)}
             </div>
-            <div style={{ fontSize: '11px', opacity: 0.6 }}>Total Tools</div>
+            <div className="text-[11px] opacity-60">Total Tools</div>
           </CardContent>
         </Card>
       </div>

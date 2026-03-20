@@ -212,7 +212,7 @@ export function KGViewer({
       <div className="kg-viewer__canvas flex-1 overflow-hidden">
         <div
           className="relative h-full w-full"
-          style={{ cursor: isPanning ? 'grabbing' : 'grab' }}
+          className={isPanning ? 'cursor-grabbing' : 'cursor-grab'}
           onWheel={handleWheel}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}

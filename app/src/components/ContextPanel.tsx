@@ -54,31 +54,12 @@ export interface ContextPanelProps {
 
 function PanelHeader({ label, action }: { label: string; action?: { label: string; onClick: () => void } }) {
   return (
-    <div style={{
-      padding: '10px 12px',
-      borderBottom: '1px solid var(--border)',
-      fontSize: '9px',
-      fontWeight: 600,
-      color: 'var(--text-dim)',
-      textTransform: 'uppercase' as const,
-      letterSpacing: '0.1em',
-      fontFamily: "'JetBrains Mono', monospace",
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    }}>
+    <div className="px-3 py-2.5 border-b border-border text-[9px] font-semibold text-muted-foreground/40 uppercase tracking-widest font-mono flex justify-between items-center">
       {label}
       {action && (
         <button
           onClick={action.onClick}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--text-muted)',
-            cursor: 'pointer',
-            fontSize: 9,
-            padding: '2px 4px',
-          }}
+          className="bg-transparent border-none text-muted-foreground cursor-pointer text-[9px] px-1 py-0.5"
         >
           {action.label}
         </button>
@@ -117,16 +98,16 @@ export function ContextPanel({
     // If there's a file to preview, show it above sessions
     if (previewFile) {
       return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div className="flex flex-col h-full">
           <PanelHeader
             label="Document Preview"
             action={onClosePreview ? { label: '\u2715 Close', onClick: onClosePreview } : undefined}
           />
-          <div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
+          <div className="flex-1 overflow-auto min-h-0">
             <FilePreview file={previewFile} />
           </div>
           <PanelHeader label="Sessions" />
-          <div style={{ maxHeight: '30%', overflow: 'auto' }}>
+          <div className="max-h-[30%] overflow-auto">
             <SessionList
               grouped={groupedSessions}
               activeSessionId={activeSessionId}
@@ -146,45 +127,20 @@ export function ContextPanel({
     }
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div className="flex flex-col h-full">
         {recentMemories && recentMemories.length > 0 && (
           <>
             <PanelHeader label="Memory" />
-            <div style={{
-              maxHeight: '35%',
-              overflow: 'auto',
-              borderBottom: '1px solid var(--border)',
-            }}>
+            <div className="max-h-[35%] overflow-auto border-b border-border">
               {recentMemories.slice(0, 4).map((mem, i) => (
-                <div key={i} style={{
-                  padding: '8px 12px',
-                  borderBottom: i < Math.min(recentMemories.length, 4) - 1 ? '1px solid var(--border-subtle, rgba(255,255,255,0.05))' : 'none',
-                }}>
-                  <div style={{
-                    fontSize: '11px',
-                    color: 'var(--text-muted)',
-                    lineHeight: 1.4,
-                    overflow: 'hidden',
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical' as const,
-                  }}>
+                <div key={i} className={`px-3 py-2 ${i < Math.min(recentMemories.length, 4) - 1 ? 'border-b border-white/5' : ''}`}>
+                  <div className="text-[11px] text-muted-foreground leading-snug line-clamp-2">
                     {mem.content}
                   </div>
-                  <div style={{
-                    fontSize: '9px',
-                    color: 'var(--text-dim)',
-                    marginTop: '3px',
-                    display: 'flex',
-                    gap: '6px',
-                  }}>
+                  <div className="text-[9px] text-muted-foreground/40 mt-[3px] flex gap-1.5">
                     <span>{mem.date}</span>
                     {mem.importance !== 'normal' && (
-                      <span style={{
-                        color: mem.importance === 'critical' ? 'var(--error, #ef4444)' : 'var(--primary, #E8920F)',
-                        textTransform: 'uppercase' as const,
-                        letterSpacing: '0.05em',
-                      }}>
+                      <span className={`uppercase tracking-wider ${mem.importance === 'critical' ? 'text-destructive' : 'text-primary'}`}>
                         {mem.importance}
                       </span>
                     )}
@@ -198,7 +154,7 @@ export function ContextPanel({
         {teamMembers && teamMembers.length > 0 && (
           <>
             <PanelHeader label="Team" />
-            <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)' }}>
+            <div className="px-3 py-2 border-b border-border">
               <TeamPresence members={teamMembers} />
             </div>
           </>
@@ -207,7 +163,7 @@ export function ContextPanel({
         {(teamActivity && teamActivity.length > 0 || teamActivityLoading) && (
           <>
             <PanelHeader label="Activity" />
-            <div style={{ borderBottom: '1px solid var(--border)' }}>
+            <div className="border-b border-border">
               <ActivityFeed items={teamActivity ?? []} loading={teamActivityLoading} />
             </div>
           </>
@@ -216,13 +172,13 @@ export function ContextPanel({
         {teamMessages && teamMessages.length > 0 && (
           <>
             <PanelHeader label="Messages" />
-            <div style={{ borderBottom: '1px solid var(--border)' }}>
+            <div className="border-b border-border">
               <TeamMessages messages={teamMessages} />
             </div>
           </>
         )}
         <PanelHeader label="Sessions" />
-        <div style={{ flex: 1, overflow: 'auto' }}>
+        <div className="flex-1 overflow-auto">
           <SessionList
             grouped={groupedSessions}
             activeSessionId={activeSessionId}
@@ -243,9 +199,9 @@ export function ContextPanel({
 
   if (currentView === 'memory' && selectedFrame) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div className="flex flex-col h-full">
         <PanelHeader label="Frame Detail" />
-        <div style={{ flex: 1, overflow: 'auto', padding: '10px' }}>
+        <div className="flex-1 overflow-auto p-2.5">
           <FrameDetail frame={selectedFrame} />
         </div>
       </div>
@@ -294,48 +250,24 @@ const BUILT_IN_PACKS = [
 
 function CapabilitiesContext() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div className="flex flex-col h-full">
       <PanelHeader label="Installed" />
-      <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)' }}>
+      <div className="px-3 py-2 border-b border-border">
         {BUILT_IN_PACKS.map((pack) => (
           <div
             key={pack.id}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '5px 0',
-              fontSize: '11px',
-              color: 'var(--text-muted)',
-              fontFamily: "'JetBrains Mono', monospace",
-            }}
+            className="flex items-center gap-2 py-[5px] text-[11px] text-muted-foreground font-mono"
           >
-            <span style={{
-              width: 6,
-              height: 6,
-              borderRadius: '50%',
-              background: '#3fb950',
-              flexShrink: 0,
-            }} />
-            <span style={{ flex: 1 }}>{pack.name}</span>
-            <span style={{
-              fontSize: '9px',
-              color: 'var(--text-dim)',
-              opacity: 0.6,
-            }}>
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
+            <span className="flex-1">{pack.name}</span>
+            <span className="text-[9px] text-muted-foreground/40 opacity-60">
               built-in
             </span>
           </div>
         ))}
       </div>
       <PanelHeader label="Suggested" />
-      <div style={{
-        padding: '12px',
-        fontSize: '11px',
-        color: 'var(--text-dim)',
-        lineHeight: 1.5,
-        fontFamily: "'JetBrains Mono', monospace",
-      }}>
+      <div className="p-3 text-[11px] text-muted-foreground/40 leading-relaxed font-mono">
         Marketplace suggestions will appear here after Wave 8A.
       </div>
     </div>
@@ -356,42 +288,21 @@ function CockpitContext({ onRefreshHealth }: { onRefreshHealth?: () => void }) {
     }
   }, [onRefreshHealth, refreshing]);
 
-  const btnBase: React.CSSProperties = {
-    width: '100%',
-    padding: '7px 12px',
-    fontSize: '11px',
-    fontWeight: 500,
-    fontFamily: "'JetBrains Mono', monospace",
-    borderRadius: '4px',
-    border: '1px solid var(--border)',
-    cursor: 'pointer',
-    textAlign: 'left',
-    transition: 'background 0.12s',
-  };
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div className="flex flex-col h-full">
       <PanelHeader label="Quick Actions" />
-      <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+      <div className="px-3 py-2 flex flex-col gap-1.5">
         <button
-          style={{
-            ...btnBase,
-            background: refreshing ? 'var(--primary-muted)' : 'var(--bg-secondary, #161b22)',
-            color: refreshing ? 'var(--primary)' : 'var(--text-muted)',
-          }}
+          className={`w-full px-3 py-[7px] text-[11px] font-medium font-mono rounded border border-border text-left transition-colors duration-100 cursor-pointer ${
+            refreshing ? 'bg-primary/20 text-primary' : 'bg-card text-muted-foreground'
+          }`}
           onClick={handleRefresh}
           disabled={refreshing}
         >
           {refreshing ? 'Refreshing...' : 'Refresh Health'}
         </button>
         <button
-          style={{
-            ...btnBase,
-            background: 'var(--bg-secondary, #161b22)',
-            color: 'var(--text-dim)',
-            cursor: 'not-allowed',
-            opacity: 0.5,
-          }}
+          className="w-full px-3 py-[7px] text-[11px] font-medium font-mono rounded border border-border text-left bg-card text-muted-foreground/40 cursor-not-allowed opacity-50"
           disabled
           title="Available after Wave 8A"
         >
@@ -420,46 +331,26 @@ function EventsContext({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div className="flex flex-col h-full">
       <PanelHeader label="Filter" />
-      <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)' }}>
+      <div className="px-3 py-2 border-b border-border">
         {EVENT_TYPES.map((type) => (
           <label
             key={type}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '4px 0',
-              fontSize: '11px',
-              color: 'var(--text-muted)',
-              fontFamily: "'JetBrains Mono', monospace",
-              cursor: 'pointer',
-            }}
+            className="flex items-center gap-2 py-1 text-[11px] text-muted-foreground font-mono cursor-pointer"
           >
             <input
               type="checkbox"
               checked={effectiveFilters[type] !== false}
               onChange={() => handleToggle(type)}
-              style={{
-                accentColor: 'var(--primary)',
-                width: 13,
-                height: 13,
-                cursor: 'pointer',
-              }}
+              className="w-[13px] h-[13px] cursor-pointer accent-primary"
             />
             {type}
           </label>
         ))}
       </div>
       <PanelHeader label="Stats" />
-      <div style={{
-        padding: '12px',
-        fontSize: '11px',
-        color: 'var(--text-dim)',
-        lineHeight: 1.8,
-        fontFamily: "'JetBrains Mono', monospace",
-      }}>
+      <div className="p-3 text-[11px] text-muted-foreground/40 leading-loose font-mono">
         <div>Event statistics available during active agent sessions.</div>
       </div>
     </div>
@@ -481,51 +372,29 @@ function SettingsContext({ activeTab }: { activeTab?: string }) {
   const tabName = tab.charAt(0).toUpperCase() + tab.slice(1);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div className="flex flex-col h-full">
       <PanelHeader label="Help" />
-      <div style={{ padding: '12px' }}>
-        <div style={{
-          fontSize: '12px',
-          fontWeight: 600,
-          color: 'var(--text, #e6edf3)',
-          marginBottom: '6px',
-          fontFamily: "'JetBrains Mono', monospace",
-        }}>
+      <div className="p-3">
+        <div className="text-xs font-semibold text-foreground mb-1.5 font-mono">
           {tabName}
         </div>
-        <div style={{
-          fontSize: '11px',
-          color: 'var(--text-muted)',
-          lineHeight: 1.5,
-          fontFamily: "'JetBrains Mono', monospace",
-        }}>
+        <div className="text-[11px] text-muted-foreground leading-relaxed font-mono">
           {help}
         </div>
       </div>
       <PanelHeader label="All Sections" />
-      <div style={{ padding: '8px 12px' }}>
+      <div className="px-3 py-2">
         {Object.entries(SETTINGS_HELP).map(([key, desc]) => (
           <div
             key={key}
-            style={{
-              padding: '5px 0',
-              fontSize: '11px',
-              fontFamily: "'JetBrains Mono', monospace",
-              color: key === tab ? 'var(--primary)' : 'var(--text-dim)',
-              borderLeft: key === tab ? '2px solid var(--primary)' : '2px solid transparent',
-              paddingLeft: '8px',
-              transition: 'all 0.12s',
-            }}
+            className={`py-[5px] text-[11px] font-mono pl-2 border-l-2 transition-all duration-100 ${
+              key === tab ? 'text-primary border-l-primary' : 'text-muted-foreground/40 border-l-transparent'
+            }`}
           >
-            <div style={{ fontWeight: key === tab ? 600 : 400 }}>
+            <div className={key === tab ? 'font-semibold' : 'font-normal'}>
               {key.charAt(0).toUpperCase() + key.slice(1)}
             </div>
-            <div style={{
-              fontSize: '9px',
-              color: 'var(--text-dim)',
-              opacity: 0.7,
-              marginTop: '1px',
-            }}>
+            <div className="text-[9px] text-muted-foreground/40 opacity-70 mt-px">
               {desc}
             </div>
           </div>

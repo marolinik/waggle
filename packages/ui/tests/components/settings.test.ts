@@ -66,8 +66,8 @@ describe('getProviderDisplayName', () => {
     expect(getProviderDisplayName('mistral')).toBe('Mistral');
   });
 
-  it('returns "Custom (OpenAI-compatible)" for custom', () => {
-    expect(getProviderDisplayName('custom')).toBe('Custom (OpenAI-compatible)');
+  it('returns custom provider name for custom', () => {
+    expect(getProviderDisplayName('custom')).toBe('Custom / Local (Ollama, LM Studio, etc.)');
   });
 
   it('returns raw string for unknown providers', () => {
@@ -106,18 +106,17 @@ describe('getProviderKeyPrefix', () => {
 // ── getCostTier ─────────────────────────────────────────────────────
 
 describe('getCostTier', () => {
-  it('returns $$$ for large models', () => {
-    expect(getCostTier('claude-opus-4-20250514')).toBe('$$$');
-    expect(getCostTier('gpt-4o')).toBe('$$$');
+  it('returns $$$ for premium models', () => {
+    expect(getCostTier('claude-opus-4-6')).toBe('$$$');
+    expect(getCostTier('gpt-5.4')).toBe('$$$');
+    expect(getCostTier('gemini-3.1-pro')).toBe('$$$');
   });
 
-  it('returns $$ for mid-range models', () => {
-    expect(getCostTier('claude-sonnet-4-20250514')).toBe('$$');
-    expect(getCostTier('gpt-4o-mini')).toBe('$$');
-  });
-
-  it('returns $ for cheap models', () => {
-    expect(getCostTier('claude-haiku-3-20250307')).toBe('$');
+  it('returns $ for budget models', () => {
+    expect(getCostTier('claude-haiku-4-5')).toBe('$');
+    expect(getCostTier('gpt-4.1-mini')).toBe('$');
+    expect(getCostTier('gemini-3.1-flash')).toBe('$');
+    expect(getCostTier('mistral-small-latest')).toBe('$');
   });
 
   it('returns $$ as default for unknown models', () => {
@@ -128,14 +127,18 @@ describe('getCostTier', () => {
 // ── getSpeedTier ────────────────────────────────────────────────────
 
 describe('getSpeedTier', () => {
-  it('returns slow for large models', () => {
-    expect(getSpeedTier('claude-opus-4-20250514')).toBe('slow');
-    expect(getSpeedTier('gpt-4o')).toBe('slow');
+  it('returns slow for premium models', () => {
+    expect(getSpeedTier('claude-opus-4-6')).toBe('slow');
+    expect(getSpeedTier('gpt-5.4')).toBe('slow');
+    expect(getSpeedTier('gemini-3.1-pro')).toBe('slow');
+    expect(getSpeedTier('deepseek-reasoner')).toBe('slow');
   });
 
-  it('returns medium for mid-range models', () => {
-    expect(getSpeedTier('claude-sonnet-4-20250514')).toBe('medium');
-    expect(getSpeedTier('gpt-4o-mini')).toBe('medium');
+  it('returns fast for budget/flash models', () => {
+    expect(getSpeedTier('claude-haiku-4-5')).toBe('fast');
+    expect(getSpeedTier('gpt-4.1-mini')).toBe('fast');
+    expect(getSpeedTier('gemini-3.1-flash')).toBe('fast');
+    expect(getSpeedTier('mistral-small-latest')).toBe('fast');
   });
 
   it('returns fast for small models', () => {
@@ -175,7 +178,7 @@ describe('SUPPORTED_PROVIDERS', () => {
   it('custom provider has empty models (user-defined)', () => {
     const custom = SUPPORTED_PROVIDERS.find((p) => p.id === 'custom');
     expect(custom).toBeDefined();
-    expect(custom!.name).toBe('Custom (OpenAI-compatible)');
+    expect(custom!.name).toBe('Custom / Local (Ollama, LM Studio, etc.)');
     expect(custom!.keyPrefix).toBeNull();
     expect(custom!.models).toEqual([]);
   });

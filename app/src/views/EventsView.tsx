@@ -98,48 +98,28 @@ export function EventsView({
   }, [tab, selectedSessionId, fetchTimeline]);
 
   return (
-    <div style={{ height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+    <div className="h-full overflow-hidden flex flex-col">
       {/* Tab bar */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 2,
-          padding: '4px 8px',
-          borderBottom: '1px solid var(--border-subtle, rgba(255,255,255,0.08))',
-          background: 'var(--bg-secondary, #18181b)',
-          flexShrink: 0,
-        }}
-      >
+      <div className="flex items-center gap-0.5 px-2 py-1 border-b border-border/30 bg-secondary shrink-0">
         <button
           type="button"
           onClick={() => setTab('live')}
-          style={{
-            padding: '4px 12px',
-            borderRadius: 4,
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: 12,
-            fontWeight: tab === 'live' ? 600 : 400,
-            background: tab === 'live' ? 'rgba(212,168,67,0.15)' : 'transparent',
-            color: tab === 'live' ? '#d4a843' : 'var(--text-muted, #a1a1aa)',
-          }}
+          className={`px-3 py-1 rounded text-xs border-none cursor-pointer transition-colors ${
+            tab === 'live'
+              ? 'font-semibold bg-primary/15 text-primary'
+              : 'font-normal bg-transparent text-muted-foreground'
+          }`}
         >
           Live Events
         </button>
         <button
           type="button"
           onClick={() => setTab('replay')}
-          style={{
-            padding: '4px 12px',
-            borderRadius: 4,
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: 12,
-            fontWeight: tab === 'replay' ? 600 : 400,
-            background: tab === 'replay' ? 'rgba(212,168,67,0.15)' : 'transparent',
-            color: tab === 'replay' ? '#d4a843' : 'var(--text-muted, #a1a1aa)',
-          }}
+          className={`px-3 py-1 rounded text-xs border-none cursor-pointer transition-colors ${
+            tab === 'replay'
+              ? 'font-semibold bg-primary/15 text-primary'
+              : 'font-normal bg-transparent text-muted-foreground'
+          }`}
         >
           Session Replay
         </button>
@@ -147,7 +127,7 @@ export function EventsView({
 
       {/* Tab content */}
       {tab === 'live' ? (
-        <div style={{ flex: 1, overflow: 'hidden' }}>
+        <div className="flex-1 overflow-hidden">
           <EventStream
             steps={steps}
             autoScroll={autoScroll}
@@ -157,37 +137,22 @@ export function EventsView({
           />
         </div>
       ) : (
-        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div className="flex-1 overflow-hidden flex flex-col">
           {/* Session picker */}
-          <div
-            style={{
-              padding: '8px 12px',
-              borderBottom: '1px solid var(--border-subtle, rgba(255,255,255,0.08))',
-              flexShrink: 0,
-            }}
-          >
+          <div className="px-3 py-2 border-b border-border/30 shrink-0">
             {loadingSessions ? (
-              <span style={{ fontSize: 11, color: 'var(--text-dim, #71717a)' }}>
+              <span className="text-[11px] text-muted-foreground/70">
                 Loading sessions...
               </span>
             ) : sessions.length === 0 ? (
-              <span style={{ fontSize: 11, color: 'var(--text-dim, #71717a)' }}>
+              <span className="text-[11px] text-muted-foreground/70">
                 {workspaceId ? 'No sessions found' : 'Select a workspace first'}
               </span>
             ) : (
               <select
                 value={selectedSessionId}
                 onChange={(e) => setSelectedSessionId(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '6px 8px',
-                  borderRadius: 6,
-                  border: '1px solid rgba(212,168,67,0.2)',
-                  background: 'rgba(0,0,0,0.3)',
-                  color: 'var(--text-primary, #e4e4e7)',
-                  fontSize: 12,
-                  cursor: 'pointer',
-                }}
+                className="w-full px-2 py-1.5 rounded-md border border-primary/20 bg-black/30 text-foreground text-xs cursor-pointer"
               >
                 {sessions.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -199,7 +164,7 @@ export function EventsView({
           </div>
 
           {/* Timeline */}
-          <div style={{ flex: 1, overflow: 'auto', padding: '8px 4px' }}>
+          <div className="flex-1 overflow-auto px-1 py-2">
             <SessionTimeline events={timeline} loading={loadingTimeline} />
           </div>
         </div>

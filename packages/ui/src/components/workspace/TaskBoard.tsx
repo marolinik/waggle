@@ -39,6 +39,12 @@ const STATUS_COLORS: Record<TeamTask['status'], string> = {
   done: '#22c55e',       // green
 };
 
+const STATUS_TEXT_CLASS: Record<TeamTask['status'], string> = {
+  open: 'text-blue-500',
+  in_progress: 'text-amber-500',
+  done: 'text-green-500',
+};
+
 export function getTaskStatusColor(status: TeamTask['status']): string {
   return STATUS_COLORS[status] ?? '#6b7280';
 }
@@ -76,46 +82,29 @@ export function TaskBoard({
 
   if (loading) {
     return (
-      <div className="task-board" style={{ padding: 12, color: 'var(--text-dim)', fontSize: 11 }}>
+      <div className="task-board p-3 text-muted-foreground/70 text-[11px]">
         Loading tasks...
       </div>
     );
   }
 
   return (
-    <div className="task-board" style={{ fontSize: 11 }}>
+    <div className="task-board text-[11px]">
       {/* Quick add */}
       {onCreateTask && (
-        <div style={{ display: 'flex', gap: 4, padding: '8px 12px', borderBottom: '1px solid var(--border-subtle, rgba(255,255,255,0.05))' }}>
+        <div className="flex gap-1 px-3 py-2 border-b border-border/20">
           <input
             type="text"
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
             placeholder="New task..."
             onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-            style={{
-              flex: 1,
-              padding: '4px 8px',
-              background: 'var(--bg-input, rgba(255,255,255,0.05))',
-              border: '1px solid var(--border, rgba(255,255,255,0.1))',
-              borderRadius: 4,
-              color: 'var(--text)',
-              fontSize: 11,
-            }}
+            className="flex-1 px-2 py-1 bg-white/5 border border-border rounded text-foreground text-[11px]"
           />
           <button
             onClick={handleCreate}
             disabled={!newTitle.trim()}
-            style={{
-              padding: '4px 8px',
-              background: 'var(--primary, #3b82f6)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 4,
-              cursor: 'pointer',
-              fontSize: 10,
-              opacity: !newTitle.trim() ? 0.5 : 1,
-            }}
+            className="px-2 py-1 bg-blue-500 text-white border-none rounded cursor-pointer text-[10px] disabled:opacity-50"
           >
             Add
           </button>
@@ -129,34 +118,19 @@ export function TaskBoard({
 
         return (
           <div key={status}>
-            <div style={{
-              padding: '6px 12px',
-              fontSize: 9,
-              fontWeight: 600,
-              color: STATUS_COLORS[status],
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              display: 'flex',
-              justifyContent: 'space-between',
-            }}>
+            <div className={`flex justify-between px-3 py-1.5 text-[9px] font-semibold uppercase tracking-wide ${STATUS_TEXT_CLASS[status]}`}>
               <span>{STATUS_LABELS[status]}</span>
-              <span style={{ color: 'var(--text-dim)' }}>{statusTasks.length}</span>
+              <span className="text-muted-foreground/70">{statusTasks.length}</span>
             </div>
             {statusTasks.length === 0 ? (
-              <div style={{ padding: '4px 12px', color: 'var(--text-dim)', fontSize: 10 }}>
+              <div className="px-3 py-1 text-muted-foreground/70 text-[10px]">
                 No tasks
               </div>
             ) : (
               statusTasks.map((task) => (
                 <div
                   key={task.id}
-                  style={{
-                    padding: '6px 12px',
-                    borderBottom: '1px solid var(--border-subtle, rgba(255,255,255,0.03))',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 border-b border-border/10"
                 >
                   {/* Status cycle button */}
                   {onUpdateStatus && (
@@ -170,30 +144,21 @@ export function TaskBoard({
                         onUpdateStatus(task.id, next[task.status]);
                       }}
                       title={`Move to ${STATUS_LABELS[task.status === 'open' ? 'in_progress' : task.status === 'in_progress' ? 'done' : 'open']}`}
-                      style={{
-                        width: 12,
-                        height: 12,
-                        borderRadius: '50%',
-                        border: `2px solid ${STATUS_COLORS[task.status]}`,
-                        background: task.status === 'done' ? STATUS_COLORS.done : 'transparent',
-                        cursor: 'pointer',
-                        flexShrink: 0,
-                        padding: 0,
-                      }}
+                      className={`w-3 h-3 rounded-full shrink-0 p-0 cursor-pointer border-2 ${
+                        task.status === 'open' ? 'border-blue-500 bg-transparent' :
+                        task.status === 'in_progress' ? 'border-amber-500 bg-transparent' :
+                        'border-green-500 bg-green-500'
+                      }`}
                     />
                   )}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{
-                      color: task.status === 'done' ? 'var(--text-dim)' : 'var(--text-muted)',
-                      textDecoration: task.status === 'done' ? 'line-through' : 'none',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}>
+                  <div className="flex-1 min-w-0">
+                    <div className={`overflow-hidden text-ellipsis whitespace-nowrap ${
+                      task.status === 'done' ? 'text-muted-foreground/70 line-through' : 'text-muted-foreground'
+                    }`}>
                       {task.title}
                     </div>
                     {task.assigneeName && (
-                      <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>
+                      <div className="text-[9px] text-muted-foreground/70">
                         {task.assigneeName}
                       </div>
                     )}

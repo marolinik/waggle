@@ -70,39 +70,21 @@ export function WorkspaceCard({ workspace, isActive, onClick, onContextMenu, isA
       title={workspace.name + (isTeam ? ' (Team)' : '')}
     >
       {/* Icon + agent active dot */}
-      <span className="workspace-card__icon text-base" style={{ position: 'relative' }}>
+      <span className="workspace-card__icon text-base relative">
         {workspace.icon || (isTeam ? '\u{1F465}' : '\u{1F4C1}')}
         {isAgentActive && (
           <span
-            className="workspace-card__agent-dot"
-            style={{
-              position: 'absolute',
-              top: -1,
-              right: -2,
-              width: 6,
-              height: 6,
-              borderRadius: '50%',
-              background: '#3fb950',
-              border: '1px solid var(--bg, #0d1117)',
-            }}
+            className="workspace-card__agent-dot absolute -top-px -right-0.5 w-1.5 h-1.5 rounded-full bg-green-500 border border-background"
             title="Agent active"
           />
         )}
       </span>
 
       {/* Name + last active subtitle */}
-      <span className="workspace-card__name flex-1 truncate text-left" style={{ display: 'flex', flexDirection: 'column', gap: 0, minWidth: 0 }}>
+      <span className="workspace-card__name flex-1 truncate text-left flex flex-col min-w-0">
         <span className="truncate">{workspace.name}</span>
         {lastActive && (
-          <span
-            className="workspace-card__last-active"
-            style={{
-              fontSize: '9px',
-              color: 'var(--text-dim, #484f58)',
-              fontWeight: 400,
-              lineHeight: 1.2,
-            }}
-          >
+          <span className="workspace-card__last-active text-[9px] text-muted-foreground/50 font-normal leading-tight">
             {formatRelativeTime(lastActive)}
           </span>
         )}
@@ -111,14 +93,8 @@ export function WorkspaceCard({ workspace, isActive, onClick, onContextMenu, isA
       {/* F7: Memory count badge */}
       {memoryCount != null && memoryCount > 0 && (
         <span
-          className="workspace-card__memory-badge"
+          className="workspace-card__memory-badge text-[9px] text-muted-foreground/50 font-medium shrink-0"
           title={`${memoryCount} memories`}
-          style={{
-            fontSize: '9px',
-            color: 'var(--text-dim, #484f58)',
-            fontWeight: 500,
-            flexShrink: 0,
-          }}
         >
           {memoryCount}m
         </span>

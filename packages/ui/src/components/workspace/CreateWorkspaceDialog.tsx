@@ -207,7 +207,7 @@ export function CreateWorkspaceDialog({
 
   return (
     <div className="create-workspace-dialog fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-lg rounded-lg bg-gray-900 p-6 shadow-xl" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
+      <div className="w-full max-w-lg rounded-lg bg-gray-900 p-6 shadow-xl max-h-[90vh] overflow-y-auto">
         <h2 className="mb-4 text-lg font-semibold text-gray-100">Create Workspace</h2>
 
         {/* Mode toggle: Start blank | Use template */}

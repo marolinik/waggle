@@ -76,21 +76,7 @@ export function CommandPalette({
       ref={containerRef}
       role="listbox"
       aria-label="Command palette"
-      style={{
-        position: 'absolute',
-        bottom: '100%',
-        left: 12,
-        right: 12,
-        background: 'var(--bg-tertiary, #1a1a2e)',
-        border: '1px solid var(--border, #333)',
-        borderRadius: 8,
-        padding: 4,
-        marginBottom: 4,
-        maxHeight: 300,
-        overflowY: 'auto',
-        zIndex: 50,
-        boxShadow: '0 -4px 16px rgba(0,0,0,0.4)',
-      }}
+      className="absolute bottom-full left-3 right-3 bg-muted border border-border rounded-lg p-1 mb-1 max-h-[300px] overflow-y-auto z-50 shadow-[0_-4px_16px_rgba(0,0,0,0.4)]"
     >
       {filtered.map((cmd, i) => (
         <button
@@ -100,53 +86,18 @@ export function CommandPalette({
           aria-selected={i === selectedIndex}
           onClick={() => onSelect(cmd.name)}
           onMouseEnter={() => onSelectedIndexChange?.(i)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            width: '100%',
-            padding: '8px 12px',
-            border: 'none',
-            borderRadius: 6,
-            background:
-              i === selectedIndex
-                ? 'var(--brand-dim, rgba(232,146,15,0.15))'
-                : 'transparent',
-            color: 'var(--text, #e0e0e0)',
-            cursor: 'pointer',
-            textAlign: 'left',
-            fontSize: 13,
-            fontFamily: "'JetBrains Mono', monospace",
-          }}
+          className={`flex items-center gap-3 w-full py-2 px-3 border-none rounded-md text-foreground cursor-pointer text-left text-[13px] font-mono ${
+            i === selectedIndex ? 'bg-primary/15' : 'bg-transparent'
+          }`}
         >
-          <span
-            style={{
-              color: 'var(--brand, #E8920F)',
-              fontWeight: 600,
-              minWidth: 100,
-            }}
-          >
+          <span className="text-primary font-semibold min-w-[100px]">
             /{cmd.name}
           </span>
-          <span
-            style={{
-              color: 'var(--text-muted, #888)',
-              fontSize: 12,
-              fontFamily: 'inherit',
-              flex: 1,
-            }}
-          >
+          <span className="text-muted-foreground text-xs font-[inherit] flex-1">
             {cmd.description}
           </span>
           {cmd.usage && (
-            <span
-              style={{
-                color: 'var(--text-dim, #555)',
-                fontSize: 11,
-                marginLeft: 'auto',
-                flexShrink: 0,
-              }}
-            >
+            <span className="text-muted-foreground/50 text-[11px] ml-auto shrink-0">
               {cmd.usage}
             </span>
           )}

@@ -28,16 +28,7 @@ export function ToastContainer({ toasts, onDismiss, onAction, maxVisible = 3 }: 
   const visible = toasts.slice(0, maxVisible);
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 16,
-      right: 16,
-      zIndex: 10000,
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 8,
-      pointerEvents: 'none',
-    }}>
+    <div className="fixed top-4 right-4 z-[10000] flex flex-col gap-2 pointer-events-none">
       {visible.map((toast) => (
         <ToastItem
           key={toast.id}
@@ -64,34 +55,24 @@ function ToastItem({ toast, onDismiss, onAction }: {
 
   return (
     <div
+      className={`bg-card rounded-lg px-3.5 py-2.5 min-w-[280px] max-w-[360px] shadow-[0_4px_12px_rgba(0,0,0,0.3)] pointer-events-auto border border-l-[3px] ${toast.actionUrl ? 'cursor-pointer' : 'cursor-default'}`}
       style={{
-        background: '#1e1e2e',
-        border: `1px solid ${color}40`,
-        borderLeft: `3px solid ${color}`,
-        borderRadius: 8,
-        padding: '10px 14px',
-        minWidth: 280,
-        maxWidth: 360,
-        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-        pointerEvents: 'auto',
-        cursor: toast.actionUrl ? 'pointer' : 'default',
+        borderColor: `${color}40`,
+        borderLeftColor: color,
       }}
       onClick={() => {
         if (toast.actionUrl && onAction) onAction(toast.actionUrl);
         onDismiss(toast.id);
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>{toast.title}</div>
+      <div className="flex justify-between items-center">
+        <div className="text-[13px] font-semibold text-foreground">{toast.title}</div>
         <button
           onClick={(e) => { e.stopPropagation(); onDismiss(toast.id); }}
-          style={{
-            background: 'none', border: 'none', color: '#64748b',
-            cursor: 'pointer', fontSize: 14, padding: '0 4px',
-          }}
-        >×</button>
+          className="bg-transparent border-none text-muted-foreground cursor-pointer text-sm px-1"
+        >&times;</button>
       </div>
-      <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>{toast.body}</div>
+      <div className="text-xs text-muted-foreground mt-1">{toast.body}</div>
     </div>
   );
 }

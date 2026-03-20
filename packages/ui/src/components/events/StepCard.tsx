@@ -24,8 +24,8 @@ export function StepCard({ step, expanded = false, onToggleExpand }: StepCardPro
 
   return (
     <div
-      className="step-card rounded border border-gray-700 bg-gray-850 mb-1"
-      style={{ borderLeftColor: typeColor, borderLeftWidth: '3px' }}
+      className="step-card rounded border border-gray-700 bg-gray-850 mb-1 border-l-[3px]"
+      style={{ borderLeftColor: typeColor }}
     >
       {/* Header row */}
       <HeaderTag

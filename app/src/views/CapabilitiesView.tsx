@@ -151,6 +151,43 @@ export function formatDownloads(n: number): string {
   return String(n);
 }
 
+// ── Tailwind helper: install-type badge colors by type ────────────────────
+
+function installTypeBadgeClasses(type: string): string {
+  switch (type) {
+    case 'skill': return 'bg-green-500/10 text-green-500 border-green-500/20';
+    case 'plugin': return 'bg-primary/10 text-primary border-primary/20';
+    case 'mcp': return 'bg-[#d4a843]/10 text-[#d4a843] border-[#d4a843]/20';
+    default: return 'bg-muted/10 text-muted-foreground border-border';
+  }
+}
+
+// ── Tailwind helper: status badge classes ──────────────────────────────────
+
+function statusBadgeClasses(state: string): string {
+  if (state === 'complete' || state === 'installed') {
+    return 'bg-green-500/15 text-green-500';
+  }
+  if (state === 'incomplete') {
+    return 'bg-yellow-600/15 text-yellow-600';
+  }
+  return 'bg-primary/15 text-primary';
+}
+
+// ── Tailwind helper: skill dot color ──────────────────────────────────────
+
+function skillDotClasses(state: string): string {
+  if (state === 'active') return 'bg-green-500';
+  if (state === 'installed') return 'bg-primary';
+  return 'bg-muted-foreground/60';
+}
+
+function skillLabelClasses(state: string): string {
+  if (state === 'active') return 'text-green-500';
+  if (state === 'installed') return 'text-primary';
+  return 'text-muted-foreground';
+}
+
 // ── Component ────────────────────────────────────────────────────────────
 
 export function CapabilitiesView() {
@@ -562,327 +599,54 @@ export function CapabilitiesView() {
     setNewSkillSteps(prev => prev.map((s, i) => i === index ? value : s));
   }, []);
 
-  // ── Styles ─────────────────────────────────────────────────────────────
-
-  const containerStyle: React.CSSProperties = {
-    padding: '24px',
-    maxWidth: 960,
-    margin: '0 auto',
-    fontFamily: 'var(--font-mono, "JetBrains Mono", monospace)',
-    height: '100%',
-    overflowY: 'auto',
-  };
-
-  const headingStyle: React.CSSProperties = {
-    fontSize: 18,
-    fontWeight: 600,
-    color: 'var(--text, #e6edf3)',
-    marginBottom: 4,
-  };
-
-  const subStyle: React.CSSProperties = {
-    fontSize: 12,
-    color: 'var(--text-muted, #8b949e)',
-    marginBottom: 24,
-  };
-
-  const tabBarStyle: React.CSSProperties = {
-    display: 'flex',
-    gap: 2,
-    marginBottom: 24,
-    borderBottom: '1px solid var(--border, #232333)',
-    paddingBottom: 0,
-  };
-
-  const tabStyle = (active: boolean): React.CSSProperties => ({
-    padding: '8px 16px',
-    fontSize: 12,
-    fontWeight: 500,
-    color: active ? 'var(--primary, #58a6ff)' : 'var(--text-muted, #8b949e)',
-    background: 'none',
-    border: 'none',
-    borderBottom: active ? '2px solid var(--primary, #58a6ff)' : '2px solid transparent',
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-    transition: 'color 0.15s, border-color 0.15s',
-  });
-
-  const sectionHeaderStyle: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 16,
-    marginTop: 8,
-  };
-
-  const sectionTitleStyle: React.CSSProperties = {
-    fontSize: 13,
-    fontWeight: 600,
-    color: 'var(--text, #e6edf3)',
-    letterSpacing: '0.02em',
-  };
-
-  const sectionBadgeStyle = (variant: 'recommended' | 'community'): React.CSSProperties => ({
-    fontSize: 9,
-    fontWeight: 600,
-    padding: '2px 6px',
-    borderRadius: 4,
-    textTransform: 'uppercase' as const,
-    letterSpacing: '0.05em',
-    background: variant === 'recommended' ? 'rgba(212, 168, 67, 0.15)' : 'rgba(88, 166, 255, 0.1)',
-    color: variant === 'recommended' ? '#d4a843' : 'var(--primary, #58a6ff)',
-  });
-
-  const packCardStyle: React.CSSProperties = {
-    background: 'var(--bg-secondary, #161b22)',
-    border: '1px solid var(--border, #232333)',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 12,
-  };
-
-  const recommendedCardStyle: React.CSSProperties = {
-    ...packCardStyle,
-    borderLeft: '3px solid rgba(212, 168, 67, 0.5)',
-  };
-
-  const communityCardStyle = (priority: string): React.CSSProperties => ({
-    ...packCardStyle,
-    borderLeft: priority === 'core'
-      ? '3px solid rgba(212, 168, 67, 0.3)'
-      : '3px solid transparent',
-    ...(priority === 'core' ? { boxShadow: '0 0 8px rgba(212, 168, 67, 0.06)' } : {}),
-  });
-
-  const packNameStyle: React.CSSProperties = {
-    fontSize: 14,
-    fontWeight: 600,
-    color: 'var(--text, #e6edf3)',
-    marginBottom: 4,
-  };
-
-  const packDescStyle: React.CSSProperties = {
-    fontSize: 11,
-    color: 'var(--text-muted, #8b949e)',
-    marginBottom: 12,
-  };
-
-  const skillDotStyle = (state: string): React.CSSProperties => ({
-    width: 6,
-    height: 6,
-    borderRadius: '50%',
-    background: state === 'active' ? '#3fb950' : state === 'installed' ? 'var(--primary, #58a6ff)' : 'var(--text-muted, #484f58)',
-    flexShrink: 0,
-  });
-
-  const skillLabelStyle = (state: string): React.CSSProperties => ({
-    fontSize: 11,
-    color: state === 'active' ? '#3fb950' : state === 'installed' ? 'var(--primary, #58a6ff)' : 'var(--text-muted, #8b949e)',
-  });
-
-  const badgeStyle = (state: string): React.CSSProperties => ({
-    fontSize: 10,
-    fontWeight: 600,
-    padding: '2px 8px',
-    borderRadius: 10,
-    background: state === 'complete' || state === 'installed'
-      ? 'rgba(63, 185, 80, 0.15)'
-      : state === 'incomplete' ? 'rgba(210, 153, 34, 0.15)' : 'rgba(88, 166, 255, 0.15)',
-    color: state === 'complete' || state === 'installed'
-      ? '#3fb950'
-      : state === 'incomplete' ? '#d29922' : 'var(--primary, #58a6ff)',
-  });
-
-  const installBtnStyle = (disabled: boolean): React.CSSProperties => ({
-    fontSize: 11,
-    fontWeight: 500,
-    padding: '4px 12px',
-    borderRadius: 6,
-    border: 'none',
-    background: disabled ? 'var(--bg-secondary, #21262d)' : 'var(--primary, #58a6ff)',
-    color: disabled ? 'var(--text-muted, #484f58)' : '#fff',
-    cursor: disabled ? 'default' : 'pointer',
-    fontFamily: 'inherit',
-    transition: 'background 0.15s',
-  });
-
-  const uninstallBtnStyle: React.CSSProperties = {
-    fontSize: 11,
-    fontWeight: 500,
-    padding: '4px 12px',
-    borderRadius: 6,
-    border: '1px solid rgba(248, 81, 73, 0.3)',
-    background: 'rgba(248, 81, 73, 0.08)',
-    color: '#f85149',
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-    transition: 'background 0.15s, border-color 0.15s',
-  };
-
-  const metaTagStyle: React.CSSProperties = {
-    fontSize: 10,
-    padding: '1px 6px',
-    borderRadius: 4,
-    background: 'rgba(88, 166, 255, 0.08)',
-    color: 'var(--text-muted, #8b949e)',
-    border: '1px solid rgba(88, 166, 255, 0.1)',
-  };
-
-  const progressBarContainerStyle: React.CSSProperties = {
-    height: 4,
-    background: 'rgba(255, 255, 255, 0.06)',
-    borderRadius: 2,
-    marginTop: 8,
-    overflow: 'hidden',
-  };
-
-  const dividerStyle: React.CSSProperties = {
-    height: 1,
-    background: 'var(--border, #232333)',
-    margin: '24px 0',
-  };
-
-  const filterBarStyle: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 12,
-    marginBottom: 20,
-  };
-
-  const searchInputStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '8px 12px',
-    fontSize: 12,
-    borderRadius: 6,
-    border: '1px solid var(--border, #232333)',
-    background: 'var(--bg-secondary, #161b22)',
-    color: 'var(--text, #e6edf3)',
-    outline: 'none',
-    fontFamily: 'inherit',
-    boxSizing: 'border-box',
-  };
-
-  const chipRowStyle: React.CSSProperties = {
-    display: 'flex',
-    gap: 6,
-    flexWrap: 'wrap',
-    alignItems: 'center',
-  };
-
-  const chipLabelStyle: React.CSSProperties = {
-    fontSize: 10,
-    fontWeight: 600,
-    color: 'var(--text-muted, #8b949e)',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-    marginRight: 4,
-    flexShrink: 0,
-  };
-
-  const chipStyle = (active: boolean): React.CSSProperties => ({
-    fontSize: 11,
-    fontWeight: 500,
-    padding: '3px 10px',
-    borderRadius: 12,
-    border: active ? '1px solid var(--primary, #58a6ff)' : '1px solid var(--border, #232333)',
-    background: active ? 'rgba(88, 166, 255, 0.12)' : 'var(--bg-secondary, #161b22)',
-    color: active ? 'var(--primary, #58a6ff)' : 'var(--text-muted, #8b949e)',
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-    transition: 'all 0.15s',
-    flexShrink: 0,
-  });
-
-  const packageCardStyle = (isInstalled: boolean): React.CSSProperties => ({
-    background: 'var(--bg-secondary, #161b22)',
-    border: `1px solid ${isInstalled ? 'rgba(63, 185, 80, 0.2)' : 'var(--border, #232333)'}`,
-    borderRadius: 8,
-    padding: 14,
-    transition: 'border-color 0.15s',
-  });
-
-  const typeTagStyle = (type: string): React.CSSProperties => ({
-    fontSize: 9,
-    fontWeight: 600,
-    padding: '1px 6px',
-    borderRadius: 4,
-    textTransform: 'uppercase' as const,
-    letterSpacing: '0.04em',
-    background: `${installTypeColor(type)}15`,
-    color: installTypeColor(type),
-    border: `1px solid ${installTypeColor(type)}25`,
-  });
-
-  const categoryTagStyle: React.CSSProperties = {
-    fontSize: 10,
-    padding: '1px 6px',
-    borderRadius: 4,
-    background: 'var(--bg-secondary, #161b22)',
-    color: 'var(--text-muted, #8b949e)',
-    border: '1px solid var(--border, #232333)',
-  };
-
-  const starStyle: React.CSSProperties = {
-    fontSize: 10,
-    color: '#d4a843',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 3,
-  };
-
-  const downloadStyle: React.CSSProperties = {
-    fontSize: 10,
-    color: 'var(--text-muted, #8b949e)',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 3,
-  };
-
-  const emptyStateStyle: React.CSSProperties = {
-    textAlign: 'center',
-    padding: 48,
-    color: 'var(--text-muted, #8b949e)',
-  };
-
   // ── Total pack count for tab label ──
   const totalPackCount = packs.length + communityPacks.length;
 
   // ── Render ─────────────────────────────────────────────────────────────
 
   return (
-    <div style={containerStyle}>
-      <h1 style={headingStyle}>Capabilities</h1>
-      <div style={subStyle}>Browse and install capability packs, marketplace packages, and individual skills.</div>
+    <div className="p-6 max-w-[960px] mx-auto font-mono h-full overflow-y-auto">
+      <h1 className="text-lg font-semibold text-foreground mb-1">Capabilities</h1>
+      <div className="text-xs text-muted-foreground mb-6">Browse and install capability packs, marketplace packages, and individual skills.</div>
 
       {/* Tab bar */}
-      <div style={tabBarStyle} role="tablist" aria-label="Capability sections">
+      <div className="flex gap-0.5 mb-6 border-b border-border" role="tablist" aria-label="Capability sections">
         <button
-          style={tabStyle(activeTab === 'packs')}
+          className={`px-4 py-2 text-xs font-medium bg-transparent border-none cursor-pointer font-[inherit] transition-colors ${
+            activeTab === 'packs'
+              ? 'text-primary border-b-2 border-b-primary'
+              : 'text-muted-foreground border-b-2 border-b-transparent hover:text-foreground'
+          }`}
           onClick={() => setActiveTab('packs')}
           role="tab"
           aria-selected={activeTab === 'packs'}
           aria-controls="panel-packs"
-          className="capabilities-tab-btn"
         >
           Packs ({totalPackCount})
         </button>
         <button
-          style={tabStyle(activeTab === 'marketplace')}
+          className={`px-4 py-2 text-xs font-medium bg-transparent border-none cursor-pointer font-[inherit] transition-colors ${
+            activeTab === 'marketplace'
+              ? 'text-primary border-b-2 border-b-primary'
+              : 'text-muted-foreground border-b-2 border-b-transparent hover:text-foreground'
+          }`}
           onClick={() => setActiveTab('marketplace')}
           role="tab"
           aria-selected={activeTab === 'marketplace'}
           aria-controls="panel-marketplace"
-          className="capabilities-tab-btn"
         >
           Marketplace {marketplaceTotal > 0 ? `(${marketplaceTotal})` : ''}
         </button>
         <button
-          style={tabStyle(activeTab === 'skills')}
+          className={`px-4 py-2 text-xs font-medium bg-transparent border-none cursor-pointer font-[inherit] transition-colors ${
+            activeTab === 'skills'
+              ? 'text-primary border-b-2 border-b-primary'
+              : 'text-muted-foreground border-b-2 border-b-transparent hover:text-foreground'
+          }`}
           onClick={() => setActiveTab('skills')}
           role="tab"
           aria-selected={activeTab === 'skills'}
           aria-controls="panel-skills"
-          className="capabilities-tab-btn"
         >
           Individual Skills
         </button>
@@ -890,7 +654,7 @@ export function CapabilitiesView() {
 
       {/* Pack error */}
       {packError && (
-        <div style={{ padding: '8px 12px', marginBottom: 16, borderRadius: 6, background: 'rgba(248, 81, 73, 0.1)', color: '#f85149', fontSize: 12 }}>
+        <div className="px-3 py-2 mb-4 rounded-md bg-destructive/10 text-destructive text-xs">
           {packError}
         </div>
       )}
@@ -901,53 +665,46 @@ export function CapabilitiesView() {
       {activeTab === 'packs' && (
         <div id="panel-packs" role="tabpanel" aria-label="Packs">
           {/* ── Recommended Section ─────────────────────────────────── */}
-          <div style={sectionHeaderStyle}>
-            <span style={sectionTitleStyle}>Recommended</span>
-            <span style={sectionBadgeStyle('recommended')}>Waggle</span>
+          <div className="flex items-center gap-2 mb-4 mt-2">
+            <span className="text-[13px] font-semibold text-foreground tracking-wide">Recommended</span>
+            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-widest bg-[#d4a843]/15 text-[#d4a843]">Waggle</span>
           </div>
 
           {packsLoading ? (
-            <div style={{ color: 'var(--text-muted)', fontSize: 12, padding: 24 }}>Loading packs...</div>
+            <div className="text-muted-foreground text-xs p-6">Loading packs...</div>
           ) : fetchFailed && packs.length === 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: 32 }}>
-              <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+            <div className="flex flex-col items-center gap-3 p-8">
+              <div className="text-muted-foreground text-xs">
                 Failed to load capability packs. Is the server running?
               </div>
               <button
                 onClick={fetchPacks}
-                style={{
-                  padding: '6px 16px',
-                  fontSize: 11,
-                  fontWeight: 500,
-                  borderRadius: 6,
-                  border: 'none',
-                  background: 'var(--primary, #58a6ff)',
-                  color: '#fff',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                  transition: 'background 0.15s',
-                }}
+                className="px-4 py-1.5 text-[11px] font-medium rounded-md border-none bg-primary text-white cursor-pointer font-[inherit] transition-colors hover:bg-primary/90"
               >
                 Retry
               </button>
             </div>
           ) : packs.length === 0 ? (
-            <div style={{ color: 'var(--text-muted)', fontSize: 12, padding: 24 }}>No recommended packs available.</div>
+            <div className="text-muted-foreground text-xs p-6">No recommended packs available.</div>
           ) : (
             packs.map(pack => (
-              <div key={pack.id} style={recommendedCardStyle}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div key={pack.id} className="bg-card border border-border border-l-[3px] border-l-[#d4a843]/50 rounded-lg p-4 mb-3">
+                <div className="flex justify-between items-start">
                   <div>
-                    <div style={packNameStyle}>{pack.name}</div>
-                    <div style={packDescStyle}>{pack.description}</div>
+                    <div className="text-sm font-semibold text-foreground mb-1">{pack.name}</div>
+                    <div className="text-[11px] text-muted-foreground mb-3">{pack.description}</div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={badgeStyle(pack.packState)}>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusBadgeClasses(pack.packState)}`}>
                       {pack.packState === 'complete' ? 'Installed' : pack.packState === 'incomplete' ? `${pack.installedCount}/${pack.totalCount}` : 'Available'}
                     </span>
                     {pack.packState !== 'complete' && (
                       <button
-                        style={installBtnStyle(installingPack === pack.id)}
+                        className={`text-[11px] font-medium px-3 py-1 rounded-md border-none font-[inherit] transition-colors ${
+                          installingPack === pack.id
+                            ? 'bg-card text-muted-foreground cursor-default'
+                            : 'bg-primary text-white cursor-pointer hover:bg-primary/90'
+                        }`}
                         onClick={() => handleInstallPack(pack.id)}
                         disabled={installingPack === pack.id}
                       >
@@ -957,11 +714,11 @@ export function CapabilitiesView() {
                   </div>
                 </div>
                 {/* Skill list */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
+                <div className="flex flex-col gap-1 mt-2">
                   {pack.skillStates.map(skill => (
-                    <div key={skill.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={skillDotStyle(skill.state)} />
-                      <span style={skillLabelStyle(skill.state)}>
+                    <div key={skill.id} className="flex items-center gap-1.5">
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${skillDotClasses(skill.state)}`} />
+                      <span className={`text-[11px] ${skillLabelClasses(skill.state)}`}>
                         {skill.id.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
                       </span>
                     </div>
@@ -972,21 +729,21 @@ export function CapabilitiesView() {
           )}
 
           {/* ── Divider ─────────────────────────────────────────────── */}
-          {communityPacks.length > 0 && <div style={dividerStyle} />}
+          {communityPacks.length > 0 && <div className="h-px bg-border my-6" />}
 
           {/* ── Community Section ───────────────────────────────────── */}
           {communityLoading ? (
-            <div style={{ color: 'var(--text-muted)', fontSize: 12, padding: 24 }}>Loading community packs...</div>
+            <div className="text-muted-foreground text-xs p-6">Loading community packs...</div>
           ) : communityError ? (
-            <div style={{ padding: '8px 12px', marginBottom: 16, borderRadius: 6, background: 'rgba(248, 81, 73, 0.1)', color: '#f85149', fontSize: 12 }}>
+            <div className="px-3 py-2 mb-4 rounded-md bg-destructive/10 text-destructive text-xs">
               {communityError}
             </div>
           ) : communityPacks.length > 0 ? (
             <>
-              <div style={sectionHeaderStyle}>
-                <span style={sectionTitleStyle}>Community</span>
-                <span style={sectionBadgeStyle('community')}>Marketplace</span>
-                <span style={{ fontSize: 11, color: 'var(--text-muted, #8b949e)', marginLeft: 'auto' }}>
+              <div className="flex items-center gap-2 mb-4 mt-2">
+                <span className="text-[13px] font-semibold text-foreground tracking-wide">Community</span>
+                <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-widest bg-primary/10 text-primary">Marketplace</span>
+                <span className="text-[11px] text-muted-foreground ml-auto">
                   {communityPacks.length} packs
                 </span>
               </div>
@@ -997,44 +754,54 @@ export function CapabilitiesView() {
                 const isInstalling = progress?.installing;
 
                 return (
-                  <div key={cp.slug} style={communityCardStyle(cp.priority)} data-testid={`community-pack-${cp.slug}`}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                          {cp.icon && <span style={{ fontSize: 16 }}>{cp.icon}</span>}
-                          <span style={packNameStyle}>{cp.display_name}</span>
-                          <span style={{ ...metaTagStyle, color: priorityColor(cp.priority) }}>
+                  <div
+                    key={cp.slug}
+                    className={`bg-card border border-border rounded-lg p-4 mb-3 ${
+                      cp.priority === 'core'
+                        ? 'border-l-[3px] border-l-[#d4a843]/30 shadow-[0_0_8px_rgba(212,168,67,0.06)]'
+                        : 'border-l-[3px] border-l-transparent'
+                    }`}
+                    data-testid={`community-pack-${cp.slug}`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          {cp.icon && <span className="text-base">{cp.icon}</span>}
+                          <span className="text-sm font-semibold text-foreground">{cp.display_name}</span>
+                          <span className="text-[10px] px-1.5 py-px rounded bg-primary/[0.08] border border-primary/10 text-muted-foreground"
+                            style={{ color: priorityColor(cp.priority) }}
+                          >
                             {priorityLabel(cp.priority)}
                           </span>
                         </div>
-                        <div style={packDescStyle}>{cp.description}</div>
+                        <div className="text-[11px] text-muted-foreground mb-3">{cp.description}</div>
                         {/* Target roles */}
                         {cp.target_roles && (
-                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 4 }}>
+                          <div className="flex gap-1 flex-wrap mb-1">
                             {cp.target_roles.split(',').map(role => (
-                              <span key={role.trim()} style={metaTagStyle}>{role.trim()}</span>
+                              <span key={role.trim()} className="text-[10px] px-1.5 py-px rounded bg-primary/[0.08] text-muted-foreground border border-primary/10">{role.trim()}</span>
                             ))}
                           </div>
                         )}
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginLeft: 12 }}>
+                      <div className="flex items-center gap-2 shrink-0 ml-3">
                         {isInstalled ? (
-                          <span style={{ ...badgeStyle('complete') }}>Installed</span>
+                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusBadgeClasses('complete')}`}>Installed</span>
                         ) : isInstalling ? (
-                          <span style={{ fontSize: 11, color: '#d4a843', fontWeight: 500 }}>
+                          <span className="text-[11px] text-[#d4a843] font-medium">
                             Installing {progress.current}/{progress.total}...
                           </span>
                         ) : progress?.done && progress.errors.length > 0 ? (
                           <button
-                            style={{ ...installBtnStyle(false), background: '#d29922' }}
+                            className="text-[11px] font-medium px-3 py-1 rounded-md border-none bg-yellow-600 text-white cursor-pointer font-[inherit] transition-colors hover:bg-yellow-600/90"
                             onClick={() => handleRetryCommunityPack(cp.slug)}
                           >
                             Retry ({progress.errors.length} failed)
                           </button>
                         ) : (
                           <button
-                            style={installBtnStyle(false)}
+                            className="text-[11px] font-medium px-3 py-1 rounded-md border-none bg-primary text-white cursor-pointer font-[inherit] transition-colors hover:bg-primary/90"
                             onClick={() => handleInstallCommunityPack(cp.slug)}
                           >
                             Install
@@ -1046,18 +813,13 @@ export function CapabilitiesView() {
                     {/* Progress bar */}
                     {isInstalling && progress && (
                       <div>
-                        <div style={progressBarContainerStyle}>
+                        <div className="h-1 bg-white/[0.06] rounded-sm mt-2 overflow-hidden">
                           <div
-                            style={{
-                              height: '100%',
-                              width: progress.total > 0 ? `${(progress.current / progress.total) * 100}%` : '0%',
-                              background: '#d4a843',
-                              borderRadius: 2,
-                              transition: 'width 0.3s ease',
-                            }}
+                            className="h-full bg-[#d4a843] rounded-sm transition-[width] duration-300 ease-in-out"
+                            style={{ width: progress.total > 0 ? `${(progress.current / progress.total) * 100}%` : '0%' }}
                           />
                         </div>
-                        <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
+                        <div className="text-[10px] text-muted-foreground mt-1">
                           {progress.currentName}
                         </div>
                       </div>
@@ -1065,9 +827,9 @@ export function CapabilitiesView() {
 
                     {/* Error list */}
                     {progress?.done && progress.errors.length > 0 && (
-                      <div style={{ marginTop: 8 }}>
+                      <div className="mt-2">
                         {progress.errors.map((err, i) => (
-                          <div key={i} style={{ fontSize: 10, color: '#f85149', padding: '2px 0' }}>
+                          <div key={i} className="text-[10px] text-destructive py-0.5">
                             {err}
                           </div>
                         ))}
@@ -1087,30 +849,33 @@ export function CapabilitiesView() {
       {activeTab === 'marketplace' && (
         <div id="panel-marketplace" role="tabpanel" aria-label="Marketplace">
           {/* ── Filter bar ────────────────────────────────────────── */}
-          <div style={filterBarStyle}>
+          <div className="flex flex-col gap-3 mb-5">
             {/* Search input */}
             <input
               type="text"
               placeholder="Search packages..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={searchInputStyle}
+              className="w-full px-3 py-2 text-xs rounded-md border border-border bg-card text-foreground outline-none font-[inherit] box-border focus:border-primary"
               aria-label="Search marketplace packages"
-              className="capabilities-search-input"
             />
 
             {/* Type filter chips */}
-            <div style={chipRowStyle}>
-              <span style={chipLabelStyle}>Type</span>
+            <div className="flex gap-1.5 flex-wrap items-center">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mr-1 shrink-0">Type</span>
               {(['all', 'skill', 'plugin', 'mcp'] as const).map(t => (
                 <button
                   key={t}
-                  style={chipStyle(typeFilter === t)}
+                  className={`text-[11px] font-medium px-2.5 py-[3px] rounded-xl font-[inherit] transition-all shrink-0 cursor-pointer ${
+                    typeFilter === t
+                      ? 'border border-primary bg-primary/[0.12] text-primary'
+                      : 'border border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/30'
+                  }`}
                   onClick={() => setTypeFilter(t)}
                 >
                   {t === 'all' ? 'All' : t === 'mcp' ? 'MCP Servers' : `${t.charAt(0).toUpperCase() + t.slice(1)}s`}
                   {t !== 'all' && marketplaceFacets?.types?.[t] != null && (
-                    <span style={{ opacity: 0.6, marginLeft: 4 }}>
+                    <span className="opacity-60 ml-1">
                       {marketplaceFacets.types[t]}
                     </span>
                   )}
@@ -1120,10 +885,14 @@ export function CapabilitiesView() {
 
             {/* Category filter chips */}
             {availableCategories.length > 0 && (
-              <div style={chipRowStyle}>
-                <span style={chipLabelStyle}>Category</span>
+              <div className="flex gap-1.5 flex-wrap items-center">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mr-1 shrink-0">Category</span>
                 <button
-                  style={chipStyle(categoryFilter === 'all')}
+                  className={`text-[11px] font-medium px-2.5 py-[3px] rounded-xl font-[inherit] transition-all shrink-0 cursor-pointer ${
+                    categoryFilter === 'all'
+                      ? 'border border-primary bg-primary/[0.12] text-primary'
+                      : 'border border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/30'
+                  }`}
                   onClick={() => setCategoryFilter('all')}
                 >
                   All
@@ -1131,19 +900,23 @@ export function CapabilitiesView() {
                 {availableCategories.map(cat => (
                   <button
                     key={cat.name}
-                    style={chipStyle(categoryFilter === cat.name)}
+                    className={`text-[11px] font-medium px-2.5 py-[3px] rounded-xl font-[inherit] transition-all shrink-0 cursor-pointer ${
+                      categoryFilter === cat.name
+                        ? 'border border-primary bg-primary/[0.12] text-primary'
+                        : 'border border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/30'
+                    }`}
                     onClick={() => setCategoryFilter(cat.name)}
                   >
                     {cat.name}
-                    <span style={{ opacity: 0.6, marginLeft: 4 }}>{cat.count}</span>
+                    <span className="opacity-60 ml-1">{cat.count}</span>
                   </button>
                 ))}
               </div>
             )}
 
             {/* Sort */}
-            <div style={chipRowStyle}>
-              <span style={chipLabelStyle}>Sort</span>
+            <div className="flex gap-1.5 flex-wrap items-center">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mr-1 shrink-0">Sort</span>
               {([
                 { key: 'popular', label: 'Most Popular' },
                 { key: 'relevance', label: 'Relevance' },
@@ -1152,7 +925,11 @@ export function CapabilitiesView() {
               ] as const).map(s => (
                 <button
                   key={s.key}
-                  style={chipStyle(sortOption === s.key)}
+                  className={`text-[11px] font-medium px-2.5 py-[3px] rounded-xl font-[inherit] transition-all shrink-0 cursor-pointer ${
+                    sortOption === s.key
+                      ? 'border border-primary bg-primary/[0.12] text-primary'
+                      : 'border border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/30'
+                  }`}
                   onClick={() => setSortOption(s.key)}
                 >
                   {s.label}
@@ -1163,21 +940,11 @@ export function CapabilitiesView() {
 
           {/* ── Marketplace error ──────────────────────────────────── */}
           {marketplaceError && (
-            <div style={{ padding: '8px 12px', marginBottom: 16, borderRadius: 6, background: 'rgba(248, 81, 73, 0.1)', color: '#f85149', fontSize: 12 }}>
+            <div className="px-3 py-2 mb-4 rounded-md bg-destructive/10 text-destructive text-xs">
               {marketplaceError}
               <button
                 onClick={fetchMarketplace}
-                style={{
-                  float: 'right',
-                  background: 'none',
-                  border: '1px solid rgba(248, 81, 73, 0.3)',
-                  borderRadius: 4,
-                  color: '#f85149',
-                  cursor: 'pointer',
-                  padding: '2px 8px',
-                  fontSize: 11,
-                  fontFamily: 'inherit',
-                }}
+                className="float-right bg-transparent border border-destructive/30 rounded px-2 py-0.5 text-destructive cursor-pointer text-[11px] font-[inherit] hover:bg-destructive/10"
               >
                 Retry
               </button>
@@ -1186,32 +953,28 @@ export function CapabilitiesView() {
 
           {/* ── Loading state ─────────────────────────────────────── */}
           {marketplaceLoading ? (
-            <div style={{ color: 'var(--text-muted)', fontSize: 12, padding: 24, textAlign: 'center' }}>
+            <div className="text-muted-foreground text-xs p-6 text-center">
               Loading marketplace packages...
             </div>
           ) : sortedPackages.length === 0 ? (
             /* ── Empty state ──────────────────────────────────────── */
-            <div style={emptyStateStyle}>
-              <div style={{ fontSize: 32, marginBottom: 12, opacity: 0.3 }}>
+            <div className="text-center p-12 text-muted-foreground">
+              <div className="text-[32px] mb-3 opacity-30">
                 {searchQuery ? '\u{1F50D}' : '\u{1F4E6}'}
               </div>
-              <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 6, color: 'var(--text, #e6edf3)' }}>
+              <div className="text-[13px] font-medium mb-1.5 text-foreground">
                 {searchQuery
                   ? 'No packages match your filters'
                   : 'Marketplace is empty'}
               </div>
-              <div style={{ fontSize: 11 }}>
+              <div className="text-[11px]">
                 {searchQuery
                   ? 'Try adjusting your search query or removing some filters.'
                   : 'No packages available. Try syncing the marketplace.'}
               </div>
               {(searchQuery || typeFilter !== 'all' || categoryFilter !== 'all') && (
                 <button
-                  style={{
-                    ...chipStyle(false),
-                    marginTop: 12,
-                    padding: '5px 16px',
-                  }}
+                  className="text-[11px] font-medium px-4 py-1.5 rounded-xl border border-border bg-card text-muted-foreground cursor-pointer font-[inherit] transition-all mt-3 hover:text-foreground hover:border-primary/30"
                   onClick={() => {
                     setSearchQuery('');
                     setTypeFilter('all');
@@ -1226,75 +989,74 @@ export function CapabilitiesView() {
             /* ── Package grid ─────────────────────────────────────── */
             <>
               {/* Result count */}
-              <div style={{ fontSize: 11, color: 'var(--text-muted, #8b949e)', marginBottom: 12 }}>
+              <div className="text-[11px] text-muted-foreground mb-3">
                 {sortedPackages.length} package{sortedPackages.length !== 1 ? 's' : ''}
                 {searchQuery && ` matching "${searchQuery}"`}
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 10 }}>
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-2.5">
                 {sortedPackages.map(pkg => {
                   const isInstalling = installingPackageId === pkg.id;
                   const isUninstalling = uninstallingPackageId === pkg.id;
 
                   return (
-                    <div key={pkg.id} style={packageCardStyle(pkg.installed)} data-testid={`marketplace-pkg-${pkg.id}`}>
+                    <div
+                      key={pkg.id}
+                      className={`bg-card rounded-lg p-3.5 transition-colors ${
+                        pkg.installed
+                          ? 'border border-green-500/20'
+                          : 'border border-border hover:border-primary/30'
+                      }`}
+                      data-testid={`marketplace-pkg-${pkg.id}`}
+                    >
                       {/* Top row: name + badges */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #e6edf3)' }}>
+                      <div className="flex justify-between items-start mb-1.5">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[13px] font-semibold text-foreground">
                               {pkg.display_name || pkg.name}
                             </span>
-                            <span style={typeTagStyle(pkg.waggle_install_type)}>
+                            <span className={`text-[9px] font-semibold px-1.5 py-px rounded uppercase tracking-wide border ${installTypeBadgeClasses(pkg.waggle_install_type)}`}>
                               {installTypeLabel(pkg.waggle_install_type)}
                             </span>
                             {pkg.installed && (
-                              <span style={badgeStyle('installed')}>Installed</span>
+                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusBadgeClasses('installed')}`}>Installed</span>
                             )}
                           </div>
                         </div>
                       </div>
 
                       {/* Description */}
-                      <div style={{
-                        fontSize: 11,
-                        color: 'var(--text-muted, #8b949e)',
-                        marginBottom: 10,
-                        lineHeight: 1.5,
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical' as const,
-                        overflow: 'hidden',
-                      }}>
+                      <div className="text-[11px] text-muted-foreground mb-2.5 leading-relaxed line-clamp-2">
                         {pkg.description}
                       </div>
 
                       {/* Bottom row: metadata + action */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div className="flex justify-between items-center">
                         {/* Left: category + stats */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <div className="flex items-center gap-2 flex-wrap">
                           {pkg.category && (
-                            <span style={categoryTagStyle}>{pkg.category}</span>
+                            <span className="text-[10px] px-1.5 py-px rounded bg-card text-muted-foreground border border-border">{pkg.category}</span>
                           )}
                           {pkg.stars > 0 && (
-                            <span style={starStyle}>
-                              <span style={{ fontSize: 11 }}>{'\u2605'}</span>
+                            <span className="text-[10px] text-[#d4a843] flex items-center gap-[3px]">
+                              <span className="text-[11px]">{'\u2605'}</span>
                               {formatDownloads(pkg.stars)}
                             </span>
                           )}
                           {pkg.downloads > 0 && (
-                            <span style={downloadStyle}>
-                              <span style={{ fontSize: 11 }}>{'\u2193'}</span>
+                            <span className="text-[10px] text-muted-foreground flex items-center gap-[3px]">
+                              <span className="text-[11px]">{'\u2193'}</span>
                               {formatDownloads(pkg.downloads)}
                             </span>
                           )}
                         </div>
 
                         {/* Right: action button */}
-                        <div style={{ flexShrink: 0, marginLeft: 8 }}>
+                        <div className="shrink-0 ml-2">
                           {pkg.installed ? (
                             <button
-                              style={uninstallBtnStyle}
+                              className="text-[11px] font-medium px-3 py-1 rounded-md border border-destructive/30 bg-destructive/[0.08] text-destructive cursor-pointer font-[inherit] transition-colors hover:bg-destructive/15 hover:border-destructive/50"
                               onClick={() => handleUninstallPackage(pkg.id)}
                               disabled={isUninstalling}
                             >
@@ -1302,7 +1064,11 @@ export function CapabilitiesView() {
                             </button>
                           ) : (
                             <button
-                              style={installBtnStyle(isInstalling)}
+                              className={`text-[11px] font-medium px-3 py-1 rounded-md border-none font-[inherit] transition-colors ${
+                                isInstalling
+                                  ? 'bg-card text-muted-foreground cursor-default'
+                                  : 'bg-primary text-white cursor-pointer hover:bg-primary/90'
+                              }`}
                               onClick={() => handleInstallPackage(pkg.id)}
                               disabled={isInstalling}
                             >
@@ -1326,41 +1092,27 @@ export function CapabilitiesView() {
       {activeTab === 'skills' && (
         <div id="panel-skills" role="tabpanel" aria-label="Individual Skills">
           {/* ── Create Skill panel ── */}
-          <div style={{ marginBottom: 16 }}>
+          <div className="mb-4">
             <button
               onClick={() => { setShowCreateSkill(v => !v); setCreateError(null); setCreateSuccess(null); }}
-              style={{
-                background: showCreateSkill ? 'var(--surface-hover, #292e36)' : 'var(--surface, #1c2028)',
-                color: 'var(--text, #e6edf3)',
-                border: '1px solid var(--border, #30363d)',
-                borderRadius: 6,
-                padding: '8px 16px',
-                fontSize: 13,
-                fontWeight: 500,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-              }}
+              className={`border border-border rounded-md px-4 py-2 text-[13px] font-medium cursor-pointer flex items-center gap-1.5 transition-colors ${
+                showCreateSkill
+                  ? 'bg-muted text-foreground'
+                  : 'bg-card text-foreground hover:bg-muted'
+              }`}
               data-testid="create-skill-toggle"
             >
-              <span style={{ fontSize: 16, lineHeight: 1 }}>{showCreateSkill ? '\u2212' : '+'}</span>
+              <span className="text-base leading-none">{showCreateSkill ? '\u2212' : '+'}</span>
               Create Skill
             </button>
 
             {showCreateSkill && (
               <div
-                style={{
-                  marginTop: 8,
-                  padding: 16,
-                  background: 'var(--surface, #1c2028)',
-                  border: '1px solid var(--border, #30363d)',
-                  borderRadius: 8,
-                }}
+                className="mt-2 p-4 bg-card border border-border rounded-lg"
                 data-testid="create-skill-form"
               >
                 {/* Name */}
-                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-muted, #8b949e)', marginBottom: 4 }}>
+                <label className="block text-xs text-muted-foreground mb-1">
                   Name (kebab-case)
                 </label>
                 <input
@@ -1368,22 +1120,12 @@ export function CapabilitiesView() {
                   value={newSkillName}
                   onChange={e => setNewSkillName(e.target.value)}
                   placeholder="my-research-workflow"
-                  style={{
-                    width: '100%',
-                    padding: '6px 10px',
-                    fontSize: 13,
-                    background: 'var(--input-bg, #0d1117)',
-                    color: 'var(--text, #e6edf3)',
-                    border: '1px solid var(--border, #30363d)',
-                    borderRadius: 4,
-                    marginBottom: 12,
-                    boxSizing: 'border-box' as const,
-                  }}
+                  className="w-full px-2.5 py-1.5 text-[13px] bg-background text-foreground border border-border rounded mb-3 box-border focus:border-primary focus:outline-none"
                   data-testid="create-skill-name"
                 />
 
                 {/* Description */}
-                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-muted, #8b949e)', marginBottom: 4 }}>
+                <label className="block text-xs text-muted-foreground mb-1">
                   Description
                 </label>
                 <textarea
@@ -1391,55 +1133,29 @@ export function CapabilitiesView() {
                   onChange={e => setNewSkillDescription(e.target.value)}
                   placeholder="What this skill does..."
                   rows={2}
-                  style={{
-                    width: '100%',
-                    padding: '6px 10px',
-                    fontSize: 13,
-                    background: 'var(--input-bg, #0d1117)',
-                    color: 'var(--text, #e6edf3)',
-                    border: '1px solid var(--border, #30363d)',
-                    borderRadius: 4,
-                    marginBottom: 12,
-                    resize: 'vertical' as const,
-                    boxSizing: 'border-box' as const,
-                  }}
+                  className="w-full px-2.5 py-1.5 text-[13px] bg-background text-foreground border border-border rounded mb-3 resize-y box-border focus:border-primary focus:outline-none"
                   data-testid="create-skill-description"
                 />
 
                 {/* Steps */}
-                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-muted, #8b949e)', marginBottom: 4 }}>
+                <label className="block text-xs text-muted-foreground mb-1">
                   Steps
                 </label>
                 {newSkillSteps.map((step, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center' }}>
-                    <span style={{ fontSize: 11, color: 'var(--text-muted, #8b949e)', minWidth: 18 }}>{i + 1}.</span>
+                  <div key={i} className="flex gap-1.5 mb-1.5 items-center">
+                    <span className="text-[11px] text-muted-foreground min-w-[18px]">{i + 1}.</span>
                     <input
                       type="text"
                       value={step}
                       onChange={e => handleStepChange(i, e.target.value)}
                       placeholder={`Step ${i + 1}...`}
-                      style={{
-                        flex: 1,
-                        padding: '5px 8px',
-                        fontSize: 12,
-                        background: 'var(--input-bg, #0d1117)',
-                        color: 'var(--text, #e6edf3)',
-                        border: '1px solid var(--border, #30363d)',
-                        borderRadius: 4,
-                      }}
+                      className="flex-1 px-2 py-[5px] text-xs bg-background text-foreground border border-border rounded focus:border-primary focus:outline-none"
                       data-testid={`create-skill-step-${i}`}
                     />
                     {newSkillSteps.length > 1 && (
                       <button
                         onClick={() => handleRemoveStep(i)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: 'var(--text-muted, #8b949e)',
-                          cursor: 'pointer',
-                          fontSize: 14,
-                          padding: '2px 4px',
-                        }}
+                        className="bg-transparent border-none text-muted-foreground cursor-pointer text-sm px-1 py-0.5 hover:text-foreground"
                         title="Remove step"
                       >
                         x
@@ -1449,38 +1165,19 @@ export function CapabilitiesView() {
                 ))}
                 <button
                   onClick={handleAddStep}
-                  style={{
-                    background: 'none',
-                    border: '1px dashed var(--border, #30363d)',
-                    color: 'var(--text-muted, #8b949e)',
-                    borderRadius: 4,
-                    padding: '4px 10px',
-                    fontSize: 11,
-                    cursor: 'pointer',
-                    marginBottom: 12,
-                  }}
+                  className="bg-transparent border border-dashed border-border text-muted-foreground rounded px-2.5 py-1 text-[11px] cursor-pointer mb-3 hover:text-foreground hover:border-primary/30"
                 >
                   + Add step
                 </button>
 
                 {/* Category */}
-                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-muted, #8b949e)', marginBottom: 4 }}>
+                <label className="block text-xs text-muted-foreground mb-1">
                   Category
                 </label>
                 <select
                   value={newSkillCategory}
                   onChange={e => setNewSkillCategory(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '6px 10px',
-                    fontSize: 13,
-                    background: 'var(--input-bg, #0d1117)',
-                    color: 'var(--text, #e6edf3)',
-                    border: '1px solid var(--border, #30363d)',
-                    borderRadius: 4,
-                    marginBottom: 16,
-                    boxSizing: 'border-box' as const,
-                  }}
+                  className="w-full px-2.5 py-1.5 text-[13px] bg-background text-foreground border border-border rounded mb-4 box-border focus:border-primary focus:outline-none"
                   data-testid="create-skill-category"
                 >
                   <option value="general">General</option>
@@ -1495,12 +1192,12 @@ export function CapabilitiesView() {
 
                 {/* Error / Success */}
                 {createError && (
-                  <div style={{ padding: '6px 10px', marginBottom: 10, borderRadius: 4, background: 'rgba(248, 81, 73, 0.1)', color: '#f85149', fontSize: 12 }}>
+                  <div className="px-2.5 py-1.5 mb-2.5 rounded bg-destructive/10 text-destructive text-xs">
                     {createError}
                   </div>
                 )}
                 {createSuccess && (
-                  <div style={{ padding: '6px 10px', marginBottom: 10, borderRadius: 4, background: 'rgba(63, 185, 80, 0.1)', color: '#3fb950', fontSize: 12 }}>
+                  <div className="px-2.5 py-1.5 mb-2.5 rounded bg-green-500/10 text-green-500 text-xs">
                     {createSuccess}
                   </div>
                 )}
@@ -1509,17 +1206,11 @@ export function CapabilitiesView() {
                 <button
                   onClick={handleCreateSkill}
                   disabled={creating}
-                  style={{
-                    background: creating ? 'var(--surface-hover, #292e36)' : '#d4a843',
-                    color: creating ? 'var(--text-muted, #8b949e)' : '#000',
-                    border: 'none',
-                    borderRadius: 6,
-                    padding: '8px 20px',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    cursor: creating ? 'default' : 'pointer',
-                    opacity: creating ? 0.7 : 1,
-                  }}
+                  className={`border-none rounded-md px-5 py-2 text-[13px] font-semibold transition-colors ${
+                    creating
+                      ? 'bg-muted text-muted-foreground cursor-default opacity-70'
+                      : 'bg-[#d4a843] text-black cursor-pointer hover:bg-[#d4a843]/90'
+                  }`}
                   data-testid="create-skill-submit"
                 >
                   {creating ? 'Creating...' : 'Create Skill'}
