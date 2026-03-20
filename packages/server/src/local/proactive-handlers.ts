@@ -134,8 +134,27 @@ export function generateMorningBriefing(ctx: ProactiveContext): ProactiveMessage
     }
   }
 
+  // W5.8: Also extract recent decisions and memory highlights per workspace
+  const decisionParts: string[] = [];
+  for (const ws of workspaces.slice(0, 5)) { // cap at 5 workspaces for brevity
+    const db = ctx.getWorkspaceMindDb(ws.id);
+    if (!db) continue;
+    try {
+      const raw = db.getDatabase();
+      const decisions = raw.prepare(
+        `SELECT content FROM memory_frames
+         WHERE (importance IN ('critical', 'important') OR content LIKE 'Decision%' OR content LIKE '%decided%')
+           AND created_at > datetime('now', '-7 day')
+         ORDER BY id DESC LIMIT 2`
+      ).all() as Array<{ content: string }>;
+      if (decisions.length > 0) {
+        decisionParts.push(`**${ws.name}**: ${decisions.map(d => d.content.slice(0, 80)).join(' | ')}`);
+      }
+    } catch { /* non-blocking */ }
+  }
+
   // Nothing noteworthy — skip the briefing
-  if (totalPending === 0 && staleCount === 0) return null;
+  if (totalPending === 0 && staleCount === 0 && decisionParts.length === 0) return null;
 
   const bodyParts: string[] = [];
   bodyParts.push(`${workspaces.length} workspace${workspaces.length === 1 ? '' : 's'} total.`);
@@ -148,6 +167,10 @@ export function generateMorningBriefing(ctx: ProactiveContext): ProactiveMessage
   }
   if (summaryParts.length > 0) {
     bodyParts.push(summaryParts.slice(0, 3).join('; '));
+  }
+  // W5.8: Include recent decisions in briefing
+  if (decisionParts.length > 0) {
+    bodyParts.push('\n\nRecent decisions:\n' + decisionParts.join('\n'));
   }
 
   return {

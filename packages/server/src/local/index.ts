@@ -1221,10 +1221,11 @@ Return ONLY the improved system prompt text. No commentary, no markdown fences, 
       wildcard: false,
     });
 
-    // SPA fallback: serve index.html for all non-API, non-static routes
+    // SPA fallback: serve index.html for all non-API, non-static, non-asset routes
     server.setNotFoundHandler((request, reply) => {
-      // Don't intercept API routes or WebSocket upgrades
+      // Don't intercept API routes, WebSocket upgrades, or static assets
       if (request.url.startsWith('/api/') || request.url.startsWith('/v1/') ||
+          request.url.startsWith('/assets/') ||
           request.url === '/health' || request.url === '/ws') {
         reply.code(404).send({ error: 'Not found' });
         return;

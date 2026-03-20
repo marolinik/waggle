@@ -8,16 +8,31 @@
  */
 
 import { useMemo, useState, useCallback, memo } from 'react';
-import { marked } from 'marked';
+import { marked, Renderer } from 'marked';
 import DOMPurify from 'dompurify';
 import type { Message, ToolUseEvent } from '../../services/types.js';
 import { ToolCard, AUTO_HIDE_TOOLS } from './ToolCard.js';
 import { FeedbackButtons, type FeedbackRating, type FeedbackReason } from './FeedbackButtons.js';
 
+// W4.9/W4.10: Custom renderer for code blocks with language labels + copy buttons
+const renderer = new Renderer();
+renderer.code = ({ text, lang }: { text: string; lang?: string }) => {
+  const language = lang || 'text';
+  const escapedCode = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return `<div class="code-block-wrapper group relative my-3">
+    <div class="flex items-center justify-between bg-muted/50 border border-border border-b-0 rounded-t-lg px-3 py-1 text-[10px] font-mono text-muted-foreground">
+      <span>${language}</span>
+      <button onclick="navigator.clipboard.writeText(decodeURIComponent('${encodeURIComponent(text)}'));this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)" class="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] hover:text-foreground cursor-pointer">Copy</button>
+    </div>
+    <pre class="!mt-0 !rounded-t-none"><code class="language-${language}">${escapedCode}</code></pre>
+  </div>`;
+};
+
 // Configure marked for safe rendering
 marked.setOptions({
   breaks: true,
   gfm: true,
+  renderer,
 });
 
 // ── Tool grouping ─────────────────────────────────────────────────────
@@ -143,8 +158,8 @@ export const ChatMessage = memo(function ChatMessage({ message, messageIndex, se
     if (isUser || !message.content) return null;
     const rawHtml = marked.parse(message.content) as string;
     return DOMPurify.sanitize(rawHtml, {
-      ALLOWED_TAGS: ['p','br','strong','em','code','pre','ul','ol','li','a','h1','h2','h3','h4','h5','h6','blockquote','table','thead','tbody','tr','th','td','span','div','hr','img','sup','sub','del','s'],
-      ALLOWED_ATTR: ['href','src','alt','class','id'],
+      ALLOWED_TAGS: ['p','br','strong','em','code','pre','ul','ol','li','a','h1','h2','h3','h4','h5','h6','blockquote','table','thead','tbody','tr','th','td','span','div','hr','img','sup','sub','del','s','button'],
+      ALLOWED_ATTR: ['href','src','alt','class','id','onclick'],
       FORBID_TAGS: ['form','input','textarea','button','iframe','object','embed','script','style'],
     });
   }, [message.content, isUser]);
@@ -200,7 +215,7 @@ export const ChatMessage = memo(function ChatMessage({ message, messageIndex, se
           /* Content sanitized with DOMPurify (line 145) — full markdown rendering */
           <div
             className={[
-              'chat-message__content prose prose-invert max-w-none',
+              'chat-message__content prose dark:prose-invert max-w-none',
               'prose-headings:text-foreground prose-headings:font-semibold prose-headings:mt-4 prose-headings:mb-2',
               'prose-h1:text-lg prose-h2:text-base prose-h3:text-sm',
               'prose-p:text-[14px] prose-p:leading-relaxed prose-p:mb-3',

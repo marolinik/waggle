@@ -22,6 +22,7 @@ vi.mock('marked', () => ({
     parse: (text: string) => `<p>${text}</p>`,
     setOptions: () => {},
   },
+  Renderer: class { code = () => ''; },
 }));
 
 // Mock clipboard API

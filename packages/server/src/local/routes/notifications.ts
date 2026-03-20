@@ -49,6 +49,11 @@ export function emitNotification(fastify: FastifyInstance, event: Omit<Notificat
     ...event,
   };
   (fastify as any).eventBus?.emit('notification', full);
+
+  // W5.10: Persist notification so it survives offline/restart
+  try {
+    (fastify as any).cronStore?.saveNotification(event.title, event.body, event.category, event.actionUrl);
+  } catch { /* non-blocking */ }
 }
 
 /** Emit a sub-agent status event on the eventBus for SSE relay */
@@ -128,5 +133,45 @@ export async function notificationRoutes(fastify: FastifyInstance) {
         eventBus.removeListener('workflow_suggestion', workflowSuggestionHandler);
       }
     });
+  });
+
+  // W5.10: REST endpoints for persisted notifications
+  fastify.get<{
+    Querystring: { since?: string; limit?: string; unread?: string };
+  }>('/api/notifications', async (request) => {
+    const { since, limit, unread } = request.query;
+    const cronStore = (fastify as any).cronStore;
+    if (!cronStore?.getNotifications) return { notifications: [], count: 0 };
+    const results = cronStore.getNotifications({
+      since,
+      limit: limit ? parseInt(limit, 10) : 50,
+      unreadOnly: unread === 'true',
+    });
+    return { notifications: results, count: results.length, unread: cronStore.countUnread() };
+  });
+
+  fastify.post<{
+    Params: { id: string };
+  }>('/api/notifications/:id/read', async (request, reply) => {
+    const id = parseInt(request.params.id, 10);
+    if (isNaN(id)) return reply.status(400).send({ error: 'Invalid ID' });
+    const cronStore = (fastify as any).cronStore;
+    if (!cronStore?.markNotificationRead) return reply.status(503).send({ error: 'Not available' });
+    cronStore.markNotificationRead(id);
+    return { read: true, id };
+  });
+
+  // W5.12: REST endpoint for cron execution history
+  fastify.get<{
+    Params: { id: string };
+    Querystring: { limit?: string };
+  }>('/api/cron/:id/history', async (request, reply) => {
+    const id = parseInt(request.params.id, 10);
+    if (isNaN(id)) return reply.status(400).send({ error: 'Invalid ID' });
+    const cronStore = (fastify as any).cronStore;
+    if (!cronStore?.getExecutionHistory) return reply.status(503).send({ error: 'Not available' });
+    const limit = request.query.limit ? parseInt(request.query.limit, 10) : 20;
+    const history = cronStore.getExecutionHistory(id, limit);
+    return { history, count: history.length };
   });
 }

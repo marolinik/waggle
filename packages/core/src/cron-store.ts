@@ -63,6 +63,36 @@ CREATE TABLE IF NOT EXISTS cron_schedules (
 CREATE INDEX IF NOT EXISTS idx_cron_enabled_next ON cron_schedules (enabled, next_run_at);
 `;
 
+// W5.12: Cron execution history table
+export const CRON_HISTORY_TABLE_SQL = `
+CREATE TABLE IF NOT EXISTS cron_execution_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  schedule_id INTEGER NOT NULL,
+  schedule_name TEXT NOT NULL,
+  executed_at TEXT NOT NULL DEFAULT (datetime('now')),
+  duration_ms INTEGER,
+  success INTEGER NOT NULL DEFAULT 1,
+  result_summary TEXT,
+  error TEXT,
+  FOREIGN KEY (schedule_id) REFERENCES cron_schedules(id)
+);
+CREATE INDEX IF NOT EXISTS idx_cron_history_schedule ON cron_execution_history (schedule_id, executed_at);
+`;
+
+// W5.10: Notification persistence table
+export const NOTIFICATIONS_TABLE_SQL = `
+CREATE TABLE IF NOT EXISTS notifications (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT 'system',
+  action_url TEXT,
+  read INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications (created_at);
+`;
+
 // ── Helpers ────────────────────────────────────────────────────────────
 
 /** Parse a cron expression and return the next run time as ISO string. Throws on invalid expr. */
@@ -88,6 +118,20 @@ export class CronStore {
     ).get();
     if (!exists) {
       raw.exec(CRON_SCHEDULES_TABLE_SQL);
+    }
+    // W5.12: Ensure cron execution history table
+    const histExists = raw.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='cron_execution_history'",
+    ).get();
+    if (!histExists) {
+      raw.exec(CRON_HISTORY_TABLE_SQL);
+    }
+    // W5.10: Ensure notifications table
+    const notifExists = raw.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='notifications'",
+    ).get();
+    if (!notifExists) {
+      raw.exec(NOTIFICATIONS_TABLE_SQL);
     }
   }
 
@@ -208,5 +252,68 @@ export class CronStore {
   /** Clear all schedules (for testing). */
   clear(): void {
     this.db.getDatabase().prepare('DELETE FROM cron_schedules').run();
+  }
+
+  // ── W5.12: Cron Execution History ──────────────────────────────────
+
+  /** Record a cron job execution result. */
+  recordExecution(scheduleId: number, scheduleName: string, opts: {
+    durationMs?: number;
+    success: boolean;
+    resultSummary?: string;
+    error?: string;
+  }): void {
+    this.db.getDatabase().prepare(
+      `INSERT INTO cron_execution_history (schedule_id, schedule_name, duration_ms, success, result_summary, error)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    ).run(scheduleId, scheduleName, opts.durationMs ?? null, opts.success ? 1 : 0, opts.resultSummary ?? null, opts.error ?? null);
+  }
+
+  /** Get execution history for a schedule (most recent first). */
+  getExecutionHistory(scheduleId: number, limit = 20): Array<{
+    id: number; schedule_id: number; schedule_name: string; executed_at: string;
+    duration_ms: number | null; success: number; result_summary: string | null; error: string | null;
+  }> {
+    return this.db.getDatabase().prepare(
+      'SELECT * FROM cron_execution_history WHERE schedule_id = ? ORDER BY executed_at DESC LIMIT ?',
+    ).all(scheduleId, limit) as any[];
+  }
+
+  // ── W5.10: Notification Persistence ────────────────────────────────
+
+  /** Save a notification. */
+  saveNotification(title: string, body: string, category = 'system', actionUrl?: string): number {
+    const result = this.db.getDatabase().prepare(
+      'INSERT INTO notifications (title, body, category, action_url) VALUES (?, ?, ?, ?)',
+    ).run(title, body, category, actionUrl ?? null);
+    return Number(result.lastInsertRowid);
+  }
+
+  /** Get recent notifications (newest first). */
+  getNotifications(opts?: { since?: string; limit?: number; unreadOnly?: boolean }): Array<{
+    id: number; title: string; body: string; category: string;
+    action_url: string | null; read: number; created_at: string;
+  }> {
+    const limit = opts?.limit ?? 50;
+    let sql = 'SELECT * FROM notifications';
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    if (opts?.since) { conditions.push('created_at > ?'); params.push(opts.since); }
+    if (opts?.unreadOnly) { conditions.push('read = 0'); }
+    if (conditions.length > 0) sql += ' WHERE ' + conditions.join(' AND ');
+    sql += ' ORDER BY created_at DESC LIMIT ?';
+    params.push(limit);
+    return this.db.getDatabase().prepare(sql).all(...params) as any[];
+  }
+
+  /** Mark a notification as read. */
+  markNotificationRead(id: number): void {
+    this.db.getDatabase().prepare('UPDATE notifications SET read = 1 WHERE id = ?').run(id);
+  }
+
+  /** Count unread notifications. */
+  countUnread(): number {
+    const row = this.db.getDatabase().prepare('SELECT COUNT(*) as cnt FROM notifications WHERE read = 0').get() as { cnt: number };
+    return row.cnt;
   }
 }

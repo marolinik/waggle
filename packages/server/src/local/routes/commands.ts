@@ -24,8 +24,9 @@ export const commandRoutes: FastifyPluginAsync = async (server) => {
     const { commandRegistry, orchestrator, activateWorkspaceMind } = server.agentState;
     const effectiveWorkspaceId = workspaceId ?? 'default';
 
-    // Activate workspace mind so memory search works correctly
-    if (workspaceId && workspaceId !== 'default') {
+    // W3.7: Activate workspace mind so memory search works correctly.
+    // Always activate when a workspace is explicitly provided (including 'default').
+    if (workspaceId) {
       activateWorkspaceMind(workspaceId);
     }
 

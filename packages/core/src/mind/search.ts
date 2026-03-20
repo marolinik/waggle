@@ -104,15 +104,26 @@ export class HybridSearch {
   async keywordSearch(query: string, limit: number, gopId?: string): Promise<number[]> {
     const raw = this.db.getDatabase();
 
-    // Sanitize query for FTS5: quote each token to avoid operator interpretation
-    // e.g. "topic-7" becomes '"topic" "7"', not "topic NOT 7"
+    // W3.6: Sanitize query for FTS5 with OR-based matching for better recall.
+    // Old: implicit AND (all terms required) → fails on "hiring decisions this month"
+    // New: OR between terms (any term matches) → FTS5 rank orders by relevance
+    const FTS_STOP_WORDS = new Set([
+      'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+      'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
+      'should', 'may', 'might', 'shall', 'can', 'to', 'of', 'in', 'for',
+      'on', 'with', 'at', 'by', 'from', 'as', 'into', 'about', 'this',
+      'that', 'these', 'those', 'it', 'its', 'my', 'your', 'our', 'their',
+      'what', 'which', 'who', 'whom', 'how', 'when', 'where', 'why', 'all',
+      'each', 'every', 'both', 'some', 'any', 'no', 'not', 'and', 'or', 'but',
+    ]);
     const safeQuery = query.includes('"')
       ? query // already quoted by caller
       : query
           .split(/\s+/)
-          .filter(w => w.length > 0)
+          .map(w => w.replace(/[^\w]/g, '')) // strip punctuation
+          .filter(w => w.length > 2 && !FTS_STOP_WORDS.has(w.toLowerCase()))
           .map(w => `"${w.replace(/"/g, '')}"`)
-          .join(' ');
+          .join(' OR ');
 
     if (!safeQuery) return [];
 

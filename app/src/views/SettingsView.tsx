@@ -16,6 +16,8 @@ export interface SettingsViewProps {
   /** F5: Controlled active tab for ContextPanel sync */
   activeTab?: string;
   onTabChange?: (tab: string) => void;
+  /** Server base URL for API calls (passed through to SettingsPanel) */
+  serverUrl?: string;
 }
 
 export default function SettingsView({
@@ -27,6 +29,7 @@ export default function SettingsView({
   onTeamDisconnect,
   activeTab,
   onTabChange,
+  serverUrl,
 }: SettingsViewProps) {
   const [timedOut, setTimedOut] = useState(false);
 
@@ -74,6 +77,7 @@ export default function SettingsView({
         onTeamDisconnect={onTeamDisconnect}
         activeTab={activeTab}
         onTabChange={onTabChange}
+        serverUrl={serverUrl}
       />
     </div>
   );

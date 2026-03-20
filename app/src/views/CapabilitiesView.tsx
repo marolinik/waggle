@@ -731,6 +731,18 @@ export default function CapabilitiesView() {
           {/* ── Divider ─────────────────────────────────────────────── */}
           {communityPacks.length > 0 && <div className="h-px bg-border my-6" />}
 
+          {/* ── W5.5: Enterprise Section (KVARK) ──────────────────────── */}
+          <div className="flex items-center gap-2 mb-3 mt-6">
+            <span className="text-[13px] font-semibold text-foreground tracking-wide">Enterprise</span>
+            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-widest bg-amber-500/15 text-amber-500">KVARK</span>
+          </div>
+          <div className="rounded-lg border border-border bg-card/50 p-4 mb-6">
+            <div className="text-xs text-muted-foreground leading-relaxed">
+              <p className="mb-2">KVARK enterprise packs provide governed knowledge access with data sovereignty, audit trails, and compliance-ready integrations.</p>
+              <p className="text-[10px] text-muted-foreground/60">Configure your KVARK connection in Settings &gt; Team to unlock enterprise capability packs.</p>
+            </div>
+          </div>
+
           {/* ── Community Section ───────────────────────────────────── */}
           {communityLoading ? (
             <div className="text-muted-foreground text-xs p-6">Loading community packs...</div>

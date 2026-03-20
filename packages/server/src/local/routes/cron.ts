@@ -152,8 +152,8 @@ export const cronRoutes: FastifyPluginAsync = async (server) => {
     }
 
     try {
-      // Mark as run (updates last_run_at and next_run_at)
-      server.cronStore.markRun(id);
+      // W5.11: Actually execute the job handler (not just mark as run)
+      await server.scheduler.executeJob(schedule);
       const updated = server.cronStore.getById(id);
       emitNotification(server, {
         title: 'Routine complete',

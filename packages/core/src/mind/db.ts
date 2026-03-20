@@ -30,6 +30,21 @@ export class MindDB {
       this.db.prepare(
         "INSERT INTO meta (key, value) VALUES ('schema_version', ?)"
       ).run(SCHEMA_VERSION);
+    } else {
+      this.runMigrations();
+    }
+  }
+
+  /** Run incremental schema migrations for existing .mind databases */
+  private runMigrations(): void {
+    // W2.1: Add 'source' column to memory_frames (provenance tracking)
+    const hasSourceCol = this.db.prepare(
+      "SELECT COUNT(*) as cnt FROM pragma_table_info('memory_frames') WHERE name='source'"
+    ).get() as { cnt: number };
+    if (hasSourceCol.cnt === 0) {
+      this.db.exec(
+        "ALTER TABLE memory_frames ADD COLUMN source TEXT NOT NULL DEFAULT 'user_stated'"
+      );
     }
   }
 

@@ -25,6 +25,8 @@ export interface SettingsPanelProps {
   teamConnection?: TeamConnection | null;
   onTeamConnect?: (serverUrl: string, token: string) => Promise<void>;
   onTeamDisconnect?: () => Promise<void>;
+  /** Server base URL for API calls. Defaults to http://127.0.0.1:3333 */
+  serverUrl?: string;
 }
 
 interface PermissionsData {
@@ -42,7 +44,9 @@ export function SettingsPanel({
   teamConnection,
   onTeamConnect,
   onTeamDisconnect,
+  serverUrl: serverUrlProp,
 }: SettingsPanelProps) {
+  const baseUrl = serverUrlProp ?? 'http://127.0.0.1:3333';
   const [internalTab, setInternalTab] = useState('general');
   const [yoloMode, setYoloMode] = useState(false);
   const [externalGates, setExternalGates] = useState<string[]>([]);
@@ -53,7 +57,7 @@ export function SettingsPanel({
     let cancelled = false;
     async function loadPermissions() {
       try {
-        const res = await fetch('http://127.0.0.1:3333/api/settings/permissions');
+        const res = await fetch(`${baseUrl}/api/settings/permissions`);
         if (res.ok) {
           const data = (await res.json()) as PermissionsData;
           if (!cancelled) {
@@ -72,7 +76,7 @@ export function SettingsPanel({
   // Save permissions to server
   const savePermissions = useCallback(async (yolo: boolean, gates: string[]) => {
     try {
-      await fetch('http://127.0.0.1:3333/api/settings/permissions', {
+      await fetch(`${baseUrl}/api/settings/permissions`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ yoloMode: yolo, externalGates: gates, workspaceOverrides: {} }),

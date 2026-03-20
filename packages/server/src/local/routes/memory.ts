@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
 import type { SearchScope } from '@waggle/core';
-import { FrameStore } from '@waggle/core';
+import { FrameStore, SessionStore } from '@waggle/core';
 
 /** Normalize SQLite snake_case MemoryFrame fields to camelCase UI Frame shape. */
 function normalizeFrame(raw: Record<string, unknown>): Record<string, unknown> {
@@ -94,5 +94,60 @@ export const memoryRoutes: FastifyPluginAsync = async (server) => {
 
     const results = raw.slice(0, maxResults).map(normalizeFrame);
     return { results, count: results.length };
+  });
+
+  // W5.9: POST /api/memory/frames — direct memory write API
+  // For bulk loading, pipeline output, testing. Bypasses agent loop.
+  server.post<{
+    Body: {
+      content: string;
+      workspace?: string;
+      importance?: string;
+      source?: string;
+    };
+  }>('/api/memory/frames', async (request, reply) => {
+    const { content, workspace, importance, source } = request.body ?? {};
+    if (!content) {
+      return reply.status(400).send({ error: 'content is required' });
+    }
+
+    const imp = importance ?? 'normal';
+    const src = source ?? 'import';
+
+    // Determine target mind
+    let targetDb;
+    let mindLabel: string;
+    if (workspace) {
+      targetDb = server.agentState.getWorkspaceMindDb(workspace);
+      mindLabel = 'workspace';
+    }
+    if (!targetDb) {
+      targetDb = server.multiMind.personal;
+      mindLabel = 'personal';
+    }
+
+    const frames = new FrameStore(targetDb);
+    const sessions = new SessionStore(targetDb);
+
+    // Get or create active session
+    const active = sessions.getActive();
+    let gopId: string;
+    if (active.length === 0) {
+      const session = sessions.create();
+      gopId = session.gop_id;
+    } else {
+      gopId = active[0].gop_id;
+    }
+
+    // Create frame
+    const latestI = frames.getLatestIFrame(gopId);
+    let frame;
+    if (latestI) {
+      frame = frames.createPFrame(gopId, content, latestI.id, imp as any, src as any);
+    } else {
+      frame = frames.createIFrame(gopId, content, imp as any, src as any);
+    }
+
+    return { saved: true, frameId: frame.id, mind: mindLabel, importance: imp, source: src };
   });
 };

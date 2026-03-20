@@ -115,7 +115,25 @@ function WaggleApp() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showCreateWorkspace, setShowCreateWorkspace] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [contextPanelOpen] = useState(true);
+  const [contextPanelOpen, setContextPanelOpen] = useState(true);
+
+  // W4.7: Auto-collapse sidebar/context panel on narrow viewports
+  useEffect(() => {
+    const handleResize = () => {
+      const w = window.innerWidth;
+      if (w < 1024) {
+        setSidebarCollapsed(true);
+      }
+      if (w < 1280) {
+        setContextPanelOpen(false);
+      } else {
+        setContextPanelOpen(true);
+      }
+    };
+    handleResize(); // run on mount
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const [previewFile, setPreviewFile] = useState<FileEntry | null>(null);
   const [config, setConfig] = useState<WaggleConfig | null>(null);
   // F6: Global search state
@@ -909,6 +927,7 @@ function WaggleApp() {
             onViewChange={setCurrentView}
             onCreateWorkspace={() => setShowCreateWorkspace(true)}
             onOpenSearch={() => setGlobalSearchOpen(true)}
+            onOpenHelp={() => setShowHelp(true)}
             microStatus={workspaceMicroStatus}
           />
         }
@@ -958,6 +977,7 @@ function WaggleApp() {
                     onTeamDisconnect={handleTeamDisconnect}
                     activeTab={settingsTab}
                     onTabChange={setSettingsTab}
+                    serverUrl={SERVER_BASE}
                   />
                 </Suspense>
               </ErrorBoundary>
@@ -989,6 +1009,7 @@ function WaggleApp() {
                     onToggleAutoScroll={toggleAutoScroll}
                     filter={eventFilter}
                     onFilterChange={setEventFilter}
+                    workspaceId={activeWorkspace?.id}
                   />
                 </Suspense>
               </ErrorBoundary>
@@ -1016,6 +1037,8 @@ function WaggleApp() {
             )}
           </div>
         }
+        contextPanelOpen={contextPanelOpen}
+        onToggleContextPanel={() => setContextPanelOpen(prev => !prev)}
         contextPanel={
           showContextPanel ? (
             <ContextPanel

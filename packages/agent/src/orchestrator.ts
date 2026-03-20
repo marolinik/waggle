@@ -266,7 +266,7 @@ export class Orchestrator {
    * Searches BOTH personal and workspace minds when workspace is active.
    * Returns formatted recall text with source attribution.
    */
-  async recallMemory(query: string, limit = 5): Promise<{ text: string; count: number; recalled?: string[] }> {
+  async recallMemory(query: string, limit = 10): Promise<{ text: string; count: number; recalled?: string[] }> {
     try {
       // Detect catch-up intent — these queries need importance-based recall, not literal text matching
       const catchUpPatterns = [

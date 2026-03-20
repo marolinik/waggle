@@ -21,17 +21,19 @@ export interface AppSidebarProps {
   onViewChange: (view: AppView) => void;
   onCreateWorkspace: () => void;
   onOpenSearch?: () => void;
+  onOpenHelp?: () => void;
   microStatus?: Record<string, WorkspaceMicroStatus>;
 }
 
-const NAV_ITEMS: { view: AppView; label: string; shortcut: string }[] = [
-  { view: 'chat', label: 'Chat', shortcut: '1' },
-  { view: 'capabilities', label: 'Capabilities', shortcut: '2' },
-  { view: 'cockpit', label: 'Cockpit', shortcut: '3' },
-  { view: 'mission-control', label: 'Mission Control', shortcut: '4' },
-  { view: 'memory', label: 'Memory', shortcut: '5' },
-  { view: 'events', label: 'Events', shortcut: '6' },
-  { view: 'settings', label: 'Settings', shortcut: '7' },
+// W4.1: Order matches Ctrl+Shift+N keyboard shortcut mapping (1=Chat, 2=Memory, etc.)
+const NAV_ITEMS: { view: AppView; label: string; shortcut: string; icon: string }[] = [
+  { view: 'chat', label: 'Chat', shortcut: '1', icon: '💬' },
+  { view: 'memory', label: 'Memory', shortcut: '2', icon: '🧠' },
+  { view: 'events', label: 'Events', shortcut: '3', icon: '📋' },
+  { view: 'capabilities', label: 'Capabilities', shortcut: '4', icon: '⚡' },
+  { view: 'cockpit', label: 'Cockpit', shortcut: '5', icon: '📊' },
+  { view: 'mission-control', label: 'Mission Control', shortcut: '6', icon: '🚀' },
+  { view: 'settings', label: 'Settings', shortcut: '7', icon: '⚙️' },
 ];
 
 export function AppSidebar({
@@ -44,19 +46,20 @@ export function AppSidebar({
   onViewChange,
   onCreateWorkspace,
   onOpenSearch,
+  onOpenHelp,
   microStatus,
 }: AppSidebarProps) {
   const { theme, toggleTheme } = useTheme();
 
   const bottomItems = (
     <div className="flex flex-col gap-px px-1">
-      {NAV_ITEMS.map(({ view, label, shortcut }) => {
+      {NAV_ITEMS.map(({ view, label, shortcut, icon }) => {
         const isActive = currentView === view;
         return (
           <button
             key={view}
             onClick={() => onViewChange(view)}
-            title={`${label} (Ctrl+${shortcut})`}
+            title={`${label} (Ctrl+Shift+${shortcut})`}
             className={`
               flex items-center gap-2 rounded-sm px-2.5 py-1.5 text-[11px] font-mono
               border-l-2 transition-all duration-100 cursor-pointer
@@ -67,12 +70,15 @@ export function AppSidebar({
               }
             `}
           >
-            <span className={`w-1 h-1 rounded-full shrink-0 transition-colors ${isActive ? 'bg-primary' : 'bg-transparent'}`} />
-            {!collapsed && (
+            {/* W4.8: Show view icon when collapsed (replaces invisible dot) */}
+            {collapsed ? (
+              <span className="text-[13px]">{icon}</span>
+            ) : (
               <>
+                <span className={`w-1 h-1 rounded-full shrink-0 transition-colors ${isActive ? 'bg-primary' : 'bg-transparent'}`} />
                 <span className="flex-1">{label}</span>
                 <span className={`text-[9px] ${isActive ? 'opacity-80' : 'opacity-40'} text-muted-foreground`}>
-                  ^{shortcut}
+                  ⇧{shortcut}
                 </span>
               </>
             )}
@@ -112,6 +118,23 @@ export function AppSidebar({
         <span className="text-[13px] leading-none">{theme === 'dark' ? '\u2600' : '\u263E'}</span>
         {!collapsed && <span>{theme === 'dark' ? 'light mode' : 'dark mode'}</span>}
       </Button>
+
+      {/* W4.3: Keyboard shortcuts help button — discoverable entry point for Ctrl+/ */}
+      {onOpenHelp && (
+        <Button
+          variant="ghost"
+          onClick={onOpenHelp}
+          title="Keyboard shortcuts (Ctrl+/)"
+          className={`
+            w-full text-muted-foreground hover:text-primary text-[11px] font-mono
+            ${collapsed ? 'justify-center px-0' : 'justify-start'}
+          `}
+          size="sm"
+        >
+          <span className="text-[13px] leading-none">?</span>
+          {!collapsed && <span>shortcuts</span>}
+        </Button>
+      )}
     </div>
   );
 
@@ -123,10 +146,13 @@ export function AppSidebar({
     >
       {/* Brand */}
       {!collapsed ? (
-        <div className="flex items-center gap-2">
-          <img src="/waggle-logo.svg" alt="Waggle" className="w-6 h-[30px] shrink-0" />
-          <span className="text-primary tracking-[0.15em] text-[11px] font-medium">WAGGLE</span>
-          <span className="text-[8px] text-muted-foreground/50 tracking-wider ml-auto">v1.0</span>
+        <div className="flex flex-col gap-0.5">
+          <div className="flex items-center gap-2">
+            <img src="/waggle-logo.svg" alt="Waggle" className="w-6 h-[30px] shrink-0" />
+            <span className="text-primary tracking-[0.15em] text-[11px] font-medium">WAGGLE</span>
+            <span className="text-[8px] text-muted-foreground/50 tracking-wider ml-auto">v1.0</span>
+          </div>
+          <span className="text-[8px] text-muted-foreground/40 tracking-wide pl-8">the AI that remembers your work</span>
         </div>
       ) : (
         <div className="flex justify-center py-1.5">

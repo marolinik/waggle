@@ -2,6 +2,7 @@ import type { MindDB } from './db.js';
 
 export type FrameType = 'I' | 'P' | 'B';
 export type Importance = 'critical' | 'important' | 'normal' | 'temporary' | 'deprecated';
+export type FrameSource = 'user_stated' | 'tool_verified' | 'agent_inferred' | 'import' | 'system';
 
 export interface MemoryFrame {
   id: number;
@@ -11,6 +12,7 @@ export interface MemoryFrame {
   base_frame_id: number | null;
   content: string;
   importance: Importance;
+  source: FrameSource;
   access_count: number;
   created_at: string;
   last_accessed: string;
@@ -36,26 +38,26 @@ export class FrameStore {
     this.db = db;
   }
 
-  createIFrame(gopId: string, content: string, importance: Importance = 'normal'): MemoryFrame {
+  createIFrame(gopId: string, content: string, importance: Importance = 'normal', source: FrameSource = 'user_stated'): MemoryFrame {
     const t = this.nextT(gopId);
     const raw = this.db.getDatabase();
     const result = raw.prepare(`
-      INSERT INTO memory_frames (frame_type, gop_id, t, base_frame_id, content, importance)
-      VALUES ('I', ?, ?, NULL, ?, ?)
-    `).run(gopId, t, content, importance);
+      INSERT INTO memory_frames (frame_type, gop_id, t, base_frame_id, content, importance, source)
+      VALUES ('I', ?, ?, NULL, ?, ?, ?)
+    `).run(gopId, t, content, importance, source);
 
     const frame = raw.prepare('SELECT * FROM memory_frames WHERE id = ?').get(result.lastInsertRowid) as MemoryFrame;
     this.indexFts(frame);
     return frame;
   }
 
-  createPFrame(gopId: string, content: string, baseFrameId: number, importance: Importance = 'normal'): MemoryFrame {
+  createPFrame(gopId: string, content: string, baseFrameId: number, importance: Importance = 'normal', source: FrameSource = 'user_stated'): MemoryFrame {
     const t = this.nextT(gopId);
     const raw = this.db.getDatabase();
     const result = raw.prepare(`
-      INSERT INTO memory_frames (frame_type, gop_id, t, base_frame_id, content, importance)
-      VALUES ('P', ?, ?, ?, ?, ?)
-    `).run(gopId, t, baseFrameId, content, importance);
+      INSERT INTO memory_frames (frame_type, gop_id, t, base_frame_id, content, importance, source)
+      VALUES ('P', ?, ?, ?, ?, ?, ?)
+    `).run(gopId, t, baseFrameId, content, importance, source);
 
     const frame = raw.prepare('SELECT * FROM memory_frames WHERE id = ?').get(result.lastInsertRowid) as MemoryFrame;
     this.indexFts(frame);

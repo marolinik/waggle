@@ -1,7 +1,7 @@
 export { MindDB } from './mind/db.js';
 export { IdentityLayer, type Identity } from './mind/identity.js';
 export { AwarenessLayer, type AwarenessItem, type AwarenessCategory } from './mind/awareness.js';
-export { FrameStore, type MemoryFrame, type FrameType, type Importance } from './mind/frames.js';
+export { FrameStore, type MemoryFrame, type FrameType, type Importance, type FrameSource } from './mind/frames.js';
 export { SessionStore, type Session } from './mind/sessions.js';
 export { HybridSearch, type SearchResult } from './mind/search.js';
 export { KnowledgeGraph, type Entity, type Relation, type ValidationSchema } from './mind/knowledge.js';

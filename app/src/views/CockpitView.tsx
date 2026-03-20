@@ -345,6 +345,31 @@ export default function CockpitView() {
             onDisconnect={disconnectConnector}
           />
           <AuditTrailCard auditEntries={auditEntries} />
+
+          {/* W5.2: KVARK Enterprise health indicator */}
+          <Card>
+            <CardHeader className="pb-2">
+              <h3 className="text-sm font-semibold text-foreground">KVARK Enterprise</h3>
+            </CardHeader>
+            <CardContent className="text-xs text-muted-foreground space-y-2">
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${health?.kvark?.connected ? 'bg-green-500' : 'bg-muted-foreground/30'}`} />
+                <span>{health?.kvark?.connected ? 'Connected' : 'Not configured'}</span>
+              </div>
+              {!health?.kvark?.connected && (
+                <p className="text-[10px] text-muted-foreground/60 leading-relaxed">
+                  KVARK enables enterprise knowledge access with data sovereignty, audit trails, and governed actions.
+                  Configure in Settings &gt; Team.
+                </p>
+              )}
+              {health?.kvark?.connected && (
+                <div className="text-[10px] space-y-1">
+                  <div>Endpoint: <span className="font-mono text-foreground">{health.kvark.baseUrl ?? '—'}</span></div>
+                  <div>Last ping: <span className="text-foreground">{health.kvark.lastPing ?? 'unknown'}</span></div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>

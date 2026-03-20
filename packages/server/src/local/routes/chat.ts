@@ -9,6 +9,7 @@ import { buildWorkspaceNowBlock, formatWorkspaceNowPrompt } from './workspace-co
 import { formatWorkspaceStatePrompt } from '../workspace-state.js';
 import { emitNotification } from './notifications.js';
 import { validateOrigin } from '../cors-config.js';
+import { getPersona, composePersonaPrompt } from '@waggle/agent';
 
 /**
  * Persist a chat message to the session's .jsonl file on disk.
@@ -83,12 +84,62 @@ export function applyContextWindow(
   if (fullHistory.length <= maxMessages) {
     return fullHistory;
   }
-  const truncatedCount = fullHistory.length - maxMessages;
+
+  // W3.5: Summarize dropped messages instead of just noting their count
+  const droppedMessages = fullHistory.slice(0, fullHistory.length - maxMessages);
+  const truncatedCount = droppedMessages.length;
+  const summary = summarizeDroppedContext(droppedMessages);
+
   const truncationNotice: { role: string; content: string } = {
     role: 'system',
-    content: `[Earlier context truncated. The conversation has ${truncatedCount} older messages not shown.]`,
+    content: `[Context summary — ${truncatedCount} earlier messages compressed]\n${summary}`,
   };
   return [truncationNotice, ...fullHistory.slice(-maxMessages)];
+}
+
+/** W3.5: Extract key decisions, topics, and requests from dropped messages */
+function summarizeDroppedContext(messages: Array<{ role: string; content: string }>): string {
+  const decisions: string[] = [];
+  const topics: Set<string> = new Set();
+  const userRequests: string[] = [];
+
+  for (const msg of messages) {
+    const text = msg.content;
+    if (!text || text.length < 10) continue;
+
+    // Extract decisions
+    const decisionPatterns = [/\bdecid/i, /\bagreed\b/i, /\bchose\b/i, /\bselected\b/i, /\bwent with\b/i, /\bfinal call\b/i];
+    if (decisionPatterns.some(p => p.test(text))) {
+      const firstSentence = text.split(/[.!?\n]/)[0]?.trim();
+      if (firstSentence && firstSentence.length > 10 && firstSentence.length < 200) {
+        decisions.push(firstSentence);
+      }
+    }
+
+    // Extract user request summaries (first line of user messages)
+    if (msg.role === 'user') {
+      const firstLine = text.split('\n')[0]?.trim();
+      if (firstLine && firstLine.length > 15 && firstLine.length < 150) {
+        userRequests.push(firstLine);
+      }
+    }
+  }
+
+  const lines: string[] = [];
+  if (decisions.length > 0) {
+    lines.push('Decisions made: ' + decisions.slice(0, 5).join(' | '));
+  }
+  if (userRequests.length > 0) {
+    // Show first and last few requests to convey conversation arc
+    const shown = userRequests.length <= 4
+      ? userRequests
+      : [...userRequests.slice(0, 2), '...', ...userRequests.slice(-2)];
+    lines.push('Topics discussed: ' + shown.join(' → '));
+  }
+  if (lines.length === 0) {
+    lines.push(`${messages.length} messages covering earlier conversation context.`);
+  }
+  return lines.join('\n');
 }
 
 export type AgentRunner = (config: AgentLoopConfig) => Promise<AgentResponse>;
@@ -210,16 +261,37 @@ export const chatRoutes: FastifyPluginAsync = async (server) => {
   // Read dynamically — may be updated to built-in proxy at runtime
   const getLitellmUrl = () => server.localConfig.litellmUrl;
 
+  // W2.2: Register pre:memory-write validation hook — flags dramatic claims
+  const DRAMATIC_PATTERNS = [
+    /\b(shut\s*down|shutting\s*down|closing|dissolv|bankrupt|terminat|fired|laid\s*off|resign)\b/i,
+    /\b(cancel|cancelled|abandon|scrap|kill)\s+(the\s+)?(company|project|deal|contract|engagement)\b/i,
+    /\b(emergency|urgent|critical|crisis)\b.*\b(immediate|right\s*now|today)\b/i,
+  ];
+  hookRegistry.on('pre:memory-write', (ctx) => {
+    const content = ctx.memoryContent ?? '';
+    for (const pattern of DRAMATIC_PATTERNS) {
+      if (pattern.test(content)) {
+        console.warn('[memory-validation] Dramatic claim detected in save_memory:', content.slice(0, 100));
+        // Don't block — but annotate the args so the tool can tag source appropriately
+        // Future: could cancel and ask for confirmation
+        break;
+      }
+    }
+  });
+
   // C3: Cache the base system prompt per session to avoid rebuilding on every message
-  const systemPromptCache = new Map<string, { prompt: string; workspace: string | undefined; workspaceId: string | undefined; skillCount: number }>();
+  const systemPromptCache = new Map<string, { prompt: string; workspace: string | undefined; workspaceId: string | undefined; skillCount: number; personaId: string | null }>();
 
   // Build the rich system prompt — behavioral specification, not just tool docs
   function buildSystemPrompt(workspacePath?: string, sessionId?: string, historyLength?: number, workspaceId?: string): string {
-    // Check cache: reuse if same session, workspace, workspaceId, and skill count
+    // Resolve workspace persona (if workspace has one set)
+    const wsConfig = workspaceId ? server.workspaceManager?.get(workspaceId) : null;
+    const activePersonaId = wsConfig?.personaId ?? null;
+
+    // Check cache: reuse if same session, workspace, workspaceId, skill count, and persona
     const cacheKey = sessionId ?? 'default';
     const cached = systemPromptCache.get(cacheKey);
-    if (cached && cached.workspace === workspacePath && cached.workspaceId === workspaceId && cached.skillCount === skills.length) {
-      // Update only the dynamic parts (time, history length)
+    if (cached && cached.workspace === workspacePath && cached.workspaceId === workspaceId && cached.skillCount === skills.length && cached.personaId === activePersonaId) {
       return cached.prompt;
     }
     const now = new Date();
@@ -270,6 +342,7 @@ For EVERY user message, follow this internal process:
 ## Step 2: ASSESS
 - Is this a simple greeting/question? → Respond directly, warmly, concisely.
 - Is this a factual question I'm not certain about? → Use tools (web_search, bash, read_file).
+- Is this vague, ambiguous, or could be interpreted multiple ways? → Ask 1-2 targeted clarifying questions BEFORE acting. Do NOT guess. Examples: "make it better" → ask what aspect to improve; "fix this" → ask what's wrong; "help me" → ask with what.
 - Is this a complex task? → Think through the approach before acting.
 - Is this a multi-step operation? → Create a plan first (create_plan), then execute step by step.
 
@@ -299,7 +372,8 @@ Do NOT save: greetings, small talk, trivial questions, tool outputs, things alre
 - Have opinions when asked. "I'd do X because Y" > "Here are some options..."
 - No filler: no "Great question!", no "That's interesting!", no "I'd be happy to help!"
 - No emoji unless the user uses them.
-- When corrected: "You're right." Fix it. Move on.
+- When corrected on style or approach: "You're right." Fix it. Move on.
+- When corrected on FACTS that contradict a stored memory: DO NOT blindly accept. Search memory first. If you find a prior memory that says X but the user now claims Y, surface the conflict: "I have a stored memory that says X — should I update it to Y?" Only update after explicit confirmation. This prevents gradual memory drift.
 
 # RESPONSE QUALITY RULES
 
@@ -529,8 +603,28 @@ When approaching any task:
       }
     }
 
+    // W3.3: Inject actionable correction signals — user corrections from prior sessions
+    try {
+      const signalStore = orchestrator.getImprovementSignals();
+      if (signalStore) {
+        const actionable = signalStore.getActionable();
+        if (actionable.length > 0) {
+          prompt += '\n\n# User Corrections (from prior sessions — follow these)\n';
+          for (const signal of actionable) {
+            prompt += `- ${signal.detail} (observed ${signal.count}x)\n`;
+          }
+        }
+      }
+    } catch { /* non-blocking */ }
+
+    // W1.3: Apply active persona instructions (extends, not replaces, core prompt)
+    if (activePersonaId) {
+      const persona = getPersona(activePersonaId);
+      prompt = composePersonaPrompt(prompt, persona);
+    }
+
     // C3: Cache the built prompt
-    systemPromptCache.set(cacheKey, { prompt, workspace: workspacePath, workspaceId, skillCount: skills.length });
+    systemPromptCache.set(cacheKey, { prompt, workspace: workspacePath, workspaceId, skillCount: skills.length, personaId: activePersonaId });
 
     return prompt;
   }
@@ -546,10 +640,18 @@ When approaching any task:
       return reply.status(400).send({ error: 'message is required' });
     }
 
-    // Security: scan for prompt injection patterns (log-only, non-blocking)
+    // Security: scan for prompt injection patterns
     const injectionResult = scanForInjection(message, 'user_input');
-    if (injectionResult.score >= 0.3) {
-      console.warn('[security] Potential prompt injection detected:', injectionResult);
+    if (injectionResult.score >= 0.7) {
+      // High-confidence injection: block entirely
+      console.warn('[security] Prompt injection BLOCKED (score %.2f):', injectionResult.score, injectionResult.flags);
+      return reply.code(400).send({
+        error: 'Message blocked by security scanner',
+        code: 'INJECTION_DETECTED',
+        flags: injectionResult.flags,
+      });
+    } else if (injectionResult.score >= 0.3) {
+      console.warn('[security] Potential prompt injection detected (score %.2f):', injectionResult.score, injectionResult.flags);
     }
 
     // Hijack the response so Fastify doesn't try to send its own reply
@@ -631,14 +733,13 @@ When approaching any task:
 
         // ── Activate workspace mind (A2: guard against silent fallback) ──
         // Open workspace.mind so search/save routes to the right mind.
-        if (!hasCustomRunner && effectiveWorkspace !== 'default') {
+        // W2.7: If user explicitly provided a workspace (even "default"), try to activate it.
+        // Only skip activation when NO workspace was provided (personal-only mode).
+        if (!hasCustomRunner && workspace) {
           const activated = server.agentState.activateWorkspaceMind(effectiveWorkspace);
           if (!activated) {
             sendEvent('step', { content: `Warning: could not activate workspace memory for "${effectiveWorkspace}". Using personal memory only.` });
           }
-        } else if (!hasCustomRunner && effectiveWorkspace === 'default' && workspace) {
-          // User sent a workspace ID that resolved to 'default' — something is wrong
-          sendEvent('step', { content: 'Warning: workspace resolved to default. Memory may not be workspace-specific.' });
         }
 
         // ── Automatic memory recall ─────────────────────────────
@@ -734,11 +835,27 @@ When approaching any task:
         });
 
         // Use workspace-scoped tools if a workspacePath was specified
-        const effectiveTools = hasCustomRunner
+        let effectiveTools = hasCustomRunner
           ? []
           : workspacePath
             ? server.agentState.buildToolsForWorkspace(workspacePath)
             : allTools;
+
+        // W3.1: Filter tools by persona — non-technical personas get a reduced tool set
+        // Always include memory tools (search_memory, save_memory) + discovery tools regardless of persona
+        const ALWAYS_AVAILABLE = new Set([
+          'search_memory', 'save_memory', 'get_identity', 'get_awareness', 'query_knowledge',
+          'add_task', 'correct_knowledge', 'list_skills', 'search_skills', 'suggest_skill',
+          'acquire_capability', 'install_capability', 'compose_workflow', 'create_plan',
+          'add_plan_step', 'execute_step', 'show_plan',
+        ]);
+        if (!hasCustomRunner && activePersonaId) {
+          const persona = getPersona(activePersonaId);
+          if (persona && persona.tools.length > 0) {
+            const allowedTools = new Set([...persona.tools, ...ALWAYS_AVAILABLE]);
+            effectiveTools = effectiveTools.filter(t => allowedTools.has(t.name));
+          }
+        }
 
         // Track tool execution times for duration reporting
         const toolStartTimes = new Map<string, number>();

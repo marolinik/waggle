@@ -68,6 +68,13 @@ export class LocalScheduler {
     return this.timer !== null;
   }
 
+  /** W5.11: Execute a specific schedule's job immediately (for manual trigger via API). */
+  async executeJob(schedule: CronSchedule): Promise<void> {
+    await this.executor(schedule);
+    this.store.markRun(schedule.id);
+    this.failCounts.delete(schedule.id);
+  }
+
   /**
    * Execute one tick: find all due schedules and run them.
    * Returns the count of successfully executed jobs.

@@ -72,11 +72,17 @@ export interface MindToolDeps {
   feedback?: FeedbackHandler;
   /** Dynamic accessor for workspace layers — checked at call time */
   getWorkspaceLayers?: () => WorkspaceLayers | null;
+  /** W5.7: Accessor for ALL workspace search instances (for cross-workspace search) */
+  getAllWorkspaceSearches?: () => Array<{ workspaceId: string; workspaceName: string; search: HybridSearch }>;
   /** Optional tool utilization tracker for session-level stats */
   toolUtilizationTracker?: ToolUtilizationTracker;
 }
 
 export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
+  // W2.10: Per-session memory save rate limiter (prevents memory flooding attacks)
+  const MAX_SAVES_PER_SESSION = 50;
+  let saveMemoryCount = 0;
+
   return [
     {
       name: 'get_identity',
@@ -144,26 +150,38 @@ export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
 
         const sections: string[] = [];
 
-        // Search workspace mind
+        // W2.6: Search workspace mind FIRST (results shown before personal, boosted priority)
         if (wsLayers && (scope === 'all' || scope === 'workspace')) {
           const wsResults = await wsLayers.search.search(query, { limit, profile });
           if (wsResults.length > 0) {
             sections.push('## Workspace Memory');
             sections.push(...wsResults.map((r, i) =>
-              `[${i + 1}] (score: ${r.finalScore.toFixed(3)}, type: ${r.frame.frame_type}, importance: ${r.frame.importance})\n${r.frame.content}`
+              `[${i + 1}] (score: ${r.finalScore.toFixed(3)}, type: ${r.frame.frame_type}, importance: ${r.frame.importance}, source: ${(r.frame as any).source ?? 'user_stated'})\n${r.frame.content}`
             ));
           }
         }
 
-        // Search personal mind
+        // Search personal mind (shown after workspace results, with reduced limit when workspace is active)
         if (scope === 'all' || scope === 'personal') {
-          const personalResults = await deps.search.search(query, { limit, profile });
+          // W2.6: When inside a workspace, cap personal results to reduce noise
+          const personalLimit = (wsLayers && scope === 'all') ? Math.min(limit, 3) : limit;
+          const personalResults = await deps.search.search(query, { limit: personalLimit, profile });
           if (personalResults.length > 0) {
             const label = wsLayers ? '## Personal Memory' : '';
             if (label) sections.push(label);
             sections.push(...personalResults.map((r, i) =>
-              `[${i + 1}] (score: ${r.finalScore.toFixed(3)}, type: ${r.frame.frame_type}, importance: ${r.frame.importance})\n${r.frame.content}`
+              `[${i + 1}] (score: ${r.finalScore.toFixed(3)}, type: ${r.frame.frame_type}, importance: ${r.frame.importance}, source: ${(r.frame as any).source ?? 'user_stated'})\n${r.frame.content}`
             ));
+          }
+        }
+
+        // W2.5: Detect potential contradictions in results
+        if (sections.length > 1) {
+          const allContent = sections.filter(s => !s.startsWith('##')).join('\n');
+          const contradictionSignals = ['but ', 'however', 'instead', 'no longer', 'changed to', 'reversed', 'cancelled', 'not '];
+          const hasConflictSignal = contradictionSignals.some(s => allContent.toLowerCase().includes(s));
+          if (hasConflictSignal) {
+            sections.push('\n⚠️ Note: Multiple memories found. Check for potential contradictions — verify which is the most current/authoritative version.');
           }
         }
 
@@ -199,6 +217,51 @@ export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
         return allFallback.join('\n\n');
       },
     },
+    // W5.7: Cross-workspace search — searches ALL workspace minds + personal
+    {
+      name: 'search_all_workspaces',
+      description: 'Search across ALL workspaces and personal memory simultaneously. Use for cross-project queries like "what should I work on?" or "find everything about topic X across all projects".',
+      offlineCapable: true,
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'What to search for across all workspaces' },
+          limit: { type: 'number', description: 'Max results per workspace (default: 5)' },
+        },
+        required: ['query'],
+      },
+      execute: async (args) => {
+        const query = args.query as string;
+        const limitPerWs = (args.limit as number) ?? 5;
+        const sections: string[] = [];
+
+        // Search personal mind
+        const personalResults = await deps.search.search(query, { limit: limitPerWs, profile: 'balanced' });
+        if (personalResults.length > 0) {
+          sections.push('## Personal Memory');
+          sections.push(...personalResults.map((r, i) =>
+            `[${i + 1}] (score: ${r.finalScore.toFixed(3)}, importance: ${r.frame.importance})\n${r.frame.content}`
+          ));
+        }
+
+        // Search all workspace minds
+        const allWs = deps.getAllWorkspaceSearches?.() ?? [];
+        for (const { workspaceId, workspaceName, search: wsSearch } of allWs) {
+          try {
+            const wsResults = await wsSearch.search(query, { limit: limitPerWs, profile: 'balanced' });
+            if (wsResults.length > 0) {
+              sections.push(`## Workspace: ${workspaceName} (${workspaceId})`);
+              sections.push(...wsResults.map((r, i) =>
+                `[${i + 1}] (score: ${r.finalScore.toFixed(3)}, importance: ${r.frame.importance})\n${r.frame.content}`
+              ));
+            }
+          } catch { /* skip unreadable workspaces */ }
+        }
+
+        if (sections.length === 0) return 'No relevant memories found across any workspace.';
+        return sections.join('\n\n');
+      },
+    },
     {
       name: 'save_memory',
       description: 'Save a new memory. Defaults to workspace mind when active. Use target="personal" for user preferences, communication style, cross-workspace knowledge.',
@@ -217,13 +280,25 @@ export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
             enum: ['workspace', 'personal'],
             description: 'Which mind to save to. Workspace (default): project context, decisions, tasks. Personal: preferences, style, cross-workspace knowledge.',
           },
+          source: {
+            type: 'string',
+            enum: ['user_stated', 'tool_verified', 'agent_inferred'],
+            description: 'Provenance: user_stated = the user said this, tool_verified = confirmed via tool output, agent_inferred = your own analysis/synthesis.',
+          },
         },
         required: ['content'],
       },
       execute: async (args) => {
+        // W2.10: Rate limit memory saves to prevent flooding (50 per session)
+        saveMemoryCount++;
+        if (saveMemoryCount > MAX_SAVES_PER_SESSION) {
+          return `Memory save rate limit reached (${MAX_SAVES_PER_SESSION} saves this session). This prevents memory flooding. Start a new session to save more memories.`;
+        }
+
         const importance = (args.importance as string) ?? 'normal';
         const content = args.content as string;
         const target = (args.target as string) ?? 'workspace';
+        const source = (args.source as string) ?? 'user_stated';
         const wsLayers = deps.getWorkspaceLayers?.();
 
         // Determine which layers to use
@@ -231,12 +306,24 @@ export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
         const targetFrames = useWorkspace ? wsLayers.frames : deps.frames;
         const targetSessions = useWorkspace ? wsLayers.sessions : deps.sessions;
         const targetCognify = useWorkspace ? wsLayers.cognify : deps.cognify;
+        const targetDb = useWorkspace ? wsLayers.db : deps.db;
         const mindLabel = useWorkspace ? 'workspace' : 'personal';
+
+        // W2.4: Dedup check — skip save if near-identical content already exists
+        try {
+          const raw = targetDb.getDatabase();
+          const existing = raw.prepare(
+            "SELECT id, content FROM memory_frames WHERE content = ? LIMIT 1"
+          ).get(content) as { id: number; content: string } | undefined;
+          if (existing) {
+            return `Memory already exists (frame ${existing.id}) — skipped duplicate save.`;
+          }
+        } catch { /* non-blocking — proceed with save if dedup check fails */ }
 
         // Use cognify pipeline if available (extracts entities + indexes for search)
         if (targetCognify) {
           const result = await targetCognify.cognify(content, importance as any);
-          return `Memory saved to ${mindLabel} mind (importance: ${importance}, entities: ${result.entitiesExtracted}, relations: ${result.relationsCreated}).`;
+          return `Memory saved to ${mindLabel} mind (importance: ${importance}, source: ${source}, entities: ${result.entitiesExtracted}, relations: ${result.relationsCreated}).`;
         }
 
         // Fallback: raw frame creation (no entity extraction or vector indexing)
@@ -250,11 +337,11 @@ export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
         }
         const latestI = targetFrames.getLatestIFrame(gopId);
         if (latestI) {
-          targetFrames.createPFrame(gopId, content, latestI.id, importance as any);
+          targetFrames.createPFrame(gopId, content, latestI.id, importance as any, source as any);
         } else {
-          targetFrames.createIFrame(gopId, content, importance as any);
+          targetFrames.createIFrame(gopId, content, importance as any, source as any);
         }
-        return `Memory saved to ${mindLabel} mind (importance: ${importance}).`;
+        return `Memory saved to ${mindLabel} mind (importance: ${importance}, source: ${source}).`;
       },
     },
     {

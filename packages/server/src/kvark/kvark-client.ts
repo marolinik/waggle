@@ -136,21 +136,46 @@ export class KvarkClient {
   }
 
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
-    const token = await this.auth.getToken();
-    const result = await this.doFetch<T>(method, path, token, body);
+    const MAX_RETRIES = 3;
 
-    // On 401, re-auth once and retry
-    if (result.status === 401) {
-      this.auth.invalidate();
-      const freshToken = await this.auth.login();
-      const retry = await this.doFetch<T>(method, path, freshToken, body);
-      if (retry.status === 401) {
-        throw new KvarkAuthError('KVARK authentication failed after re-login');
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      const token = await this.auth.getToken();
+      const result = await this.doFetch<T>(method, path, token, body);
+
+      // On 401, re-auth once and retry
+      if (result.status === 401) {
+        this.auth.invalidate();
+        const freshToken = await this.auth.login();
+        const retry = await this.doFetch<T>(method, path, freshToken, body);
+        if (retry.status === 401) {
+          throw new KvarkAuthError('KVARK authentication failed after re-login');
+        }
+        return this.handleResponse<T>(retry);
       }
-      return this.handleResponse<T>(retry);
+
+      // W5.3: On 429 rate-limit, wait with exponential backoff and retry
+      if (result.status === 429) {
+        if (attempt >= MAX_RETRIES) {
+          throw new KvarkServerError(`KVARK rate limit exceeded after ${MAX_RETRIES} retries`, 429);
+        }
+        const retryAfter = parseInt(result.error ?? '', 10) || 0;
+        const backoffMs = retryAfter > 0 ? retryAfter * 1000 : Math.min(1000 * Math.pow(2, attempt), 30_000);
+        await new Promise(resolve => setTimeout(resolve, backoffMs));
+        continue;
+      }
+
+      // W5.3: On transient 5xx (not 501 Not Implemented), retry with exponential backoff
+      if (result.status >= 500 && result.status !== 501 && this.retryOnServerError && attempt < MAX_RETRIES) {
+        const backoffMs = Math.min(1000 * Math.pow(2, attempt), 10_000);
+        await new Promise(resolve => setTimeout(resolve, backoffMs));
+        continue;
+      }
+
+      return this.handleResponse<T>(result);
     }
 
-    return this.handleResponse<T>(result);
+    // Should not reach here, but TypeScript needs it
+    throw new KvarkServerError('KVARK request failed after max retries', 500);
   }
 
   private async doFetch<T>(
@@ -203,8 +228,14 @@ export class KvarkClient {
     switch (result.status) {
       case 401:
         throw new KvarkAuthError(detail);
+      case 403:
+        // W5.4: Explicit 403 handling — governance/permission denial
+        throw new KvarkServerError(`KVARK access denied (forbidden): ${detail}`, 403);
       case 404:
         throw new KvarkNotFoundError(detail);
+      case 429:
+        // W5.3: Should be handled in request() retry loop, but catch here as fallback
+        throw new KvarkServerError(`KVARK rate limited: ${detail}`, 429);
       case 501:
         throw new KvarkNotImplementedError(detail);
       default:

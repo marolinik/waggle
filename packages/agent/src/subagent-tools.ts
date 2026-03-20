@@ -8,6 +8,7 @@
 
 import type { ToolDefinition } from './tools.js';
 import type { AgentLoopConfig, AgentResponse } from './agent-loop.js';
+import type { HookRegistry } from './hooks.js';
 
 export interface SubAgentDef {
   id: string;
@@ -47,6 +48,8 @@ export interface SubAgentToolsDeps {
   /** Optional callback for streaming sub-agent progress */
   onSubAgentToken?: (agentId: string, token: string) => void;
   onSubAgentTool?: (agentId: string, name: string, input: Record<string, unknown>) => void;
+  /** Hook registry — passed to sub-agent loops so approval gates and memory validation apply */
+  hooks?: HookRegistry;
 }
 
 // In-memory registry of spawned sub-agents and their results
@@ -192,6 +195,7 @@ ${task}
             messages: [{ role: 'user', content: task }],
             maxTurns,
             stream: false, // Sub-agents don't stream to the user
+            hooks: deps.hooks, // W2.9: sub-agents respect approval gates and memory validation hooks
             onToken: deps.onSubAgentToken
               ? (token: string) => deps.onSubAgentToken!(id, token)
               : undefined,

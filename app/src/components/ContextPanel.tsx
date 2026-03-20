@@ -228,6 +228,33 @@ export function ContextPanel({
     );
   }
 
+  // ── W4.12: Mission Control context ─────────────────────────────────
+  if (currentView === 'mission-control') {
+    return (
+      <div className="flex flex-col h-full">
+        <PanelHeader label="Fleet Info" />
+        <div className="px-3 py-3 space-y-3 text-[11px] text-muted-foreground">
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1">Max Sessions</div>
+            <div className="text-foreground font-mono">3 concurrent</div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1">Quick Actions</div>
+            <div className="space-y-1 text-[10px]">
+              <div>• Pause/Resume running agents</div>
+              <div>• Kill unresponsive sessions</div>
+              <div>• View sub-agent results</div>
+            </div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1">Tip</div>
+            <div className="text-[10px] leading-relaxed">Use <span className="font-mono text-primary">/spawn</span> in chat to create sub-agents for parallel research tasks.</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ── F5: Settings view context ──────────────────────────────────────
   if (currentView === 'settings') {
     return <SettingsContext activeTab={settingsTab} />;
