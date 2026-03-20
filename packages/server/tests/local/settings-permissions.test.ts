@@ -5,6 +5,7 @@ import os from 'node:os';
 import { MindDB, FrameStore, SessionStore } from '@waggle/core';
 import { buildLocalServer } from '../../src/local/index.js';
 import type { FastifyInstance } from 'fastify';
+import { injectWithAuth } from '../test-utils.js';
 
 describe('Permission settings API', () => {
   let server: FastifyInstance;
@@ -31,7 +32,7 @@ describe('Permission settings API', () => {
   });
 
   it('GET /api/settings/permissions returns defaults', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/settings/permissions',
     });
@@ -44,7 +45,7 @@ describe('Permission settings API', () => {
 
   it('PUT /api/settings/permissions persists changes', async () => {
     // Write new permissions
-    const putRes = await server.inject({
+    const putRes = await injectWithAuth(server, {
       method: 'PUT',
       url: '/api/settings/permissions',
       payload: {
@@ -60,7 +61,7 @@ describe('Permission settings API', () => {
     expect(putBody.workspaceOverrides).toEqual({ 'ws-1': ['deploy'] });
 
     // Read back to verify persistence
-    const getRes = await server.inject({
+    const getRes = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/settings/permissions',
     });
@@ -73,7 +74,7 @@ describe('Permission settings API', () => {
 
   it('PUT /api/settings/permissions merges partial updates', async () => {
     // First, set known state
-    await server.inject({
+    await injectWithAuth(server, {
       method: 'PUT',
       url: '/api/settings/permissions',
       payload: {
@@ -84,7 +85,7 @@ describe('Permission settings API', () => {
     });
 
     // Now update only externalGates
-    const putRes = await server.inject({
+    const putRes = await injectWithAuth(server, {
       method: 'PUT',
       url: '/api/settings/permissions',
       payload: {

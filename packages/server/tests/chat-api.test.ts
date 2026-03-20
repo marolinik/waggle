@@ -7,6 +7,7 @@ import { buildLocalServer } from '../src/local/index.js';
 import type { FastifyInstance } from 'fastify';
 import type { AgentLoopConfig, AgentResponse } from '@waggle/agent';
 import { applyContextWindow, MAX_CONTEXT_MESSAGES } from '../src/local/routes/chat.js';
+import { injectWithAuth, resetRateLimiter } from './test-utils.js';
 
 /**
  * Parse raw SSE response body into an array of { event, data } objects.
@@ -76,7 +77,7 @@ describe('Chat Streaming API', () => {
   });
 
   it('returns SSE stream with correct headers', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/chat',
       payload: { message: 'Hello' },
@@ -87,7 +88,7 @@ describe('Chat Streaming API', () => {
   });
 
   it('streams token events', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/chat',
       payload: { message: 'Hello' },
@@ -100,7 +101,7 @@ describe('Chat Streaming API', () => {
   });
 
   it('sends done event with full response', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/chat',
       payload: { message: 'Hello' },
@@ -115,7 +116,7 @@ describe('Chat Streaming API', () => {
   });
 
   it('validates message is required', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/chat',
       payload: {},
@@ -126,7 +127,7 @@ describe('Chat Streaming API', () => {
   });
 
   it('validates empty message string', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/chat',
       payload: { message: '' },
@@ -141,7 +142,7 @@ describe('Chat Streaming API', () => {
       throw new Error('LiteLLM is not available');
     };
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/chat',
       payload: { message: 'Hello' },
@@ -169,7 +170,7 @@ describe('Chat Streaming API', () => {
       };
     };
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/chat',
       payload: { message: 'Search for waggle bees' },
@@ -194,7 +195,7 @@ describe('Chat Streaming API', () => {
   });
 
   it('accepts optional workspace parameter', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/chat',
       payload: { message: 'Hello', workspace: 'my-project' },
@@ -205,7 +206,7 @@ describe('Chat Streaming API', () => {
   });
 
   it('accepts optional model parameter', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/chat',
       payload: { message: 'Hello', model: 'gpt-4o' },
@@ -240,7 +241,7 @@ describe('Chat Streaming API', () => {
     history.set(sessionId, messages);
 
     // Send one more message — total becomes 61 (60 existing + 1 new user message)
-    await server.inject({
+    await injectWithAuth(server, {
       method: 'POST',
       url: '/api/chat',
       payload: { message: 'final message', session: sessionId },
@@ -260,6 +261,8 @@ describe('Chat Streaming API', () => {
   });
 
   it('passes signal to agent runner for client disconnect abort', async () => {
+    // Reset rate limiter — previous tests may have exhausted the /api/chat limit (10/min)
+    resetRateLimiter(server);
     let capturedSignal: AbortSignal | undefined;
     const originalRunner = server.agentRunner;
 
@@ -273,7 +276,7 @@ describe('Chat Streaming API', () => {
       };
     };
 
-    await server.inject({
+    await injectWithAuth(server, {
       method: 'POST',
       url: '/api/chat',
       payload: { message: 'Hello' },

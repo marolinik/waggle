@@ -13,6 +13,7 @@ vi.mock('../src/local/lifecycle.js', () => ({
 
 import { buildLocalServer } from '../src/local/index.js';
 import { getLiteLLMStatus, startLiteLLM, stopLiteLLM } from '../src/local/lifecycle.js';
+import { injectWithAuth } from './test-utils.js';
 
 const mockGetStatus = getLiteLLMStatus as ReturnType<typeof vi.fn>;
 const mockStart = startLiteLLM as ReturnType<typeof vi.fn>;
@@ -53,7 +54,7 @@ describe('LiteLLM Management API', () => {
   it('GET /api/litellm/status returns running status', async () => {
     mockGetStatus.mockResolvedValue({ status: 'running', port: 4000 });
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/litellm/status',
     });
@@ -70,7 +71,7 @@ describe('LiteLLM Management API', () => {
       error: 'LiteLLM is not running',
     });
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/litellm/status',
     });
@@ -86,7 +87,7 @@ describe('LiteLLM Management API', () => {
     mockStop.mockResolvedValue(undefined);
     mockStart.mockResolvedValue({ status: 'started', port: 4000 });
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/litellm/restart',
     });
@@ -111,7 +112,7 @@ describe('LiteLLM Management API', () => {
       error: 'Failed to spawn LiteLLM',
     });
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/litellm/restart',
     });
@@ -125,7 +126,7 @@ describe('LiteLLM Management API', () => {
     mockStop.mockRejectedValue(new Error('kill ESRCH'));
     mockStart.mockResolvedValue({ status: 'started', port: 4000 });
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/litellm/restart',
     });
@@ -140,7 +141,7 @@ describe('LiteLLM Management API', () => {
     mockStop.mockResolvedValue(undefined);
     mockStart.mockResolvedValue({ status: 'timeout', port: 4000 });
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/litellm/restart',
     });
@@ -164,7 +165,7 @@ describe('LiteLLM Management API', () => {
       }),
     } as Response);
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/litellm/models',
     });
@@ -176,7 +177,7 @@ describe('LiteLLM Management API', () => {
   it('GET /api/litellm/models returns empty array on fetch failure', async () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Connection refused'));
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/litellm/models',
     });
@@ -191,7 +192,7 @@ describe('LiteLLM Management API', () => {
       status: 503,
     } as Response);
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/litellm/models',
     });

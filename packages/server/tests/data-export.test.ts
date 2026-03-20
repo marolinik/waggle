@@ -6,6 +6,7 @@ import { Readable } from 'node:stream';
 import { MindDB, FrameStore, SessionStore, WorkspaceManager, WaggleConfig, VaultStore } from '@waggle/core';
 import { buildLocalServer } from '../src/local/index.js';
 import type { FastifyInstance } from 'fastify';
+import { injectWithAuth } from './test-utils.js';
 
 /**
  * Minimal ZIP parser — reads the central directory to extract file names.
@@ -122,14 +123,14 @@ describe('Data Export (GDPR)', () => {
   });
 
   it('POST /api/export returns a ZIP with correct Content-Type', async () => {
-    const res = await server.inject({ method: 'POST', url: '/api/export' });
+    const res = await injectWithAuth(server, { method: 'POST', url: '/api/export' });
     expect(res.statusCode).toBe(200);
     expect(res.headers['content-type']).toBe('application/zip');
     expect(res.headers['content-disposition']).toMatch(/^attachment; filename="waggle-export-\d{4}-\d{2}-\d{2}\.zip"$/);
   });
 
   it('ZIP contains expected directories (memories, sessions, workspaces)', async () => {
-    const res = await server.inject({ method: 'POST', url: '/api/export' });
+    const res = await injectWithAuth(server, { method: 'POST', url: '/api/export' });
     const buffer = Buffer.from(res.rawPayload);
     const fileNames = extractZipFileNames(buffer);
 
@@ -148,7 +149,7 @@ describe('Data Export (GDPR)', () => {
   });
 
   it('settings in export have masked API keys', async () => {
-    const res = await server.inject({ method: 'POST', url: '/api/export' });
+    const res = await injectWithAuth(server, { method: 'POST', url: '/api/export' });
     const buffer = Buffer.from(res.rawPayload);
     const fileNames = extractZipFileNames(buffer);
 
@@ -162,7 +163,7 @@ describe('Data Export (GDPR)', () => {
   });
 
   it('vault metadata excludes secret values', async () => {
-    const res = await server.inject({ method: 'POST', url: '/api/export' });
+    const res = await injectWithAuth(server, { method: 'POST', url: '/api/export' });
     const buffer = Buffer.from(res.rawPayload);
     const fileNames = extractZipFileNames(buffer);
 
@@ -182,7 +183,7 @@ describe('Data Export (GDPR)', () => {
 
     const emptyServer = await buildLocalServer({ dataDir: emptyDir });
     try {
-      const res = await emptyServer.inject({ method: 'POST', url: '/api/export' });
+      const res = await injectWithAuth(emptyServer, { method: 'POST', url: '/api/export' });
       expect(res.statusCode).toBe(200);
       expect(res.headers['content-type']).toBe('application/zip');
 
@@ -200,7 +201,7 @@ describe('Data Export (GDPR)', () => {
   });
 
   it('export ZIP has reasonable size (not empty)', async () => {
-    const res = await server.inject({ method: 'POST', url: '/api/export' });
+    const res = await injectWithAuth(server, { method: 'POST', url: '/api/export' });
     const buffer = Buffer.from(res.rawPayload);
     // ZIP should be at least a few hundred bytes (headers + content)
     expect(buffer.length).toBeGreaterThan(100);

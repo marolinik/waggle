@@ -12,6 +12,7 @@ import os from 'node:os';
 import { MindDB, SessionStore, FrameStore } from '@waggle/core';
 import { buildLocalServer } from '../../src/local/index.js';
 import type { FastifyInstance } from 'fastify';
+import { injectWithAuth } from '../test-utils.js';
 
 describe('Cost Dashboard API', () => {
   let server: FastifyInstance;
@@ -38,7 +39,7 @@ describe('Cost Dashboard API', () => {
   });
 
   it('GET /api/cost/summary returns expected shape with zero usage', async () => {
-    const res = await server.inject({ method: 'GET', url: '/api/cost/summary' });
+    const res = await injectWithAuth(server, { method: 'GET', url: '/api/cost/summary' });
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
 
@@ -68,7 +69,7 @@ describe('Cost Dashboard API', () => {
   });
 
   it('GET /api/cost/by-workspace returns expected shape with zero usage', async () => {
-    const res = await server.inject({ method: 'GET', url: '/api/cost/by-workspace' });
+    const res = await injectWithAuth(server, { method: 'GET', url: '/api/cost/by-workspace' });
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
 
@@ -83,7 +84,7 @@ describe('Cost Dashboard API', () => {
     costTracker.addUsage('claude-sonnet-4-6', 1000, 500);
     costTracker.addUsage('claude-sonnet-4-6', 2000, 1000);
 
-    const res = await server.inject({ method: 'GET', url: '/api/cost/summary' });
+    const res = await injectWithAuth(server, { method: 'GET', url: '/api/cost/summary' });
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
 
@@ -96,7 +97,7 @@ describe('Cost Dashboard API', () => {
   });
 
   it('daily array has correct structure for each day', async () => {
-    const res = await server.inject({ method: 'GET', url: '/api/cost/summary?days=3' });
+    const res = await injectWithAuth(server, { method: 'GET', url: '/api/cost/summary?days=3' });
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
 
@@ -111,7 +112,7 @@ describe('Cost Dashboard API', () => {
   });
 
   it('budget status defaults to ok with null budget', async () => {
-    const res = await server.inject({ method: 'GET', url: '/api/cost/summary' });
+    const res = await injectWithAuth(server, { method: 'GET', url: '/api/cost/summary' });
     const body = JSON.parse(res.body);
     expect(body.budget.dailyBudget).toBeNull();
     expect(body.budget.budgetStatus).toBe('ok');
@@ -119,7 +120,7 @@ describe('Cost Dashboard API', () => {
   });
 
   it('workspace breakdown has expected fields', async () => {
-    const res = await server.inject({ method: 'GET', url: '/api/cost/by-workspace' });
+    const res = await injectWithAuth(server, { method: 'GET', url: '/api/cost/by-workspace' });
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
 

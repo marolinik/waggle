@@ -5,6 +5,7 @@ import os from 'node:os';
 import { MindDB, SessionStore, FrameStore } from '@waggle/core';
 import { buildLocalServer } from '../../src/local/index.js';
 import type { FastifyInstance } from 'fastify';
+import { injectWithAuth } from '../test-utils.js';
 
 describe('Command Execution Route', () => {
   let server: FastifyInstance;
@@ -36,7 +37,7 @@ describe('Command Execution Route', () => {
   });
 
   it('POST /api/commands/execute with /help returns markdown command list', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/commands/execute',
       payload: { command: '/help' },
@@ -51,7 +52,7 @@ describe('Command Execution Route', () => {
   });
 
   it('POST /api/commands/execute with /skills returns skill list', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/commands/execute',
       payload: { command: '/skills' },
@@ -65,7 +66,7 @@ describe('Command Execution Route', () => {
   });
 
   it('POST /api/commands/execute with /memory and query returns search results', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/commands/execute',
       payload: { command: '/memory architecture decisions' },
@@ -78,7 +79,7 @@ describe('Command Execution Route', () => {
   });
 
   it('POST /api/commands/execute with /catchup returns workspace state', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/commands/execute',
       payload: { command: '/catchup' },
@@ -90,7 +91,7 @@ describe('Command Execution Route', () => {
   });
 
   it('POST /api/commands/execute with empty command returns 400', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/commands/execute',
       payload: { command: '' },
@@ -101,7 +102,7 @@ describe('Command Execution Route', () => {
   });
 
   it('POST /api/commands/execute with /research (no runWorkflow) returns not available', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/commands/execute',
       payload: { command: '/research quantum computing' },
@@ -113,7 +114,7 @@ describe('Command Execution Route', () => {
   });
 
   it('POST /api/commands/execute with /decide returns decision matrix template', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/commands/execute',
       payload: { command: '/decide Should we use PostgreSQL or MongoDB?' },
@@ -128,7 +129,7 @@ describe('Command Execution Route', () => {
   });
 
   it('POST /api/commands/execute with unknown command returns error', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/commands/execute',
       payload: { command: '/nonexistent' },
@@ -139,7 +140,7 @@ describe('Command Execution Route', () => {
   });
 
   it('POST /api/commands/execute with /spawn (no spawnAgent) returns not available', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/commands/execute',
       payload: { command: '/spawn researcher find papers' },

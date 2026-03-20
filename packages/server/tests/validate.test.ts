@@ -5,6 +5,7 @@ import os from 'node:os';
 import { isSafeSegment, assertSafeSegment } from '../src/local/routes/validate.js';
 import { buildLocalServer } from '../src/local/index.js';
 import type { FastifyInstance } from 'fastify';
+import { injectWithAuth } from './test-utils.js';
 
 describe('isSafeSegment', () => {
   it('accepts alphanumeric with hyphens and underscores', () => {
@@ -72,7 +73,7 @@ describe('Route path traversal protection', () => {
   });
 
   it('returns 400 for workspace GET with traversal id', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/workspaces/..%2F..%2Fetc',
     });
@@ -80,7 +81,7 @@ describe('Route path traversal protection', () => {
   });
 
   it('returns 400 for workspace DELETE with traversal id', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'DELETE',
       url: '/api/workspaces/..%2Fsecret',
     });
@@ -88,7 +89,7 @@ describe('Route path traversal protection', () => {
   });
 
   it('returns 400 for sessions list with traversal workspaceId', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/workspaces/..%2F..%2Fetc/sessions',
     });
@@ -96,7 +97,7 @@ describe('Route path traversal protection', () => {
   });
 
   it('returns 400 for session DELETE with traversal sessionId', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'DELETE',
       url: '/api/sessions/..%2F..%2Fetc%2Fpasswd',
     });
@@ -104,7 +105,7 @@ describe('Route path traversal protection', () => {
   });
 
   it('returns 400 for session DELETE with traversal workspace query', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'DELETE',
       url: '/api/sessions/valid-id?workspace=..%2F..%2Fetc',
     });
@@ -112,7 +113,7 @@ describe('Route path traversal protection', () => {
   });
 
   it('returns 400 for knowledge graph with traversal workspace query', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/memory/graph?workspace=..%2F..%2Fetc',
     });

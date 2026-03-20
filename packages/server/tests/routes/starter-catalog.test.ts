@@ -5,6 +5,7 @@ import os from 'node:os';
 import { MindDB } from '@waggle/core';
 import { buildLocalServer } from '../../src/local/index.js';
 import type { FastifyInstance } from 'fastify';
+import { injectWithAuth } from '../test-utils.js';
 
 /** Skill ID used for install tests — cleaned up between tests to avoid 409 conflicts */
 const INSTALL_TEST_SKILL = 'retrospective';
@@ -27,7 +28,7 @@ describe('Starter Skill Catalog', () => {
   });
 
   it('GET /api/skills/starter-pack/catalog returns all starter skills', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/skills/starter-pack/catalog',
     });
@@ -40,7 +41,7 @@ describe('Starter Skill Catalog', () => {
   });
 
   it('each skill has the correct shape', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/skills/starter-pack/catalog',
     });
@@ -65,7 +66,7 @@ describe('Starter Skill Catalog', () => {
   });
 
   it('families array is populated with correct shape', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/skills/starter-pack/catalog',
     });
@@ -83,7 +84,7 @@ describe('Starter Skill Catalog', () => {
   });
 
   it('workflow skills have isWorkflow: true', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/skills/starter-pack/catalog',
     });
@@ -106,7 +107,7 @@ describe('Starter Skill Catalog', () => {
   });
 
   it('all skills map to a known family (no "other")', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/skills/starter-pack/catalog',
     });
@@ -127,7 +128,7 @@ describe('Starter Skill Catalog', () => {
     const targetPath = path.join(skillsDir, `${INSTALL_TEST_SKILL}.md`);
     if (fs.existsSync(targetPath)) fs.unlinkSync(targetPath);
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: `/api/skills/starter-pack/${INSTALL_TEST_SKILL}`,
     });
@@ -141,7 +142,7 @@ describe('Starter Skill Catalog', () => {
 
   it('POST /api/skills/starter-pack/:id returns 409 for already installed', async () => {
     // INSTALL_TEST_SKILL was installed in previous test
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: `/api/skills/starter-pack/${INSTALL_TEST_SKILL}`,
     });
@@ -150,7 +151,7 @@ describe('Starter Skill Catalog', () => {
   });
 
   it('POST /api/skills/starter-pack/:id returns 404 for nonexistent skill', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/skills/starter-pack/nonexistent-skill-xyz',
     });
@@ -159,7 +160,7 @@ describe('Starter Skill Catalog', () => {
   });
 
   it('POST /api/skills/starter-pack/:id returns 400 for path traversal', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/skills/starter-pack/..%2F..%2Fetc%2Fpasswd',
     });
@@ -168,7 +169,7 @@ describe('Starter Skill Catalog', () => {
   });
 
   it('catalog reflects installed state after single install', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/skills/starter-pack/catalog',
     });

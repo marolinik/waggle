@@ -21,6 +21,7 @@ import os from 'node:os';
 import { MindDB, FrameStore, SessionStore, VaultStore, WorkspaceManager } from '@waggle/core';
 import { buildLocalServer } from '../../src/local/index.js';
 import type { FastifyInstance } from 'fastify';
+import { injectWithAuth } from '../test-utils.js';
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -48,7 +49,7 @@ describe('Performance Benchmarks', () => {
 
         const start = Date.now();
         const server = await buildLocalServer({ dataDir: tmpDir });
-        const res = await server.inject({ method: 'GET', url: '/health' });
+        const res = await injectWithAuth(server, { method: 'GET', url: '/health' });
         const elapsed = Date.now() - start;
 
         expect(res.statusCode).toBe(200);
@@ -186,7 +187,7 @@ describe('Performance Benchmarks', () => {
 
     it('listing 50 workspaces via API completes within 500ms', async () => {
       const start = Date.now();
-      const res = await server.inject({ method: 'GET', url: '/api/workspaces' });
+      const res = await injectWithAuth(server, { method: 'GET', url: '/api/workspaces' });
       const elapsed = Date.now() - start;
 
       expect(res.statusCode).toBe(200);

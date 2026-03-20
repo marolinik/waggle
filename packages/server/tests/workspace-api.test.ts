@@ -4,6 +4,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { buildLocalServer } from '../src/local/index.js';
 import type { FastifyInstance } from 'fastify';
+import { injectWithAuth } from './test-utils.js';
 
 describe('Workspace & Session API', () => {
   let server: FastifyInstance;
@@ -34,7 +35,7 @@ describe('Workspace & Session API', () => {
 
   // First, create a workspace to use for session tests
   it('creates a workspace for session tests', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/workspaces',
       payload: { name: 'Session Test WS', group: 'Test' },
@@ -48,7 +49,7 @@ describe('Workspace & Session API', () => {
   // --- I2: Team Workspace Creation ---
 
   it('creates a team workspace with team fields', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/workspaces',
       payload: {
@@ -70,7 +71,7 @@ describe('Workspace & Session API', () => {
     expect(body.teamUserId).toBe('user-456');
 
     // Verify it appears in workspace list
-    const listRes = await server.inject({
+    const listRes = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/workspaces',
     });
@@ -80,11 +81,11 @@ describe('Workspace & Session API', () => {
     expect(teamWs.teamServerUrl).toBe('https://team.example.com');
 
     // Clean up
-    await server.inject({ method: 'DELETE', url: `/api/workspaces/${body.id}` });
+    await injectWithAuth(server, { method: 'DELETE', url: `/api/workspaces/${body.id}` });
   });
 
   it('creates a regular workspace without team fields', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/workspaces',
       payload: { name: 'Regular WS', group: 'Personal' },
@@ -95,13 +96,13 @@ describe('Workspace & Session API', () => {
     expect(body.teamServerUrl).toBeUndefined();
 
     // Clean up
-    await server.inject({ method: 'DELETE', url: `/api/workspaces/${body.id}` });
+    await injectWithAuth(server, { method: 'DELETE', url: `/api/workspaces/${body.id}` });
   });
 
   // --- Session Tests ---
 
   it('lists sessions (empty initially)', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/workspaces/${workspaceId}/sessions`,
     });
@@ -114,7 +115,7 @@ describe('Workspace & Session API', () => {
   let sessionId: string;
 
   it('creates a session', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: `/api/workspaces/${workspaceId}/sessions`,
       payload: { title: 'My First Chat' },
@@ -130,7 +131,7 @@ describe('Workspace & Session API', () => {
   });
 
   it('creates a session without title (uses id as title)', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: `/api/workspaces/${workspaceId}/sessions`,
       payload: {},
@@ -141,7 +142,7 @@ describe('Workspace & Session API', () => {
   });
 
   it('lists sessions (shows created sessions)', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/workspaces/${workspaceId}/sessions`,
     });
@@ -167,7 +168,7 @@ describe('Workspace & Session API', () => {
     ];
     fs.writeFileSync(sessionPath, existing + messages.join('\n') + '\n', 'utf-8');
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/workspaces/${workspaceId}/sessions`,
     });
@@ -182,7 +183,7 @@ describe('Workspace & Session API', () => {
 
   it('auto-generates summary for session with 4+ messages', async () => {
     // Create a new session with enough messages to trigger summary generation
-    const createRes = await server.inject({
+    const createRes = await injectWithAuth(server, {
       method: 'POST',
       url: `/api/workspaces/${workspaceId}/sessions`,
       payload: { title: 'Summary Test Session' },
@@ -205,7 +206,7 @@ describe('Workspace & Session API', () => {
     fs.writeFileSync(sessionPath, existing + messages.join('\n') + '\n', 'utf-8');
 
     // List sessions — this triggers lazy summary generation
-    const listRes = await server.inject({
+    const listRes = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/workspaces/${workspaceId}/sessions`,
     });
@@ -222,7 +223,7 @@ describe('Workspace & Session API', () => {
     expect(firstLine.summary).toBe(summarySession.summary);
 
     // Clean up
-    await server.inject({
+    await injectWithAuth(server, {
       method: 'DELETE',
       url: `/api/sessions/${summarySessionId}?workspace=${workspaceId}`,
     });
@@ -231,7 +232,7 @@ describe('Workspace & Session API', () => {
   it('does not generate summary for sessions with fewer than 4 messages', async () => {
     // The session we created earlier had only 2 messages (added in a previous test)
     // Create a session with just 2 messages
-    const createRes = await server.inject({
+    const createRes = await injectWithAuth(server, {
       method: 'POST',
       url: `/api/workspaces/${workspaceId}/sessions`,
       payload: { title: 'Short Session' },
@@ -248,7 +249,7 @@ describe('Workspace & Session API', () => {
     ];
     fs.writeFileSync(sessionPath, existing + messages.join('\n') + '\n', 'utf-8');
 
-    const listRes = await server.inject({
+    const listRes = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/workspaces/${workspaceId}/sessions`,
     });
@@ -258,14 +259,14 @@ describe('Workspace & Session API', () => {
     expect(shortSession.summary).toBeNull();
 
     // Clean up
-    await server.inject({
+    await injectWithAuth(server, {
       method: 'DELETE',
       url: `/api/sessions/${shortSessionId}?workspace=${workspaceId}`,
     });
   });
 
   it('deletes a session', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'DELETE',
       url: `/api/sessions/${sessionId}?workspace=${workspaceId}`,
     });
@@ -274,7 +275,7 @@ describe('Workspace & Session API', () => {
     expect(body.deleted).toBe(true);
 
     // Verify it's gone
-    const listRes = await server.inject({
+    const listRes = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/workspaces/${workspaceId}/sessions`,
     });
@@ -284,7 +285,7 @@ describe('Workspace & Session API', () => {
   });
 
   it('returns 404 when deleting non-existent session', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'DELETE',
       url: `/api/sessions/nonexistent-session?workspace=${workspaceId}`,
     });
@@ -292,7 +293,7 @@ describe('Workspace & Session API', () => {
   });
 
   it('returns empty array for sessions of non-existent workspace (graceful degradation)', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/workspaces/nonexistent-ws/sessions',
     });
@@ -305,7 +306,7 @@ describe('Workspace & Session API', () => {
   // --- Knowledge Graph Tests ---
 
   it('returns knowledge graph (empty for fresh mind)', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/memory/graph',
     });
@@ -318,7 +319,7 @@ describe('Workspace & Session API', () => {
   });
 
   it('returns knowledge graph for workspace mind', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/memory/graph?workspace=${workspaceId}`,
     });
@@ -329,7 +330,7 @@ describe('Workspace & Session API', () => {
   });
 
   it('returns 404 for knowledge graph of non-existent workspace', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/memory/graph?workspace=nonexistent',
     });
@@ -339,7 +340,7 @@ describe('Workspace & Session API', () => {
   // --- API Key Test Endpoint ---
 
   it('validates OpenAI key format (valid)', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/settings/test-key',
       payload: { provider: 'openai', apiKey: 'sk-1234567890abcdefghij' },
@@ -350,7 +351,7 @@ describe('Workspace & Session API', () => {
   });
 
   it('validates OpenAI key format (invalid prefix)', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/settings/test-key',
       payload: { provider: 'openai', apiKey: 'bad-key-1234567890' },
@@ -362,7 +363,7 @@ describe('Workspace & Session API', () => {
   });
 
   it('validates Anthropic key format (valid)', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/settings/test-key',
       payload: { provider: 'anthropic', apiKey: 'sk-ant-1234567890abcdefg' },
@@ -373,7 +374,7 @@ describe('Workspace & Session API', () => {
   });
 
   it('validates Anthropic key format (invalid)', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/settings/test-key',
       payload: { provider: 'anthropic', apiKey: 'sk-1234567890abcdefg' },
@@ -385,7 +386,7 @@ describe('Workspace & Session API', () => {
   });
 
   it('rejects test-key request without provider or apiKey', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/settings/test-key',
       payload: {},
@@ -394,7 +395,7 @@ describe('Workspace & Session API', () => {
   });
 
   it('validates unknown provider key (just length check)', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/settings/test-key',
       payload: { provider: 'some-provider', apiKey: 'abcdefghij' },
@@ -408,14 +409,14 @@ describe('Workspace & Session API', () => {
 
   it('extracts progress items from session content', async () => {
     // Create a workspace and session with task/completion/blocker language
-    const wsRes = await server.inject({
+    const wsRes = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/workspaces',
       payload: { name: 'Progress Test', group: 'Test' },
     });
     const ws = JSON.parse(wsRes.body);
 
-    const sessRes = await server.inject({
+    const sessRes = await injectWithAuth(server, {
       method: 'POST',
       url: `/api/workspaces/${ws.id}/sessions`,
       payload: { title: 'Planning Session' },
@@ -438,7 +439,7 @@ describe('Workspace & Session API', () => {
     fs.writeFileSync(sessionPath, existing + messages.join('\n') + '\n', 'utf-8');
 
     // Fetch workspace context — should include progressItems
-    const ctxRes = await server.inject({
+    const ctxRes = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/workspaces/${ws.id}/context`,
     });
@@ -453,14 +454,14 @@ describe('Workspace & Session API', () => {
     expect(types).toContain('task');
 
     // Clean up
-    await server.inject({ method: 'DELETE', url: `/api/workspaces/${ws.id}` });
+    await injectWithAuth(server, { method: 'DELETE', url: `/api/workspaces/${ws.id}` });
   });
 
   // --- F1: Session search tests ---
 
   it('searches sessions by content and returns matching snippets', async () => {
     // Create a workspace with sessions containing searchable content
-    const wsRes = await server.inject({
+    const wsRes = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/workspaces',
       payload: { name: 'Search Test WS', group: 'Test' },
@@ -468,14 +469,14 @@ describe('Workspace & Session API', () => {
     const ws = JSON.parse(wsRes.body);
 
     // Create two sessions — one with matching content, one without
-    const sess1Res = await server.inject({
+    const sess1Res = await injectWithAuth(server, {
       method: 'POST',
       url: `/api/workspaces/${ws.id}/sessions`,
       payload: { title: 'Database Design' },
     });
     const sess1 = JSON.parse(sess1Res.body);
 
-    const sess2Res = await server.inject({
+    const sess2Res = await injectWithAuth(server, {
       method: 'POST',
       url: `/api/workspaces/${ws.id}/sessions`,
       payload: { title: 'Marketing Plan' },
@@ -499,7 +500,7 @@ describe('Workspace & Session API', () => {
       'utf-8');
 
     // Search for "database"
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/workspaces/${ws.id}/sessions/search?q=database`,
     });
@@ -514,28 +515,28 @@ describe('Workspace & Session API', () => {
     expect(results[0].snippets[0].text.toLowerCase()).toContain('database');
 
     // Clean up
-    await server.inject({ method: 'DELETE', url: `/api/workspaces/${ws.id}` });
+    await injectWithAuth(server, { method: 'DELETE', url: `/api/workspaces/${ws.id}` });
   });
 
   it('returns 400 for search query shorter than 2 characters', async () => {
-    const wsRes = await server.inject({
+    const wsRes = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/workspaces',
       payload: { name: 'Short Query WS', group: 'Test' },
     });
     const ws = JSON.parse(wsRes.body);
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/workspaces/${ws.id}/sessions/search?q=a`,
     });
     expect(res.statusCode).toBe(400);
 
-    await server.inject({ method: 'DELETE', url: `/api/workspaces/${ws.id}` });
+    await injectWithAuth(server, { method: 'DELETE', url: `/api/workspaces/${ws.id}` });
   });
 
   it('returns empty results when no sessions match', async () => {
-    const wsRes = await server.inject({
+    const wsRes = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/workspaces',
       payload: { name: 'No Match WS', group: 'Test' },
@@ -543,7 +544,7 @@ describe('Workspace & Session API', () => {
     const ws = JSON.parse(wsRes.body);
 
     // Create a session
-    const sessRes = await server.inject({
+    const sessRes = await injectWithAuth(server, {
       method: 'POST',
       url: `/api/workspaces/${ws.id}/sessions`,
       payload: { title: 'Random Session' },
@@ -556,7 +557,7 @@ describe('Workspace & Session API', () => {
       JSON.stringify({ role: 'user', content: 'Hello there' }) + '\n',
       'utf-8');
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/workspaces/${ws.id}/sessions/search?q=quantum`,
     });
@@ -564,18 +565,18 @@ describe('Workspace & Session API', () => {
     const results = JSON.parse(res.body);
     expect(results).toHaveLength(0);
 
-    await server.inject({ method: 'DELETE', url: `/api/workspaces/${ws.id}` });
+    await injectWithAuth(server, { method: 'DELETE', url: `/api/workspaces/${ws.id}` });
   });
 
   it('returns empty progressItems for workspace with no sessions', async () => {
-    const wsRes = await server.inject({
+    const wsRes = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/workspaces',
       payload: { name: 'Empty Progress', group: 'Test' },
     });
     const ws = JSON.parse(wsRes.body);
 
-    const ctxRes = await server.inject({
+    const ctxRes = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/workspaces/${ws.id}/context`,
     });
@@ -583,20 +584,20 @@ describe('Workspace & Session API', () => {
     expect(ctx.progressItems).toBeDefined();
     expect(ctx.progressItems).toHaveLength(0);
 
-    await server.inject({ method: 'DELETE', url: `/api/workspaces/${ws.id}` });
+    await injectWithAuth(server, { method: 'DELETE', url: `/api/workspaces/${ws.id}` });
   });
 
   // ── F2: File registry tests ─────────────────────────────────────
 
   it('returns empty file list for workspace with no ingested files', async () => {
-    const wsRes = await server.inject({
+    const wsRes = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/workspaces',
       payload: { name: 'Files Empty', group: 'Test' },
     });
     const ws = JSON.parse(wsRes.body);
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/workspaces/${ws.id}/files`,
     });
@@ -604,11 +605,11 @@ describe('Workspace & Session API', () => {
     const body = JSON.parse(res.body);
     expect(body.files).toEqual([]);
 
-    await server.inject({ method: 'DELETE', url: `/api/workspaces/${ws.id}` });
+    await injectWithAuth(server, { method: 'DELETE', url: `/api/workspaces/${ws.id}` });
   });
 
   it('records ingested files in registry and returns them via files endpoint', async () => {
-    const wsRes = await server.inject({
+    const wsRes = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/workspaces',
       payload: { name: 'Files Test', group: 'Test' },
@@ -617,7 +618,7 @@ describe('Workspace & Session API', () => {
 
     // Ingest a text file into the workspace
     const textContent = Buffer.from('Hello world, this is a test file.').toString('base64');
-    const ingestRes = await server.inject({
+    const ingestRes = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/ingest',
       payload: {
@@ -628,7 +629,7 @@ describe('Workspace & Session API', () => {
     expect(ingestRes.statusCode).toBe(200);
 
     // Check files endpoint returns the ingested file
-    const filesRes = await server.inject({
+    const filesRes = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/workspaces/${ws.id}/files`,
     });
@@ -641,28 +642,28 @@ describe('Workspace & Session API', () => {
     expect(filesBody.files[0].ingestedAt).toBeDefined();
 
     // Check file count appears in workspace context
-    const ctxRes = await server.inject({
+    const ctxRes = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/workspaces/${ws.id}/context`,
     });
     const ctx = JSON.parse(ctxRes.body);
     expect(ctx.stats.fileCount).toBe(1);
 
-    await server.inject({ method: 'DELETE', url: `/api/workspaces/${ws.id}` });
+    await injectWithAuth(server, { method: 'DELETE', url: `/api/workspaces/${ws.id}` });
   });
 
   // ── F3: Session export tests ─────────────────────────────────────
 
   it('exports a session as markdown with title and messages', async () => {
     // Create workspace + session
-    const wsRes = await server.inject({
+    const wsRes = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/workspaces',
       payload: { name: 'Export Test', group: 'Test' },
     });
     const ws = JSON.parse(wsRes.body);
 
-    const sessRes = await server.inject({
+    const sessRes = await injectWithAuth(server, {
       method: 'POST',
       url: `/api/workspaces/${ws.id}/sessions`,
       payload: { title: 'My Test Chat' },
@@ -679,7 +680,7 @@ describe('Workspace & Session API', () => {
     );
 
     // Export
-    const exportRes = await server.inject({
+    const exportRes = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/workspaces/${ws.id}/sessions/${sess.id}/export`,
     });
@@ -693,11 +694,11 @@ describe('Workspace & Session API', () => {
     expect(md).toContain('**Assistant**');
     expect(md).toContain('I can help you with many things!');
 
-    await server.inject({ method: 'DELETE', url: `/api/workspaces/${ws.id}` });
+    await injectWithAuth(server, { method: 'DELETE', url: `/api/workspaces/${ws.id}` });
   });
 
   it('returns 404 when exporting non-existent session', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/workspaces/${workspaceId}/sessions/nonexistent-session/export`,
     });
@@ -705,7 +706,7 @@ describe('Workspace & Session API', () => {
   });
 
   it('returns 404 for files of non-existent workspace', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/workspaces/nonexistent-ws-999/files',
     });
@@ -715,7 +716,7 @@ describe('Workspace & Session API', () => {
   // J4: Team catch-up context
   it('workspace context includes teamContext for team workspaces', async () => {
     // Create a team workspace
-    const createRes = await server.inject({
+    const createRes = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/workspaces',
       payload: { name: 'Team WS', group: 'Team', teamId: 'team-test-123' },
@@ -723,7 +724,7 @@ describe('Workspace & Session API', () => {
     const teamWsId = JSON.parse(createRes.body).id;
 
     // Get context
-    const contextRes = await server.inject({
+    const contextRes = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/workspaces/${teamWsId}/context`,
     });
@@ -735,7 +736,7 @@ describe('Workspace & Session API', () => {
   });
 
   it('workspace context omits teamContext for non-team workspaces', async () => {
-    const contextRes = await server.inject({
+    const contextRes = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/workspaces/${workspaceId}/context`,
     });

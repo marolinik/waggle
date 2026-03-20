@@ -15,6 +15,7 @@ import os from 'node:os';
 import { MindDB, SessionStore, FrameStore } from '@waggle/core';
 import { buildLocalServer } from '../../src/local/index.js';
 import type { FastifyInstance } from 'fastify';
+import { injectWithAuth } from '../test-utils.js';
 
 // ── Test fixtures ───────────────────────────────────────────
 
@@ -90,7 +91,7 @@ describe('Import Routes', () => {
 
   describe('POST /api/import/preview', () => {
     it('previews a ChatGPT export', async () => {
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'POST',
         url: '/api/import/preview',
         payload: { data: CHATGPT_EXPORT, source: 'chatgpt' },
@@ -106,7 +107,7 @@ describe('Import Routes', () => {
     });
 
     it('previews a Claude export', async () => {
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'POST',
         url: '/api/import/preview',
         payload: { data: CLAUDE_EXPORT, source: 'claude' },
@@ -121,7 +122,7 @@ describe('Import Routes', () => {
     });
 
     it('returns 400 when data is missing', async () => {
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'POST',
         url: '/api/import/preview',
         payload: { source: 'chatgpt' },
@@ -133,7 +134,7 @@ describe('Import Routes', () => {
     });
 
     it('returns 400 when source is missing', async () => {
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'POST',
         url: '/api/import/preview',
         payload: { data: [] },
@@ -145,7 +146,7 @@ describe('Import Routes', () => {
     });
 
     it('returns 400 when source is invalid', async () => {
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'POST',
         url: '/api/import/preview',
         payload: { data: [], source: 'openai' },
@@ -158,7 +159,7 @@ describe('Import Routes', () => {
     });
 
     it('handles empty export gracefully', async () => {
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'POST',
         url: '/api/import/preview',
         payload: { data: [], source: 'chatgpt' },
@@ -180,7 +181,7 @@ describe('Import Routes', () => {
       // The import route uses 'import' as gop_id, but no session with that
       // gop_id exists. The FrameStore.createIFrame will fail with a FK
       // constraint error, and the route should return a 500 with error message.
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'POST',
         url: '/api/import/commit',
         payload: { data: CHATGPT_EXPORT, source: 'chatgpt' },
@@ -211,7 +212,7 @@ describe('Import Routes', () => {
         },
       ];
 
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'POST',
         url: '/api/import/commit',
         payload: { data: noKnowledgeExport, source: 'chatgpt' },
@@ -224,7 +225,7 @@ describe('Import Routes', () => {
     });
 
     it('returns 400 when data is missing', async () => {
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'POST',
         url: '/api/import/commit',
         payload: { source: 'chatgpt' },
@@ -234,7 +235,7 @@ describe('Import Routes', () => {
     });
 
     it('returns 400 when source is invalid', async () => {
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'POST',
         url: '/api/import/commit',
         payload: { data: [], source: 'notion' },
@@ -245,7 +246,7 @@ describe('Import Routes', () => {
 
     it('handles export with no knowledge items (preview path)', async () => {
       // Empty conversations array that parse to 0 conversations
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'POST',
         url: '/api/import/commit',
         payload: { data: [], source: 'chatgpt' },

@@ -5,6 +5,7 @@ import os from 'node:os';
 import { MindDB, FrameStore, SessionStore } from '@waggle/core';
 import { buildLocalServer } from '../src/local/index.js';
 import type { FastifyInstance } from 'fastify';
+import { injectWithAuth } from './test-utils.js';
 
 describe('Local Server Mode', () => {
   let server: FastifyInstance;
@@ -39,7 +40,7 @@ describe('Local Server Mode', () => {
   // --- Health check ---
   describe('health check', () => {
     it('returns mode: local with structured health', async () => {
-      const res = await server.inject({ method: 'GET', url: '/health' });
+      const res = await injectWithAuth(server, { method: 'GET', url: '/health' });
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
       // In test mode (no LLM provider initialized), status is not 'ok'
@@ -60,7 +61,7 @@ describe('Local Server Mode', () => {
     let createdId: string;
 
     it('creates a workspace', async () => {
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'POST',
         url: '/api/workspaces',
         payload: { name: 'Test Project', group: 'Work', icon: 'rocket' },
@@ -76,7 +77,7 @@ describe('Local Server Mode', () => {
     });
 
     it('lists workspaces', async () => {
-      const res = await server.inject({ method: 'GET', url: '/api/workspaces' });
+      const res = await injectWithAuth(server, { method: 'GET', url: '/api/workspaces' });
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
       expect(Array.isArray(body)).toBe(true);
@@ -85,7 +86,7 @@ describe('Local Server Mode', () => {
     });
 
     it('gets a workspace by id', async () => {
-      const res = await server.inject({ method: 'GET', url: `/api/workspaces/${createdId}` });
+      const res = await injectWithAuth(server, { method: 'GET', url: `/api/workspaces/${createdId}` });
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
       expect(body.id).toBe(createdId);
@@ -93,12 +94,12 @@ describe('Local Server Mode', () => {
     });
 
     it('returns 404 for non-existent workspace', async () => {
-      const res = await server.inject({ method: 'GET', url: '/api/workspaces/does-not-exist' });
+      const res = await injectWithAuth(server, { method: 'GET', url: '/api/workspaces/does-not-exist' });
       expect(res.statusCode).toBe(404);
     });
 
     it('updates a workspace', async () => {
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'PUT',
         url: `/api/workspaces/${createdId}`,
         payload: { name: 'Updated Project', model: 'gpt-4o' },
@@ -110,16 +111,16 @@ describe('Local Server Mode', () => {
     });
 
     it('deletes a workspace', async () => {
-      const res = await server.inject({ method: 'DELETE', url: `/api/workspaces/${createdId}` });
+      const res = await injectWithAuth(server, { method: 'DELETE', url: `/api/workspaces/${createdId}` });
       expect(res.statusCode).toBe(204);
 
       // Verify it's gone
-      const getRes = await server.inject({ method: 'GET', url: `/api/workspaces/${createdId}` });
+      const getRes = await injectWithAuth(server, { method: 'GET', url: `/api/workspaces/${createdId}` });
       expect(getRes.statusCode).toBe(404);
     });
 
     it('returns 400 when creating without required fields', async () => {
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'POST',
         url: '/api/workspaces',
         payload: { name: 'No Group' },
@@ -141,7 +142,7 @@ describe('Local Server Mode', () => {
         };
       };
 
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'POST',
         url: '/api/chat',
         payload: { message: 'Hello world', workspace: 'test-ws' },
@@ -155,7 +156,7 @@ describe('Local Server Mode', () => {
     });
 
     it('returns 400 without message', async () => {
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'POST',
         url: '/api/chat',
         payload: {},
@@ -167,7 +168,7 @@ describe('Local Server Mode', () => {
   // --- Memory search ---
   describe('memory search', () => {
     it('returns search results for matching query', async () => {
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'GET',
         url: '/api/memory/search?q=waggle',
       });
@@ -179,7 +180,7 @@ describe('Local Server Mode', () => {
     });
 
     it('returns empty results for non-matching query', async () => {
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'GET',
         url: '/api/memory/search?q=xyznonexistent',
       });
@@ -189,7 +190,7 @@ describe('Local Server Mode', () => {
     });
 
     it('returns 400 without query parameter', async () => {
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'GET',
         url: '/api/memory/search',
       });
@@ -197,7 +198,7 @@ describe('Local Server Mode', () => {
     });
 
     it('returns normalized frames from /api/memory/frames endpoint', async () => {
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'GET',
         url: '/api/memory/frames?limit=10',
       });
@@ -218,7 +219,7 @@ describe('Local Server Mode', () => {
     });
 
     it('returns normalized fields from search results', async () => {
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'GET',
         url: '/api/memory/search?q=waggle',
       });
@@ -235,7 +236,7 @@ describe('Local Server Mode', () => {
   // --- Settings ---
   describe('settings', () => {
     it('reads default settings', async () => {
-      const res = await server.inject({ method: 'GET', url: '/api/settings' });
+      const res = await injectWithAuth(server, { method: 'GET', url: '/api/settings' });
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
       expect(body.defaultModel).toBeDefined();
@@ -244,7 +245,7 @@ describe('Local Server Mode', () => {
 
     it('updates and reads back settings', async () => {
       // Update
-      const putRes = await server.inject({
+      const putRes = await injectWithAuth(server, {
         method: 'PUT',
         url: '/api/settings',
         payload: { defaultModel: 'claude-opus-4-6' },
@@ -254,7 +255,7 @@ describe('Local Server Mode', () => {
       expect(putBody.defaultModel).toBe('claude-opus-4-6');
 
       // Read back
-      const getRes = await server.inject({ method: 'GET', url: '/api/settings' });
+      const getRes = await injectWithAuth(server, { method: 'GET', url: '/api/settings' });
       const getBody = JSON.parse(getRes.body);
       expect(getBody.defaultModel).toBe('claude-opus-4-6');
     });

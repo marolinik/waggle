@@ -15,6 +15,7 @@ import Database from 'better-sqlite3';
 import { MindDB } from '@waggle/core';
 import { buildLocalServer } from '../../src/local/index.js';
 import type { FastifyInstance } from 'fastify';
+import { injectWithAuth } from '../test-utils.js';
 
 describe('Trust Model Runtime Wiring', () => {
   let server: FastifyInstance;
@@ -50,7 +51,7 @@ describe('Trust Model Runtime Wiring', () => {
 
     it('installing a starter skill creates audit entries', async () => {
       // Install a skill
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'POST',
         url: '/api/skills/starter-pack/brainstorm',
       });
@@ -84,7 +85,7 @@ describe('Trust Model Runtime Wiring', () => {
     });
 
     it('failed install records audit entry', async () => {
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'POST',
         url: '/api/skills/starter-pack/nonexistent-xyz',
       });
@@ -109,7 +110,7 @@ describe('Trust Model Runtime Wiring', () => {
       db1.close();
 
       // Try to install already-installed skill
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'POST',
         url: '/api/skills/starter-pack/brainstorm',
       });
@@ -128,7 +129,7 @@ describe('Trust Model Runtime Wiring', () => {
   describe('Audit REST endpoint', () => {
     it('GET /api/audit/installs returns recent install events', async () => {
       // brainstorm was already installed in the previous test block
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'GET',
         url: '/api/audit/installs',
       });
@@ -144,7 +145,7 @@ describe('Trust Model Runtime Wiring', () => {
     });
 
     it('respects limit parameter', async () => {
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'GET',
         url: '/api/audit/installs?limit=1',
       });
@@ -154,7 +155,7 @@ describe('Trust Model Runtime Wiring', () => {
     });
 
     it('caps limit at 100', async () => {
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'GET',
         url: '/api/audit/installs?limit=999',
       });
@@ -167,7 +168,7 @@ describe('Trust Model Runtime Wiring', () => {
 
   describe('Backward compatibility', () => {
     it('starter-pack catalog still works', async () => {
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'GET',
         url: '/api/skills/starter-pack/catalog',
       });
@@ -178,7 +179,7 @@ describe('Trust Model Runtime Wiring', () => {
     });
 
     it('capabilities status endpoint still works', async () => {
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'GET',
         url: '/api/capabilities/status',
       });
@@ -188,7 +189,7 @@ describe('Trust Model Runtime Wiring', () => {
     });
 
     it('health endpoint still works', async () => {
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'GET',
         url: '/health',
       });

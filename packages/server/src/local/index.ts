@@ -6,7 +6,7 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
 import websocket from '@fastify/websocket';
-import { MindDB, MultiMind, WorkspaceManager, WaggleConfig, createLiteLLMEmbedder, FrameStore, SessionStore, InstallAuditStore, CronStore, AwarenessLayer, VaultStore, SkillHashStore, OptimizationLogStore } from '@waggle/core';
+import { MindDB, MultiMind, WorkspaceManager, WaggleConfig, createLiteLLMEmbedder, FrameStore, SessionStore, InstallAuditStore, CronStore, AwarenessLayer, VaultStore, SkillHashStore, OptimizationLogStore, reconcileIndexes } from '@waggle/core';
 import { ALLOWED_ORIGINS } from './cors-config.js';
 import { MemoryWeaver } from '@waggle/weaver';
 import {
@@ -200,6 +200,7 @@ declare module 'fastify' {
     scheduler: import('./cron.js').LocalScheduler;
     marketplace: import('@waggle/marketplace').MarketplaceDB | null;
     offlineManager: OfflineManager;
+    rateLimiter: import('./security-middleware.js').RateLimiter;
   }
 }
 
@@ -302,6 +303,14 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
       name: 'Monthly assessment',
       cronExpr: '0 6 1 * *', // 1st of each month at 6:00 AM
       jobType: 'monthly_assessment',
+    });
+  }
+  if (!existingCrons.find(s => s.name === 'Index reconciliation')) {
+    cronStore.create({
+      name: 'Index reconciliation',
+      cronExpr: '0 4 * * 0', // Sunday 4 AM — weekly maintenance
+      jobType: 'memory_consolidation',
+      jobConfig: { action: 'index_reconcile' },
     });
   }
 
@@ -858,7 +867,28 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
       case 'memory_consolidation': {
         // Check if this is a marketplace sync (uses memory_consolidation type for system-level scheduling)
         const mcJobConfig = JSON.parse(schedule.job_config || '{}');
-        if (mcJobConfig.action === 'marketplace_sync' && marketplaceDb) {
+        if (mcJobConfig.action === 'index_reconcile') {
+          try {
+            // Reconcile personal mind FTS/vec indexes
+            const result = await reconcileIndexes(multiMind.personal);
+            if (result.ftsFixed > 0 || result.vecFixed > 0) {
+              console.log(`[cron] Index reconciliation: FTS=${result.ftsFixed} vec=${result.vecFixed} fixed (personal)`);
+            }
+            // Reconcile workspace minds
+            const workspaces = wsManager.list();
+            for (const ws of workspaces) {
+              const wsDb = getWorkspaceMindDb(ws.id);
+              if (wsDb) {
+                const wsResult = await reconcileIndexes(wsDb);
+                if (wsResult.ftsFixed > 0 || wsResult.vecFixed > 0) {
+                  console.log(`[cron] Index reconciliation: FTS=${wsResult.ftsFixed} vec=${wsResult.vecFixed} fixed (workspace "${ws.name}")`);
+                }
+              }
+            }
+          } catch (err) {
+            console.warn(`[cron] Index reconciliation failed: ${(err as Error).message}`);
+          }
+        } else if (mcJobConfig.action === 'marketplace_sync' && marketplaceDb) {
           try {
             const vaultLookup = server.vault ? (key: string) => server.vault!.get(key)?.value ?? null : undefined;
             const sync = new MarketplaceSync(marketplaceDb, vaultLookup);
@@ -1136,8 +1166,10 @@ Return ONLY the improved system prompt text. No commentary, no markdown fences, 
   });
   await server.register(websocket);
 
-  // Security middleware — headers + rate limiting (local server only)
-  await server.register(securityMiddleware);
+  // Security middleware — headers + rate limiting + bearer auth (local server only)
+  await server.register(securityMiddleware, {
+    sessionToken: server.agentState.wsSessionToken,
+  });
 
   // Routes
   await server.register(workspaceRoutes);

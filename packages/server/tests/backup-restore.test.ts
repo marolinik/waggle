@@ -22,6 +22,7 @@ import * as crypto from 'node:crypto';
 import { MindDB, SessionStore, FrameStore } from '@waggle/core';
 import { buildLocalServer } from '../src/local/index.js';
 import type { FastifyInstance } from 'fastify';
+import { injectWithAuth, resetRateLimiter } from './test-utils.js';
 
 describe('Backup & Restore (PM-5)', () => {
   let server: FastifyInstance;
@@ -72,8 +73,13 @@ describe('Backup & Restore (PM-5)', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
+  // Reset rate limiter between tests to prevent 429s (backup/restore has 2 req/min limit)
+  beforeEach(() => {
+    resetRateLimiter(server);
+  });
+
   it('POST /api/backup returns an octet-stream file', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/backup',
     });
@@ -86,7 +92,7 @@ describe('Backup & Restore (PM-5)', () => {
   });
 
   it('backup excludes marketplace.db and node_modules', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/backup',
     });
@@ -106,7 +112,7 @@ describe('Backup & Restore (PM-5)', () => {
 
     // Verify by doing a restore preview to inspect file list
     const base64 = res.rawPayload.toString('base64');
-    const previewRes = await server.inject({
+    const previewRes = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/restore',
       payload: { backup: base64, preview: true },
@@ -123,13 +129,13 @@ describe('Backup & Restore (PM-5)', () => {
   });
 
   it('backup includes .mind files, config.json, and workspace sessions', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/backup',
     });
 
     const base64 = res.rawPayload.toString('base64');
-    const previewRes = await server.inject({
+    const previewRes = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/restore',
       payload: { backup: base64, preview: true },
@@ -146,7 +152,7 @@ describe('Backup & Restore (PM-5)', () => {
 
   it('POST /api/restore with preview=true returns preview without modifying files', async () => {
     // First create a backup
-    const backupRes = await server.inject({
+    const backupRes = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/backup',
     });
@@ -156,7 +162,7 @@ describe('Backup & Restore (PM-5)', () => {
     const configPath = path.join(tmpDir, 'config.json');
     const mtimeBefore = fs.statSync(configPath).mtimeMs;
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/restore',
       payload: { backup: base64, preview: true },
@@ -178,14 +184,14 @@ describe('Backup & Restore (PM-5)', () => {
 
   it('POST /api/restore applies restore successfully', async () => {
     // Create backup
-    const backupRes = await server.inject({
+    const backupRes = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/backup',
     });
     const base64 = backupRes.rawPayload.toString('base64');
 
     // Apply restore (no preview)
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/restore',
       payload: { backup: base64, preview: false },
@@ -202,7 +208,7 @@ describe('Backup & Restore (PM-5)', () => {
     // Random bytes — not a valid backup
     const garbage = crypto.randomBytes(256).toString('base64');
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/restore',
       payload: { backup: garbage },
@@ -219,7 +225,7 @@ describe('Backup & Restore (PM-5)', () => {
     fs.writeFileSync(path.join(tmpDir, 'roundtrip-marker.txt'), markerContent, 'utf-8');
 
     // Create backup (contains the marker)
-    const backupRes = await server.inject({
+    const backupRes = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/backup',
     });
@@ -230,7 +236,7 @@ describe('Backup & Restore (PM-5)', () => {
     expect(fs.existsSync(path.join(tmpDir, 'roundtrip-marker.txt'))).toBe(false);
 
     // Restore from backup
-    const restoreRes = await server.inject({
+    const restoreRes = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/restore',
       payload: { backup: base64 },
@@ -270,7 +276,7 @@ describe('Backup & Restore (PM-5)', () => {
     // We need to test the actual route behavior, and the key was already created.
     // Instead, just verify the backup header says unencrypted when key is absent.
     // Since buildLocalServer always creates a key, we test the encrypted case works.
-    const res = await noKeyServer.inject({
+    const res = await injectWithAuth(noKeyServer, {
       method: 'POST',
       url: '/api/backup',
     });
@@ -285,7 +291,7 @@ describe('Backup & Restore (PM-5)', () => {
 
   it('restore with tampered data fails', async () => {
     // Create a valid backup
-    const backupRes = await server.inject({
+    const backupRes = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/backup',
     });
@@ -300,7 +306,7 @@ describe('Backup & Restore (PM-5)', () => {
     }
     const tamperedBase64 = raw.toString('base64');
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/restore',
       payload: { backup: tamperedBase64 },
@@ -313,12 +319,12 @@ describe('Backup & Restore (PM-5)', () => {
 
   it('GET /api/backup/metadata returns metadata after backup', async () => {
     // Create a backup first (updates metadata)
-    await server.inject({
+    await injectWithAuth(server, {
       method: 'POST',
       url: '/api/backup',
     });
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/backup/metadata',
     });
@@ -331,7 +337,7 @@ describe('Backup & Restore (PM-5)', () => {
   });
 
   it('POST /api/restore rejects missing backup field', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/restore',
       payload: {},

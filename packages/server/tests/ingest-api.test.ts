@@ -10,6 +10,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { buildLocalServer } from '../src/local/index.js';
 import type { FastifyInstance } from 'fastify';
+import { injectWithAuth } from './test-utils.js';
 
 describe('POST /api/ingest', () => {
   let server: FastifyInstance;
@@ -28,18 +29,18 @@ describe('POST /api/ingest', () => {
   // ── Validation ──────────────────────────────────────────────────
 
   it('returns 400 when files array is missing', async () => {
-    const res = await server.inject({ method: 'POST', url: '/api/ingest', payload: {} });
+    const res = await injectWithAuth(server, { method: 'POST', url: '/api/ingest', payload: {} });
     expect(res.statusCode).toBe(400);
     expect(JSON.parse(res.body).error).toContain('files');
   });
 
   it('returns 400 when files is empty', async () => {
-    const res = await server.inject({ method: 'POST', url: '/api/ingest', payload: { files: [] } });
+    const res = await injectWithAuth(server, { method: 'POST', url: '/api/ingest', payload: { files: [] } });
     expect(res.statusCode).toBe(400);
   });
 
   it('returns 400 when a file entry has no name', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST', url: '/api/ingest',
       payload: { files: [{ content: 'abc' }] },
     });
@@ -49,7 +50,7 @@ describe('POST /api/ingest', () => {
   it('returns 413 for oversized files', async () => {
     // Create a base64 string that decodes to > 10 MB
     const bigContent = 'A'.repeat(14 * 1024 * 1024); // ~10.5 MB decoded
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST', url: '/api/ingest',
       payload: { files: [{ name: 'big.txt', content: bigContent }] },
     });
@@ -61,7 +62,7 @@ describe('POST /api/ingest', () => {
 
   it('processes an image file and returns data URI', async () => {
     const content = Buffer.from('fake-png-data').toString('base64');
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST', url: '/api/ingest',
       payload: { files: [{ name: 'photo.png', content }] },
     });
@@ -75,7 +76,7 @@ describe('POST /api/ingest', () => {
 
   it('handles JPEG extension correctly', async () => {
     const content = Buffer.from('fake-jpg').toString('base64');
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST', url: '/api/ingest',
       payload: { files: [{ name: 'pic.jpg', content }] },
     });
@@ -88,7 +89,7 @@ describe('POST /api/ingest', () => {
   it('processes a PDF and returns document type', async () => {
     // Fake PDF data won't parse — should gracefully handle extraction failure
     const content = Buffer.from('fake-pdf').toString('base64');
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST', url: '/api/ingest',
       payload: { files: [{ name: 'report.pdf', content }] },
     });
@@ -102,7 +103,7 @@ describe('POST /api/ingest', () => {
   it('processes a CSV and returns column/row stats', async () => {
     const csvText = 'name,age,city\nAlice,30,NYC\nBob,25,LA\n';
     const content = Buffer.from(csvText).toString('base64');
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST', url: '/api/ingest',
       payload: { files: [{ name: 'data.csv', content }] },
     });
@@ -118,7 +119,7 @@ describe('POST /api/ingest', () => {
   it('processes a markdown file and returns content + line count', async () => {
     const text = '# Hello\n\nSome content\nMore lines\n';
     const content = Buffer.from(text).toString('base64');
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST', url: '/api/ingest',
       payload: { files: [{ name: 'readme.md', content }] },
     });
@@ -131,7 +132,7 @@ describe('POST /api/ingest', () => {
   it('processes TypeScript source code', async () => {
     const code = 'const x = 1;\nconsole.log(x);\n';
     const content = Buffer.from(code).toString('base64');
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST', url: '/api/ingest',
       payload: { files: [{ name: 'main.ts', content }] },
     });
@@ -144,7 +145,7 @@ describe('POST /api/ingest', () => {
 
   it('processes a ZIP and returns archive type', async () => {
     const content = Buffer.from('fake-zip-data').toString('base64');
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST', url: '/api/ingest',
       payload: { files: [{ name: 'archive.zip', content }] },
     });
@@ -156,7 +157,7 @@ describe('POST /api/ingest', () => {
 
   it('returns unsupported for unknown extensions', async () => {
     const content = Buffer.from('binary').toString('base64');
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST', url: '/api/ingest',
       payload: { files: [{ name: 'data.xyz', content }] },
     });
@@ -168,7 +169,7 @@ describe('POST /api/ingest', () => {
   // ── Multiple files ──────────────────────────────────────────────
 
   it('processes multiple files in one request', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST', url: '/api/ingest',
       payload: {
         files: [
@@ -188,7 +189,7 @@ describe('POST /api/ingest', () => {
   // ── Base64 validation ──────────────────────────────────────────
 
   it('returns 400 for invalid base64 content', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST', url: '/api/ingest',
       payload: { files: [{ name: 'bad.txt', content: '!!!not-base64!!!' }] },
     });
@@ -201,7 +202,7 @@ describe('POST /api/ingest', () => {
   it('processes CSV with quoted fields containing commas', async () => {
     const csvText = 'name,address,city\n"Smith, John","123 Main St, Apt 4",NYC\n';
     const content = Buffer.from(csvText).toString('base64');
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST', url: '/api/ingest',
       payload: { files: [{ name: 'quoted.csv', content }] },
     });
@@ -216,7 +217,7 @@ describe('POST /api/ingest', () => {
   it('reports correct line count for text ending with newline', async () => {
     const text = 'line1\nline2\nline3\n';
     const content = Buffer.from(text).toString('base64');
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST', url: '/api/ingest',
       payload: { files: [{ name: 'test.txt', content }] },
     });
@@ -227,7 +228,7 @@ describe('POST /api/ingest', () => {
   it('reports correct line count for text without trailing newline', async () => {
     const text = 'line1\nline2\nline3';
     const content = Buffer.from(text).toString('base64');
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST', url: '/api/ingest',
       payload: { files: [{ name: 'test.txt', content }] },
     });
@@ -239,7 +240,7 @@ describe('POST /api/ingest', () => {
 
   it('processes DOCX and returns document type', async () => {
     const content = Buffer.from('fake-docx').toString('base64');
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST', url: '/api/ingest',
       payload: { files: [{ name: 'report.docx', content }] },
     });
@@ -252,7 +253,7 @@ describe('POST /api/ingest', () => {
 
   it('processes XLSX and returns spreadsheet type', async () => {
     const content = Buffer.from('fake-xlsx').toString('base64');
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST', url: '/api/ingest',
       payload: { files: [{ name: 'data.xlsx', content }] },
     });
@@ -265,7 +266,7 @@ describe('POST /api/ingest', () => {
   it('processes HTML files as text', async () => {
     const html = '<html><body>Hello</body></html>';
     const content = Buffer.from(html).toString('base64');
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST', url: '/api/ingest',
       payload: { files: [{ name: 'page.html', content }] },
     });
@@ -277,7 +278,7 @@ describe('POST /api/ingest', () => {
   it('processes SQL files as text', async () => {
     const sql = 'SELECT * FROM users WHERE id = 1;';
     const content = Buffer.from(sql).toString('base64');
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST', url: '/api/ingest',
       payload: { files: [{ name: 'query.sql', content }] },
     });
@@ -291,7 +292,7 @@ describe('POST /api/ingest', () => {
   it('processes SVG as image', async () => {
     const svg = '<svg xmlns="http://www.w3.org/2000/svg"><circle r="10"/></svg>';
     const content = Buffer.from(svg).toString('base64');
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST', url: '/api/ingest',
       payload: { files: [{ name: 'icon.svg', content }] },
     });
@@ -304,7 +305,7 @@ describe('POST /api/ingest', () => {
 
   it('processes PPTX and returns document type', async () => {
     const content = Buffer.from('fake-pptx').toString('base64');
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST', url: '/api/ingest',
       payload: { files: [{ name: 'slides.pptx', content }] },
     });
@@ -317,7 +318,7 @@ describe('POST /api/ingest', () => {
 
   it('accepts optional workspaceId without error', async () => {
     const content = Buffer.from('text').toString('base64');
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST', url: '/api/ingest',
       payload: { files: [{ name: 'note.txt', content }], workspaceId: 'ws-123' },
     });

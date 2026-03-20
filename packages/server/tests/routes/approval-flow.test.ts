@@ -5,6 +5,7 @@ import os from 'node:os';
 import { MindDB } from '@waggle/core';
 import { buildLocalServer } from '../../src/local/index.js';
 import type { FastifyInstance } from 'fastify';
+import { injectWithAuth } from '../test-utils.js';
 
 /**
  * Tests the server-side approval flow:
@@ -50,7 +51,7 @@ describe('Approval Flow — Server Side', () => {
     expect(server.agentState.pendingApprovals.has(requestId)).toBe(true);
 
     // Simulate what the UI does: POST approval
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: `/api/approval/${requestId}`,
       payload: { approved: true },
@@ -83,7 +84,7 @@ describe('Approval Flow — Server Side', () => {
       });
     });
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: `/api/approval/${requestId}`,
       payload: { approved: false },
@@ -95,7 +96,7 @@ describe('Approval Flow — Server Side', () => {
   });
 
   it('POST /api/approval/:id returns 404 for unknown requestId', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/approval/nonexistent-id',
       payload: { approved: true },
@@ -114,7 +115,7 @@ describe('Approval Flow — Server Side', () => {
       timestamp: Date.now(),
     });
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/approval/pending',
     });

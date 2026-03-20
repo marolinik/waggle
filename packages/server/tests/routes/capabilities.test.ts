@@ -5,6 +5,7 @@ import os from 'node:os';
 import { MindDB, SessionStore, FrameStore } from '@waggle/core';
 import { buildLocalServer } from '../../src/local/index.js';
 import type { FastifyInstance } from 'fastify';
+import { injectWithAuth } from '../test-utils.js';
 
 describe('Capabilities Route', () => {
   let server: FastifyInstance;
@@ -31,12 +32,12 @@ describe('Capabilities Route', () => {
   });
 
   it('GET /api/capabilities/status returns 200', async () => {
-    const res = await server.inject({ method: 'GET', url: '/api/capabilities/status' });
+    const res = await injectWithAuth(server, { method: 'GET', url: '/api/capabilities/status' });
     expect(res.statusCode).toBe(200);
   });
 
   it('returns correct structure with empty plugins/MCP and populated commands', async () => {
-    const res = await server.inject({ method: 'GET', url: '/api/capabilities/status' });
+    const res = await injectWithAuth(server, { method: 'GET', url: '/api/capabilities/status' });
     const body = JSON.parse(res.body);
 
     expect(body).toHaveProperty('plugins');
@@ -56,7 +57,7 @@ describe('Capabilities Route', () => {
   });
 
   it('tools summary has count, native, plugin, mcp fields', async () => {
-    const res = await server.inject({ method: 'GET', url: '/api/capabilities/status' });
+    const res = await injectWithAuth(server, { method: 'GET', url: '/api/capabilities/status' });
     const body = JSON.parse(res.body);
 
     expect(body.tools).toHaveProperty('count');
@@ -70,7 +71,7 @@ describe('Capabilities Route', () => {
   });
 
   it('native tool count equals total when no plugins or MCP', async () => {
-    const res = await server.inject({ method: 'GET', url: '/api/capabilities/status' });
+    const res = await injectWithAuth(server, { method: 'GET', url: '/api/capabilities/status' });
     const body = JSON.parse(res.body);
 
     expect(body.tools.native).toBe(body.tools.count);
@@ -90,7 +91,7 @@ describe('Capabilities Route', () => {
 
     (server.agentState as Record<string, unknown>).pluginRuntimeManager = mockManager;
 
-    const res = await server.inject({ method: 'GET', url: '/api/capabilities/status' });
+    const res = await injectWithAuth(server, { method: 'GET', url: '/api/capabilities/status' });
     const body = JSON.parse(res.body);
 
     expect(body.plugins).toHaveLength(2);
@@ -122,7 +123,7 @@ describe('Capabilities Route', () => {
 
     (server.agentState as Record<string, unknown>).mcpRuntime = mockMcp;
 
-    const res = await server.inject({ method: 'GET', url: '/api/capabilities/status' });
+    const res = await injectWithAuth(server, { method: 'GET', url: '/api/capabilities/status' });
     const body = JSON.parse(res.body);
 
     expect(body.mcpServers).toHaveLength(2);
@@ -146,7 +147,7 @@ describe('Capabilities Route', () => {
   });
 
   it('returns workflow + marketplace commands from the wired CommandRegistry', async () => {
-    const res = await server.inject({ method: 'GET', url: '/api/capabilities/status' });
+    const res = await injectWithAuth(server, { method: 'GET', url: '/api/capabilities/status' });
     const body = JSON.parse(res.body);
 
     expect(body.commands.length).toBeGreaterThanOrEqual(13);
@@ -179,7 +180,7 @@ describe('Capabilities Route', () => {
   });
 
   it('returns hooks object with registered count and recentActivity array', async () => {
-    const res = await server.inject({ method: 'GET', url: '/api/capabilities/status' });
+    const res = await injectWithAuth(server, { method: 'GET', url: '/api/capabilities/status' });
     const body = JSON.parse(res.body);
 
     expect(body).toHaveProperty('hooks');
@@ -190,7 +191,7 @@ describe('Capabilities Route', () => {
   });
 
   it('returns workflows array with 3 built-in templates', async () => {
-    const res = await server.inject({ method: 'GET', url: '/api/capabilities/status' });
+    const res = await injectWithAuth(server, { method: 'GET', url: '/api/capabilities/status' });
     const body = JSON.parse(res.body);
 
     expect(body).toHaveProperty('workflows');
@@ -230,7 +231,7 @@ describe('Capabilities Route', () => {
     (server.agentState as Record<string, unknown>).pluginRuntimeManager = mockManager;
     (server.agentState as Record<string, unknown>).mcpRuntime = mockMcp;
 
-    const res = await server.inject({ method: 'GET', url: '/api/capabilities/status' });
+    const res = await injectWithAuth(server, { method: 'GET', url: '/api/capabilities/status' });
     const body = JSON.parse(res.body);
 
     const totalNative = server.agentState.allTools.length;

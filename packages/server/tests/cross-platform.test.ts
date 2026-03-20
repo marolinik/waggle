@@ -21,6 +21,7 @@ import os from 'node:os';
 import { MindDB, FrameStore, SessionStore, VaultStore } from '@waggle/core';
 import { buildLocalServer } from '../src/local/index.js';
 import type { FastifyInstance } from 'fastify';
+import { injectWithAuth } from './test-utils.js';
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -77,7 +78,7 @@ describe('Cross-Platform Verification', () => {
 
   describe('critical endpoints', () => {
     it('GET /health returns 200', async () => {
-      const res = await server.inject({ method: 'GET', url: '/health' });
+      const res = await injectWithAuth(server, { method: 'GET', url: '/health' });
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
       expect(body.mode).toBe('local');
@@ -85,42 +86,42 @@ describe('Cross-Platform Verification', () => {
     });
 
     it('GET /api/settings returns 200', async () => {
-      const res = await server.inject({ method: 'GET', url: '/api/settings' });
+      const res = await injectWithAuth(server, { method: 'GET', url: '/api/settings' });
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
       expect(body.defaultModel).toBeDefined();
     });
 
     it('GET /api/workspaces returns 200', async () => {
-      const res = await server.inject({ method: 'GET', url: '/api/workspaces' });
+      const res = await injectWithAuth(server, { method: 'GET', url: '/api/workspaces' });
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
       expect(Array.isArray(body)).toBe(true);
     });
 
     it('GET /api/vault returns 200', async () => {
-      const res = await server.inject({ method: 'GET', url: '/api/vault' });
+      const res = await injectWithAuth(server, { method: 'GET', url: '/api/vault' });
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
       expect(body.secrets).toBeDefined();
     });
 
     it('GET /api/memory/search?q=test returns 200', async () => {
-      const res = await server.inject({ method: 'GET', url: '/api/memory/search?q=test' });
+      const res = await injectWithAuth(server, { method: 'GET', url: '/api/memory/search?q=test' });
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
       expect(body.results).toBeDefined();
     });
 
     it('GET /api/memory/frames returns 200', async () => {
-      const res = await server.inject({ method: 'GET', url: '/api/memory/frames?limit=5' });
+      const res = await injectWithAuth(server, { method: 'GET', url: '/api/memory/frames?limit=5' });
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
       expect(body.results).toBeDefined();
     });
 
     it('GET /api/cron returns 200 with schedules', async () => {
-      const res = await server.inject({ method: 'GET', url: '/api/cron' });
+      const res = await injectWithAuth(server, { method: 'GET', url: '/api/cron' });
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
       expect(body.schedules).toBeDefined();
@@ -129,27 +130,27 @@ describe('Cross-Platform Verification', () => {
     });
 
     it('GET /api/skills returns 200', async () => {
-      const res = await server.inject({ method: 'GET', url: '/api/skills' });
+      const res = await injectWithAuth(server, { method: 'GET', url: '/api/skills' });
       expect(res.statusCode).toBe(200);
     });
 
     it('GET /api/capabilities/status returns 200', async () => {
-      const res = await server.inject({ method: 'GET', url: '/api/capabilities/status' });
+      const res = await injectWithAuth(server, { method: 'GET', url: '/api/capabilities/status' });
       expect(res.statusCode).toBe(200);
     });
 
     it('GET /api/connectors returns 200', async () => {
-      const res = await server.inject({ method: 'GET', url: '/api/connectors' });
+      const res = await injectWithAuth(server, { method: 'GET', url: '/api/connectors' });
       expect(res.statusCode).toBe(200);
     });
 
     it('GET /api/personas returns 200', async () => {
-      const res = await server.inject({ method: 'GET', url: '/api/personas' });
+      const res = await injectWithAuth(server, { method: 'GET', url: '/api/personas' });
       expect(res.statusCode).toBe(200);
     });
 
     it('POST /api/chat without message returns 400', async () => {
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'POST',
         url: '/api/chat',
         payload: {},
@@ -162,13 +163,13 @@ describe('Cross-Platform Verification', () => {
 
   describe('SPA fallback', () => {
     it('unknown GET paths do not crash the server', async () => {
-      const res = await server.inject({ method: 'GET', url: '/some/unknown/path' });
+      const res = await injectWithAuth(server, { method: 'GET', url: '/some/unknown/path' });
       // Server should respond (404 or SPA fallback), not crash
       expect([200, 404]).toContain(res.statusCode);
     });
 
     it('unknown API paths return 404', async () => {
-      const res = await server.inject({ method: 'GET', url: '/api/nonexistent' });
+      const res = await injectWithAuth(server, { method: 'GET', url: '/api/nonexistent' });
       expect(res.statusCode).toBe(404);
     });
   });
@@ -181,7 +182,7 @@ describe('Cross-Platform Verification', () => {
       // but we can verify the route exists by checking the response
       // to a non-upgrade request (Fastify will respond with an error
       // or handle it, but shouldn't 404).
-      const res = await server.inject({ method: 'GET', url: '/ws' });
+      const res = await injectWithAuth(server, { method: 'GET', url: '/ws' });
       // The WebSocket route is registered — a non-upgrade GET request
       // will get a 404 or a connection error (not a route-not-found).
       // In Fastify with @fastify/websocket, a plain GET to a websocket

@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { buildLocalServer } from '../src/local/index.js';
+import { injectWithAuth } from './test-utils.js';
 
 describe('Team local routes', () => {
   let server: Awaited<ReturnType<typeof buildLocalServer>>;
@@ -29,7 +30,7 @@ describe('Team local routes', () => {
 
   describe('GET /api/team/status', () => {
     it('returns disconnected when no team configured', async () => {
-      const response = await server.inject({
+      const response = await injectWithAuth(server, {
         method: 'GET',
         url: '/api/team/status',
       });
@@ -42,7 +43,7 @@ describe('Team local routes', () => {
 
   describe('POST /api/team/connect', () => {
     it('returns 400 when serverUrl or token missing', async () => {
-      const response = await server.inject({
+      const response = await injectWithAuth(server, {
         method: 'POST',
         url: '/api/team/connect',
         payload: { serverUrl: 'https://example.com' },
@@ -52,7 +53,7 @@ describe('Team local routes', () => {
     });
 
     it('returns 502 when team server is unreachable', async () => {
-      const response = await server.inject({
+      const response = await injectWithAuth(server, {
         method: 'POST',
         url: '/api/team/connect',
         payload: {
@@ -68,7 +69,7 @@ describe('Team local routes', () => {
 
   describe('GET /api/team/teams', () => {
     it('returns 401 when not connected to a team server', async () => {
-      const response = await server.inject({
+      const response = await injectWithAuth(server, {
         method: 'GET',
         url: '/api/team/teams',
       });
@@ -81,7 +82,7 @@ describe('Team local routes', () => {
 
   describe('GET /api/team/presence', () => {
     it('returns empty members when not connected to a team server', async () => {
-      const response = await server.inject({
+      const response = await injectWithAuth(server, {
         method: 'GET',
         url: '/api/team/presence?workspaceId=test-ws',
       });
@@ -95,7 +96,7 @@ describe('Team local routes', () => {
 
   describe('GET /api/team/activity', () => {
     it('returns empty items when not connected to a team server', async () => {
-      const response = await server.inject({
+      const response = await injectWithAuth(server, {
         method: 'GET',
         url: '/api/team/activity?workspaceId=test-ws',
       });
@@ -109,7 +110,7 @@ describe('Team local routes', () => {
 
   describe('POST /api/team/disconnect', () => {
     it('clears team config and returns success', async () => {
-      const response = await server.inject({
+      const response = await injectWithAuth(server, {
         method: 'POST',
         url: '/api/team/disconnect',
       });
@@ -119,7 +120,7 @@ describe('Team local routes', () => {
       expect(body.disconnected).toBe(true);
 
       // Verify status is disconnected
-      const statusRes = await server.inject({
+      const statusRes = await injectWithAuth(server, {
         method: 'GET',
         url: '/api/team/status',
       });

@@ -5,6 +5,7 @@ import os from 'node:os';
 import { MindDB, SessionStore, FrameStore } from '@waggle/core';
 import { buildLocalServer } from '../../src/local/index.js';
 import type { FastifyInstance } from 'fastify';
+import { injectWithAuth } from '../test-utils.js';
 
 describe('Capability Packs API', () => {
   let server: FastifyInstance;
@@ -28,7 +29,7 @@ describe('Capability Packs API', () => {
   });
 
   it('GET /api/skills/capability-packs/catalog returns packs with skill states', async () => {
-    const res = await server.inject({ method: 'GET', url: '/api/skills/capability-packs/catalog' });
+    const res = await injectWithAuth(server, { method: 'GET', url: '/api/skills/capability-packs/catalog' });
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
     expect(body.packs).toBeDefined();
@@ -43,7 +44,7 @@ describe('Capability Packs API', () => {
   });
 
   it('POST /api/skills/capability-packs/:id installs all skills in pack', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/skills/capability-packs/writing-suite',
     });
@@ -57,7 +58,7 @@ describe('Capability Packs API', () => {
   });
 
   it('re-installing pack skips already-installed skills', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/skills/capability-packs/writing-suite',
     });
@@ -68,7 +69,7 @@ describe('Capability Packs API', () => {
   });
 
   it('pack state reflects installed skills', async () => {
-    const res = await server.inject({ method: 'GET', url: '/api/skills/capability-packs/catalog' });
+    const res = await injectWithAuth(server, { method: 'GET', url: '/api/skills/capability-packs/catalog' });
     const body = JSON.parse(res.body);
     const writing = body.packs.find((p: any) => p.id === 'writing-suite');
     expect(writing.packState).toBe('complete');
@@ -76,7 +77,7 @@ describe('Capability Packs API', () => {
   });
 
   it('POST nonexistent pack returns 404', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/skills/capability-packs/nonexistent-pack',
     });
@@ -84,7 +85,7 @@ describe('Capability Packs API', () => {
   });
 
   it('packs with path traversal return 400', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/skills/capability-packs/..%2F..%2Fetc',
     });

@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { buildLocalServer } from '../src/local/index.js';
+import { injectWithAuth } from './test-utils.js';
 
 describe('Task routes', () => {
   let server: Awaited<ReturnType<typeof buildLocalServer>>;
@@ -33,7 +34,7 @@ describe('Task routes', () => {
   });
 
   it('returns empty tasks for a new workspace', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/workspaces/${wsId}/tasks`,
     });
@@ -42,7 +43,7 @@ describe('Task routes', () => {
   });
 
   it('creates a task', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: `/api/workspaces/${wsId}/tasks`,
       payload: { title: 'Fix the bug' },
@@ -55,7 +56,7 @@ describe('Task routes', () => {
   });
 
   it('rejects empty title', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: `/api/workspaces/${wsId}/tasks`,
       payload: { title: '' },
@@ -64,7 +65,7 @@ describe('Task routes', () => {
   });
 
   it('lists created tasks', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/workspaces/${wsId}/tasks`,
     });
@@ -75,13 +76,13 @@ describe('Task routes', () => {
 
   it('updates task status', async () => {
     // Get the task ID
-    const listRes = await server.inject({
+    const listRes = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/workspaces/${wsId}/tasks`,
     });
     const taskId = JSON.parse(listRes.body).tasks[0].id;
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'PATCH',
       url: `/api/workspaces/${wsId}/tasks/${taskId}`,
       payload: { status: 'in_progress' },
@@ -91,7 +92,7 @@ describe('Task routes', () => {
   });
 
   it('filters tasks by status', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/workspaces/${wsId}/tasks?status=in_progress`,
     });
@@ -101,20 +102,20 @@ describe('Task routes', () => {
   });
 
   it('deletes a task', async () => {
-    const listRes = await server.inject({
+    const listRes = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/workspaces/${wsId}/tasks`,
     });
     const taskId = JSON.parse(listRes.body).tasks[0].id;
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'DELETE',
       url: `/api/workspaces/${wsId}/tasks/${taskId}`,
     });
     expect(res.statusCode).toBe(204);
 
     // Verify empty
-    const afterRes = await server.inject({
+    const afterRes = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/workspaces/${wsId}/tasks`,
     });
@@ -122,7 +123,7 @@ describe('Task routes', () => {
   });
 
   it('returns 404 for non-existent task update', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'PATCH',
       url: `/api/workspaces/${wsId}/tasks/nonexistent`,
       payload: { status: 'done' },

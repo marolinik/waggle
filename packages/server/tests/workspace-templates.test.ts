@@ -12,6 +12,7 @@ import os from 'node:os';
 import { MindDB } from '@waggle/core';
 import { buildLocalServer } from '../src/local/index.js';
 import type { FastifyInstance } from 'fastify';
+import { injectWithAuth } from './test-utils.js';
 
 interface TemplateResponse {
   id: string;
@@ -49,7 +50,7 @@ describe('Workspace Templates API', () => {
   });
 
   it('GET /api/workspace-templates returns 6 built-in templates', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/workspace-templates',
     });
@@ -62,7 +63,7 @@ describe('Workspace Templates API', () => {
   });
 
   it('each built-in template has all required fields', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/workspace-templates',
     });
@@ -86,7 +87,7 @@ describe('Workspace Templates API', () => {
   });
 
   it('built-in templates have correct IDs', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/workspace-templates',
     });
@@ -107,7 +108,7 @@ describe('Workspace Templates API', () => {
       'project-manager', 'executive-assistant', 'sales-rep', 'marketer',
     ];
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/workspace-templates',
     });
@@ -119,7 +120,7 @@ describe('Workspace Templates API', () => {
   });
 
   it('POST /api/workspace-templates creates a custom template', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/workspace-templates',
       payload: {
@@ -143,7 +144,7 @@ describe('Workspace Templates API', () => {
   });
 
   it('custom template appears in GET after POST', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/workspace-templates',
     });
@@ -157,7 +158,7 @@ describe('Workspace Templates API', () => {
   });
 
   it('POST /api/workspace-templates rejects missing required fields', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/workspace-templates',
       payload: {
@@ -172,7 +173,7 @@ describe('Workspace Templates API', () => {
   });
 
   it('POST /api/workspace-templates rejects invalid field types', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/workspace-templates',
       payload: {

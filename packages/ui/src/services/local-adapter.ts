@@ -30,24 +30,52 @@ export class LocalAdapter implements WaggleService {
   private connected = false;
   private ws: WebSocket | null = null;
   private listeners = new Map<string, Set<(data: unknown) => void>>();
+  /** Bearer token obtained from /health — used to authenticate all API requests (SEC-011) */
+  private authToken: string | null = null;
 
   constructor(options: LocalAdapterOptions = {}) {
     this.baseUrl = options.baseUrl ?? 'http://127.0.0.1:3333';
     this.wsUrl = options.wsUrl ?? 'ws://127.0.0.1:3333/ws';
   }
 
+  /**
+   * Build headers for authenticated requests.
+   * Merges the Authorization header with any additional headers provided.
+   */
+  private authHeaders(extra?: Record<string, string>): Record<string, string> {
+    const headers: Record<string, string> = { ...extra };
+    if (this.authToken) {
+      headers['Authorization'] = `Bearer ${this.authToken}`;
+    }
+    return headers;
+  }
+
   // ── Connection lifecycle ───────────────────────────────────────────
 
   async connect(): Promise<void> {
-    // Health check
+    // Health check (unauthenticated — discovers the session token)
     const res = await fetch(`${this.baseUrl}/health`);
     if (!res.ok) {
       throw new Error(`Health check failed: ${res.status}`);
     }
 
-    // Open WebSocket for push events (best-effort, non-blocking)
+    // Extract the session token from the health response (SEC-011)
     try {
-      this.ws = new WebSocket(this.wsUrl);
+      const healthData = await res.json() as { wsToken?: string };
+      if (healthData.wsToken) {
+        this.authToken = healthData.wsToken;
+      }
+    } catch {
+      // If parsing fails, continue without token (backward compat)
+    }
+
+    // Open WebSocket for push events (best-effort, non-blocking)
+    // Pass token as query param (same as existing WS auth — 11A-6)
+    try {
+      const wsUrlWithToken = this.authToken
+        ? `${this.wsUrl}?token=${this.authToken}`
+        : this.wsUrl;
+      this.ws = new WebSocket(wsUrlWithToken);
       this.ws.onmessage = (event) => {
         try {
           const parsed = JSON.parse(String(event.data));
@@ -91,7 +119,7 @@ export class LocalAdapter implements WaggleService {
   ): AsyncGenerator<StreamEvent> {
     const res = await fetch(`${this.baseUrl}/api/chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ message, workspace, session, model, workspacePath }),
     });
 
@@ -108,7 +136,9 @@ export class LocalAdapter implements WaggleService {
   async getHistory(workspace: string, session?: string): Promise<Message[]> {
     const params = new URLSearchParams({ workspace });
     if (session) params.set('session', session);
-    const res = await fetch(`${this.baseUrl}/api/history?${params}`);
+    const res = await fetch(`${this.baseUrl}/api/history?${params}`, {
+      headers: this.authHeaders(),
+    });
     if (!res.ok) return [];
     return res.json() as Promise<Message[]>;
   }
@@ -116,7 +146,9 @@ export class LocalAdapter implements WaggleService {
   // ── Workspaces ─────────────────────────────────────────────────────
 
   async listWorkspaces(): Promise<Workspace[]> {
-    const res = await fetch(`${this.baseUrl}/api/workspaces`);
+    const res = await fetch(`${this.baseUrl}/api/workspaces`, {
+      headers: this.authHeaders(),
+    });
     if (!res.ok) throw new Error(`Failed to list workspaces: ${res.status}`);
     return res.json() as Promise<Workspace[]>;
   }
@@ -124,7 +156,7 @@ export class LocalAdapter implements WaggleService {
   async createWorkspace(config: Partial<Workspace>): Promise<Workspace> {
     const res = await fetch(`${this.baseUrl}/api/workspaces`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(config),
     });
     if (!res.ok) {
@@ -137,7 +169,7 @@ export class LocalAdapter implements WaggleService {
   async updateWorkspace(id: string, config: Partial<Workspace>): Promise<void> {
     const res = await fetch(`${this.baseUrl}/api/workspaces/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(config),
     });
     if (!res.ok) {
@@ -147,7 +179,9 @@ export class LocalAdapter implements WaggleService {
   }
 
   async getWorkspaceContext(id: string): Promise<WorkspaceContext> {
-    const res = await fetch(`${this.baseUrl}/api/workspaces/${id}/context`);
+    const res = await fetch(`${this.baseUrl}/api/workspaces/${id}/context`, {
+      headers: this.authHeaders(),
+    });
     if (!res.ok) throw new Error(`Failed to get workspace context: ${res.status}`);
     return res.json() as Promise<WorkspaceContext>;
   }
@@ -155,6 +189,7 @@ export class LocalAdapter implements WaggleService {
   async deleteWorkspace(id: string): Promise<void> {
     const res = await fetch(`${this.baseUrl}/api/workspaces/${id}`, {
       method: 'DELETE',
+      headers: this.authHeaders(),
     });
     if (!res.ok && res.status !== 204) {
       throw new Error(`Failed to delete workspace: ${res.status}`);
@@ -170,7 +205,9 @@ export class LocalAdapter implements WaggleService {
   ): Promise<Frame[]> {
     const params = new URLSearchParams({ q: query, scope });
     if (workspace) params.set('workspace', workspace);
-    const res = await fetch(`${this.baseUrl}/api/memory/search?${params}`);
+    const res = await fetch(`${this.baseUrl}/api/memory/search?${params}`, {
+      headers: this.authHeaders(),
+    });
     if (!res.ok) return [];
     const data = await res.json() as { results: Frame[]; count: number };
     return data.results;
@@ -179,7 +216,9 @@ export class LocalAdapter implements WaggleService {
   async listFrames(workspace?: string, limit = 50): Promise<Frame[]> {
     const params = new URLSearchParams({ limit: String(limit) });
     if (workspace) params.set('workspace', workspace);
-    const res = await fetch(`${this.baseUrl}/api/memory/frames?${params}`);
+    const res = await fetch(`${this.baseUrl}/api/memory/frames?${params}`, {
+      headers: this.authHeaders(),
+    });
     if (!res.ok) return [];
     const data = await res.json() as { results: Frame[]; count: number };
     return data.results;
@@ -189,7 +228,9 @@ export class LocalAdapter implements WaggleService {
     workspace: string,
   ): Promise<{ entities: unknown[]; relations: unknown[] }> {
     const params = new URLSearchParams({ workspace });
-    const res = await fetch(`${this.baseUrl}/api/memory/graph?${params}`);
+    const res = await fetch(`${this.baseUrl}/api/memory/graph?${params}`, {
+      headers: this.authHeaders(),
+    });
     if (!res.ok) return { entities: [], relations: [] };
     return res.json() as Promise<{ entities: unknown[]; relations: unknown[] }>;
   }
@@ -199,6 +240,7 @@ export class LocalAdapter implements WaggleService {
   async listSessions(workspace: string): Promise<Session[]> {
     const res = await fetch(
       `${this.baseUrl}/api/workspaces/${workspace}/sessions`,
+      { headers: this.authHeaders() },
     );
     if (!res.ok) return [];
     return res.json() as Promise<Session[]>;
@@ -209,7 +251,7 @@ export class LocalAdapter implements WaggleService {
       `${this.baseUrl}/api/workspaces/${workspace}/sessions`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ title }),
       },
     );
@@ -222,7 +264,7 @@ export class LocalAdapter implements WaggleService {
       `${this.baseUrl}/api/workspaces/${workspace}/sessions/${sessionId}`,
       {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ title }),
       },
     );
@@ -233,7 +275,7 @@ export class LocalAdapter implements WaggleService {
     const params = new URLSearchParams({ workspace });
     const res = await fetch(
       `${this.baseUrl}/api/sessions/${sessionId}?${params}`,
-      { method: 'DELETE' },
+      { method: 'DELETE', headers: this.authHeaders() },
     );
     if (!res.ok && res.status !== 204) {
       throw new Error(`Failed to delete session: ${res.status}`);
@@ -244,6 +286,7 @@ export class LocalAdapter implements WaggleService {
     const params = new URLSearchParams({ q: query });
     const res = await fetch(
       `${this.baseUrl}/api/workspaces/${workspace}/sessions/search?${params}`,
+      { headers: this.authHeaders() },
     );
     if (!res.ok) return [];
     return res.json() as Promise<SessionSearchResult[]>;
@@ -252,13 +295,16 @@ export class LocalAdapter implements WaggleService {
   async exportSession(workspace: string, sessionId: string): Promise<string> {
     const res = await fetch(
       `${this.baseUrl}/api/workspaces/${workspace}/sessions/${sessionId}/export`,
+      { headers: this.authHeaders() },
     );
     if (!res.ok) throw new Error('Export failed');
     return res.text();
   }
 
   async listFiles(workspace: string): Promise<import('./types.js').FileRegistryEntry[]> {
-    const res = await fetch(`${this.baseUrl}/api/workspaces/${workspace}/files`);
+    const res = await fetch(`${this.baseUrl}/api/workspaces/${workspace}/files`, {
+      headers: this.authHeaders(),
+    });
     if (!res.ok) return [];
     const data = await res.json() as { files: import('./types.js').FileRegistryEntry[] };
     return data.files;
@@ -269,7 +315,7 @@ export class LocalAdapter implements WaggleService {
   approveAction(requestId: string): void {
     fetch(`${this.baseUrl}/api/approval/${requestId}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ approved: true }),
     }).catch(() => {});
   }
@@ -277,7 +323,7 @@ export class LocalAdapter implements WaggleService {
   denyAction(requestId: string, reason?: string): void {
     fetch(`${this.baseUrl}/api/approval/${requestId}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ approved: false, reason }),
     }).catch(() => {});
   }
@@ -286,7 +332,9 @@ export class LocalAdapter implements WaggleService {
 
   async getAgentStatus(): Promise<AgentStatus> {
     try {
-      const res = await fetch(`${this.baseUrl}/api/agent/status`);
+      const res = await fetch(`${this.baseUrl}/api/agent/status`, {
+        headers: this.authHeaders(),
+      });
       if (!res.ok) {
         return { running: false, model: 'unknown', tokensUsed: 0, estimatedCost: 0 };
       }
@@ -300,7 +348,9 @@ export class LocalAdapter implements WaggleService {
 
   async getModel(): Promise<string> {
     try {
-      const res = await fetch(`${this.baseUrl}/api/agent/model`);
+      const res = await fetch(`${this.baseUrl}/api/agent/model`, {
+        headers: this.authHeaders(),
+      });
       if (!res.ok) return 'claude-sonnet-4-6';
       const data = await res.json() as { model: string };
       return data.model;
@@ -312,7 +362,7 @@ export class LocalAdapter implements WaggleService {
   async setModel(model: string): Promise<void> {
     await fetch(`${this.baseUrl}/api/agent/model`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ model }),
     });
   }
@@ -321,7 +371,9 @@ export class LocalAdapter implements WaggleService {
 
   async getCost(): Promise<{ summary: string; totalInputTokens: number; totalOutputTokens: number; estimatedCost: number; turns: number }> {
     try {
-      const res = await fetch(`${this.baseUrl}/api/agent/cost`);
+      const res = await fetch(`${this.baseUrl}/api/agent/cost`, {
+        headers: this.authHeaders(),
+      });
       if (!res.ok) return { summary: 'No data', totalInputTokens: 0, totalOutputTokens: 0, estimatedCost: 0, turns: 0 };
       return res.json() as Promise<{ summary: string; totalInputTokens: number; totalOutputTokens: number; estimatedCost: number; turns: number }>;
     } catch {
@@ -333,7 +385,9 @@ export class LocalAdapter implements WaggleService {
 
   async getIdentity(): Promise<string> {
     try {
-      const res = await fetch(`${this.baseUrl}/api/mind/identity`);
+      const res = await fetch(`${this.baseUrl}/api/mind/identity`, {
+        headers: this.authHeaders(),
+      });
       if (!res.ok) return '';
       const data = await res.json() as { identity: string };
       return data.identity;
@@ -344,7 +398,9 @@ export class LocalAdapter implements WaggleService {
 
   async getAwareness(): Promise<string> {
     try {
-      const res = await fetch(`${this.baseUrl}/api/mind/awareness`);
+      const res = await fetch(`${this.baseUrl}/api/mind/awareness`, {
+        headers: this.authHeaders(),
+      });
       if (!res.ok) return '';
       const data = await res.json() as { awareness: string };
       return data.awareness;
@@ -357,7 +413,9 @@ export class LocalAdapter implements WaggleService {
 
   async getSkills(): Promise<Array<{ name: string; length: number }>> {
     try {
-      const res = await fetch(`${this.baseUrl}/api/mind/skills`);
+      const res = await fetch(`${this.baseUrl}/api/mind/skills`, {
+        headers: this.authHeaders(),
+      });
       if (!res.ok) return [];
       const data = await res.json() as { skills: Array<{ name: string; length: number }> };
       return data.skills;
@@ -369,7 +427,9 @@ export class LocalAdapter implements WaggleService {
   // ── Install Center ──────────────────────────────────────────────────
 
   async getStarterCatalog(): Promise<StarterCatalogResponse> {
-    const res = await fetch(`${this.baseUrl}/api/skills/starter-pack/catalog`);
+    const res = await fetch(`${this.baseUrl}/api/skills/starter-pack/catalog`, {
+      headers: this.authHeaders(),
+    });
     if (!res.ok) throw new Error(`Failed to get starter catalog: ${res.status}`);
     return res.json() as Promise<StarterCatalogResponse>;
   }
@@ -377,7 +437,7 @@ export class LocalAdapter implements WaggleService {
   async installStarterSkill(skillId: string): Promise<{ ok: boolean; skill: { id: string; name: string; state: SkillState } }> {
     const res = await fetch(`${this.baseUrl}/api/skills/starter-pack/${encodeURIComponent(skillId)}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.authHeaders({ 'Content-Type': 'application/json' }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: 'Install failed' }));
@@ -389,7 +449,9 @@ export class LocalAdapter implements WaggleService {
   // ── Settings ───────────────────────────────────────────────────────
 
   async getConfig(): Promise<WaggleConfig> {
-    const res = await fetch(`${this.baseUrl}/api/settings`);
+    const res = await fetch(`${this.baseUrl}/api/settings`, {
+      headers: this.authHeaders(),
+    });
     if (!res.ok) throw new Error(`Failed to get config: ${res.status}`);
     return res.json() as Promise<WaggleConfig>;
   }
@@ -397,7 +459,7 @@ export class LocalAdapter implements WaggleService {
   async updateConfig(config: Partial<WaggleConfig>): Promise<void> {
     const res = await fetch(`${this.baseUrl}/api/settings`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(config),
     });
     if (!res.ok) throw new Error(`Failed to update config: ${res.status}`);
@@ -409,7 +471,7 @@ export class LocalAdapter implements WaggleService {
   ): Promise<{ valid: boolean; error?: string }> {
     const res = await fetch(`${this.baseUrl}/api/settings/test-key`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ provider, apiKey: key }),
     });
     if (!res.ok) return { valid: false, error: `Request failed: ${res.status}` };
@@ -421,7 +483,7 @@ export class LocalAdapter implements WaggleService {
   async connectTeam(serverUrl: string, token: string): Promise<TeamConnection> {
     const res = await fetch(`${this.baseUrl}/api/team/connect`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ serverUrl, token }),
     });
     if (!res.ok) {
@@ -434,12 +496,15 @@ export class LocalAdapter implements WaggleService {
   async disconnectTeam(): Promise<void> {
     const res = await fetch(`${this.baseUrl}/api/team/disconnect`, {
       method: 'POST',
+      headers: this.authHeaders(),
     });
     if (!res.ok) throw new Error(`Disconnect failed: ${res.status}`);
   }
 
   async getTeamStatus(): Promise<TeamConnection | null> {
-    const res = await fetch(`${this.baseUrl}/api/team/status`);
+    const res = await fetch(`${this.baseUrl}/api/team/status`, {
+      headers: this.authHeaders(),
+    });
     if (!res.ok) return null;
     const data = await res.json() as { connected: boolean; serverUrl?: string; userId?: string; displayName?: string };
     if (!data.connected) return null;
@@ -452,7 +517,9 @@ export class LocalAdapter implements WaggleService {
   }
 
   async listTeams(): Promise<Array<{ id: string; name: string; slug: string; role: string }>> {
-    const res = await fetch(`${this.baseUrl}/api/team/teams`);
+    const res = await fetch(`${this.baseUrl}/api/team/teams`, {
+      headers: this.authHeaders(),
+    });
     if (!res.ok) return [];
     return res.json() as Promise<Array<{ id: string; name: string; slug: string; role: string }>>;
   }

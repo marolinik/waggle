@@ -20,6 +20,7 @@ import { EventEmitter } from 'node:events';
 import { MindDB, SessionStore, FrameStore } from '@waggle/core';
 import { buildLocalServer } from '../../src/local/index.js';
 import type { FastifyInstance } from 'fastify';
+import { injectWithAuth } from '../test-utils.js';
 
 describe('SSE Stream Resilience', () => {
   let server: FastifyInstance;
@@ -51,7 +52,7 @@ describe('SSE Stream Resilience', () => {
     it.skip('chat endpoint sets up abort handling and completes in echo mode', async () => {
       // POST /api/chat with a message — since no LLM is available, it falls
       // back to echo mode, which completes the stream and closes the connection.
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'POST',
         url: '/api/chat',
         payload: { message: 'test abort handling' },
@@ -69,7 +70,7 @@ describe('SSE Stream Resilience', () => {
     });
 
     it('returns 400 when message is missing', async () => {
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'POST',
         url: '/api/chat',
         payload: {},
@@ -81,7 +82,7 @@ describe('SSE Stream Resilience', () => {
     });
 
     it.skip('echo mode includes "local mode" indicator in response', async () => {
-      const res = await server.inject({
+      const res = await injectWithAuth(server, {
         method: 'POST',
         url: '/api/chat',
         payload: { message: 'echo test' },
@@ -177,12 +178,12 @@ describe('SSE Stream Resilience', () => {
     it.skip('two chat streams complete independently in echo mode', async () => {
       // Open two chat requests simultaneously — both should complete in echo mode
       const [res1, res2] = await Promise.all([
-        server.inject({
+        injectWithAuth(server, {
           method: 'POST',
           url: '/api/chat',
           payload: { message: 'stream one' },
         }),
-        server.inject({
+        injectWithAuth(server, {
           method: 'POST',
           url: '/api/chat',
           payload: { message: 'stream two' },

@@ -5,6 +5,7 @@ import os from 'node:os';
 import { MindDB } from '@waggle/core';
 import { buildLocalServer } from '../../src/local/index.js';
 import type { FastifyInstance } from 'fastify';
+import { injectWithAuth } from '../test-utils.js';
 
 /** Skill ID used for persistence tests */
 const TEST_SKILL = 'retrospective';
@@ -39,7 +40,7 @@ describe('Capability Persistence & Cross-Surface Agreement', () => {
     // 1. Build server, install a skill
     const server1 = await buildLocalServer({ dataDir });
 
-    const installRes = await server1.inject({
+    const installRes = await injectWithAuth(server1, {
       method: 'POST',
       url: `/api/skills/starter-pack/${TEST_SKILL}`,
     });
@@ -56,7 +57,7 @@ describe('Capability Persistence & Cross-Surface Agreement', () => {
     const server2 = await buildLocalServer({ dataDir });
 
     // 4. Verify skill is active after restart
-    const catalogRes = await server2.inject({
+    const catalogRes = await injectWithAuth(server2, {
       method: 'GET',
       url: '/api/skills/starter-pack/catalog',
     });
@@ -78,7 +79,7 @@ describe('Capability Persistence & Cross-Surface Agreement', () => {
     // Install skills
     const server1 = await buildLocalServer({ dataDir });
     for (const id of skillsToInstall) {
-      const res = await server1.inject({
+      const res = await injectWithAuth(server1, {
         method: 'POST',
         url: `/api/skills/starter-pack/${id}`,
       });
@@ -88,7 +89,7 @@ describe('Capability Persistence & Cross-Surface Agreement', () => {
 
     // Restart and verify all are active
     const server2 = await buildLocalServer({ dataDir });
-    const catalogRes = await server2.inject({
+    const catalogRes = await injectWithAuth(server2, {
       method: 'GET',
       url: '/api/skills/starter-pack/catalog',
     });
@@ -112,14 +113,14 @@ describe('Capability Persistence & Cross-Surface Agreement', () => {
     const server = await buildLocalServer({ dataDir });
 
     // Install a skill
-    const installRes = await server.inject({
+    const installRes = await injectWithAuth(server, {
       method: 'POST',
       url: `/api/skills/starter-pack/${TEST_SKILL}`,
     });
     expect(installRes.statusCode).toBe(200);
 
     // Surface 1: Catalog endpoint
-    const catalogRes = await server.inject({
+    const catalogRes = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/skills/starter-pack/catalog',
     });
@@ -129,7 +130,7 @@ describe('Capability Persistence & Cross-Surface Agreement', () => {
     expect(catalogSkill.state).toBe('active');
 
     // Surface 2: Skills list endpoint
-    const skillsRes = await server.inject({
+    const skillsRes = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/skills',
     });
@@ -138,7 +139,7 @@ describe('Capability Persistence & Cross-Surface Agreement', () => {
     expect(listedSkill, '/api/skills should contain installed skill').toBeDefined();
 
     // Surface 3: Capabilities status endpoint
-    const capsRes = await server.inject({
+    const capsRes = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/capabilities/status',
     });
@@ -159,7 +160,7 @@ describe('Capability Persistence & Cross-Surface Agreement', () => {
 
     // Install, then restart
     const server1 = await buildLocalServer({ dataDir });
-    await server1.inject({
+    await injectWithAuth(server1, {
       method: 'POST',
       url: `/api/skills/starter-pack/${TEST_SKILL}`,
     });
@@ -169,9 +170,9 @@ describe('Capability Persistence & Cross-Surface Agreement', () => {
     const server2 = await buildLocalServer({ dataDir });
 
     const [catalogRes, skillsRes, capsRes] = await Promise.all([
-      server2.inject({ method: 'GET', url: '/api/skills/starter-pack/catalog' }),
-      server2.inject({ method: 'GET', url: '/api/skills' }),
-      server2.inject({ method: 'GET', url: '/api/capabilities/status' }),
+      injectWithAuth(server2, { method: 'GET', url: '/api/skills/starter-pack/catalog' }),
+      injectWithAuth(server2, { method: 'GET', url: '/api/skills' }),
+      injectWithAuth(server2, { method: 'GET', url: '/api/capabilities/status' }),
     ]);
 
     const catalog = catalogRes.json();
@@ -197,19 +198,19 @@ describe('Capability Persistence & Cross-Surface Agreement', () => {
 
     // Install a skill in dataDir1 only
     const server1 = await buildLocalServer({ dataDir: dataDir1 });
-    await server1.inject({
+    await injectWithAuth(server1, {
       method: 'POST',
       url: `/api/skills/starter-pack/${TEST_SKILL}`,
     });
 
     // Verify installed in dataDir1
-    const cat1 = await server1.inject({ method: 'GET', url: '/api/skills/starter-pack/catalog' });
+    const cat1 = await injectWithAuth(server1, { method: 'GET', url: '/api/skills/starter-pack/catalog' });
     expect(cat1.json().skills.find((s: any) => s.id === TEST_SKILL)?.state).toBe('active');
     await server1.close();
 
     // Verify NOT installed in dataDir2
     const server2 = await buildLocalServer({ dataDir: dataDir2 });
-    const cat2 = await server2.inject({ method: 'GET', url: '/api/skills/starter-pack/catalog' });
+    const cat2 = await injectWithAuth(server2, { method: 'GET', url: '/api/skills/starter-pack/catalog' });
     expect(cat2.json().skills.find((s: any) => s.id === TEST_SKILL)?.state).toBe('available');
     await server2.close();
   });
@@ -222,7 +223,7 @@ describe('Capability Persistence & Cross-Surface Agreement', () => {
 
     // Install
     const server1 = await buildLocalServer({ dataDir });
-    await server1.inject({
+    await injectWithAuth(server1, {
       method: 'POST',
       url: `/api/skills/starter-pack/${TEST_SKILL}`,
     });
@@ -235,7 +236,7 @@ describe('Capability Persistence & Cross-Surface Agreement', () => {
 
     // Restart — skill should be back to available
     const server2 = await buildLocalServer({ dataDir });
-    const catalogRes = await server2.inject({
+    const catalogRes = await injectWithAuth(server2, {
       method: 'GET',
       url: '/api/skills/starter-pack/catalog',
     });

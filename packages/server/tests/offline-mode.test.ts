@@ -11,6 +11,7 @@ import { buildLocalServer } from '../src/local/index.js';
 import { OfflineManager } from '../src/local/offline-manager.js';
 import { EventEmitter } from 'node:events';
 import type { FastifyInstance } from 'fastify';
+import { injectWithAuth } from './test-utils.js';
 
 // ── OfflineManager unit tests ───────────────────────────────────────
 
@@ -200,7 +201,7 @@ describe('Offline REST routes', () => {
   });
 
   it('GET /api/offline/status returns expected shape', async () => {
-    const res = await server.inject({ method: 'GET', url: '/api/offline/status' });
+    const res = await injectWithAuth(server, { method: 'GET', url: '/api/offline/status' });
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
 
@@ -211,7 +212,7 @@ describe('Offline REST routes', () => {
   });
 
   it('POST /api/offline/queue stores messages', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/offline/queue',
       payload: { workspaceId: 'test-ws', message: 'Hello from offline' },
@@ -225,7 +226,7 @@ describe('Offline REST routes', () => {
   });
 
   it('POST /api/offline/queue rejects missing message', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/offline/queue',
       payload: { workspaceId: 'test-ws' },
@@ -234,7 +235,7 @@ describe('Offline REST routes', () => {
   });
 
   it('GET /api/offline/queue returns queued messages', async () => {
-    const res = await server.inject({ method: 'GET', url: '/api/offline/queue' });
+    const res = await injectWithAuth(server, { method: 'GET', url: '/api/offline/queue' });
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
     expect(Array.isArray(body.messages)).toBe(true);
@@ -244,25 +245,25 @@ describe('Offline REST routes', () => {
 
   it('DELETE /api/offline/queue clears queue', async () => {
     // Queue another message first
-    await server.inject({
+    await injectWithAuth(server, {
       method: 'POST',
       url: '/api/offline/queue',
       payload: { workspaceId: 'ws-2', message: 'Another' },
     });
 
-    const res = await server.inject({ method: 'DELETE', url: '/api/offline/queue' });
+    const res = await injectWithAuth(server, { method: 'DELETE', url: '/api/offline/queue' });
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
     expect(body.cleared).toBeGreaterThanOrEqual(1);
 
     // Verify empty
-    const check = await server.inject({ method: 'GET', url: '/api/offline/queue' });
+    const check = await injectWithAuth(server, { method: 'GET', url: '/api/offline/queue' });
     const checkBody = JSON.parse(check.body);
     expect(checkBody.messages).toHaveLength(0);
   });
 
   it('health endpoint includes offline state', async () => {
-    const res = await server.inject({ method: 'GET', url: '/health' });
+    const res = await injectWithAuth(server, { method: 'GET', url: '/health' });
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
 

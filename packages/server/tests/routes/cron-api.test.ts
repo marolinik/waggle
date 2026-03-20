@@ -12,6 +12,7 @@ import os from 'node:os';
 import { MindDB } from '@waggle/core';
 import { buildLocalServer } from '../../src/local/index.js';
 import type { FastifyInstance } from 'fastify';
+import { injectWithAuth } from '../test-utils.js';
 
 describe('Cron REST API Routes', () => {
   let server: FastifyInstance;
@@ -34,7 +35,7 @@ describe('Cron REST API Routes', () => {
   });
 
   it('POST /api/cron creates a schedule and returns camelCase response', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/cron',
       payload: {
@@ -54,7 +55,7 @@ describe('Cron REST API Routes', () => {
   });
 
   it('POST /api/cron with invalid cron expression returns 400', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/cron',
       payload: {
@@ -70,7 +71,7 @@ describe('Cron REST API Routes', () => {
   });
 
   it('GET /api/cron lists schedules including seeded defaults', async () => {
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/cron',
     });
@@ -89,7 +90,7 @@ describe('Cron REST API Routes', () => {
 
   it('PATCH /api/cron/:id updates name and enabled flag', async () => {
     // First create a schedule to update
-    const createRes = await server.inject({
+    const createRes = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/cron',
       payload: {
@@ -101,7 +102,7 @@ describe('Cron REST API Routes', () => {
     const created = JSON.parse(createRes.body);
 
     // Update it
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'PATCH',
       url: `/api/cron/${created.id}`,
       payload: {
@@ -118,7 +119,7 @@ describe('Cron REST API Routes', () => {
 
   it('DELETE /api/cron/:id removes schedule; subsequent GET returns 404', async () => {
     // Create a schedule to delete
-    const createRes = await server.inject({
+    const createRes = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/cron',
       payload: {
@@ -130,14 +131,14 @@ describe('Cron REST API Routes', () => {
     const created = JSON.parse(createRes.body);
 
     // Delete it
-    const delRes = await server.inject({
+    const delRes = await injectWithAuth(server, {
       method: 'DELETE',
       url: `/api/cron/${created.id}`,
     });
     expect(delRes.statusCode).toBe(200);
 
     // Verify it's gone
-    const getRes = await server.inject({
+    const getRes = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/cron/${created.id}`,
     });
@@ -146,7 +147,7 @@ describe('Cron REST API Routes', () => {
 
   it('POST /api/cron/:id/trigger manually triggers a schedule', async () => {
     // Create a schedule to trigger
-    const createRes = await server.inject({
+    const createRes = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/cron',
       payload: {
@@ -157,7 +158,7 @@ describe('Cron REST API Routes', () => {
     });
     const created = JSON.parse(createRes.body);
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: `/api/cron/${created.id}/trigger`,
     });

@@ -291,14 +291,11 @@ test.describe('User Journey Tests', () => {
     await expect(textarea).toHaveValue('/help');
   });
 
-  // Journey 7: Global search button exists in sidebar
+  // Journey 7: Global search — full interaction (open, search, select, close)
   //
-  // NOTE: Clicking the Search button currently crashes the app (React tree
-  // unmounts, leaving a blank screen). This is a known issue — the CommandDialog
-  // from cmdk/radix fails to render when opened from the static build served
-  // by the Fastify server. The test verifies the search button is present and
-  // clickable; the dialog interaction is deferred until the crash is fixed.
-  test('J7: search button is present in sidebar', async ({ page }) => {
+  // The DialogHeader crash has been fixed (moved inside DialogContent).
+  // This test exercises the full GlobalSearch command palette flow.
+  test('J7: global search opens, searches, selects, and closes', async ({ page }) => {
     await page.goto('/');
     await waitForApp(page);
 
@@ -310,15 +307,53 @@ test.describe('User Journey Tests', () => {
     // Verify app is loaded
     await expect(page.locator('.waggle-app-shell')).toBeVisible({ timeout: 5000 });
 
-    // The Search button should be visible in the sidebar
-    const sidebar = page.locator('[role="navigation"][aria-label="Main navigation"]');
-    const searchButton = sidebar.locator('button', { hasText: 'Search' })
-      .or(sidebar.locator('button[title*="Search"]'));
+    // ── Step 1: Open GlobalSearch via Ctrl+K ──
+    await page.keyboard.press('Control+k');
+    await page.waitForTimeout(500);
 
-    // Verify the search button exists and has the right attributes
-    await expect(searchButton.first()).toBeVisible();
-    const title = await searchButton.first().getAttribute('title');
-    expect(title).toContain('Search');
+    // The CommandDialog renders inside a Dialog with role="dialog"
+    const dialog = page.locator('[role="dialog"]');
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+
+    // The CommandInput should be visible with the placeholder
+    const searchInput = page.locator('[data-slot="command-input"]')
+      .or(page.locator('input[placeholder="Type to search..."]'));
+    await expect(searchInput.first()).toBeVisible({ timeout: 3000 });
+
+    // ── Step 2: Verify search groups are present (Commands, Settings) ──
+    // The dialog should show CommandGroup headings
+    const commandsHeading = dialog.locator('text=Commands');
+    const settingsHeading = dialog.locator('text=Settings');
+    await expect(commandsHeading.first()).toBeVisible({ timeout: 3000 });
+    await expect(settingsHeading.first()).toBeVisible({ timeout: 3000 });
+
+    // ── Step 3: Type a query to filter results ──
+    await searchInput.first().fill('help');
+    await page.waitForTimeout(300);
+
+    // The /help command should be visible in the filtered results
+    const helpItem = dialog.locator('[data-slot="command-item"]', { hasText: '/help' })
+      .or(dialog.locator('text=/help'));
+    await expect(helpItem.first()).toBeVisible({ timeout: 3000 });
+
+    // ── Step 4: Select a result by clicking it ──
+    await helpItem.first().click();
+    await page.waitForTimeout(500);
+
+    // The dialog should close after selection
+    await expect(dialog).not.toBeVisible({ timeout: 3000 });
+
+    // ── Step 5: Re-open and close with Escape ──
+    await page.keyboard.press('Control+k');
+    await page.waitForTimeout(500);
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(300);
+    await expect(dialog).not.toBeVisible({ timeout: 3000 });
+
+    // App should still be functional after dialog interactions
+    await expect(page.locator('body')).not.toBeEmpty();
   });
 
   // Journey 8: Settings view loads with tabs

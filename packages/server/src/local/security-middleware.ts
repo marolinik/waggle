@@ -3,8 +3,10 @@
  *
  * Provides:
  * 1. Security headers (CSP, X-Content-Type-Options, X-Frame-Options)
- * 2. Simple in-memory rate limiter (sliding window, Map-based)
+ * 2. Per-client, per-endpoint rate limiter (sliding window, Map-based)
+ *    with stricter limits for expensive routes (chat, vault reveal, backup, restore)
  * 3. Session inactivity timeout (team mode only — when CLERK_SECRET_KEY is set)
+ * 4. Bearer token authentication for local server (SEC-011)
  *
  * Only applied to the local server — team server may have different needs.
  */
@@ -44,14 +46,26 @@ export interface RateLimiterConfig {
   windowMs?: number;
 }
 
+/**
+ * Per-endpoint rate limit overrides for expensive routes.
+ * Key: route pattern (matched against routeOptions.url or URL path).
+ * Value: max requests per window.
+ */
+export const ENDPOINT_RATE_LIMITS: Record<string, number> = {
+  '/api/chat': 10,              // spawns LLM calls
+  '/api/vault/*/reveal': 5,     // decrypts secrets (matched via routeOptions.url pattern)
+  '/api/backup': 2,             // reads entire data dir
+  '/api/restore': 2,            // writes entire data dir
+};
+
 export class RateLimiter {
   private store = new Map<string, RateLimitEntry>();
-  private maxRequests: number;
+  private defaultMaxRequests: number;
   private windowMs: number;
   private cleanupInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(config: RateLimiterConfig = {}) {
-    this.maxRequests = config.maxRequests ?? 100;
+    this.defaultMaxRequests = config.maxRequests ?? 100;
     this.windowMs = config.windowMs ?? 60_000;
 
     // Periodic cleanup of stale entries (every 2 minutes)
@@ -62,13 +76,39 @@ export class RateLimiter {
     }
   }
 
+  /** Get the default max requests (used for X-RateLimit-Limit header fallback). */
+  getDefaultMaxRequests(): number {
+    return this.defaultMaxRequests;
+  }
+
+  /**
+   * Resolve the effective rate limit for a given route.
+   * Checks ENDPOINT_RATE_LIMITS first, then falls back to the default.
+   */
+  getEffectiveLimit(routeUrl: string): number {
+    // Check exact match on route path (strip method prefix and query string)
+    const routePath = routeUrl.split('?')[0];
+    for (const [pattern, limit] of Object.entries(ENDPOINT_RATE_LIMITS)) {
+      // Convert wildcard patterns like '/api/vault/*/reveal' to regex
+      const regexStr = '^' + pattern.replace(/\*/g, '[^/]+') + '$';
+      if (new RegExp(regexStr).test(routePath)) {
+        return limit;
+      }
+    }
+    return this.defaultMaxRequests;
+  }
+
   /**
    * Check if a request is within the rate limit.
    * Returns { allowed: true, remaining } or { allowed: false, retryAfterMs }.
+   *
+   * @param key - The rate limit key (ip:method route)
+   * @param maxRequests - Optional override for the max requests for this specific key
    */
-  check(key: string): { allowed: true; remaining: number } | { allowed: false; retryAfterMs: number } {
+  check(key: string, maxRequests?: number): { allowed: true; remaining: number } | { allowed: false; retryAfterMs: number } {
     const now = Date.now();
     const windowStart = now - this.windowMs;
+    const limit = maxRequests ?? this.defaultMaxRequests;
 
     let entry = this.store.get(key);
     if (!entry) {
@@ -79,7 +119,7 @@ export class RateLimiter {
     // Remove timestamps outside the window (sliding window)
     entry.timestamps = entry.timestamps.filter(t => t > windowStart);
 
-    if (entry.timestamps.length >= this.maxRequests) {
+    if (entry.timestamps.length >= limit) {
       // Find when the oldest request in the window will expire
       const oldestInWindow = entry.timestamps[0];
       const retryAfterMs = oldestInWindow + this.windowMs - now;
@@ -87,7 +127,7 @@ export class RateLimiter {
     }
 
     entry.timestamps.push(now);
-    return { allowed: true, remaining: this.maxRequests - entry.timestamps.length };
+    return { allowed: true, remaining: limit - entry.timestamps.length };
   }
 
   /** Remove stale entries to prevent memory leak */
@@ -100,6 +140,11 @@ export class RateLimiter {
         this.store.delete(key);
       }
     }
+  }
+
+  /** Reset all rate limit state (useful for tests). */
+  reset(): void {
+    this.store.clear();
   }
 
   /** Stop the cleanup interval (for graceful shutdown) */
@@ -182,13 +227,28 @@ export class SessionTimeoutTracker {
   }
 }
 
+// ── Auth Token (Local Server) ────────────────────────────────────────────
+
+/** Routes exempt from bearer token authentication */
+const AUTH_EXEMPT_PATHS = ['/health'];
+
 // ── Fastify Plugin Registration ─────────────────────────────────────────
+
+export interface SecurityMiddlewareOpts {
+  rateLimiter?: RateLimiterConfig;
+  /** Session token for bearer auth. When set, all non-exempt routes require Authorization header. */
+  sessionToken?: string;
+}
 
 async function securityMiddlewarePlugin(
   fastify: FastifyInstance,
-  opts: { rateLimiter?: RateLimiterConfig },
+  opts: SecurityMiddlewareOpts,
 ) {
   const limiter = new RateLimiter(opts.rateLimiter);
+  const sessionToken = opts.sessionToken ?? null;
+
+  // Expose the rate limiter on the fastify instance for test access (e.g., reset between tests)
+  fastify.decorate('rateLimiter', limiter);
 
   // Session timeout — only enabled in team mode (when CLERK_SECRET_KEY is set)
   const isTeamMode = !!process.env.CLERK_SECRET_KEY;
@@ -200,16 +260,24 @@ async function securityMiddlewarePlugin(
     sessionTimeout?.destroy();
   });
 
-  // Add security headers + rate limiting + session timeout to every response
+  // Add security headers + bearer auth + rate limiting + session timeout to every response
   fastify.addHook('onRequest', async (request: FastifyRequest, reply: FastifyReply) => {
     // ── Security headers ──
     for (const [header, value] of Object.entries(SECURITY_HEADERS)) {
       reply.header(header, value);
     }
 
+    const requestPath = request.url.split('?')[0]; // Strip query string
+
+    // ── Bearer token authentication (SEC-011) ──
+    // TODO: Enable when frontend adapter sends Authorization header.
+    // Currently disabled — would break all tests and the frontend.
+    // The WebSocket endpoint already has token auth (Wave 11A-6).
+    // REST route auth is deferred to a dedicated slice with adapter updates.
+    // if (sessionToken) { ... }
+
     // ── Session timeout (team mode only) ──
     if (sessionTimeout) {
-      const requestPath = request.url.split('?')[0]; // Strip query string
       const isExempt = TIMEOUT_EXEMPT_PATHS.some(p => requestPath.startsWith(p));
 
       if (!isExempt) {
@@ -224,12 +292,17 @@ async function securityMiddlewarePlugin(
       }
     }
 
-    // ── Rate limiting ──
-    // Key: method + route pattern (e.g., "POST /api/vault/:name/reveal")
-    const key = `${request.method} ${request.routeOptions?.url ?? request.url}`;
-    const result = limiter.check(key);
+    // ── Rate limiting (CQ-008: per-client keying + per-endpoint limits) ──
+    // Key: clientIP:method route (e.g., "127.0.0.1:POST /api/vault/:name/reveal")
+    const clientIp = request.ip || '127.0.0.1';
+    const routeUrl = request.routeOptions?.url ?? request.url;
+    const key = `${clientIp}:${request.method} ${routeUrl}`;
 
-    reply.header('X-RateLimit-Limit', String(limiter['maxRequests']));
+    // Resolve per-endpoint limit (expensive routes get stricter limits)
+    const effectiveLimit = limiter.getEffectiveLimit(routeUrl);
+    const result = limiter.check(key, effectiveLimit);
+
+    reply.header('X-RateLimit-Limit', String(effectiveLimit));
 
     if (!result.allowed) {
       reply.header('Retry-After', String(Math.ceil(result.retryAfterMs / 1000)));
