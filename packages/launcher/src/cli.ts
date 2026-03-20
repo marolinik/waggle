@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * Waggle CLI Launcher — `npx waggle`
  *

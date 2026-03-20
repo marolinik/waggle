@@ -10,10 +10,18 @@
  * - Onboarding wizard on first run
  * - File preview modal
  * - Keyboard shortcuts
+ *
+ * App-level orchestration state is extracted into focused hooks:
+ * - useToastManager: toast lifecycle + notification→toast conversion
+ * - useOfflineStatus: server reachability polling
+ * - useAgentStatus: token/cost/model polling + model selection
+ * - useTeamState: team messages polling + team connection lifecycle
+ * - useKeyboardShortcuts: global keydown handler registration
+ * - useApprovalGates: pending approval recovery + approve/deny handlers
  */
 
 import React, { useState, useEffect, useCallback, Suspense } from 'react';
-import type { Message, WaggleConfig, WorkspaceContext, Frame, OnboardingData, FileEntry, DroppedFile, TeamMessage, WorkspaceMicroStatus } from '@waggle/ui';
+import type { Message, WaggleConfig, WorkspaceContext, Frame, OnboardingData, FileEntry, DroppedFile, WorkspaceMicroStatus } from '@waggle/ui';
 import {
   ThemeProvider,
   useTheme,
@@ -37,10 +45,9 @@ import {
   useNotifications,
   useSubAgentStatus,
   ToastContainer,
-  matchesNamedShortcut,
   categorizeFile,
 } from '@waggle/ui';
-import type { Toast, PersonaOption, OfflineStatus } from '@waggle/ui';
+import type { PersonaOption } from '@waggle/ui';
 import { ServiceProvider, useService } from './providers/ServiceProvider';
 import { AppSidebar } from './components/AppSidebar';
 import { ContextPanel } from './components/ContextPanel';
@@ -51,6 +58,14 @@ import type { GlobalSearchResultType } from './components/GlobalSearch';
 import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
 import { PersonaSwitcher } from './components/PersonaSwitcher';
 import { getServerBaseUrl } from './lib/ipc';
+
+// ── Extracted hooks ──────────────────────────────────────────────────────
+import { useToastManager } from './hooks/useToastManager';
+import { useOfflineStatus } from './hooks/useOfflineStatus';
+import { useAgentStatus } from './hooks/useAgentStatus';
+import { useTeamState } from './hooks/useTeamState';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { useApprovalGates } from './hooks/useApprovalGates';
 
 // ── Code-split views (loaded on demand) ─────────────────────────────────
 const SettingsView = React.lazy(() => import('./views/SettingsView'));
@@ -124,26 +139,18 @@ function WaggleApp() {
     teamId: activeWorkspace?.teamId,
   });
 
-  // ── Team messages (Wave 2.4) ────────────────────────────────────
-  const [teamMessages, setTeamMessages] = useState<TeamMessage[]>([]);
-  useEffect(() => {
-    const teamId = activeWorkspace?.teamId;
-    if (!teamId) { setTeamMessages([]); return; }
-
-    const fetchMessages = async () => {
-      try {
-        const res = await fetch(`${SERVER_BASE}/api/team/messages?workspaceId=${teamId}`);
-        if (res.ok) {
-          const data = await res.json();
-          setTeamMessages(data.messages ?? []);
-        }
-      } catch { /* silent */ }
-    };
-
-    fetchMessages();
-    const interval = setInterval(fetchMessages, 30_000);
-    return () => clearInterval(interval);
-  }, [activeWorkspace?.teamId]);
+  // ── Team messages + connection (extracted) ────────────────────────
+  const {
+    teamMessages,
+    teamConnection,
+    handleTeamConnect,
+    handleTeamDisconnect,
+    handleFetchTeams,
+  } = useTeamState({
+    teamId: activeWorkspace?.teamId,
+    serverBaseUrl: SERVER_BASE,
+    adapter,
+  });
 
   // ── Agent personas (for workspace creation) ────────────────────
   const [personas, setPersonas] = useState<PersonaOption[]>([]);
@@ -154,9 +161,9 @@ function WaggleApp() {
       .catch(() => { /* personas are optional — degrade gracefully */ });
   }, []);
 
-  // ── Notifications + Toasts ──────────────────────────────────────
+  // ── Notifications + Toasts (extracted) ────────────────────────────
   const { notifications } = useNotifications(SERVER_BASE);
-  const [toasts, setToasts] = useState<Toast[]>([]);
+  const { toasts, setToasts, dismissToast } = useToastManager({ notifications });
 
   // ── Sub-agent status + Workflow suggestions (via SSE) ──────────
   const { subAgents, workflowSuggestion, dismissSuggestion } = useSubAgentStatus(
@@ -194,27 +201,7 @@ function WaggleApp() {
         createdAt: Date.now(),
       }, ...prev]);
     }
-  }, [dismissSuggestion]);
-
-  // Convert focused notifications to toasts
-  useEffect(() => {
-    if (notifications.length === 0) return;
-    const latest = notifications[0];
-    if (document.hasFocus()) {
-      setToasts(prev => [{
-        id: `${Date.now()}-${Math.random()}`,
-        title: latest.title,
-        body: latest.body,
-        category: latest.category,
-        actionUrl: latest.actionUrl,
-        createdAt: Date.now(),
-      }, ...prev].slice(0, 10));
-    }
-  }, [notifications]);
-
-  const dismissToast = useCallback((id: string) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
-  }, []);
+  }, [dismissSuggestion, setToasts]);
 
   // ── Tray event listeners (Tauri only) ─────────────────────────
   useEffect(() => {
@@ -374,100 +361,32 @@ function WaggleApp() {
   // ── Approval gate (listens for WebSocket-based approval events) ──
   useApprovalGate({ service, setMessages });
 
-  // C2: Check for pending approvals on startup (reconnection scenario)
-  useEffect(() => {
-    const checkPending = async () => {
-      try {
-        const res = await fetch(`${SERVER_BASE}/api/approval/pending`);
-        if (res.ok) {
-          const data = await res.json() as { pending: Array<{ requestId: string; toolName: string; input: Record<string, unknown> }> };
-          if (data.pending?.length > 0) {
-            // Surface pending approvals as tool cards
-            for (const p of data.pending) {
-              setMessages(prev => [
-                ...prev,
-                {
-                  id: `approval-${p.requestId}`,
-                  role: 'assistant' as const,
-                  content: '',
-                  timestamp: new Date().toISOString(),
-                  toolUse: [{
-                    name: p.toolName,
-                    input: p.input,
-                    requiresApproval: true,
-                    status: 'pending_approval' as const,
-                    requestId: p.requestId,
-                  }],
-                },
-              ]);
-            }
-          }
-        }
-      } catch { /* server not ready yet */ }
-    };
-    checkPending();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // ── Approval gates: pending recovery + approve/deny (extracted) ──
+  const { handleToolApprove, handleToolDeny } = useApprovalGates({
+    service,
+    serverBaseUrl: SERVER_BASE,
+    setMessages,
+  });
 
-  const handleToolApprove = useCallback((tool: { requestId?: string }) => {
-    if (tool.requestId) {
-      service.approveAction(tool.requestId);
-      // Update message UI to reflect approval
-      setMessages(prev => prev.map(msg => {
-        if (!msg.toolUse) return msg;
-        return {
-          ...msg,
-          toolUse: msg.toolUse.map(t =>
-            t.requestId === tool.requestId ? { ...t, approved: true } : t
-          ),
-        };
-      }));
-    }
-  }, [service, setMessages]);
+  // ── Agent status (extracted) ──────────────────────────────────────
+  const {
+    agentTokens,
+    agentCost,
+    agentModel,
+    setAgentModel,
+    availableModels,
+    handleModelSelect: agentHandleModelSelect,
+  } = useAgentStatus({ service, serverBaseUrl: SERVER_BASE });
 
-  const handleToolDeny = useCallback((tool: { requestId?: string }, reason?: string) => {
-    if (tool.requestId) {
-      service.denyAction(tool.requestId, reason);
-      // Update message UI to reflect denial
-      setMessages(prev => prev.map(msg => {
-        if (!msg.toolUse) return msg;
-        return {
-          ...msg,
-          toolUse: msg.toolUse.map(t =>
-            t.requestId === tool.requestId
-              ? { ...t, approved: false, result: reason ? `Denied: ${reason}` : 'Denied by user' }
-              : t
-          ),
-        };
-      }));
-    }
-  }, [service, setMessages]);
-
-  // ── Agent status for status bar (declared early for slash commands) ──
-  const [agentTokens, setAgentTokens] = useState(0);
-  const [agentCost, setAgentCost] = useState(0);
-  const [agentModel, setAgentModel] = useState('claude-sonnet-4-6');
-  const [availableModels, setAvailableModels] = useState<string[]>([]);
-
-  // ── PM-6: Offline state ────────────────────────────────────────
-  const [offlineStatus, setOfflineStatus] = useState<OfflineStatus>({ offline: false, since: null, queuedMessages: 0 });
-
-  useEffect(() => {
-    const fetchOfflineStatus = async () => {
-      try {
-        const res = await fetch(`${SERVER_BASE}/api/offline/status`);
-        if (res.ok) {
-          setOfflineStatus(await res.json() as OfflineStatus);
-        }
-      } catch {
-        setOfflineStatus(prev => prev.offline ? prev : { offline: true, since: new Date().toISOString(), queuedMessages: prev.queuedMessages });
-      }
-    };
-    fetchOfflineStatus();
-    const interval = setInterval(fetchOfflineStatus, 15_000);
-    return () => clearInterval(interval);
-  }, []);
+  // ── Offline status (extracted) ────────────────────────────────────
+  const { offlineStatus } = useOfflineStatus({ serverBaseUrl: SERVER_BASE });
 
   // ── Slash commands ──────────────────────────────────────────────
+  // NOTE: Slash commands remain in App.tsx because they are deeply entangled
+  // with agentModel (from useAgentStatus), setMessages (from useChat),
+  // activeSessionId, activeWorkspace, and sendMessage. Extracting would
+  // require passing 6+ dependencies and the resulting hook would not be
+  // meaningfully self-contained.
   const addSystemMessage = useCallback((content: string) => {
     const msg: Message = {
       id: `sys-${Date.now()}`,
@@ -476,7 +395,7 @@ function WaggleApp() {
       timestamp: new Date().toISOString(),
     };
     setMessages(prev => [...prev, msg]);
-  }, []);
+  }, [setMessages]);
 
   const handleSlashCommand = useCallback(async (command: string, args: string) => {
     const baseUrl = SERVER_BASE;
@@ -616,7 +535,7 @@ function WaggleApp() {
     } catch (err) {
       addSystemMessage(`Command failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
-  }, [agentModel, activeSessionId, activeWorkspace?.id, addSystemMessage, sendMessage]);
+  }, [agentModel, setAgentModel, activeSessionId, activeWorkspace?.id, addSystemMessage, sendMessage, setMessages]);
 
   // ── Tabs ──────────────────────────────────────────────────────────
   const {
@@ -708,79 +627,6 @@ function WaggleApp() {
     }
   }, [service, toggleTheme]);
 
-  // ── Keyboard shortcuts ────────────────────────────────────────────
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (matchesNamedShortcut(e, 'closeModal')) {
-        if (previewFile) {
-          setPreviewFile(null);
-        } else if (showCreateWorkspace) {
-          setShowCreateWorkspace(false);
-        }
-      }
-      if (matchesNamedShortcut(e, 'toggleWorkspace')) {
-        e.preventDefault();
-        setSidebarCollapsed((prev) => !prev);
-      }
-      if (matchesNamedShortcut(e, 'newTab')) {
-        e.preventDefault();
-        handleNewTab();
-      }
-      // F6: Ctrl+K (or Cmd+K) — Global search
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        setGlobalSearchOpen((prev) => !prev);
-      }
-      // G2: Ctrl+1-9 quick-switch workspaces
-      if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key >= '1' && e.key <= '9') {
-        const idx = parseInt(e.key, 10) - 1;
-        if (idx < workspaces.length) {
-          e.preventDefault();
-          setActiveWorkspace(workspaces[idx].id);
-        }
-      }
-      // Cmd+N — create workspace
-      if (matchesNamedShortcut(e, 'newWorkspace')) {
-        e.preventDefault();
-        setShowCreateWorkspace(true);
-      }
-      // Cmd+, — open settings
-      if (matchesNamedShortcut(e, 'openSettings')) {
-        e.preventDefault();
-        setCurrentView('settings');
-      }
-      // Cmd+/ — show help overlay
-      if (matchesNamedShortcut(e, 'showHelp')) {
-        e.preventDefault();
-        setShowHelp(prev => !prev);
-      }
-      // Ctrl+Shift+P — switch persona
-      if (matchesNamedShortcut(e, 'switchPersona')) {
-        e.preventDefault();
-        setShowPersonaSwitcher(prev => !prev);
-      }
-      // Ctrl+Shift+1-7 — switch views
-      const viewMap: Record<string, AppView> = {
-        switchView1: 'chat',
-        switchView2: 'memory',
-        switchView3: 'events',
-        switchView4: 'capabilities',
-        switchView5: 'cockpit',
-        switchView6: 'mission-control',
-        switchView7: 'settings',
-      };
-      for (const [shortcutName, view] of Object.entries(viewMap)) {
-        if (matchesNamedShortcut(e, shortcutName)) {
-          e.preventDefault();
-          setCurrentView(view);
-          break;
-        }
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [previewFile, showCreateWorkspace, workspaces, setActiveWorkspace]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // ── Tab management ────────────────────────────────────────────────
   const handleNewTab = useCallback(() => {
     if (!canAddTab || !activeWorkspace) return;
@@ -800,6 +646,24 @@ function WaggleApp() {
   const handleTabClose = useCallback((tabId: string) => {
     closeTab(tabId);
   }, [closeTab]);
+
+  // ── Keyboard shortcuts (extracted) ────────────────────────────────
+  useKeyboardShortcuts({
+    hasPreviewFile: previewFile !== null,
+    showCreateWorkspace,
+    workspaces,
+    onClosePreview: useCallback(() => setPreviewFile(null), []),
+    onCloseCreateWorkspace: useCallback(() => setShowCreateWorkspace(false), []),
+    onToggleSidebar: useCallback(() => setSidebarCollapsed(prev => !prev), []),
+    onNewTab: handleNewTab,
+    onToggleGlobalSearch: useCallback(() => setGlobalSearchOpen(prev => !prev), []),
+    onSelectWorkspace: setActiveWorkspace,
+    onShowCreateWorkspace: useCallback(() => setShowCreateWorkspace(true), []),
+    onOpenSettings: useCallback(() => setCurrentView('settings'), []),
+    onToggleHelp: useCallback(() => setShowHelp(prev => !prev), []),
+    onTogglePersonaSwitcher: useCallback(() => setShowPersonaSwitcher(prev => !prev), []),
+    onViewChange: setCurrentView,
+  });
 
   // ── File drop — read, upload to ingest API, send context to agent ──
   const handleFileDrop = useCallback(async (files: DroppedFile[]) => {
@@ -910,30 +774,6 @@ function WaggleApp() {
     }
   }, [handleFileDrop]);
 
-  // ── Team connection state ─────────────────────────────────────────
-  const [teamConnection, setTeamConnection] = useState<import('@waggle/ui').TeamConnection | null>(null);
-
-  // Check team status on mount
-  useEffect(() => {
-    adapter.getTeamStatus()
-      .then((tc) => setTeamConnection(tc))
-      .catch(() => {});
-  }, []);
-
-  const handleTeamConnect = useCallback(async (serverUrl: string, token: string) => {
-    const tc = await adapter.connectTeam(serverUrl, token);
-    setTeamConnection(tc);
-  }, []);
-
-  const handleTeamDisconnect = useCallback(async () => {
-    await adapter.disconnectTeam();
-    setTeamConnection(null);
-  }, []);
-
-  const handleFetchTeams = useCallback(async () => {
-    return adapter.listTeams();
-  }, []);
-
   // ── Workspace creation ────────────────────────────────────────────
   const handleCreateWorkspace = useCallback(async (wsConfig: {
     name: string;
@@ -970,47 +810,10 @@ function WaggleApp() {
     });
   }, [createSession, activeWorkspace, openTab]);
 
-  // ── Agent status polling ─────────────────────────────────────────
-  useEffect(() => {
-    // Initial fetch
-    service.getAgentStatus().then((status) => {
-      setAgentTokens(status.tokensUsed);
-      setAgentCost(status.estimatedCost);
-      setAgentModel(status.model);
-    }).catch(() => {});
-
-    // Fetch available models for the picker
-    fetch(`${SERVER_BASE}/api/litellm/models`)
-      .then(r => r.ok ? r.json() as Promise<{ models: string[] }> : null)
-      .then(data => { if (data?.models) setAvailableModels(data.models); })
-      .catch(() => {});
-
-    const poll = setInterval(() => {
-      service.getAgentStatus().then((status) => {
-        setAgentTokens(status.tokensUsed);
-        setAgentCost(status.estimatedCost);
-        setAgentModel(status.model);
-      }).catch(() => {
-        // Ignore status poll errors
-      });
-    }, 30000); // Poll every 30s — cost/tokens don't change rapidly
-    return () => clearInterval(poll);
-  }, [service]);
-
-  // ── Model selection ──────────────────────────────────────────────
+  // ── Model selection (wraps extracted hook's handler with addSystemMessage) ──
   const handleModelSelect = useCallback(async (newModel: string) => {
-    try {
-      await fetch(`${SERVER_BASE}/api/agent/model`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: newModel }),
-      });
-      setAgentModel(newModel);
-      addSystemMessage(`Switched to model: **${newModel}**`);
-    } catch {
-      addSystemMessage('Failed to switch model.');
-    }
-  }, [addSystemMessage]);
+    await agentHandleModelSelect(newModel, addSystemMessage);
+  }, [agentHandleModelSelect, addSystemMessage]);
 
   // ── Persona switching (mid-conversation) ─────────────────────────
   const currentPersona = personas.find(p => p.id === activeWorkspace?.personaId) ?? null;

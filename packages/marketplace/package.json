@@ -24,7 +24,7 @@
     "better-sqlite3": "^11.0.0"
   },
   "optionalDependencies": {
-    "mcp-guardian": "^1.0.0"
+    "mcp-guardian": "^2.4.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.0",
