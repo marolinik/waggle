@@ -445,6 +445,209 @@ describe('runAgentLoop', () => {
   });
 });
 
+describe('Agent error paths (PRQ-045)', () => {
+  it('handles malformed JSON response from LLM gracefully', async () => {
+    const fetch = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => {
+        throw new SyntaxError('Unexpected token in JSON');
+      },
+    }) as unknown as Response);
+
+    await expect(
+      runAgentLoop(makeConfig({ fetch }))
+    ).rejects.toThrow();
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('handles LLM response with empty choices array', async () => {
+    const fetch = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [],
+        usage: { prompt_tokens: 5, completion_tokens: 0 },
+      }),
+    }) as unknown as Response);
+
+    await expect(
+      runAgentLoop(makeConfig({ fetch }))
+    ).rejects.toThrow('LiteLLM returned no choices');
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('handles LLM response with missing choices field entirely', async () => {
+    const fetch = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        // No choices field at all
+        usage: { prompt_tokens: 5, completion_tokens: 0 },
+      }),
+    }) as unknown as Response);
+
+    await expect(
+      runAgentLoop(makeConfig({ fetch }))
+    ).rejects.toThrow('LiteLLM returned no choices');
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('handles non-200 non-retryable error response', async () => {
+    const fetch = vi.fn(async () => ({
+      ok: false,
+      status: 400,
+      headers: { get: () => null },
+      text: async () => 'Bad request: invalid model',
+    }) as unknown as Response);
+
+    await expect(
+      runAgentLoop(makeConfig({ fetch }))
+    ).rejects.toThrow('LLM error (400)');
+
+    // Non-retryable errors should fail on first attempt
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('handles tool call with invalid JSON arguments gracefully', async () => {
+    const tool: ToolDefinition = {
+      name: 'test_tool',
+      description: 'A test tool',
+      parameters: { type: 'object', properties: { input: { type: 'string' } } },
+      execute: async () => 'result',
+    };
+
+    const fetch = mockFetch([
+      {
+        content: null,
+        tool_calls: [
+          {
+            id: 'call_bad',
+            function: { name: 'test_tool', arguments: '{invalid json here' },
+          },
+        ],
+        usage: { prompt_tokens: 10, completion_tokens: 5 },
+      },
+      {
+        content: 'Handled the error gracefully.',
+        usage: { prompt_tokens: 15, completion_tokens: 8 },
+      },
+    ]);
+
+    const result = await runAgentLoop(makeConfig({ fetch, tools: [tool] }));
+
+    // Agent should recover and continue to the next turn
+    expect(result.content).toBe('Handled the error gracefully.');
+    expect(fetch).toHaveBeenCalledTimes(2);
+
+    // The tool result sent back to LLM should indicate the error
+    const secondBody = JSON.parse(fetch.mock.calls[1][1].body);
+    const toolResultMsg = secondBody.messages.find(
+      (m: any) => m.role === 'tool' && m.tool_call_id === 'call_bad'
+    );
+    expect(toolResultMsg).toBeDefined();
+    expect(toolResultMsg.content).toContain('Error');
+    expect(toolResultMsg.content).toContain('Invalid arguments');
+  });
+
+  it('handles tool execution that throws an error', async () => {
+    const failingTool: ToolDefinition = {
+      name: 'failing_tool',
+      description: 'A tool that always throws',
+      parameters: { type: 'object', properties: {} },
+      execute: async () => { throw new Error('Database connection failed'); },
+    };
+
+    const fetch = mockFetch([
+      {
+        content: null,
+        tool_calls: [
+          { id: 'call_fail', function: { name: 'failing_tool', arguments: '{}' } },
+        ],
+        usage: { prompt_tokens: 10, completion_tokens: 5 },
+      },
+      {
+        content: 'I see the tool failed. Let me try another approach.',
+        usage: { prompt_tokens: 20, completion_tokens: 10 },
+      },
+    ]);
+
+    const result = await runAgentLoop(makeConfig({ fetch, tools: [failingTool] }));
+
+    expect(result.content).toBe('I see the tool failed. Let me try another approach.');
+    expect(result.toolsUsed).toEqual(['failing_tool']);
+    expect(fetch).toHaveBeenCalledTimes(2);
+
+    // Verify error was communicated back to the LLM
+    const secondBody = JSON.parse(fetch.mock.calls[1][1].body);
+    const toolResultMsg = secondBody.messages.find(
+      (m: any) => m.role === 'tool' && m.tool_call_id === 'call_fail'
+    );
+    expect(toolResultMsg).toBeDefined();
+    expect(toolResultMsg.content).toContain('Error executing failing_tool');
+    expect(toolResultMsg.content).toContain('Database connection failed');
+  });
+
+  it('accumulates totalInputTokens and totalOutputTokens across multiple turns', async () => {
+    const tool: ToolDefinition = {
+      name: 'counter',
+      description: 'A simple tool',
+      parameters: { type: 'object', properties: {} },
+      execute: async () => 'counted',
+    };
+
+    const fetch = mockFetch([
+      {
+        content: null,
+        tool_calls: [
+          { id: 'call_1', function: { name: 'counter', arguments: '{}' } },
+        ],
+        usage: { prompt_tokens: 100, completion_tokens: 50 },
+      },
+      {
+        content: null,
+        tool_calls: [
+          { id: 'call_2', function: { name: 'counter', arguments: '{}' } },
+        ],
+        usage: { prompt_tokens: 200, completion_tokens: 75 },
+      },
+      {
+        content: 'All done.',
+        usage: { prompt_tokens: 300, completion_tokens: 25 },
+      },
+    ]);
+
+    const result = await runAgentLoop(makeConfig({ fetch, tools: [tool] }));
+
+    expect(result.content).toBe('All done.');
+    // Verify token accumulation: 100+200+300 = 600 input, 50+75+25 = 150 output
+    expect(result.usage.inputTokens).toBe(600);
+    expect(result.usage.outputTokens).toBe(150);
+    expect(fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it('handles 200 response with null content and no tool calls', async () => {
+    const fetch = mockFetch([
+      {
+        content: null,
+        // No tool_calls — this is an edge case where the LLM returns nothing
+        usage: { prompt_tokens: 10, completion_tokens: 0 },
+      },
+    ]);
+
+    const result = await runAgentLoop(makeConfig({ fetch }));
+
+    // Should return empty string content (null coalesces to '')
+    expect(result.content).toBe('');
+    expect(result.toolsUsed).toEqual([]);
+    expect(result.usage.inputTokens).toBe(10);
+    expect(result.usage.outputTokens).toBe(0);
+  });
+});
+
 describe('LIKE wildcard escaping (PRQ-033)', () => {
   it('escapes % in search keywords so it does not match everything', () => {
     const db = new Database(':memory:');
