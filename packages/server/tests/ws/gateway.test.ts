@@ -159,6 +159,63 @@ describe('ConnectionManager', () => {
     expect(ws2.send).toHaveBeenCalledOnce();
     expect(cm.getConnectedUsers('team1')).toEqual(['user1']);
   });
+
+  // ── 11F-6: WebSocket lifecycle tests ──────────────────────────────────
+
+  it('multiple clients with one disconnect: broadcast still reaches remaining 2', () => {
+    const cm = new ConnectionManager();
+    const ws1 = { readyState: 1, OPEN: 1, send: vi.fn() } as any;
+    const ws2 = { readyState: 1, OPEN: 1, send: vi.fn() } as any;
+    const ws3 = { readyState: 1, OPEN: 1, send: vi.fn() } as any;
+
+    // Register 3 clients in a team
+    cm.add('team1', 'user1', ws1);
+    cm.add('team1', 'user2', ws2);
+    cm.add('team1', 'user3', ws3);
+    expect(cm.getConnectedUsers('team1')).toEqual(['user1', 'user2', 'user3']);
+
+    // Disconnect user2
+    cm.remove('team1', 'user2');
+    expect(cm.getConnectedUsers('team1')).toEqual(['user1', 'user3']);
+
+    // Broadcast — should reach user1 and user3 only
+    cm.broadcast('team1', { type: 'task_update', task: {} as any });
+    expect(ws1.send).toHaveBeenCalledOnce();
+    expect(ws2.send).not.toHaveBeenCalled();
+    expect(ws3.send).toHaveBeenCalledOnce();
+
+    // Team is still tracked (not removed since 2 users remain)
+    expect(cm.getTeamCount()).toBe(1);
+  });
+
+  it('reconnection with same userId: no duplicate entries, clean replacement', () => {
+    const cm = new ConnectionManager();
+    const wsOriginal = { readyState: 1, OPEN: 1, send: vi.fn() } as any;
+    const wsReconnect = { readyState: 1, OPEN: 1, send: vi.fn() } as any;
+
+    // Initial connection
+    cm.add('team1', 'user1', wsOriginal);
+    expect(cm.getConnectedUsers('team1')).toEqual(['user1']);
+
+    // Simulate disconnect
+    cm.remove('team1', 'user1');
+    expect(cm.getConnectedUsers('team1')).toEqual([]);
+    // Team entry should be cleaned up since last user left
+    expect(cm.getTeamCount()).toBe(0);
+
+    // Reconnect with same userId
+    cm.add('team1', 'user1', wsReconnect);
+    expect(cm.getConnectedUsers('team1')).toEqual(['user1']);
+    expect(cm.getTeamCount()).toBe(1);
+
+    // Broadcast should only reach the reconnected socket
+    cm.broadcast('team1', { type: 'task_update', task: {} as any });
+    expect(wsOriginal.send).not.toHaveBeenCalled();
+    expect(wsReconnect.send).toHaveBeenCalledOnce();
+
+    // No duplicate user entries
+    expect(cm.getConnectedUsers('team1')).toHaveLength(1);
+  });
 });
 
 // ─── WebSocket Gateway integration tests ────────────────────────────────────
