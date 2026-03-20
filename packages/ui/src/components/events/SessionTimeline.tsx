@@ -104,8 +104,7 @@ function TimelineEventRow({
 }) {
   return (
     <div
-      className="session-timeline__event"
-      className={nested ? 'ml-7 mb-0.5' : 'mb-0.5'}
+      className={`session-timeline__event ${nested ? 'ml-7 mb-0.5' : 'mb-0.5'}`}
     >
       {/* Clickable header row */}
       <button
