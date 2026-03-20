@@ -161,10 +161,10 @@ export function ChatMessage({ message, messageIndex, sessionId, onToolApprove, o
   if (isSystem) {
     return (
       <div className="chat-message chat-message--system flex justify-center" role="article" aria-label="System message">
-        <div className="max-w-[90%] rounded-lg px-4 py-2 bg-muted border border-border text-[13px] font-mono">
+        <div className="max-w-[90%] rounded-xl px-5 py-3 bg-muted border border-border text-[13px]">
           {/* Content sanitized with DOMPurify */}
           <div
-            className="chat-message__content prose prose-invert prose-sm max-w-none"
+            className="chat-message__content prose prose-invert prose-sm max-w-none prose-p:mb-1 prose-p:text-[13px]"
             dangerouslySetInnerHTML={{ __html: renderedContent ?? '' }}
           />
         </div>
@@ -181,21 +181,33 @@ export function ChatMessage({ message, messageIndex, sessionId, onToolApprove, o
       aria-label={isUser ? 'Your message' : 'Agent message'}
     >
       <div
-        className={`max-w-[80%] rounded-lg px-4 py-2 ${
+        className={`max-w-[85%] rounded-xl px-5 py-3.5 ${
           isUser
             ? 'bg-primary text-primary-foreground'
-            : 'bg-card text-foreground'
+            : 'bg-card border border-border text-foreground'
         }`}
       >
         {/* Message content */}
         {isUser ? (
-          <div className="chat-message__content whitespace-pre-wrap">
+          <div className="chat-message__content whitespace-pre-wrap text-[14px] leading-relaxed">
             {message.content}
           </div>
         ) : (
-          /* Content sanitized with DOMPurify */
+          /* Content sanitized with DOMPurify (line 145) — full markdown rendering */
           <div
-            className="chat-message__content prose prose-invert prose-sm max-w-none"
+            className={[
+              'chat-message__content prose prose-invert max-w-none',
+              'prose-headings:text-foreground prose-headings:font-semibold prose-headings:mt-4 prose-headings:mb-2',
+              'prose-h1:text-lg prose-h2:text-base prose-h3:text-sm',
+              'prose-p:text-[14px] prose-p:leading-relaxed prose-p:mb-3',
+              'prose-li:text-[14px] prose-li:leading-relaxed',
+              'prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5',
+              'prose-code:text-primary prose-code:bg-primary/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-[13px] prose-code:font-mono',
+              'prose-pre:bg-background prose-pre:border prose-pre:border-border prose-pre:rounded-lg prose-pre:p-4 prose-pre:my-3 prose-pre:overflow-x-auto',
+              'prose-strong:text-foreground prose-strong:font-semibold',
+              'prose-a:text-primary prose-a:underline prose-a:underline-offset-2',
+              'prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground',
+            ].join(' ')}
             dangerouslySetInnerHTML={{ __html: renderedContent ?? '' }}
           />
         )}

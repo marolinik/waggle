@@ -134,7 +134,7 @@ export function ContextPanel({
             <div className="max-h-[35%] overflow-auto border-b border-border">
               {recentMemories.slice(0, 4).map((mem, i) => (
                 <div key={i} className={`px-3 py-2 ${i < Math.min(recentMemories.length, 4) - 1 ? 'border-b border-white/5' : ''}`}>
-                  <div className="text-[11px] text-muted-foreground leading-snug line-clamp-2">
+                  <div className="text-[12px] text-muted-foreground leading-relaxed line-clamp-4">
                     {mem.content}
                   </div>
                   <div className="text-[9px] text-muted-foreground/40 mt-[3px] flex gap-1.5">

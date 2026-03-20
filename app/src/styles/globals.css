@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 /* Tell Tailwind v4 to scan @waggle/ui and app component source for utility classes */
 @source "../../../packages/ui/src";
