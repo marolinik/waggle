@@ -192,7 +192,7 @@ function formatInputDetail(name: string, input: Record<string, unknown>): string
     case 'search_memory':
       return `Query: "${input.query ?? ''}"${input.scope ? ` (scope: ${input.scope})` : ''}`;
     case 'save_memory':
-      return String(input.content ?? '').slice(0, 200);
+      return String(input.content ?? '');
     case 'git_commit':
       return String(input.message ?? '');
     case 'search_files':
@@ -202,16 +202,16 @@ function formatInputDetail(name: string, input: Record<string, unknown>): string
     default:
       // Compact key=value format for other tools
       return Object.entries(input)
-        .map(([k, v]) => `${k}: ${typeof v === 'string' ? v.slice(0, 100) : JSON.stringify(v)}`)
+        .map(([k, v]) => `${k}: ${typeof v === 'string' ? v : JSON.stringify(v)}`)
         .join('\n');
   }
 }
 
-/** Truncate result for Layer 2 display. */
+/** Format result for Layer 2 display — show full content, only truncate very long outputs. */
 function formatResultDetail(result: string): string {
   const lines = result.split('\n');
-  if (lines.length <= 20) return result;
-  return lines.slice(0, 20).join('\n') + `\n... (${lines.length - 20} more lines)`;
+  if (lines.length <= 100) return result;
+  return lines.slice(0, 100).join('\n') + `\n... (${lines.length - 100} more lines)`;
 }
 
 // ── Component ─────────────────────────────────────────────────────────
@@ -280,13 +280,13 @@ export function ToolCard({ tool, onApprove, onDeny }: ToolCardProps) {
         </span>
 
         {/* Description */}
-        <span className="tool-card__description truncate flex-1 font-mono">
+        <span className="tool-card__description flex-1 font-mono">
           {description}
         </span>
 
         {/* Result summary (Layer 1 only) */}
         {resultSummary && layer === 1 && (
-          <span className="tool-card__summary truncate max-w-[60%] text-muted-foreground">
+          <span className="tool-card__summary max-w-[60%] text-muted-foreground">
             {resultSummary}
           </span>
         )}

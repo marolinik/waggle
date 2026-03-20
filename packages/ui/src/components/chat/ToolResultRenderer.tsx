@@ -14,10 +14,9 @@ export interface ToolResultRendererProps {
   result?: string;
 }
 
-/** Extract a safe summary from the result string. */
-function truncate(text: string, maxLen: number): string {
-  if (text.length <= maxLen) return text;
-  return text.slice(0, maxLen) + '...';
+/** Extract a safe summary from the result string. Show full text. */
+function truncate(text: string, _maxLen: number): string {
+  return text;
 }
 
 /** Count lines in a string. */
