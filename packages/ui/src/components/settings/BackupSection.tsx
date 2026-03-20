@@ -6,6 +6,91 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 
+// ── Data Export Section (GDPR compliance) ──────────────────────────────
+
+function DataExportSection({ apiBase }: { apiBase: string }) {
+  const [exporting, setExporting] = useState(false);
+  const [exportResult, setExportResult] = useState<{ sizeBytes: number } | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const handleExport = useCallback(async () => {
+    setExporting(true);
+    setExportResult(null);
+    setExportError(null);
+
+    try {
+      const res = await fetch(`${apiBase}/api/export`, {
+        method: 'POST',
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Export failed' }));
+        throw new Error((err as { error?: string }).error || `HTTP ${res.status}`);
+      }
+
+      const blob = await res.blob();
+      const sizeBytes = blob.size;
+
+      // Trigger browser download
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const today = new Date().toISOString().slice(0, 10);
+      a.download = `waggle-export-${today}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      setExportResult({ sizeBytes });
+    } catch (err) {
+      setExportError((err as Error).message || 'Export failed');
+    } finally {
+      setExporting(false);
+    }
+  }, [apiBase]);
+
+  return (
+    <div className="rounded-lg border border-border p-4">
+      <h3 className="text-sm font-medium mb-2">Data Export</h3>
+      <p className="text-xs text-muted-foreground mb-3">
+        Download all your data including memories, sessions, and settings as a ZIP file.
+        API keys are masked and vault secrets are excluded.
+      </p>
+      <button
+        onClick={handleExport}
+        disabled={exporting}
+        className="rounded bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {exporting ? (
+          <span className="flex items-center gap-2">
+            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground" />
+            Exporting...
+          </span>
+        ) : (
+          'Export Data (ZIP)'
+        )}
+      </button>
+      {exportResult && (
+        <p className="mt-2 text-xs text-green-400">
+          Export complete — {formatExportBytes(exportResult.sizeBytes)}
+        </p>
+      )}
+      {exportError && (
+        <p className="mt-2 text-xs text-red-400">
+          Export failed: {exportError}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function formatExportBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export interface BackupSectionProps {
   /** Optional override for API base URL (defaults to http://127.0.0.1:3333) */
   apiBase?: string;
@@ -217,6 +302,12 @@ export function BackupSection({ apiBase = 'http://127.0.0.1:3333' }: BackupSecti
       <p className="text-sm text-muted-foreground">
         Create encrypted backups of your Waggle data for machine migration or safekeeping.
       </p>
+
+      {/* Data Export (GDPR) */}
+      <DataExportSection apiBase={apiBase} />
+
+      {/* Divider between export and backup */}
+      <div className="border-t border-border" />
 
       {/* Status messages */}
       {error && (

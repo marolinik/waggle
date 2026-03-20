@@ -35,7 +35,7 @@ export function ConnectorsCard({
             {connectors.map((c) => (
               <div
                 key={c.id}
-                className="rounded-lg border border-border bg-white/[0.02] p-2.5"
+                className="rounded-lg border border-border bg-muted/30 p-2.5"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">

@@ -77,60 +77,60 @@ describe('getStepIcon', () => {
 // ── getStepColor ────────────────────────────────────────────────────
 
 describe('getStepColor', () => {
-  it('returns blue for running', () => {
-    expect(getStepColor('running')).toBe('#3b82f6');
+  it('returns CSS var with blue fallback for running', () => {
+    expect(getStepColor('running')).toBe('var(--step-running, #3b82f6)');
   });
 
-  it('returns green for success', () => {
-    expect(getStepColor('success')).toBe('#22c55e');
+  it('returns CSS var with green fallback for success', () => {
+    expect(getStepColor('success')).toBe('var(--step-success, #22c55e)');
   });
 
-  it('returns yellow for pending', () => {
-    expect(getStepColor('pending')).toBe('#eab308');
+  it('returns CSS var with yellow fallback for pending', () => {
+    expect(getStepColor('pending')).toBe('var(--step-pending, #eab308)');
   });
 
-  it('returns red for error', () => {
-    expect(getStepColor('error')).toBe('#ef4444');
+  it('returns CSS var with red fallback for error', () => {
+    expect(getStepColor('error')).toBe('var(--step-error, #ef4444)');
   });
 
-  it('returns gray for skipped', () => {
-    expect(getStepColor('skipped')).toBe('#6b7280');
+  it('returns CSS var with gray fallback for skipped', () => {
+    expect(getStepColor('skipped')).toBe('var(--step-skipped, #6b7280)');
   });
 
-  it('returns gray for unknown status', () => {
-    expect(getStepColor('unknown')).toBe('#6b7280');
+  it('returns CSS var with gray fallback for unknown status', () => {
+    expect(getStepColor('unknown')).toBe('var(--step-skipped, #6b7280)');
   });
 });
 
 // ── getStepTypeColor ────────────────────────────────────────────────
 
 describe('getStepTypeColor', () => {
-  it('returns blue for thinking', () => {
-    expect(getStepTypeColor('thinking')).toBe('#3b82f6');
+  it('returns CSS var with blue fallback for thinking', () => {
+    expect(getStepTypeColor('thinking')).toBe('var(--step-thinking, #3b82f6)');
   });
 
-  it('returns purple for search', () => {
-    expect(getStepTypeColor('search')).toBe('#8b5cf6');
+  it('returns CSS var with purple fallback for search', () => {
+    expect(getStepTypeColor('search')).toBe('var(--step-search, #8b5cf6)');
   });
 
-  it('returns cyan for web', () => {
-    expect(getStepTypeColor('web')).toBe('#06b6d4');
+  it('returns CSS var with cyan fallback for web', () => {
+    expect(getStepTypeColor('web')).toBe('var(--step-web, #06b6d4)');
   });
 
-  it('returns green for tool', () => {
-    expect(getStepTypeColor('tool')).toBe('#22c55e');
+  it('returns CSS var with green fallback for tool', () => {
+    expect(getStepTypeColor('tool')).toBe('var(--step-tool, #22c55e)');
   });
 
-  it('returns amber for writing', () => {
-    expect(getStepTypeColor('writing')).toBe('#f59e0b');
+  it('returns CSS var with amber fallback for writing', () => {
+    expect(getStepTypeColor('writing')).toBe('var(--step-writing, #f59e0b)');
   });
 
-  it('returns red for error', () => {
-    expect(getStepTypeColor('error')).toBe('#ef4444');
+  it('returns CSS var with red fallback for error', () => {
+    expect(getStepTypeColor('error')).toBe('var(--step-error, #ef4444)');
   });
 
-  it('returns gray for unknown type', () => {
-    expect(getStepTypeColor('unknown')).toBe('#6b7280');
+  it('returns CSS var with gray fallback for unknown type', () => {
+    expect(getStepTypeColor('unknown')).toBe('var(--step-skipped, #6b7280)');
   });
 });
 

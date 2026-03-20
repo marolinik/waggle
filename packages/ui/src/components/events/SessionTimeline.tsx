@@ -108,7 +108,7 @@ function TimelineEventRow({
     >
       {/* Clickable header row */}
       <button
-        className="session-timeline__event-header flex items-center gap-2 w-full px-2.5 py-1.5 bg-transparent border border-transparent rounded-md cursor-pointer text-xs text-left text-foreground transition-colors hover:bg-white/[0.04] hover:border-primary/20"
+        className="session-timeline__event-header flex items-center gap-2 w-full px-2.5 py-1.5 bg-transparent border border-transparent rounded-md cursor-pointer text-xs text-left text-foreground transition-colors hover:bg-muted/50 hover:border-primary/20"
         onClick={onToggle}
         type="button"
       >
@@ -159,7 +159,7 @@ function TimelineEventRow({
             <div className="text-[10px] font-semibold text-muted-foreground/70 mb-1 uppercase tracking-wide">
               Input
             </div>
-            <pre className="session-timeline__json m-0 p-2 bg-black/40 rounded text-[11px] font-mono text-muted-foreground overflow-auto max-h-[200px] whitespace-pre-wrap break-words">
+            <pre className="session-timeline__json m-0 p-2 bg-background/80 rounded text-[11px] font-mono text-muted-foreground overflow-auto max-h-[200px] whitespace-pre-wrap break-words">
               {JSON.stringify(event.fullInput, null, 2)}
             </pre>
           </div>
@@ -169,7 +169,7 @@ function TimelineEventRow({
             <div className="text-[10px] font-semibold text-muted-foreground/70 mb-1 uppercase tracking-wide">
               Output
             </div>
-            <pre className={`session-timeline__json m-0 p-2 bg-black/40 rounded text-[11px] font-mono overflow-auto max-h-[200px] whitespace-pre-wrap break-words ${
+            <pre className={`session-timeline__json m-0 p-2 bg-background/80 rounded text-[11px] font-mono overflow-auto max-h-[200px] whitespace-pre-wrap break-words ${
               event.status === 'error' ? 'text-red-300' : 'text-muted-foreground'
             }`}>
               {JSON.stringify(event.fullOutput, null, 2)}

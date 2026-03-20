@@ -61,28 +61,28 @@ function makeSampleGraph(): KGData {
 // ── getNodeColor ─────────────────────────────────────────────────────
 
 describe('getNodeColor', () => {
-  it('returns blue for person type', () => {
-    expect(getNodeColor('person')).toBe('#4A90D9');
+  it('returns CSS var with blue fallback for person type', () => {
+    expect(getNodeColor('person')).toBe('var(--kg-person, #4A90D9)');
   });
 
-  it('returns green for project type', () => {
-    expect(getNodeColor('project')).toBe('#50C878');
+  it('returns CSS var with green fallback for project type', () => {
+    expect(getNodeColor('project')).toBe('var(--kg-project, #50C878)');
   });
 
-  it('returns purple for concept type', () => {
-    expect(getNodeColor('concept')).toBe('#9B59B6');
+  it('returns CSS var with purple fallback for concept type', () => {
+    expect(getNodeColor('concept')).toBe('var(--kg-concept, #9B59B6)');
   });
 
-  it('returns orange for organization type', () => {
-    expect(getNodeColor('organization')).toBe('#E67E22');
+  it('returns CSS var with orange fallback for organization type', () => {
+    expect(getNodeColor('organization')).toBe('var(--kg-org, #E67E22)');
   });
 
-  it('returns gray for unknown type', () => {
-    expect(getNodeColor('unknown_type')).toBe('#95A5A6');
+  it('returns CSS var with gray fallback for unknown type', () => {
+    expect(getNodeColor('unknown_type')).toBe('var(--kg-default, #95A5A6)');
   });
 
-  it('returns gray for empty string', () => {
-    expect(getNodeColor('')).toBe('#95A5A6');
+  it('returns CSS var with gray fallback for empty string', () => {
+    expect(getNodeColor('')).toBe('var(--kg-default, #95A5A6)');
   });
 });
 

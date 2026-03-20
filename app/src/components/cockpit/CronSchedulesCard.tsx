@@ -37,7 +37,7 @@ export function CronSchedulesCard({
             {schedules.map((s) => (
               <div
                 key={s.id}
-                className="rounded-md border border-border bg-white/[0.02] p-2"
+                className="rounded-md border border-border bg-muted/30 p-2"
               >
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-1.5">

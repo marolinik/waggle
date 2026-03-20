@@ -33,26 +33,26 @@ const FEATURE_HIGHLIGHTS = [
     title: 'Persistent memory',
     description: 'I remember decisions, preferences, and context across every session.',
     icon: '◆',
-    color: 'var(--primary, #d4a843)',
+    color: 'var(--brand, hsl(40 65% 55%))',
   },
   {
     title: 'Workspace isolation',
     description: 'Each project gets its own memory, sessions, and context — no cross-contamination.',
     icon: '◈',
-    color: 'var(--accent, #c084fc)',
+    color: 'var(--accent-color, hsl(270 91% 75%))',
   },
   {
     title: 'Local-first & private',
     description: 'Everything stored locally in encrypted .mind files. Your data never leaves your machine.',
     icon: '◇',
-    color: 'var(--success, #3ecf8e)',
+    color: 'var(--success, hsl(152 56% 52%))',
   },
 ];
 
 const TYPE_COLORS: Record<string, string> = {
-  decision: 'var(--primary, #d4a843)',
-  preference: 'var(--accent, #c084fc)',
-  fact: 'var(--success, #3ecf8e)',
+  decision: 'var(--brand, hsl(40 65% 55%))',
+  preference: 'var(--accent-color, hsl(270 91% 75%))',
+  fact: 'var(--success, hsl(152 56% 52%))',
   topic: 'var(--text-dim)',
 };
 

@@ -38,7 +38,7 @@ export function ThemeSection({ config, onConfigUpdate }: ThemeSectionProps) {
               }`}
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                className={`inline-block h-4 w-4 transform rounded-full bg-background shadow-sm transition-transform ${
                   config.theme === 'dark' ? 'translate-x-6' : 'translate-x-1'
                 }`}
               />
@@ -66,7 +66,7 @@ export function ThemeSection({ config, onConfigUpdate }: ThemeSectionProps) {
             }`}
           >
             <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+              className={`inline-block h-4 w-4 transform rounded-full bg-background shadow-sm transition-transform ${
                 config.autostart ? 'translate-x-6' : 'translate-x-1'
               }`}
             />

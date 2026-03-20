@@ -101,3 +101,9 @@ code, pre, .font-mono, [data-mono] {
   font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', ui-monospace, monospace;
   font-size: 12px;
 }
+
+/* ── Offline indicator pulse animation ──────────────────────────────── */
+@keyframes waggle-offline-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}

@@ -31,6 +31,7 @@
     --primary-hover: hsl(var(--primary) / 0.85);
     --primary-muted: hsl(var(--primary) / 0.08);
     --primary-glow: hsl(var(--primary) / 0.15);
+    --accent-color: hsl(var(--accent));
     --accent-muted: hsl(var(--accent) / 0.1);
     --brand: hsl(var(--primary));
     --brand-muted: hsl(var(--primary) / 0.12);
@@ -47,6 +48,25 @@
     /* ── Chat bubbles ─────────────────────────────────────────────── */
     --user-bubble: hsl(var(--primary) / 0.06);
     --assistant-bubble: hsl(var(--card));
+
+    /* ── Step / event stream colors ─────────────────────────────── */
+    --step-running: #3b82f6;
+    --step-success: #22c55e;
+    --step-pending: #eab308;
+    --step-error: #ef4444;
+    --step-skipped: #6b7280;
+    --step-thinking: #3b82f6;
+    --step-search: #8b5cf6;
+    --step-web: #06b6d4;
+    --step-tool: #22c55e;
+    --step-writing: #f59e0b;
+
+    /* ── Knowledge graph node colors ──────────────────────────────── */
+    --kg-person: #4A90D9;
+    --kg-project: #50C878;
+    --kg-concept: #9B59B6;
+    --kg-org: #E67E22;
+    --kg-default: #95A5A6;
 
     /* ── Legacy component tokens ──────────────────────────────────── */
     --waggle-bg: var(--bg);

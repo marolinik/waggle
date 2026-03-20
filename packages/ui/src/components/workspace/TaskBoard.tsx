@@ -99,7 +99,7 @@ export function TaskBoard({
             onChange={(e) => setNewTitle(e.target.value)}
             placeholder="New task..."
             onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-            className="flex-1 px-2 py-1 bg-white/5 border border-border rounded text-foreground text-[11px]"
+            className="flex-1 px-2 py-1 bg-muted/40 border border-border rounded text-foreground text-[11px]"
           />
           <button
             onClick={handleCreate}

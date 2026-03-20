@@ -39,23 +39,23 @@ export const STEP_ICONS: Record<string, string> = {
   error: 'alert',
 };
 
-/** Maps statuses to CSS hex colors. */
+/** Maps statuses to CSS color values (using CSS custom properties with fallbacks). */
 export const STEP_COLORS: Record<string, string> = {
-  running: '#3b82f6',  // blue
-  success: '#22c55e',  // green
-  pending: '#eab308',  // yellow
-  error: '#ef4444',    // red
-  skipped: '#6b7280',  // gray
+  running: 'var(--step-running, #3b82f6)',    // blue
+  success: 'var(--step-success, #22c55e)',    // green
+  pending: 'var(--step-pending, #eab308)',    // yellow
+  error: 'var(--step-error, #ef4444)',        // red
+  skipped: 'var(--step-skipped, #6b7280)',    // gray
 };
 
-/** Maps step types to CSS hex colors for left border / icon tinting. */
+/** Maps step types to CSS color values for left border / icon tinting. */
 export const STEP_TYPE_COLORS: Record<string, string> = {
-  thinking: '#3b82f6',  // blue
-  search: '#8b5cf6',    // purple
-  web: '#06b6d4',       // cyan
-  tool: '#22c55e',      // green
-  writing: '#f59e0b',   // amber
-  error: '#ef4444',     // red
+  thinking: 'var(--step-thinking, #3b82f6)',  // blue
+  search: 'var(--step-search, #8b5cf6)',      // purple
+  web: 'var(--step-web, #06b6d4)',            // cyan
+  tool: 'var(--step-tool, #22c55e)',          // green
+  writing: 'var(--step-writing, #f59e0b)',    // amber
+  error: 'var(--step-error, #ef4444)',        // red
 };
 
 // ── Functions ─────────────────────────────────────────────────────────
@@ -73,7 +73,7 @@ export function getStepIcon(type: string): string {
  * Returns gray as the default for unknown statuses.
  */
 export function getStepColor(status: string): string {
-  return STEP_COLORS[status] ?? '#6b7280';
+  return STEP_COLORS[status] ?? 'var(--step-skipped, #6b7280)';
 }
 
 /**
@@ -81,7 +81,7 @@ export function getStepColor(status: string): string {
  * Returns gray as the default for unknown types.
  */
 export function getStepTypeColor(type: string): string {
-  return STEP_TYPE_COLORS[type] ?? '#6b7280';
+  return STEP_TYPE_COLORS[type] ?? 'var(--step-skipped, #6b7280)';
 }
 
 /**

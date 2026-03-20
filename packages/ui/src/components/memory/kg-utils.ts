@@ -43,13 +43,13 @@ export interface KGNodeDetail {
 // ── Color map ────────────────────────────────────────────────────────
 
 const NODE_COLOR_MAP: Record<string, string> = {
-  person: '#4A90D9',
-  project: '#50C878',
-  concept: '#9B59B6',
-  organization: '#E67E22',
+  person: 'var(--kg-person, #4A90D9)',
+  project: 'var(--kg-project, #50C878)',
+  concept: 'var(--kg-concept, #9B59B6)',
+  organization: 'var(--kg-org, #E67E22)',
 };
 
-const DEFAULT_NODE_COLOR = '#95A5A6';
+const DEFAULT_NODE_COLOR = 'var(--kg-default, #95A5A6)';
 
 // ── Sizing ───────────────────────────────────────────────────────────
 

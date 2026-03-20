@@ -74,7 +74,7 @@ export function PermissionSection({
             }`}
           >
             <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+              className={`inline-block h-4 w-4 transform rounded-full bg-background shadow-sm transition-transform ${
                 yoloMode ? 'translate-x-6' : 'translate-x-1'
               }`}
             />
