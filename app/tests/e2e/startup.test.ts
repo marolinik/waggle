@@ -12,6 +12,7 @@ import os from 'node:os';
 import path from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { startService } from '@waggle/server/local/service';
+import { injectWithAuth } from './test-utils.js';
 
 function makeTmpDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'waggle-e2e-'));
@@ -67,7 +68,7 @@ describe('Startup & Settings E2E', () => {
     servers.push(server);
 
     // Save onboarding config
-    const putRes = await server.inject({
+    const putRes = await injectWithAuth(server, {
       method: 'PUT',
       url: '/api/settings',
       payload: {
@@ -83,7 +84,7 @@ describe('Startup & Settings E2E', () => {
     expect(putBody.defaultModel).toBe('anthropic/claude-sonnet-4-20250514');
 
     // Read config back
-    const getRes = await server.inject({ method: 'GET', url: '/api/settings' });
+    const getRes = await injectWithAuth(server, { method: 'GET', url: '/api/settings' });
     expect(getRes.statusCode).toBe(200);
 
     const getBody = JSON.parse(getRes.payload);
@@ -102,7 +103,7 @@ describe('Startup & Settings E2E', () => {
     const { server: server1 } = await startService({ dataDir, port: port1, skipLiteLLM: true });
     servers.push(server1);
 
-    const putRes = await server1.inject({
+    const putRes = await injectWithAuth(server1, {
       method: 'PUT',
       url: '/api/settings',
       payload: {
@@ -122,7 +123,7 @@ describe('Startup & Settings E2E', () => {
     const { server: server2 } = await startService({ dataDir, port: port2, skipLiteLLM: true });
     servers.push(server2);
 
-    const getRes = await server2.inject({ method: 'GET', url: '/api/settings' });
+    const getRes = await injectWithAuth(server2, { method: 'GET', url: '/api/settings' });
     expect(getRes.statusCode).toBe(200);
 
     const body = JSON.parse(getRes.payload);

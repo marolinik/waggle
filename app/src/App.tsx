@@ -66,6 +66,7 @@ import { useAgentStatus } from './hooks/useAgentStatus';
 import { useTeamState } from './hooks/useTeamState';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useApprovalGates } from './hooks/useApprovalGates';
+import { useAutoUpdate } from './hooks/useAutoUpdate';
 
 // ── Code-split views (loaded on demand) ─────────────────────────────────
 const SettingsView = React.lazy(() => import('./views/SettingsView'));
@@ -105,6 +106,9 @@ type AppView = 'chat' | 'memory' | 'events' | 'capabilities' | 'cockpit' | 'miss
 function WaggleApp() {
   const service = useService();
   const { toggleTheme } = useTheme();
+
+  // ── Auto-update (silent, non-blocking — Rust checks, frontend listens) ──
+  useAutoUpdate();
 
   // ── View state ────────────────────────────────────────────────────
   const [currentView, setCurrentView] = useState<AppView>('chat');

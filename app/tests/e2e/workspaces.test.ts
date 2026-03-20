@@ -14,6 +14,7 @@ import path from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { startService } from '@waggle/server/local/service';
 import { FrameStore, SessionStore } from '@waggle/core';
+import { injectWithAuth } from './test-utils.js';
 
 function makeTmpDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'waggle-e2e-'));
@@ -47,7 +48,7 @@ describe('Workspaces & Sessions E2E', () => {
     servers.push(server);
 
     // Create workspace
-    const createRes = await server.inject({
+    const createRes = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/workspaces',
       payload: { name: 'Test Project', group: 'Work', icon: 'briefcase' },
@@ -60,7 +61,7 @@ describe('Workspaces & Sessions E2E', () => {
     expect(created.id).toBeDefined();
 
     // List workspaces — should contain the new one
-    const listRes = await server.inject({ method: 'GET', url: '/api/workspaces' });
+    const listRes = await injectWithAuth(server, { method: 'GET', url: '/api/workspaces' });
     expect(listRes.statusCode).toBe(200);
 
     const list = JSON.parse(listRes.payload);
@@ -69,7 +70,7 @@ describe('Workspaces & Sessions E2E', () => {
     expect(list[0].name).toBe('Test Project');
 
     // Get by ID
-    const getRes = await server.inject({
+    const getRes = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/workspaces/${created.id}`,
     });
@@ -89,14 +90,14 @@ describe('Workspaces & Sessions E2E', () => {
     servers.push(server);
 
     // Create two workspaces
-    const res1 = await server.inject({
+    const res1 = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/workspaces',
       payload: { name: 'Alpha', group: 'Work', model: 'openai/gpt-4o' },
     });
     const ws1 = JSON.parse(res1.payload);
 
-    const res2 = await server.inject({
+    const res2 = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/workspaces',
       payload: { name: 'Beta', group: 'Personal', model: 'anthropic/claude-sonnet-4-20250514' },
@@ -122,7 +123,7 @@ describe('Workspaces & Sessions E2E', () => {
     wsAFrames.createIFrame(wsASession.gop_id, 'Alpha project uses Kubernetes for deployment');
 
     // Search ws-A scope — should find Kubernetes
-    const searchA = await server.inject({
+    const searchA = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/memory/search?q=Kubernetes&scope=workspace',
     });
@@ -132,7 +133,7 @@ describe('Workspaces & Sessions E2E', () => {
 
     // Switch to ws-B — search should NOT find ws-A's memory
     server.multiMind.switchWorkspace(mind2Path);
-    const searchB = await server.inject({
+    const searchB = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/memory/search?q=Kubernetes&scope=workspace',
     });
@@ -147,7 +148,7 @@ describe('Workspaces & Sessions E2E', () => {
     wsBFrames.createIFrame(wsBSession.gop_id, 'Beta project uses Docker Compose locally');
 
     // ws-B should find Docker but not Kubernetes
-    const searchB2 = await server.inject({
+    const searchB2 = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/memory/search?q=Docker&scope=workspace',
     });
@@ -156,14 +157,14 @@ describe('Workspaces & Sessions E2E', () => {
 
     // Switch back to ws-A — should find Kubernetes, not Docker
     server.multiMind.switchWorkspace(mind1Path);
-    const searchA2 = await server.inject({
+    const searchA2 = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/memory/search?q=Kubernetes&scope=workspace',
     });
     expect(searchA2.statusCode).toBe(200);
     expect(JSON.parse(searchA2.payload).count).toBeGreaterThan(0);
 
-    const searchA3 = await server.inject({
+    const searchA3 = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/memory/search?q=Docker&scope=workspace',
     });
@@ -187,7 +188,7 @@ describe('Workspaces & Sessions E2E', () => {
     personalFrames.createIFrame(pSession.gop_id, 'Waggle architecture uses Tauri with React frontend');
 
     // Create a workspace and store memory in its mind
-    const createRes = await server.inject({
+    const createRes = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/workspaces',
       payload: { name: 'Research', group: 'Study' },
@@ -205,7 +206,7 @@ describe('Workspaces & Sessions E2E', () => {
     wsFrames.createIFrame(wSession.gop_id, 'GraphContext uses SHACL validation for knowledge graphs');
 
     // Search personal scope — should find "Tauri" but not "SHACL"
-    const personalSearch = await server.inject({
+    const personalSearch = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/memory/search?q=Tauri&scope=personal',
     });
@@ -214,7 +215,7 @@ describe('Workspaces & Sessions E2E', () => {
     expect(personalResults.count).toBeGreaterThan(0);
 
     // Search workspace scope — should find "SHACL" but not "Tauri"
-    const wsSearch = await server.inject({
+    const wsSearch = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/memory/search?q=SHACL&scope=workspace',
     });
@@ -223,7 +224,7 @@ describe('Workspaces & Sessions E2E', () => {
     expect(wsResults.count).toBeGreaterThan(0);
 
     // Cross-check: personal scope should NOT find workspace-only content
-    const crossCheck = await server.inject({
+    const crossCheck = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/memory/search?q=SHACL&scope=personal',
     });
@@ -231,7 +232,7 @@ describe('Workspaces & Sessions E2E', () => {
     expect(crossResults.count).toBe(0);
 
     // Search all scope — should find both
-    const allSearch = await server.inject({
+    const allSearch = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/memory/search?q=architecture&scope=all',
     });
@@ -249,7 +250,7 @@ describe('Workspaces & Sessions E2E', () => {
     servers.push(server);
 
     // Create workspace first
-    const wsRes = await server.inject({
+    const wsRes = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/workspaces',
       payload: { name: 'Chat Workspace', group: 'Work' },
@@ -257,7 +258,7 @@ describe('Workspaces & Sessions E2E', () => {
     const ws = JSON.parse(wsRes.payload);
 
     // Create a session
-    const createRes = await server.inject({
+    const createRes = await injectWithAuth(server, {
       method: 'POST',
       url: `/api/workspaces/${ws.id}/sessions`,
       payload: { title: 'My First Chat' },
@@ -269,7 +270,7 @@ describe('Workspaces & Sessions E2E', () => {
     expect(session.messageCount).toBe(0);
 
     // Create a second session
-    const createRes2 = await server.inject({
+    const createRes2 = await injectWithAuth(server, {
       method: 'POST',
       url: `/api/workspaces/${ws.id}/sessions`,
       payload: { title: 'Debug Session' },
@@ -278,7 +279,7 @@ describe('Workspaces & Sessions E2E', () => {
     const session2 = JSON.parse(createRes2.payload);
 
     // List sessions — should have 2
-    const listRes = await server.inject({
+    const listRes = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/workspaces/${ws.id}/sessions`,
     });
@@ -287,7 +288,7 @@ describe('Workspaces & Sessions E2E', () => {
     expect(list.length).toBe(2);
 
     // Rename (switch equivalent) — proves session is accessible and modifiable
-    const patchRes = await server.inject({
+    const patchRes = await injectWithAuth(server, {
       method: 'PATCH',
       url: `/api/sessions/${session.id}?workspace=${ws.id}`,
       payload: { title: 'Renamed Chat' },
@@ -298,7 +299,7 @@ describe('Workspaces & Sessions E2E', () => {
     expect(patched.id).toBe(session.id);
 
     // Verify rename persisted in list
-    const listRes3 = await server.inject({
+    const listRes3 = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/workspaces/${ws.id}/sessions`,
     });
@@ -308,7 +309,7 @@ describe('Workspaces & Sessions E2E', () => {
     expect(renamed.title).toBe('Renamed Chat');
 
     // Delete first session
-    const delRes = await server.inject({
+    const delRes = await injectWithAuth(server, {
       method: 'DELETE',
       url: `/api/sessions/${session.id}?workspace=${ws.id}`,
     });
@@ -317,7 +318,7 @@ describe('Workspaces & Sessions E2E', () => {
     expect(delBody.deleted).toBe(true);
 
     // List again — should have 1
-    const listRes2 = await server.inject({
+    const listRes2 = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/workspaces/${ws.id}/sessions`,
     });

@@ -13,6 +13,7 @@ import path from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { startService } from '@waggle/server/local/service';
 import type { AgentRunner } from '@waggle/server/local/routes/chat';
+import { injectWithAuth } from './test-utils.js';
 
 function makeTmpDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'waggle-e2e-'));
@@ -89,7 +90,7 @@ describe('Chat E2E', () => {
     };
     server.agentRunner = mockRunner;
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/chat',
       payload: { message: 'Hi there' },
@@ -143,7 +144,7 @@ describe('Chat E2E', () => {
     };
     server.agentRunner = mockRunner;
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/chat',
       payload: { message: 'Read the index file' },
@@ -223,7 +224,7 @@ describe('Chat E2E', () => {
       server.eventBus.emit('gate:response', { requestId: req.requestId, approved: true });
     });
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/chat',
       payload: { message: 'Delete the folder' },
@@ -291,7 +292,7 @@ describe('Chat E2E', () => {
       server.eventBus.emit('gate:response', { requestId: req.requestId, approved: false });
     });
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/chat',
       payload: { message: 'Delete the folder' },

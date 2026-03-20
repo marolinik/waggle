@@ -10,6 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { startService } from '@waggle/server/local/service';
+import { injectWithAuth } from './test-utils.js';
 
 // ═══════════════════════════════════════════════════════════════════════
 // Section A: All component / function exports from @waggle/ui
@@ -505,21 +506,21 @@ describe('Regression: server routes', () => {
 
   it('GET /api/workspaces returns 200 with array', async () => {
     const server = await boot();
-    const res = await server.inject({ method: 'GET', url: '/api/workspaces' });
+    const res = await injectWithAuth(server, { method: 'GET', url: '/api/workspaces' });
     expect(res.statusCode).toBe(200);
     expect(Array.isArray(JSON.parse(res.payload))).toBe(true);
   });
 
   it('GET /api/settings returns 200 with object', async () => {
     const server = await boot();
-    const res = await server.inject({ method: 'GET', url: '/api/settings' });
+    const res = await injectWithAuth(server, { method: 'GET', url: '/api/settings' });
     expect(res.statusCode).toBe(200);
     expect(typeof JSON.parse(res.payload)).toBe('object');
   });
 
   it('POST /api/workspaces creates a workspace', async () => {
     const server = await boot();
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/workspaces',
       payload: { name: 'Regression Test', group: 'Work', path: '/tmp/regression' },
@@ -533,14 +534,14 @@ describe('Regression: server routes', () => {
   it('GET /api/workspaces/:id/sessions returns 200', async () => {
     const server = await boot();
     // Create a workspace first
-    const wsRes = await server.inject({
+    const wsRes = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/workspaces',
       payload: { name: 'Session Test', group: 'Work', path: '/tmp/sessions' },
     });
     const ws = JSON.parse(wsRes.payload);
 
-    const res = await server.inject({
+    const res = await injectWithAuth(server, {
       method: 'GET',
       url: `/api/workspaces/${ws.id}/sessions`,
     });

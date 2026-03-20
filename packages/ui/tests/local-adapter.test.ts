@@ -36,6 +36,7 @@ describe('LocalAdapter', () => {
     baseUrl = address;
 
     adapter = new LocalAdapter({ baseUrl, wsUrl: baseUrl.replace('http', 'ws') + '/ws' });
+    await adapter.connect();
   });
 
   afterAll(async () => {

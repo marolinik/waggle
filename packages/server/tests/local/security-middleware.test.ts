@@ -342,7 +342,7 @@ describe('Per-Endpoint Rate Limits', () => {
 
 // ── Bearer Token Authentication (SEC-011) ────────────────────────────────
 
-describe.skip('Bearer Token Authentication — disabled pending frontend adapter update', () => {
+describe('Bearer Token Authentication', () => {
   const TEST_TOKEN = 'test-session-token-12345';
 
   it('returns 401 for request without token', async () => {

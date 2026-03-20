@@ -270,11 +270,20 @@ async function securityMiddlewarePlugin(
     const requestPath = request.url.split('?')[0]; // Strip query string
 
     // ── Bearer token authentication (SEC-011) ──
-    // TODO: Enable when frontend adapter sends Authorization header.
-    // Currently disabled — would break all tests and the frontend.
-    // The WebSocket endpoint already has token auth (Wave 11A-6).
-    // REST route auth is deferred to a dedicated slice with adapter updates.
-    // if (sessionToken) { ... }
+    if (sessionToken) {
+      const isAuthExempt = request.method === 'OPTIONS' ||
+        AUTH_EXEMPT_PATHS.some(p => requestPath === p);
+      if (!isAuthExempt) {
+        const authHeader = request.headers.authorization;
+        if (!authHeader) {
+          return reply.code(401).send({ error: 'Unauthorized', code: 'MISSING_TOKEN' });
+        }
+        const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+        if (token !== sessionToken) {
+          return reply.code(401).send({ error: 'Unauthorized', code: 'INVALID_TOKEN' });
+        }
+      }
+    }
 
     // ── Session timeout (team mode only) ──
     if (sessionTimeout) {
