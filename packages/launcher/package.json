@@ -1,7 +1,10 @@
 {
-  "name": "waggle",
+  "name": "@waggle-ai/waggle",
   "version": "1.0.0",
-  "description": "Waggle — Your personal AI agent swarm. Start with `npx waggle`.",
+  "description": "Waggle — Your personal AI agent swarm. Start with `npx @waggle-ai/waggle`.",
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "bin": {
     "waggle": "./dist/cli.js"
