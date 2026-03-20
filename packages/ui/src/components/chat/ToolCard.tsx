@@ -40,7 +40,7 @@ const STATUS_ICONS: Record<ToolStatus, string> = {
 };
 
 const STATUS_CLASSES: Record<ToolStatus, string> = {
-  running: 'text-blue-400 animate-pulse',
+  running: 'text-primary animate-pulse',
   done: 'text-green-400',
   error: 'text-red-400',
   denied: 'text-red-400',
@@ -48,7 +48,7 @@ const STATUS_CLASSES: Record<ToolStatus, string> = {
 };
 
 const BORDER_CLASSES: Record<ToolStatus, string> = {
-  running: 'border-l-blue-500 bg-blue-950/20',
+  running: 'border-l-primary bg-primary/10',
   done: 'border-l-green-600 bg-green-950/20',
   error: 'border-l-red-600 bg-red-950/20',
   denied: 'border-l-red-600 bg-red-950/20',
@@ -246,7 +246,7 @@ export function ToolCard({ tool, onApprove, onDeny }: ToolCardProps) {
     return (
       <button
         onClick={() => { setVisible(true); setLayer(2); }}
-        className="tool-card--hidden inline-flex items-center gap-1 text-xs text-gray-600 hover:text-gray-400 transition-colors"
+        className="tool-card--hidden inline-flex items-center gap-1 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
         title={describeToolAction(tool.name, tool.input)}
       >
         <span className={`text-[8px] ${STATUS_CLASSES[status]}`}>{STATUS_ICONS[status]}</span>
@@ -272,7 +272,7 @@ export function ToolCard({ tool, onApprove, onDeny }: ToolCardProps) {
       {/* Layer 1 — Inline: status icon + description + summary */}
       <button
         onClick={cycleLayer}
-        className="tool-card__header flex w-full items-center gap-1.5 px-2 py-1 text-left text-gray-300 hover:text-gray-100"
+        className="tool-card__header flex w-full items-center gap-1.5 px-2 py-1 text-left text-muted-foreground hover:text-foreground"
       >
         {/* Status icon */}
         <span className={`tool-card__status text-[10px] ${STATUS_CLASSES[status]}`}>
@@ -286,7 +286,7 @@ export function ToolCard({ tool, onApprove, onDeny }: ToolCardProps) {
 
         {/* Result summary (Layer 1 only) */}
         {resultSummary && layer === 1 && (
-          <span className="tool-card__summary truncate max-w-[60%] text-gray-500">
+          <span className="tool-card__summary truncate max-w-[60%] text-muted-foreground">
             {resultSummary}
           </span>
         )}
@@ -300,7 +300,7 @@ export function ToolCard({ tool, onApprove, onDeny }: ToolCardProps) {
 
         {/* Duration */}
         {tool.duration !== undefined && (
-          <span className="tool-card__duration text-gray-500 tabular-nums">
+          <span className="tool-card__duration text-muted-foreground tabular-nums">
             {formatDuration(tool.duration)}
           </span>
         )}
@@ -313,7 +313,7 @@ export function ToolCard({ tool, onApprove, onDeny }: ToolCardProps) {
 
       {/* Inline approval gate */}
       {isPendingApproval && onApprove && onDeny && (
-        <div className="tool-card__approval px-2 py-1.5 border-t border-gray-800">
+        <div className="tool-card__approval px-2 py-1.5 border-t border-border">
           <ApprovalGate
             tool={tool}
             onApprove={() => onApprove(tool)}
@@ -324,18 +324,18 @@ export function ToolCard({ tool, onApprove, onDeny }: ToolCardProps) {
 
       {/* Layer 2 — Inspectable detail: formatted input + output */}
       {layer >= 2 && (
-        <div className="tool-card__detail border-t border-gray-800 px-2 py-1.5">
-          <div className="mb-0.5 text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Input</div>
-          <pre className="tool-card__input mb-1.5 overflow-x-auto whitespace-pre-wrap text-[11px] text-gray-400 max-h-24 overflow-y-auto">
+        <div className="tool-card__detail border-t border-border px-2 py-1.5">
+          <div className="mb-0.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Input</div>
+          <pre className="tool-card__input mb-1.5 overflow-x-auto whitespace-pre-wrap text-[11px] text-muted-foreground max-h-24 overflow-y-auto">
             {formatInputDetail(tool.name, tool.input)}
           </pre>
           {tool.result !== undefined && (
             <>
-              <div className="mb-0.5 text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+              <div className="mb-0.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
                 {status === 'error' ? 'Error' : 'Output'}
               </div>
               <pre className={`tool-card__output overflow-x-auto whitespace-pre-wrap text-[11px] max-h-40 overflow-y-auto ${
-                status === 'error' ? 'text-red-400' : 'text-gray-400'
+                status === 'error' ? 'text-red-400' : 'text-muted-foreground'
               }`}>
                 {formatResultDetail(tool.result)}
               </pre>
@@ -346,13 +346,13 @@ export function ToolCard({ tool, onApprove, onDeny }: ToolCardProps) {
 
       {/* Layer 3 — Deep inspection: raw JSON */}
       {layer === 3 && (
-        <div className="tool-card__raw border-t border-gray-800/50 px-2 py-1.5 bg-gray-950/50">
-          <div className="mb-0.5 text-[10px] font-semibold text-gray-600 uppercase tracking-wide">Raw JSON</div>
-          <pre className="tool-card__raw-input mb-1.5 overflow-x-auto whitespace-pre-wrap text-[10px] text-gray-500 max-h-32 overflow-y-auto font-mono">
+        <div className="tool-card__raw border-t border-border/50 px-2 py-1.5 bg-background/50">
+          <div className="mb-0.5 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wide">Raw JSON</div>
+          <pre className="tool-card__raw-input mb-1.5 overflow-x-auto whitespace-pre-wrap text-[10px] text-muted-foreground max-h-32 overflow-y-auto font-mono">
             {JSON.stringify(tool.input, null, 2)}
           </pre>
           {tool.result !== undefined && (
-            <pre className="tool-card__raw-output overflow-x-auto whitespace-pre-wrap text-[10px] text-gray-500 max-h-48 overflow-y-auto font-mono">
+            <pre className="tool-card__raw-output overflow-x-auto whitespace-pre-wrap text-[10px] text-muted-foreground max-h-48 overflow-y-auto font-mono">
               {tool.result}
             </pre>
           )}

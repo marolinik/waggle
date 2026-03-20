@@ -118,7 +118,7 @@ export function OnboardingWizard({ onComplete, onTestApiKey, initialStep }: Onbo
         <button
           type="button"
           onClick={goBack}
-          className="mt-4 text-sm text-gray-500 hover:text-gray-300 transition-colors"
+          className="mt-4 text-sm text-muted-foreground hover:text-muted-foreground transition-colors"
         >
           &larr; Back
         </button>

@@ -45,21 +45,21 @@ export function AdvancedSection({
       <h2 className="text-lg font-semibold">Advanced</h2>
 
       {/* Data directory */}
-      <div className="rounded-lg border border-gray-700 p-4">
+      <div className="rounded-lg border border-border p-4">
         <h3 className="text-sm font-medium">Data Directory</h3>
-        <p className="mt-1 rounded bg-gray-800 px-3 py-2 text-sm text-gray-300 font-mono">
+        <p className="mt-1 rounded bg-card px-3 py-2 text-sm text-muted-foreground font-mono">
           {dataDirectory}
         </p>
       </div>
 
       {/* Export/Import */}
-      <div className="rounded-lg border border-gray-700 p-4">
+      <div className="rounded-lg border border-border p-4">
         <h3 className="text-sm font-medium mb-3">Configuration</h3>
         <div className="flex gap-2">
           {onExportConfig && (
             <button
               onClick={onExportConfig}
-              className="rounded bg-gray-700 px-4 py-2 text-sm text-gray-300 hover:bg-gray-600"
+              className="rounded bg-secondary px-4 py-2 text-sm text-muted-foreground hover:bg-muted"
             >
               Export Config
             </button>
@@ -67,7 +67,7 @@ export function AdvancedSection({
           {onImportConfig && (
             <button
               onClick={onImportConfig}
-              className="rounded bg-gray-700 px-4 py-2 text-sm text-gray-300 hover:bg-gray-600"
+              className="rounded bg-secondary px-4 py-2 text-sm text-muted-foreground hover:bg-muted"
             >
               Import Config
             </button>
@@ -77,13 +77,13 @@ export function AdvancedSection({
 
       {/* Mind file sizes */}
       {mindFiles.length > 0 && (
-        <div className="rounded-lg border border-gray-700 p-4">
+        <div className="rounded-lg border border-border p-4">
           <h3 className="text-sm font-medium mb-3">Mind Files</h3>
           <div className="space-y-2">
             {mindFiles.map((mf) => (
               <div key={mf.workspace} className="flex items-center justify-between text-sm">
-                <span className="text-gray-300">{mf.workspace}</span>
-                <span className="text-gray-400 font-mono">{formatBytes(mf.sizeBytes)}</span>
+                <span className="text-muted-foreground">{mf.workspace}</span>
+                <span className="text-muted-foreground font-mono">{formatBytes(mf.sizeBytes)}</span>
               </div>
             ))}
           </div>
@@ -94,18 +94,18 @@ export function AdvancedSection({
       <DataExportSection />
 
       {/* Debug log toggle */}
-      <div className="rounded-lg border border-gray-700 p-4">
+      <div className="rounded-lg border border-border p-4">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-medium">Debug Logging</h3>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Enable verbose logging for troubleshooting.
             </p>
           </div>
           <button
             onClick={() => onDebugLogToggle?.(!debugLogEnabled)}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              debugLogEnabled ? 'bg-blue-600' : 'bg-gray-600'
+              debugLogEnabled ? 'bg-primary' : 'bg-muted'
             }`}
           >
             <span
@@ -165,11 +165,11 @@ function DataExportSection() {
   }, []);
 
   return (
-    <div className="rounded-lg border border-gray-700 p-4">
+    <div className="rounded-lg border border-border p-4">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-medium">Download My Data</h3>
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             Export all your data as a ZIP file (memories, sessions, workspaces, settings).
             API keys are masked. Vault secrets are excluded.
           </p>
@@ -179,13 +179,13 @@ function DataExportSection() {
           disabled={exporting}
           className={`rounded px-4 py-2 text-sm font-medium transition-colors ${
             exporting
-              ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-              : 'bg-blue-600 text-white hover:bg-blue-500'
+              ? 'bg-muted text-muted-foreground cursor-not-allowed'
+              : 'bg-primary text-primary-foreground hover:bg-primary'
           }`}
         >
           {exporting ? (
             <span className="flex items-center gap-2">
-              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-gray-400 border-t-white" />
+              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-foreground" />
               Exporting...
             </span>
           ) : (

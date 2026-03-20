@@ -214,7 +214,7 @@ export function BackupSection({ apiBase = 'http://127.0.0.1:3333' }: BackupSecti
   return (
     <div className="backup-section space-y-6">
       <h2 className="text-lg font-semibold">Backup & Restore</h2>
-      <p className="text-sm text-gray-400">
+      <p className="text-sm text-muted-foreground">
         Create encrypted backups of your Waggle data for machine migration or safekeeping.
       </p>
 
@@ -231,14 +231,14 @@ export function BackupSection({ apiBase = 'http://127.0.0.1:3333' }: BackupSecti
       )}
 
       {/* Create Backup */}
-      <div className="rounded-lg border border-gray-700 p-4">
+      <div className="rounded-lg border border-border p-4">
         <h3 className="text-sm font-medium mb-2">Create Backup</h3>
-        <p className="text-xs text-gray-400 mb-3">
+        <p className="text-xs text-muted-foreground mb-3">
           Backs up all Waggle data including mind files, config, workspaces, vault, and sessions.
           The backup is encrypted using your vault key.
         </p>
         {metadata && (
-          <div className="mb-3 text-xs text-gray-400 space-y-1">
+          <div className="mb-3 text-xs text-muted-foreground space-y-1">
             <p>Last backup: {formatDate(metadata.lastBackupAt)}</p>
             <p>Size: {formatBytes(metadata.sizeBytes)} ({metadata.fileCount} files)</p>
           </div>
@@ -246,31 +246,31 @@ export function BackupSection({ apiBase = 'http://127.0.0.1:3333' }: BackupSecti
         <button
           onClick={handleBackup}
           disabled={backupLoading}
-          className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="rounded bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {backupLoading ? 'Creating backup...' : 'Create Backup'}
         </button>
       </div>
 
       {/* Restore from Backup */}
-      <div className="rounded-lg border border-gray-700 p-4">
+      <div className="rounded-lg border border-border p-4">
         <h3 className="text-sm font-medium mb-2">Restore from Backup</h3>
         <div className="rounded-lg border border-amber-700 bg-amber-900/20 p-3 mb-3 text-xs text-amber-300">
           Warning: Restoring will replace your current data with the backup contents.
           Make sure to create a backup of your current data first.
         </div>
-        <p className="text-xs text-gray-400 mb-3">
+        <p className="text-xs text-muted-foreground mb-3">
           Select a .waggle-backup file to restore. You will see a preview before anything changes.
         </p>
 
         {/* Preview display */}
         {preview && (
-          <div className="mb-3 rounded-lg border border-gray-600 bg-gray-800 p-3 space-y-2">
+          <div className="mb-3 rounded-lg border border-border bg-card p-3 space-y-2">
             <h4 className="text-sm font-medium">Restore Preview</h4>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-muted-foreground">
               Backup from: {formatDate(preview.backupCreatedAt)}
             </p>
-            <p className="text-xs text-gray-300">
+            <p className="text-xs text-muted-foreground">
               Total files: {preview.totalFiles} |
               New files: {preview.newFiles.length} |
               Will overwrite: {preview.conflicts.length}
@@ -278,12 +278,12 @@ export function BackupSection({ apiBase = 'http://127.0.0.1:3333' }: BackupSecti
             {preview.conflicts.length > 0 && (
               <div className="text-xs text-amber-300">
                 <p className="font-medium mb-1">Files that will be overwritten:</p>
-                <div className="max-h-32 overflow-y-auto rounded bg-gray-900 p-2 font-mono">
+                <div className="max-h-32 overflow-y-auto rounded bg-background p-2 font-mono">
                   {preview.conflicts.slice(0, 20).map((f) => (
                     <div key={f}>{f}</div>
                   ))}
                   {preview.conflicts.length > 20 && (
-                    <div className="text-gray-500">...and {preview.conflicts.length - 20} more</div>
+                    <div className="text-muted-foreground">...and {preview.conflicts.length - 20} more</div>
                   )}
                 </div>
               </div>
@@ -292,14 +292,14 @@ export function BackupSection({ apiBase = 'http://127.0.0.1:3333' }: BackupSecti
               <button
                 onClick={handleConfirmRestore}
                 disabled={restoreLoading}
-                className="rounded bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-500 disabled:opacity-50"
+                className="rounded bg-red-600 px-4 py-2 text-sm text-primary-foreground hover:bg-red-500 disabled:opacity-50"
               >
                 {restoreLoading ? 'Restoring...' : 'Confirm Restore'}
               </button>
               <button
                 onClick={handleCancelRestore}
                 disabled={restoreLoading}
-                className="rounded bg-gray-600 px-4 py-2 text-sm text-gray-300 hover:bg-gray-500"
+                className="rounded bg-muted px-4 py-2 text-sm text-muted-foreground hover:bg-muted/80"
               >
                 Cancel
               </button>
@@ -311,7 +311,7 @@ export function BackupSection({ apiBase = 'http://127.0.0.1:3333' }: BackupSecti
         {restoreResult && (
           <div className="mb-3 rounded-lg border border-green-700 bg-green-900/20 p-3 text-xs space-y-1">
             <p className="text-green-300 font-medium">Restore complete</p>
-            <p className="text-gray-300">
+            <p className="text-muted-foreground">
               Restored {restoreResult.filesRestored} of {restoreResult.totalFiles} files
             </p>
             {restoreResult.conflicts.length > 0 && (
@@ -340,7 +340,7 @@ export function BackupSection({ apiBase = 'http://127.0.0.1:3333' }: BackupSecti
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={restoreLoading}
-              className="rounded bg-gray-700 px-4 py-2 text-sm text-gray-300 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="rounded bg-secondary px-4 py-2 text-sm text-muted-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {restoreLoading ? 'Reading backup...' : 'Select Backup File'}
             </button>

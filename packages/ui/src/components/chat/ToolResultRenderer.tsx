@@ -31,11 +31,11 @@ function ReadFileResult({ input, result }: { input: Record<string, unknown>; res
 
   return (
     <div className="tool-result tool-result--read-file">
-      <div className="flex items-center gap-2 text-xs text-gray-400">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <span className="text-sm">{'\uD83D\uDCC4'}</span>
-        <span className="font-mono text-blue-300">{filePath}</span>
+        <span className="font-mono text-primary/70">{filePath}</span>
         {result && (
-          <span className="text-gray-500">({lines} lines)</span>
+          <span className="text-muted-foreground">({lines} lines)</span>
         )}
       </div>
     </div>
@@ -53,7 +53,7 @@ function BashResult({ input, result }: { input: Record<string, unknown>; result?
         <code className="font-mono text-green-300">{truncate(command, 80)}</code>
       </div>
       {hasOutput && (
-        <pre className="mt-1 max-h-32 overflow-auto rounded bg-gray-900 px-2 py-1 text-xs text-gray-400">
+        <pre className="mt-1 max-h-32 overflow-auto rounded bg-background px-2 py-1 text-xs text-muted-foreground">
           {truncate(result, 500)}
         </pre>
       )}
@@ -75,12 +75,12 @@ function WebSearchResult({ input, result }: { input: Record<string, unknown>; re
 
   return (
     <div className="tool-result tool-result--web-search">
-      <div className="flex items-center gap-2 text-xs text-gray-400">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <span className="text-sm">{'\uD83D\uDD0D'}</span>
         <span>Searched: </span>
         <span className="font-medium text-purple-300">{query}</span>
         {resultCount > 0 && (
-          <span className="text-gray-500">({resultCount} results)</span>
+          <span className="text-muted-foreground">({resultCount} results)</span>
         )}
       </div>
     </div>
@@ -101,12 +101,12 @@ function SearchMemoryResult({ input, result }: { input: Record<string, unknown>;
 
   return (
     <div className="tool-result tool-result--search-memory">
-      <div className="flex items-center gap-2 text-xs text-gray-400">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <span className="text-sm">{'\uD83E\uDDE0'}</span>
         <span>Memory: </span>
         <span className="font-medium text-cyan-300">{query}</span>
         {matchCount > 0 && (
-          <span className="text-gray-500">({matchCount} matches)</span>
+          <span className="text-muted-foreground">({matchCount} matches)</span>
         )}
       </div>
     </div>
@@ -118,7 +118,7 @@ function WriteFileResult({ input }: { input: Record<string, unknown> }) {
 
   return (
     <div className="tool-result tool-result--write-file">
-      <div className="flex items-center gap-2 text-xs text-gray-400">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <span className="text-sm">{'\u270F\uFE0F'}</span>
         <span>Wrote: </span>
         <span className="font-mono text-yellow-300">{filePath}</span>
@@ -132,7 +132,7 @@ function EditFileResult({ input }: { input: Record<string, unknown> }) {
 
   return (
     <div className="tool-result tool-result--edit-file">
-      <div className="flex items-center gap-2 text-xs text-gray-400">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <span className="text-sm">{'\u270F\uFE0F'}</span>
         <span>Edited: </span>
         <span className="font-mono text-yellow-300">{filePath}</span>
@@ -147,11 +147,11 @@ function SearchFilesResult({ input, result }: { input: Record<string, unknown>; 
 
   return (
     <div className="tool-result tool-result--search-files">
-      <div className="flex items-center gap-2 text-xs text-gray-400">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <span className="text-sm">{'\uD83D\uDCC2'}</span>
         <span>Found: </span>
         <span className="font-mono text-orange-300">{pattern}</span>
-        <span className="text-gray-500">({matchCount} files)</span>
+        <span className="text-muted-foreground">({matchCount} files)</span>
       </div>
     </div>
   );
@@ -160,14 +160,14 @@ function SearchFilesResult({ input, result }: { input: Record<string, unknown>; 
 function DefaultResult({ toolName, input, result }: ToolResultRendererProps) {
   return (
     <div className="tool-result tool-result--default">
-      <div className="mb-1 text-xs text-gray-400">
-        <span className="font-mono font-medium text-gray-300">{toolName}</span>
+      <div className="mb-1 text-xs text-muted-foreground">
+        <span className="font-mono font-medium text-muted-foreground">{toolName}</span>
       </div>
-      <pre className="max-h-24 overflow-auto rounded bg-gray-900 px-2 py-1 text-xs text-gray-500">
+      <pre className="max-h-24 overflow-auto rounded bg-background px-2 py-1 text-xs text-muted-foreground">
         {JSON.stringify(input, null, 2)}
       </pre>
       {result && (
-        <pre className="mt-1 max-h-24 overflow-auto rounded bg-gray-900 px-2 py-1 text-xs text-gray-500">
+        <pre className="mt-1 max-h-24 overflow-auto rounded bg-background px-2 py-1 text-xs text-muted-foreground">
           {truncate(result, 300)}
         </pre>
       )}

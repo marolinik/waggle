@@ -62,7 +62,7 @@ export function ApiKeyStep({ providers, onChange, onTestApiKey, onContinue }: Ap
 
   return (
     <div className="api-key-step flex flex-col items-center gap-6 p-8">
-      <h2 className="text-2xl font-semibold text-gray-100">
+      <h2 className="text-2xl font-semibold text-foreground">
         To talk to AI models, I need at least one API key.
       </h2>
 
@@ -77,10 +77,10 @@ export function ApiKeyStep({ providers, onChange, onTestApiKey, onContinue }: Ap
               onClick={() => handleSelectProvider(p.id)}
               className={`rounded-lg border px-5 py-3 text-sm font-medium transition-colors ${
                 activeProvider === p.id
-                  ? 'border-blue-500 bg-blue-900/30 text-blue-300'
+                  ? 'border-primary bg-primary/10 text-primary/70'
                   : isValid
                     ? 'border-green-500 bg-green-900/20 text-green-300'
-                    : 'border-gray-700 bg-gray-800 text-gray-300 hover:border-gray-500'
+                    : 'border-border bg-card text-muted-foreground hover:border-border'
               }`}
             >
               {p.label} {isValid && '\u2713'}
@@ -96,7 +96,7 @@ export function ApiKeyStep({ providers, onChange, onTestApiKey, onContinue }: Ap
             type="password"
             value={keyInput}
             onChange={(e) => { setKeyInput(e.target.value); setTestError(null); }}
-            className="w-full rounded-lg bg-gray-800 px-4 py-3 text-sm text-gray-100 outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-lg bg-card px-4 py-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary"
             placeholder="Paste your API key here"
             autoFocus
           />
@@ -107,7 +107,7 @@ export function ApiKeyStep({ providers, onChange, onTestApiKey, onContinue }: Ap
                 type="button"
                 onClick={handleTestConnection}
                 disabled={!keyInput.trim() || testing}
-                className="rounded bg-gray-700 px-4 py-2 text-sm text-gray-200 transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded bg-secondary px-4 py-2 text-sm text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {testing ? 'Testing...' : 'Test Connection'}
               </button>
@@ -119,7 +119,7 @@ export function ApiKeyStep({ providers, onChange, onTestApiKey, onContinue }: Ap
               href={getProviderSignupUrl(activeProvider)}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-blue-400 hover:text-blue-300"
+              className="text-xs text-primary hover:text-primary/70"
             >
               Don&apos;t have one?
             </a>
@@ -136,7 +136,7 @@ export function ApiKeyStep({ providers, onChange, onTestApiKey, onContinue }: Ap
         type="button"
         onClick={onContinue}
         disabled={!hasValidProvider}
-        className="rounded-lg bg-blue-600 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
+        className="rounded-lg bg-primary px-6 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary disabled:cursor-not-allowed disabled:opacity-40"
       >
         Continue &rarr;
       </button>

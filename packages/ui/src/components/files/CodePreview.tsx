@@ -18,10 +18,10 @@ export function CodePreview({ content, language, lineNumbers = true, highlighted
   const lines = content.split('\n');
 
   return (
-    <div className="code-preview bg-gray-900 rounded overflow-auto text-sm font-mono">
+    <div className="code-preview bg-background rounded overflow-auto text-sm font-mono">
       {/* Language badge */}
       {language && (
-        <div className="code-preview__lang px-3 py-1 text-xs text-gray-400 border-b border-gray-700">
+        <div className="code-preview__lang px-3 py-1 text-xs text-muted-foreground border-b border-border">
           {language}
         </div>
       )}
@@ -36,7 +36,7 @@ export function CodePreview({ content, language, lineNumbers = true, highlighted
         <div className="code-preview__content flex">
           {/* Line numbers gutter */}
           {lineNumbers && (
-            <div className="code-preview__gutter select-none text-right pr-3 pl-3 py-2 text-gray-600 border-r border-gray-800">
+            <div className="code-preview__gutter select-none text-right pr-3 pl-3 py-2 text-muted-foreground/60 border-r border-border">
               {lines.map((_, i) => (
                 <div key={i} className="leading-5">
                   {i + 1}
@@ -49,7 +49,7 @@ export function CodePreview({ content, language, lineNumbers = true, highlighted
           <pre className="code-preview__body flex-1 py-2 px-3 overflow-x-auto">
             <code>
               {lines.map((line, i) => (
-                <div key={i} className="leading-5 text-gray-200">
+                <div key={i} className="leading-5 text-foreground">
                   {line || '\u00A0'}
                 </div>
               ))}

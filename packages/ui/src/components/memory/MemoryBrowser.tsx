@@ -41,14 +41,14 @@ export function MemoryBrowser({
   loading = false,
 }: MemoryBrowserProps) {
   return (
-    <div className="memory-browser flex h-full flex-col bg-gray-900">
+    <div className="memory-browser flex h-full flex-col bg-background">
       {/* Search */}
-      <div className="memory-browser__search border-b border-gray-700 p-3">
+      <div className="memory-browser__search border-b border-border p-3">
         <MemorySearch onSearch={onSearch} disabled={loading} />
       </div>
 
       {/* Filters */}
-      <div className="memory-browser__filters flex flex-wrap gap-2 border-b border-gray-700 px-3 py-2">
+      <div className="memory-browser__filters flex flex-wrap gap-2 border-b border-border px-3 py-2">
         {/* Type filter chips */}
         {FRAME_TYPES.map((ft) => {
           const active = filters.types?.includes(ft.value);
@@ -57,8 +57,8 @@ export function MemoryBrowser({
               key={ft.value}
               className={`rounded px-2 py-0.5 text-xs transition-colors ${
                 active
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-card text-muted-foreground hover:bg-secondary'
               }`}
               onClick={() => {
                 const currentTypes = filters.types ?? [];
@@ -75,7 +75,7 @@ export function MemoryBrowser({
 
         {/* Source filter */}
         <select
-          className="rounded bg-gray-800 px-2 py-0.5 text-xs text-gray-400"
+          className="rounded bg-card px-2 py-0.5 text-xs text-muted-foreground"
           value={filters.source ?? 'all'}
           onChange={(e) =>
             onFiltersChange({
@@ -93,7 +93,7 @@ export function MemoryBrowser({
       {/* Main content area */}
       <div className="memory-browser__content flex flex-1 overflow-hidden">
         {/* Timeline */}
-        <div className="memory-browser__timeline w-1/2 overflow-y-auto border-r border-gray-700 p-2">
+        <div className="memory-browser__timeline w-1/2 overflow-y-auto border-r border-border p-2">
           {loading ? (
             <div className="flex items-center justify-center p-8 text-muted-foreground">
               <p className="text-sm animate-pulse">Loading memories...</p>
@@ -120,7 +120,7 @@ export function MemoryBrowser({
           {selectedFrame ? (
             <FrameDetail frame={selectedFrame} />
           ) : (
-            <div className="flex h-full items-center justify-center text-gray-500">
+            <div className="flex h-full items-center justify-center text-muted-foreground">
               Select a frame to view details
             </div>
           )}
@@ -129,7 +129,7 @@ export function MemoryBrowser({
 
       {/* Stats footer */}
       {stats && (
-        <div className="memory-browser__stats flex items-center gap-4 border-t border-gray-700 px-3 py-1.5 text-xs text-gray-500">
+        <div className="memory-browser__stats flex items-center gap-4 border-t border-border px-3 py-1.5 text-xs text-muted-foreground">
           <span>{stats.totalFrames} frames</span>
           <span>{stats.entities} entities</span>
           <span>{stats.relations} relations</span>

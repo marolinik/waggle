@@ -21,7 +21,7 @@ export function ImagePreview({ src, alt = 'Preview', zoomable = true }: ImagePre
   };
 
   return (
-    <div className="image-preview flex flex-col items-center justify-center p-4 bg-gray-900 rounded">
+    <div className="image-preview flex flex-col items-center justify-center p-4 bg-background rounded">
       <div
         className={`image-preview__container relative overflow-auto ${
           zoomed ? 'max-h-none cursor-zoom-out' : 'max-h-96 cursor-zoom-in'
@@ -42,7 +42,7 @@ export function ImagePreview({ src, alt = 'Preview', zoomable = true }: ImagePre
       </div>
 
       {zoomable && (
-        <span className="image-preview__hint text-xs text-gray-500 mt-2">
+        <span className="image-preview__hint text-xs text-muted-foreground mt-2">
           {zoomed ? 'Click to zoom out' : 'Click to zoom in'}
         </span>
       )}

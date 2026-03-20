@@ -34,7 +34,7 @@ export function MemorySearch({
       <form onSubmit={handleSubmit} className="flex gap-2">
         <input
           type="text"
-          className="memory-search__input flex-1 rounded bg-gray-800 px-3 py-2 text-sm text-gray-200 placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
+          className="memory-search__input flex-1 rounded bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-primary"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={placeholder}
@@ -42,7 +42,7 @@ export function MemorySearch({
         />
         <button
           type="submit"
-          className="memory-search__button rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-500 disabled:opacity-50"
+          className="memory-search__button rounded bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary disabled:opacity-50"
           disabled={disabled || !query.trim()}
         >
           Search

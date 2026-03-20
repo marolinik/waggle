@@ -37,8 +37,8 @@ function InstallButton({
       type="button"
       disabled={installing}
       onClick={onClick}
-      className={`bg-blue-500/[0.13] border border-blue-500 rounded-md px-3.5 py-1 text-xs font-semibold ${
-        installing ? 'text-blue-500/50 cursor-not-allowed opacity-60' : 'text-blue-500 cursor-pointer'
+      className={`bg-primary/[0.13] border border-primary rounded-md px-3.5 py-1 text-xs font-semibold ${
+        installing ? 'text-primary/50 cursor-not-allowed opacity-60' : 'text-primary cursor-pointer'
       }`}
     >
       {installing ? 'Installing...' : 'Install'}
@@ -51,7 +51,7 @@ export function SkillCard({ skill, onInstall, installing = false }: SkillCardPro
     <div className="bg-muted border border-border rounded-lg px-4 py-3 mb-2">
       {/* Top row: name + state indicator */}
       <div className="flex justify-between items-center">
-        <span className="text-sm font-semibold text-white">{skill.name}</span>
+        <span className="text-sm font-semibold text-primary-foreground">{skill.name}</span>
         {skill.state === 'available' ? (
           <InstallButton
             installing={installing}
@@ -70,7 +70,7 @@ export function SkillCard({ skill, onInstall, installing = false }: SkillCardPro
       {/* Bottom row: family tag + optional workflow badge */}
       <div className="flex gap-2 mt-2 items-center">
         <span className="bg-card border border-border rounded-full px-2.5 py-0.5 text-[10px] text-muted-foreground">{skill.familyLabel}</span>
-        {skill.isWorkflow && <span className="bg-blue-500/[0.13] text-blue-500 px-2 py-0.5 rounded text-[10px] font-semibold">Workflow</span>}
+        {skill.isWorkflow && <span className="bg-primary/[0.13] text-primary px-2 py-0.5 rounded text-[10px] font-semibold">Workflow</span>}
       </div>
     </div>
   );

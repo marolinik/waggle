@@ -19,20 +19,20 @@ export function FrameDetail({ frame }: FrameDetailProps) {
   const label = getFrameTypeLabel(frame.frameType);
 
   return (
-    <div className="frame-detail flex flex-col gap-3 rounded-lg bg-gray-800 p-4">
+    <div className="frame-detail flex flex-col gap-3 rounded-lg bg-card p-4">
       {/* Header */}
       <div className="frame-detail__header flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="frame-detail__icon text-lg" title={icon}>
             {icon === 'keyframe' ? '◆' : icon === 'prediction' ? '▶' : icon === 'bidirectional' ? '◀▶' : '■'}
           </span>
-          <span className="frame-detail__type text-sm font-medium text-gray-300">
+          <span className="frame-detail__type text-sm font-medium text-muted-foreground">
             {label}
           </span>
         </div>
         <span
           className={`frame-detail__importance rounded px-2 py-0.5 text-xs font-medium ${
-            badge.color === 'red' ? 'text-red-400' : badge.color === 'yellow' ? 'text-amber-400' : badge.color === 'gray' ? 'text-gray-400' : 'text-blue-400'
+            badge.color === 'red' ? 'text-red-400' : badge.color === 'yellow' ? 'text-amber-400' : badge.color === 'gray' ? 'text-muted-foreground' : 'text-primary'
           }`}
         >
           {badge.label}
@@ -40,7 +40,7 @@ export function FrameDetail({ frame }: FrameDetailProps) {
       </div>
 
       {/* Metadata */}
-      <div className="frame-detail__meta flex flex-wrap gap-4 text-xs text-gray-500">
+      <div className="frame-detail__meta flex flex-wrap gap-4 text-xs text-muted-foreground">
         <span>ID: {frame.id}</span>
         <span>{formatTimestamp(frame.timestamp)}</span>
         <span className="capitalize">{frame.source}</span>
@@ -48,20 +48,20 @@ export function FrameDetail({ frame }: FrameDetailProps) {
           <span>Score: {frame.score.toFixed(2)}</span>
         )}
         {frame.authorName && (
-          <span className="frame-detail__author text-blue-400">
+          <span className="frame-detail__author text-primary">
             Added by {frame.authorName}
           </span>
         )}
       </div>
 
       {/* Content */}
-      <div className="frame-detail__content whitespace-pre-wrap rounded bg-gray-900 p-3 text-sm text-gray-200">
+      <div className="frame-detail__content whitespace-pre-wrap rounded bg-background p-3 text-sm text-foreground">
         {frame.content}
       </div>
 
       {/* GOP / Session */}
       {(frame.gop || frame.sessionId) && (
-        <div className="frame-detail__session flex gap-4 text-xs text-gray-500">
+        <div className="frame-detail__session flex gap-4 text-xs text-muted-foreground">
           {frame.gop && <span>GOP: {frame.gop}</span>}
           {frame.sessionId && <span>Session: {frame.sessionId}</span>}
         </div>
@@ -70,12 +70,12 @@ export function FrameDetail({ frame }: FrameDetailProps) {
       {/* Entities */}
       {frame.entities && frame.entities.length > 0 && (
         <div className="frame-detail__entities">
-          <span className="text-xs font-medium text-gray-400">Entities</span>
+          <span className="text-xs font-medium text-muted-foreground">Entities</span>
           <div className="mt-1 flex flex-wrap gap-1">
             {frame.entities.map((entity) => (
               <span
                 key={entity}
-                className="rounded bg-gray-700 px-2 py-0.5 text-xs text-gray-300"
+                className="rounded bg-secondary px-2 py-0.5 text-xs text-muted-foreground"
               >
                 {entity}
               </span>
@@ -87,12 +87,12 @@ export function FrameDetail({ frame }: FrameDetailProps) {
       {/* Linked Frames */}
       {frame.linkedFrames && frame.linkedFrames.length > 0 && (
         <div className="frame-detail__linked">
-          <span className="text-xs font-medium text-gray-400">Linked Frames</span>
+          <span className="text-xs font-medium text-muted-foreground">Linked Frames</span>
           <div className="mt-1 flex flex-wrap gap-1">
             {frame.linkedFrames.map((linkedId) => (
               <span
                 key={linkedId}
-                className="rounded bg-blue-900 px-2 py-0.5 text-xs text-blue-300"
+                className="rounded bg-primary/20 px-2 py-0.5 text-xs text-primary/70"
               >
                 #{linkedId}
               </span>

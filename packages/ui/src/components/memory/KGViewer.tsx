@@ -142,21 +142,21 @@ export function KGViewer({
   }, [layoutData.nodes]);
 
   const containerClass = fullscreen
-    ? 'kg-viewer fixed inset-0 z-50 flex flex-col bg-gray-900'
-    : 'kg-viewer flex flex-col bg-gray-900 rounded border border-gray-700';
+    ? 'kg-viewer fixed inset-0 z-50 flex flex-col bg-background'
+    : 'kg-viewer flex flex-col bg-background rounded border border-border';
 
   return (
     <div className={containerClass}>
       {/* Toolbar */}
-      <div className="kg-viewer__toolbar flex items-center gap-2 border-b border-gray-700 px-3 py-2">
-        <span className="text-xs font-medium text-gray-300">Knowledge Graph</span>
-        <span className="text-xs text-gray-500">
+      <div className="kg-viewer__toolbar flex items-center gap-2 border-b border-border px-3 py-2">
+        <span className="text-xs font-medium text-muted-foreground">Knowledge Graph</span>
+        <span className="text-xs text-muted-foreground">
           {filteredData.nodes.length} nodes, {filteredData.edges.length} edges
         </span>
         <div className="flex-1" />
         {onToggleFullscreen && (
           <button
-            className="rounded px-2 py-0.5 text-xs text-gray-400 hover:bg-gray-700 hover:text-white"
+            className="rounded px-2 py-0.5 text-xs text-muted-foreground hover:bg-secondary hover:text-primary-foreground"
             onClick={onToggleFullscreen}
           >
             {fullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
@@ -166,7 +166,7 @@ export function KGViewer({
 
       {/* Filters */}
       {onFiltersChange && (nodeTypes.length > 0 || edgeTypes.length > 0) && (
-        <div className="kg-viewer__filters flex flex-wrap gap-1 border-b border-gray-700 px-3 py-1.5">
+        <div className="kg-viewer__filters flex flex-wrap gap-1 border-b border-border px-3 py-1.5">
           {nodeTypes.map((type) => {
             const active = !filters.nodeTypes || filters.nodeTypes.includes(type);
             return (
@@ -174,8 +174,8 @@ export function KGViewer({
                 key={`node-${type}`}
                 className={`rounded px-2 py-0.5 text-xs transition-colors ${
                   active
-                    ? 'text-white'
-                    : 'bg-gray-800 text-gray-500 opacity-50'
+                    ? 'text-primary-foreground'
+                    : 'bg-card text-muted-foreground opacity-50'
                 }`}
                 style={active ? { backgroundColor: getNodeColor(type) } : undefined}
                 onClick={() => toggleNodeTypeFilter(type)}
@@ -186,7 +186,7 @@ export function KGViewer({
             );
           })}
           {edgeTypes.length > 0 && nodeTypes.length > 0 && (
-            <span className="mx-1 text-gray-600">|</span>
+            <span className="mx-1 text-muted-foreground/60">|</span>
           )}
           {edgeTypes.map((type) => {
             const active = !filters.edgeTypes || filters.edgeTypes.includes(type);
@@ -195,8 +195,8 @@ export function KGViewer({
                 key={`edge-${type}`}
                 className={`rounded border px-2 py-0.5 text-xs transition-colors ${
                   active
-                    ? 'border-gray-500 text-gray-300'
-                    : 'border-gray-700 text-gray-600 opacity-50'
+                    ? 'border-border text-muted-foreground'
+                    : 'border-border text-muted-foreground/60 opacity-50'
                 }`}
                 onClick={() => toggleEdgeTypeFilter(type)}
                 title={`Filter edge: ${type}`}
@@ -291,7 +291,7 @@ export function KGViewer({
                   title={`${node.label} (${node.type})`}
                 >
                   <span
-                    className="text-center text-white font-medium truncate px-1"
+                    className="text-center text-primary-foreground font-medium truncate px-1"
                     style={{ fontSize: Math.max(8, size * 0.3) }}
                   >
                     {node.label}
@@ -305,29 +305,29 @@ export function KGViewer({
 
       {/* Detail panel — shown when a node is selected */}
       {selectedDetail && selectedDetail.node && (
-        <div className="kg-viewer__detail border-t border-gray-700 px-3 py-2">
+        <div className="kg-viewer__detail border-t border-border px-3 py-2">
           <div className="flex items-center gap-2 mb-1">
             <span
               className="inline-block h-3 w-3 rounded-full"
               style={{ backgroundColor: getNodeColor(selectedDetail.node.type) }}
             />
-            <span className="text-sm font-medium text-white">
+            <span className="text-sm font-medium text-primary-foreground">
               {selectedDetail.node.label}
             </span>
-            <span className="text-xs text-gray-500">{selectedDetail.node.type}</span>
+            <span className="text-xs text-muted-foreground">{selectedDetail.node.type}</span>
           </div>
           {selectedDetail.node.properties &&
             Object.keys(selectedDetail.node.properties).length > 0 && (
-              <div className="mb-1 text-xs text-gray-400">
+              <div className="mb-1 text-xs text-muted-foreground">
                 {Object.entries(selectedDetail.node.properties).map(([key, val]) => (
                   <span key={key} className="mr-3">
-                    <span className="text-gray-500">{key}:</span>{' '}
+                    <span className="text-muted-foreground">{key}:</span>{' '}
                     {String(val)}
                   </span>
                 ))}
               </div>
             )}
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-muted-foreground">
             {selectedDetail.connections.length} connection
             {selectedDetail.connections.length !== 1 ? 's' : ''}
             {selectedDetail.connections.length > 0 && ': '}
@@ -339,15 +339,15 @@ export function KGViewer({
           </div>
           {/* Temporal history */}
           {selectedDetail.node.history && selectedDetail.node.history.length > 0 && (
-            <div className="kg-viewer__history mt-1 border-t border-gray-700 pt-1">
-              <span className="text-xs font-medium text-gray-400">History</span>
+            <div className="kg-viewer__history mt-1 border-t border-border pt-1">
+              <span className="text-xs font-medium text-muted-foreground">History</span>
               <ul className="mt-0.5 space-y-0.5">
                 {selectedDetail.node.history.map((entry, idx) => (
-                  <li key={idx} className="text-xs text-gray-500">
-                    <span className="text-gray-600">{entry.timestamp}</span>{' '}
-                    <span className="text-gray-400">{entry.event}</span>
+                  <li key={idx} className="text-xs text-muted-foreground">
+                    <span className="text-muted-foreground/60">{entry.timestamp}</span>{' '}
+                    <span className="text-muted-foreground">{entry.event}</span>
                     {entry.value !== undefined && (
-                      <span className="ml-1 text-gray-500">({String(entry.value)})</span>
+                      <span className="ml-1 text-muted-foreground">({String(entry.value)})</span>
                     )}
                   </li>
                 ))}

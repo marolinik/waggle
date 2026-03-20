@@ -16,7 +16,7 @@ export interface GroupHeaderProps {
 export function GroupHeader({ name, count, isExpanded, onToggle }: GroupHeaderProps) {
   return (
     <button
-      className="group-header flex w-full items-center gap-2 px-2 py-1.5 text-sm font-semibold text-gray-400 hover:text-gray-200 transition-colors"
+      className="group-header flex w-full items-center gap-2 px-2 py-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
       onClick={onToggle}
       aria-expanded={isExpanded}
     >
@@ -33,7 +33,7 @@ export function GroupHeader({ name, count, isExpanded, onToggle }: GroupHeaderPr
       <span className="group-header__name flex-1 text-left">{name}</span>
 
       {/* Count badge */}
-      <span className="group-header__count text-xs text-gray-500">{count}</span>
+      <span className="group-header__count text-xs text-muted-foreground">{count}</span>
     </button>
   );
 }

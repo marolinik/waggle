@@ -58,11 +58,11 @@ export function PermissionSection({
       <h2 className="text-lg font-semibold">Permissions</h2>
 
       {/* YOLO mode */}
-      <div className="rounded-lg border border-gray-700 p-4">
+      <div className="rounded-lg border border-border p-4">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-medium">YOLO Mode</h3>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               When enabled, all tool executions are auto-approved. Only external mutations
               (network requests, file deletions outside workspace) will prompt for confirmation.
             </p>
@@ -70,7 +70,7 @@ export function PermissionSection({
           <button
             onClick={() => onYoloModeChange?.(!yoloMode)}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              yoloMode ? 'bg-blue-600' : 'bg-gray-600'
+              yoloMode ? 'bg-primary' : 'bg-muted'
             }`}
           >
             <span
@@ -85,7 +85,7 @@ export function PermissionSection({
       {/* External gates */}
       <div className="space-y-3">
         <h3 className="text-sm font-medium">External Mutation Gates</h3>
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-muted-foreground">
           Operations that always require manual approval, even in YOLO mode.
         </p>
 
@@ -94,9 +94,9 @@ export function PermissionSection({
             {externalGates.map((gate) => (
               <div
                 key={gate}
-                className="flex items-center justify-between rounded bg-gray-800 px-3 py-2"
+                className="flex items-center justify-between rounded bg-card px-3 py-2"
               >
-                <span className="text-sm text-gray-300">{gate}</span>
+                <span className="text-sm text-muted-foreground">{gate}</span>
                 <button
                   onClick={() => handleRemoveGate(gate)}
                   className="text-sm text-red-400 hover:text-red-300"
@@ -115,12 +115,12 @@ export function PermissionSection({
             onChange={(e) => setNewGate(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleAddGate()}
             placeholder="e.g., git push, rm -rf, curl POST"
-            className="flex-1 rounded bg-gray-800 px-3 py-2 text-sm text-gray-100 border border-gray-600 focus:border-blue-500 focus:outline-none"
+            className="flex-1 rounded bg-card px-3 py-2 text-sm text-foreground border border-border focus:border-primary focus:outline-none"
           />
           <button
             onClick={handleAddGate}
             disabled={!newGate.trim()}
-            className="rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-500 disabled:opacity-50"
+            className="rounded bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary disabled:opacity-50"
           >
             Add
           </button>
@@ -131,7 +131,7 @@ export function PermissionSection({
       {workspaceId && (
         <div className="space-y-3">
           <h3 className="text-sm font-medium">Workspace Overrides</h3>
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-muted-foreground">
             Additional gates specific to this workspace. These extend the global gates above.
           </p>
 
@@ -140,9 +140,9 @@ export function PermissionSection({
               {workspaceGates.map((gate) => (
                 <div
                   key={gate}
-                  className="flex items-center justify-between rounded bg-gray-800 px-3 py-2"
+                  className="flex items-center justify-between rounded bg-card px-3 py-2"
                 >
-                  <span className="text-sm text-gray-300">{gate}</span>
+                  <span className="text-sm text-muted-foreground">{gate}</span>
                   <button
                     onClick={() => handleRemoveWorkspaceGate(gate)}
                     className="text-sm text-red-400 hover:text-red-300"
@@ -161,12 +161,12 @@ export function PermissionSection({
               onChange={(e) => setNewWorkspaceGate(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAddWorkspaceGate()}
               placeholder="e.g., deploy, database migrate"
-              className="flex-1 rounded bg-gray-800 px-3 py-2 text-sm text-gray-100 border border-gray-600 focus:border-blue-500 focus:outline-none"
+              className="flex-1 rounded bg-card px-3 py-2 text-sm text-foreground border border-border focus:border-primary focus:outline-none"
             />
             <button
               onClick={handleAddWorkspaceGate}
               disabled={!newWorkspaceGate.trim()}
-              className="rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-500 disabled:opacity-50"
+              className="rounded bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary disabled:opacity-50"
             >
               Add
             </button>

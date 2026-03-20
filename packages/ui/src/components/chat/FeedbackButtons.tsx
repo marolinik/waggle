@@ -99,7 +99,7 @@ export function FeedbackButtons({ sessionId, messageIndex, onFeedback }: Feedbac
         <div className="flex gap-1.5">
           <button
             onClick={handleSubmitReason}
-            className="text-[11px] px-2.5 py-0.5 rounded border border-border bg-primary text-white cursor-pointer"
+            className="text-[11px] px-2.5 py-0.5 rounded border border-border bg-primary text-primary-foreground cursor-pointer"
           >
             Submit
           </button>

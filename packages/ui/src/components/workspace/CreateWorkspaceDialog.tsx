@@ -207,11 +207,11 @@ export function CreateWorkspaceDialog({
 
   return (
     <div className="create-workspace-dialog fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-lg rounded-lg bg-gray-900 p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-        <h2 className="mb-4 text-lg font-semibold text-gray-100">Create Workspace</h2>
+      <div className="w-full max-w-lg rounded-lg bg-background p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+        <h2 className="mb-4 text-lg font-semibold text-foreground">Create Workspace</h2>
 
         {/* Mode toggle: Start blank | Use template */}
-        <div className="mb-4 flex rounded bg-gray-800 p-1" role="tablist">
+        <div className="mb-4 flex rounded bg-card p-1" role="tablist">
           <button
             type="button"
             role="tab"
@@ -219,8 +219,8 @@ export function CreateWorkspaceDialog({
             onClick={() => { setMode('blank'); setSelectedTemplate(null); }}
             className={`flex-1 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
               mode === 'blank'
-                ? 'bg-gray-700 text-gray-100'
-                : 'text-gray-400 hover:text-gray-200'
+                ? 'bg-secondary text-foreground'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             Start blank
@@ -232,8 +232,8 @@ export function CreateWorkspaceDialog({
             onClick={() => { setMode('template'); }}
             className={`flex-1 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
               mode === 'template'
-                ? 'bg-gray-700 text-gray-100'
-                : 'text-gray-400 hover:text-gray-200'
+                ? 'bg-secondary text-foreground'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             Use template
@@ -244,9 +244,9 @@ export function CreateWorkspaceDialog({
         {mode === 'template' && (
           <div className="mb-4">
             {templatesLoading ? (
-              <div className="py-4 text-center text-sm text-gray-500">Loading templates...</div>
+              <div className="py-4 text-center text-sm text-muted-foreground">Loading templates...</div>
             ) : templates.length === 0 ? (
-              <div className="py-4 text-center text-sm text-gray-500">No templates available</div>
+              <div className="py-4 text-center text-sm text-muted-foreground">No templates available</div>
             ) : (
               <div className="grid grid-cols-2 gap-2">
                 {templates.map((tpl) => (
@@ -256,17 +256,17 @@ export function CreateWorkspaceDialog({
                     onClick={() => handleSelectTemplate(tpl)}
                     className={`rounded-lg border p-3 text-left transition-colors ${
                       selectedTemplate?.id === tpl.id
-                        ? 'border-blue-500 bg-blue-500/10'
-                        : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border bg-card/50 hover:border-border'
                     }`}
                   >
                     <div className="flex items-center gap-2">
                       <span className="text-lg" role="img" aria-label={tpl.persona}>
                         {PERSONA_ICONS[tpl.persona] || '\u{1F916}'}
                       </span>
-                      <span className="text-sm font-medium text-gray-100">{tpl.name}</span>
+                      <span className="text-sm font-medium text-foreground">{tpl.name}</span>
                     </div>
-                    <p className="mt-1 text-xs text-gray-400 line-clamp-2">{tpl.description}</p>
+                    <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{tpl.description}</p>
                   </button>
                 ))}
               </div>
@@ -274,17 +274,17 @@ export function CreateWorkspaceDialog({
 
             {/* Selected template details */}
             {selectedTemplate && (
-              <div className="mt-3 rounded border border-gray-700 bg-gray-800/30 p-3">
-                <div className="mb-1 text-xs font-medium text-gray-300">Template details</div>
-                <div className="flex flex-wrap gap-2 text-xs text-gray-400">
-                  <span>Persona: <span className="text-gray-200">{selectedTemplate.persona}</span></span>
+              <div className="mt-3 rounded border border-border bg-card/30 p-3">
+                <div className="mb-1 text-xs font-medium text-muted-foreground">Template details</div>
+                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                  <span>Persona: <span className="text-foreground">{selectedTemplate.persona}</span></span>
                   {selectedTemplate.connectors.length > 0 && (
-                    <span>Connectors: <span className="text-gray-200">{selectedTemplate.connectors.join(', ')}</span></span>
+                    <span>Connectors: <span className="text-foreground">{selectedTemplate.connectors.join(', ')}</span></span>
                   )}
                 </div>
                 <div className="mt-1 flex flex-wrap gap-1">
                   {selectedTemplate.suggestedCommands.map((cmd) => (
-                    <span key={cmd} className="rounded bg-gray-700 px-1.5 py-0.5 text-xs text-gray-300">{cmd}</span>
+                    <span key={cmd} className="rounded bg-secondary px-1.5 py-0.5 text-xs text-muted-foreground">{cmd}</span>
                   ))}
                 </div>
               </div>
@@ -295,8 +295,8 @@ export function CreateWorkspaceDialog({
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {/* Team workspace toggle (only when connected) */}
           {isTeamConnected && (
-            <div className="flex items-center gap-3 rounded bg-gray-800/50 px-3 py-2">
-              <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-300">
+            <div className="flex items-center gap-3 rounded bg-card/50 px-3 py-2">
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
                 <input
                   type="checkbox"
                   checked={isTeamWorkspace}
@@ -304,12 +304,12 @@ export function CreateWorkspaceDialog({
                     setIsTeamWorkspace(e.target.checked);
                     setError(null);
                   }}
-                  className="rounded border-gray-600"
+                  className="rounded border-border"
                 />
                 Team Workspace
               </label>
               {isTeamWorkspace && (
-                <span className="text-xs text-blue-400">Shared with team members</span>
+                <span className="text-xs text-primary">Shared with team members</span>
               )}
             </div>
           )}
@@ -317,15 +317,15 @@ export function CreateWorkspaceDialog({
           {/* Team selector (when team workspace toggled) */}
           {isTeamWorkspace && (
             <div>
-              <label className="mb-1 block text-sm text-gray-400" htmlFor="ws-team">
+              <label className="mb-1 block text-sm text-muted-foreground" htmlFor="ws-team">
                 Team <span className="text-red-400">*</span>
               </label>
               {teamsLoading ? (
-                <div className="rounded bg-gray-800 px-3 py-2 text-sm text-gray-500">
+                <div className="rounded bg-card px-3 py-2 text-sm text-muted-foreground">
                   Loading teams...
                 </div>
               ) : teams.length === 0 ? (
-                <div className="rounded bg-gray-800 px-3 py-2 text-sm text-yellow-400">
+                <div className="rounded bg-card px-3 py-2 text-sm text-yellow-400">
                   No teams found. Create a team on the team server first.
                 </div>
               ) : (
@@ -333,7 +333,7 @@ export function CreateWorkspaceDialog({
                   id="ws-team"
                   value={selectedTeamId}
                   onChange={(e) => setSelectedTeamId(e.target.value)}
-                  className="w-full rounded bg-gray-800 px-3 py-2 text-sm text-gray-100 outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded bg-card px-3 py-2 text-sm text-foreground outline-none focus:ring-1 focus:ring-primary"
                 >
                   {teams.map((t) => (
                     <option key={t.id} value={t.id}>
@@ -347,7 +347,7 @@ export function CreateWorkspaceDialog({
 
           {/* Name */}
           <div>
-            <label className="mb-1 block text-sm text-gray-400" htmlFor="ws-name">
+            <label className="mb-1 block text-sm text-muted-foreground" htmlFor="ws-name">
               Name <span className="text-red-400">*</span>
             </label>
             <input
@@ -355,7 +355,7 @@ export function CreateWorkspaceDialog({
               type="text"
               value={name}
               onChange={(e) => { setName(e.target.value); setError(null); }}
-              className="w-full rounded bg-gray-800 px-3 py-2 text-sm text-gray-100 outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded bg-card px-3 py-2 text-sm text-foreground outline-none focus:ring-1 focus:ring-primary"
               placeholder={selectedTemplate ? selectedTemplate.name : 'My Workspace'}
               autoFocus
             />
@@ -365,14 +365,14 @@ export function CreateWorkspaceDialog({
           {/* Group (hidden when team workspace — auto-set to "Team") */}
           {!isTeamWorkspace && (
             <div>
-              <label className="mb-1 block text-sm text-gray-400" htmlFor="ws-group">
+              <label className="mb-1 block text-sm text-muted-foreground" htmlFor="ws-group">
                 Group
               </label>
               <select
                 id="ws-group"
                 value={group}
                 onChange={(e) => setGroup(e.target.value)}
-                className="w-full rounded bg-gray-800 px-3 py-2 text-sm text-gray-100 outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded bg-card px-3 py-2 text-sm text-foreground outline-none focus:ring-1 focus:ring-primary"
               >
                 {GROUP_OPTIONS.map((g) => (
                   <option key={g} value={g}>{g}</option>
@@ -383,45 +383,45 @@ export function CreateWorkspaceDialog({
 
           {/* Directory */}
           <div>
-            <label className="mb-1 block text-sm text-gray-400" htmlFor="ws-directory">
-              Working Directory <span className="text-gray-600">(where files are generated)</span>
+            <label className="mb-1 block text-sm text-muted-foreground" htmlFor="ws-directory">
+              Working Directory <span className="text-muted-foreground/60">(where files are generated)</span>
             </label>
             <input
               id="ws-directory"
               type="text"
               value={directory}
               onChange={(e) => setDirectory(e.target.value)}
-              className="w-full rounded bg-gray-800 px-3 py-2 text-sm text-gray-100 outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded bg-card px-3 py-2 text-sm text-foreground outline-none focus:ring-1 focus:ring-primary"
               placeholder="C:\Users\You\Documents\my-project"
             />
-            <p className="mt-1 text-xs text-gray-500">Agent reads/writes files here. Leave empty to use home directory.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Agent reads/writes files here. Leave empty to use home directory.</p>
           </div>
 
           {/* Model */}
           <div>
-            <label className="mb-1 block text-sm text-gray-400" htmlFor="ws-model">
-              Model <span className="text-gray-600">(optional)</span>
+            <label className="mb-1 block text-sm text-muted-foreground" htmlFor="ws-model">
+              Model <span className="text-muted-foreground/60">(optional)</span>
             </label>
             <input
               id="ws-model"
               type="text"
               value={model}
               onChange={(e) => setModel(e.target.value)}
-              className="w-full rounded bg-gray-800 px-3 py-2 text-sm text-gray-100 outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded bg-card px-3 py-2 text-sm text-foreground outline-none focus:ring-1 focus:ring-primary"
               placeholder="claude-sonnet-4-20250514"
             />
           </div>
 
           {/* Personality */}
           <div>
-            <label className="mb-1 block text-sm text-gray-400" htmlFor="ws-personality">
-              Personality <span className="text-gray-600">(optional)</span>
+            <label className="mb-1 block text-sm text-muted-foreground" htmlFor="ws-personality">
+              Personality <span className="text-muted-foreground/60">(optional)</span>
             </label>
             <textarea
               id="ws-personality"
               value={personality}
               onChange={(e) => setPersonality(e.target.value)}
-              className="w-full rounded bg-gray-800 px-3 py-2 text-sm text-gray-100 outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded bg-card px-3 py-2 text-sm text-foreground outline-none focus:ring-1 focus:ring-primary"
               placeholder="You are a helpful assistant..."
               rows={3}
             />
@@ -432,13 +432,13 @@ export function CreateWorkspaceDialog({
             <button
               type="button"
               onClick={onClose}
-              className="rounded px-4 py-2 text-sm text-gray-400 hover:text-gray-200 transition-colors"
+              className="rounded px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 transition-colors"
+              className="rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary transition-colors"
             >
               {isTeamWorkspace ? 'Create Team Workspace' : selectedTemplate ? `Create from ${selectedTemplate.name}` : 'Create'}
             </button>

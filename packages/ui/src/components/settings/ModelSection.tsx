@@ -39,11 +39,11 @@ export function ModelSection({
 
       {/* Default model selector */}
       <div className="space-y-2">
-        <label className="text-sm font-medium text-gray-300">Default Model</label>
+        <label className="text-sm font-medium text-muted-foreground">Default Model</label>
         <select
           value={config.defaultModel}
           onChange={(e) => onConfigUpdate({ defaultModel: e.target.value })}
-          className="w-full rounded bg-gray-800 px-3 py-2 text-sm text-gray-100 border border-gray-600 focus:border-blue-500 focus:outline-none"
+          className="w-full rounded bg-card px-3 py-2 text-sm text-foreground border border-border focus:border-primary focus:outline-none"
         >
           {allModels.map((m) => (
             <option key={m.name} value={m.name}>
@@ -56,11 +56,11 @@ export function ModelSection({
       {/* Per-workspace override */}
       {onWorkspaceModelChange && (
         <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-300">Workspace Override</label>
+          <label className="text-sm font-medium text-muted-foreground">Workspace Override</label>
           <select
             value={workspaceModel ?? ''}
             onChange={(e) => onWorkspaceModelChange(e.target.value)}
-            className="w-full rounded bg-gray-800 px-3 py-2 text-sm text-gray-100 border border-gray-600 focus:border-blue-500 focus:outline-none"
+            className="w-full rounded bg-card px-3 py-2 text-sm text-foreground border border-border focus:border-primary focus:outline-none"
           >
             <option value="">Use default ({config.defaultModel})</option>
             {allModels.map((m) => (
@@ -74,20 +74,20 @@ export function ModelSection({
 
       {/* Model cards */}
       <div className="space-y-2">
-        <h3 className="text-sm font-medium text-gray-300">Available Models</h3>
+        <h3 className="text-sm font-medium text-muted-foreground">Available Models</h3>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {allModels.map((model) => (
             <div
               key={model.name}
               className={`model-section__card rounded-lg border p-3 cursor-pointer transition-colors ${
                 config.defaultModel === model.name
-                  ? 'border-blue-500 bg-gray-800'
-                  : 'border-gray-700 bg-gray-850 hover:border-gray-500'
+                  ? 'border-primary bg-card'
+                  : 'border-border bg-card hover:border-border'
               }`}
               onClick={() => onConfigUpdate({ defaultModel: model.name })}
             >
-              <div className="text-sm font-medium text-gray-100">{model.name}</div>
-              <div className="mt-1 flex items-center gap-2 text-xs text-gray-400">
+              <div className="text-sm font-medium text-foreground">{model.name}</div>
+              <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                 <span>{model.providerName}</span>
                 <span className="text-yellow-400">{model.cost}</span>
                 <span

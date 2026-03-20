@@ -98,16 +98,16 @@ export function SettingsPanel({
   };
 
   return (
-    <div className="settings-panel flex h-full flex-col bg-gray-900 text-gray-100">
+    <div className="settings-panel flex h-full flex-col bg-background text-foreground">
       {/* Tab bar */}
-      <div className="settings-panel__tabs flex border-b border-gray-700 px-4">
+      <div className="settings-panel__tabs flex border-b border-border px-4">
         {SETTINGS_TABS.map((tab) => (
           <button
             key={tab.id}
             className={`settings-panel__tab px-4 py-2 text-sm font-medium transition-colors ${
               activeTab === tab.id
-                ? 'border-b-2 border-blue-500 text-blue-400'
-                : 'text-gray-400 hover:text-gray-200'
+                ? 'border-b-2 border-primary text-primary'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
             onClick={() => handleTabChange(tab.id)}
           >

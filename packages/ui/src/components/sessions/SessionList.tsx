@@ -64,7 +64,7 @@ export function SessionList({
     <div className="session-list flex flex-col gap-1">
       {/* New Session button */}
       <button
-        className="session-list__new flex items-center gap-2 w-full rounded px-3 py-2 text-sm text-blue-400 hover:bg-gray-800 transition-colors"
+        className="session-list__new flex items-center gap-2 w-full rounded px-3 py-2 text-sm text-primary hover:bg-card transition-colors"
         onClick={onCreateSession}
       >
         <span>+</span>
@@ -76,7 +76,7 @@ export function SessionList({
         <div className="session-list__search px-2 py-1">
           <div className="relative">
             <input
-              className="session-list__search-input w-full bg-gray-800 text-gray-200 rounded px-3 py-1.5 text-sm placeholder-gray-500 border border-gray-700 focus:border-blue-500 focus:outline-none"
+              className="session-list__search-input w-full bg-card text-foreground rounded px-3 py-1.5 text-sm placeholder:text-muted-foreground border border-border focus:border-primary focus:outline-none"
               type="text"
               placeholder="Search sessions..."
               value={searchValue}
@@ -84,7 +84,7 @@ export function SessionList({
             />
             {searchValue && (
               <button
-                className="session-list__search-clear absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 text-xs"
+                className="session-list__search-clear absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground text-xs"
                 onClick={handleClearSearch}
                 aria-label="Clear search"
               >
@@ -93,7 +93,7 @@ export function SessionList({
             )}
           </div>
           {searchLoading && (
-            <div className="session-list__search-loading text-xs text-gray-500 px-1 py-0.5">Searching...</div>
+            <div className="session-list__search-loading text-xs text-muted-foreground px-1 py-0.5">Searching...</div>
           )}
         </div>
       )}
@@ -101,22 +101,22 @@ export function SessionList({
       {/* F1: Search results */}
       {showSearchResults && (
         <div className="session-list__search-results">
-          <div className="session-list__group-header px-3 py-1 text-xs font-medium text-gray-500 uppercase tracking-wider">
+          <div className="session-list__group-header px-3 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
             {searchResults.length === 0 ? 'No results' : `${searchResults.length} result${searchResults.length !== 1 ? 's' : ''}`}
           </div>
           {searchResults.map((result) => (
             <button
               key={result.sessionId}
-              className="session-list__search-result flex flex-col w-full text-left rounded px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 transition-colors"
+              className="session-list__search-result flex flex-col w-full text-left rounded px-3 py-2 text-sm text-muted-foreground hover:bg-card transition-colors"
               onClick={() => { onSelectSession(result.sessionId); handleClearSearch(); }}
             >
               <span className="session-list__search-title block truncate font-medium">{result.title}</span>
               {result.snippets.length > 0 && (
-                <span className="session-list__search-snippet block text-xs text-gray-400 truncate mt-0.5">
+                <span className="session-list__search-snippet block text-xs text-muted-foreground truncate mt-0.5">
                   {result.snippets[0].text}
                 </span>
               )}
-              <span className="session-list__search-meta block text-xs text-gray-500">
+              <span className="session-list__search-meta block text-xs text-muted-foreground">
                 {result.matchCount} match{result.matchCount !== 1 ? 'es' : ''}
               </span>
             </button>
@@ -131,7 +131,7 @@ export function SessionList({
 
         return (
           <div key={group} className="session-list__group">
-            <div className="session-list__group-header px-3 py-1 text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <div className="session-list__group-header px-3 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
               {group}
             </div>
             {sessions.map((session) => (

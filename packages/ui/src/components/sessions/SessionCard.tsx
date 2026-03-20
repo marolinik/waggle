@@ -66,15 +66,15 @@ export function SessionCard({
 
   const cardClasses = `session-card__button flex w-full items-center gap-2 rounded px-3 py-2 text-sm transition-colors ${
     active
-      ? 'bg-blue-600/30 text-blue-200 border-l-2 border-blue-400'
-      : 'text-gray-300 hover:bg-gray-800 border-l-2 border-transparent'
+      ? 'bg-primary/30 text-primary border-l-2 border-primary'
+      : 'text-muted-foreground hover:bg-card border-l-2 border-transparent'
   }`;
 
   const cardContent = (
     <div className="session-card__content flex-1 min-w-0 text-left">
       {editing ? (
         <input
-          className="session-card__rename w-full bg-gray-700 text-gray-200 rounded px-1 text-sm"
+          className="session-card__rename w-full bg-secondary text-foreground rounded px-1 text-sm"
           value={editTitle}
           onChange={(e) => setEditTitle(e.target.value)}
           onBlur={handleRenameSubmit}
@@ -89,11 +89,11 @@ export function SessionCard({
         </span>
       )}
       {session.summary && (
-        <span className="session-card__summary block text-xs text-gray-400 truncate mt-0.5">
+        <span className="session-card__summary block text-xs text-muted-foreground truncate mt-0.5">
           {session.summary}
         </span>
       )}
-      <span className="session-card__meta block text-xs text-gray-500">
+      <span className="session-card__meta block text-xs text-muted-foreground">
         {session.messageCount} messages · {formatLastActive(session.lastActive)}
       </span>
     </div>
@@ -127,10 +127,10 @@ export function SessionCard({
             className="session-card__overlay fixed inset-0 z-10"
             onClick={() => setShowMenu(false)}
           />
-          <div className="session-card__menu absolute right-0 top-full z-20 mt-1 rounded bg-gray-800 border border-gray-700 shadow-lg py-1 min-w-[120px]">
+          <div className="session-card__menu absolute right-0 top-full z-20 mt-1 rounded bg-card border border-border shadow-lg py-1 min-w-[120px]">
             {onRename && (
               <button
-                className="session-card__menu-item w-full text-left px-3 py-1.5 text-sm text-gray-300 hover:bg-gray-700"
+                className="session-card__menu-item w-full text-left px-3 py-1.5 text-sm text-muted-foreground hover:bg-secondary"
                 onClick={handleRename}
               >
                 Rename
@@ -138,7 +138,7 @@ export function SessionCard({
             )}
             {onExport && (
               <button
-                className="session-card__menu-item w-full text-left px-3 py-1.5 text-sm text-gray-300 hover:bg-gray-700"
+                className="session-card__menu-item w-full text-left px-3 py-1.5 text-sm text-muted-foreground hover:bg-secondary"
                 onClick={() => { setShowMenu(false); onExport(); }}
               >
                 Export
@@ -146,7 +146,7 @@ export function SessionCard({
             )}
             {onDelete && (
               <button
-                className="session-card__menu-item w-full text-left px-3 py-1.5 text-sm text-red-400 hover:bg-gray-700"
+                className="session-card__menu-item w-full text-left px-3 py-1.5 text-sm text-red-400 hover:bg-secondary"
                 onClick={() => { setShowMenu(false); onDelete(); }}
               >
                 Delete

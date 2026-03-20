@@ -64,7 +64,7 @@ export function ApiKeySection({ config, onConfigUpdate, onTestApiKey }: ApiKeySe
   return (
     <div className="api-key-section space-y-6">
       <h2 className="text-lg font-semibold">API Keys</h2>
-      <p className="text-sm text-gray-400">
+      <p className="text-sm text-muted-foreground">
         Configure API keys for your LLM providers. Keys are stored locally and never sent to Waggle servers.
       </p>
 
@@ -74,7 +74,7 @@ export function ApiKeySection({ config, onConfigUpdate, onTestApiKey }: ApiKeySe
         const status = statuses[provider.id];
 
         return (
-          <div key={provider.id} className="api-key-section__provider rounded-lg border border-gray-700 p-4">
+          <div key={provider.id} className="api-key-section__provider rounded-lg border border-border p-4">
             <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-medium">{provider.name}</label>
               {status && !status.testing && (
@@ -92,18 +92,18 @@ export function ApiKeySection({ config, onConfigUpdate, onTestApiKey }: ApiKeySe
                 value={key}
                 onChange={(e) => handleKeyChange(provider.id, e.target.value)}
                 placeholder={`Enter ${provider.name} API key`}
-                className="flex-1 rounded bg-gray-800 px-3 py-2 text-sm text-gray-100 border border-gray-600 focus:border-blue-500 focus:outline-none"
+                className="flex-1 rounded bg-card px-3 py-2 text-sm text-foreground border border-border focus:border-primary focus:outline-none"
               />
               <button
                 onClick={() => toggleReveal(provider.id)}
-                className="rounded bg-gray-700 px-3 py-2 text-sm text-gray-300 hover:bg-gray-600"
+                className="rounded bg-secondary px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
               >
                 {isRevealed ? 'Hide' : 'Show'}
               </button>
               <button
                 onClick={() => handleTest(provider.id)}
                 disabled={!key || status?.testing}
-                className="rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Test
               </button>

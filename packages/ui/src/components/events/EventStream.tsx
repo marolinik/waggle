@@ -50,13 +50,13 @@ export function EventStream({
   };
 
   return (
-    <div className="event-stream flex h-full flex-col bg-gray-900">
+    <div className="event-stream flex h-full flex-col bg-background">
       {/* Toolbar */}
-      <div className="event-stream__toolbar flex items-center gap-2 border-b border-gray-700 px-3 py-2">
-        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+      <div className="event-stream__toolbar flex items-center gap-2 border-b border-border px-3 py-2">
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
           Events
         </span>
-        <span className="text-xs text-gray-500">({filtered.length})</span>
+        <span className="text-xs text-muted-foreground">({filtered.length})</span>
         <div className="flex-1" />
 
         {/* Filter chips for step types */}
@@ -69,8 +69,8 @@ export function EventStream({
                   key={type}
                   className={`rounded px-1.5 py-0.5 text-xs transition-colors ${
                     active
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-card text-muted-foreground hover:bg-secondary'
                   }`}
                   onClick={() => {
                     const currentTypes = filter.types ?? [];
@@ -97,8 +97,8 @@ export function EventStream({
           <button
             className={`rounded px-2 py-0.5 text-xs transition-colors ${
               autoScroll
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-card text-muted-foreground hover:bg-secondary'
             }`}
             onClick={onToggleAutoScroll}
             title={autoScroll ? 'Auto-scroll ON' : 'Auto-scroll OFF'}

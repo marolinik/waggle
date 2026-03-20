@@ -61,8 +61,8 @@ export function TeamSection({ teamConnection, onConnect, onDisconnect }: TeamSec
     return (
       <div className="space-y-6">
         <div>
-          <h3 className="text-lg font-medium text-gray-100">Team Connection</h3>
-          <p className="mt-1 text-sm text-gray-400">Connected to team server.</p>
+          <h3 className="text-lg font-medium text-foreground">Team Connection</h3>
+          <p className="mt-1 text-sm text-muted-foreground">Connected to team server.</p>
         </div>
 
         <div className="rounded-lg border border-green-800 bg-green-900/20 p-4">
@@ -70,11 +70,11 @@ export function TeamSection({ teamConnection, onConnect, onDisconnect }: TeamSec
             <div className="h-3 w-3 rounded-full bg-green-400" />
             <span className="font-medium text-green-300">Connected</span>
           </div>
-          <div className="mt-3 space-y-1 text-sm text-gray-300">
-            <p><span className="text-gray-500">Server:</span> {teamConnection.serverUrl}</p>
-            <p><span className="text-gray-500">User:</span> {teamConnection.displayName}</p>
+          <div className="mt-3 space-y-1 text-sm text-muted-foreground">
+            <p><span className="text-muted-foreground">Server:</span> {teamConnection.serverUrl}</p>
+            <p><span className="text-muted-foreground">User:</span> {teamConnection.displayName}</p>
             {teamConnection.teamSlug && (
-              <p><span className="text-gray-500">Team:</span> {teamConnection.teamSlug}</p>
+              <p><span className="text-muted-foreground">Team:</span> {teamConnection.teamSlug}</p>
             )}
           </div>
         </div>
@@ -92,15 +92,15 @@ export function TeamSection({ teamConnection, onConnect, onDisconnect }: TeamSec
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium text-gray-100">Team Connection</h3>
-        <p className="mt-1 text-sm text-gray-400">
+        <h3 className="text-lg font-medium text-foreground">Team Connection</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
           Connect to a team server to share workspaces and collaborate with your team.
         </p>
       </div>
 
       <div className="space-y-4">
         <div>
-          <label htmlFor="team-server-url" className="block text-sm font-medium text-gray-300">
+          <label htmlFor="team-server-url" className="block text-sm font-medium text-muted-foreground">
             Team Server URL
           </label>
           <input
@@ -109,12 +109,12 @@ export function TeamSection({ teamConnection, onConnect, onDisconnect }: TeamSec
             value={serverUrl}
             onChange={(e) => setServerUrl(e.target.value)}
             placeholder="https://team.waggle.dev"
-            className="mt-1 w-full rounded-md border border-gray-600 bg-gray-800 px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:border-blue-500 focus:outline-none"
+            className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
           />
         </div>
 
         <div>
-          <label htmlFor="team-auth-token" className="block text-sm font-medium text-gray-300">
+          <label htmlFor="team-auth-token" className="block text-sm font-medium text-muted-foreground">
             Auth Token
           </label>
           <input
@@ -123,9 +123,9 @@ export function TeamSection({ teamConnection, onConnect, onDisconnect }: TeamSec
             value={token}
             onChange={(e) => setToken(e.target.value)}
             placeholder="Paste your team authentication token"
-            className="mt-1 w-full rounded-md border border-gray-600 bg-gray-800 px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:border-blue-500 focus:outline-none"
+            className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
           />
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-muted-foreground">
             Get your token from the team server admin panel.
           </p>
         </div>
@@ -140,7 +140,7 @@ export function TeamSection({ teamConnection, onConnect, onDisconnect }: TeamSec
       <button
         onClick={handleConnect}
         disabled={connecting || !serverUrl.trim() || !token.trim()}
-        className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {connecting ? 'Connecting...' : 'Connect to Team'}
       </button>

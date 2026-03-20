@@ -18,16 +18,16 @@ export function ThemeSection({ config, onConfigUpdate }: ThemeSectionProps) {
       <h2 className="text-lg font-semibold">General</h2>
 
       {/* Theme toggle */}
-      <div className="rounded-lg border border-gray-700 p-4">
+      <div className="rounded-lg border border-border p-4">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-medium">Theme</h3>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Switch between light and dark mode.
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <span className={`text-sm ${config.theme === 'light' ? 'text-yellow-400' : 'text-gray-500'}`}>
+            <span className={`text-sm ${config.theme === 'light' ? 'text-yellow-400' : 'text-muted-foreground'}`}>
               Light
             </span>
             <button
@@ -35,7 +35,7 @@ export function ThemeSection({ config, onConfigUpdate }: ThemeSectionProps) {
                 onConfigUpdate({ theme: config.theme === 'dark' ? 'light' : 'dark' })
               }
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                config.theme === 'dark' ? 'bg-blue-600' : 'bg-gray-400'
+                config.theme === 'dark' ? 'bg-primary' : 'bg-muted'
               }`}
             >
               <span
@@ -44,7 +44,7 @@ export function ThemeSection({ config, onConfigUpdate }: ThemeSectionProps) {
                 }`}
               />
             </button>
-            <span className={`text-sm ${config.theme === 'dark' ? 'text-blue-400' : 'text-gray-500'}`}>
+            <span className={`text-sm ${config.theme === 'dark' ? 'text-primary' : 'text-muted-foreground'}`}>
               Dark
             </span>
           </div>
@@ -52,18 +52,18 @@ export function ThemeSection({ config, onConfigUpdate }: ThemeSectionProps) {
       </div>
 
       {/* Autostart */}
-      <div className="rounded-lg border border-gray-700 p-4">
+      <div className="rounded-lg border border-border p-4">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-medium">Launch on Startup</h3>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Automatically start Waggle when you log in.
             </p>
           </div>
           <button
             onClick={() => onConfigUpdate({ autostart: !config.autostart })}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              config.autostart ? 'bg-blue-600' : 'bg-gray-600'
+              config.autostart ? 'bg-primary' : 'bg-muted'
             }`}
           >
             <span
@@ -76,11 +76,11 @@ export function ThemeSection({ config, onConfigUpdate }: ThemeSectionProps) {
       </div>
 
       {/* Global hotkey */}
-      <div className="rounded-lg border border-gray-700 p-4">
+      <div className="rounded-lg border border-border p-4">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-medium">Global Hotkey</h3>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Keyboard shortcut to show/hide Waggle.
             </p>
           </div>
@@ -88,7 +88,7 @@ export function ThemeSection({ config, onConfigUpdate }: ThemeSectionProps) {
             type="text"
             value={config.globalHotkey}
             onChange={(e) => onConfigUpdate({ globalHotkey: e.target.value })}
-            className="w-40 rounded bg-gray-800 px-3 py-2 text-sm text-center text-gray-100 border border-gray-600 focus:border-blue-500 focus:outline-none"
+            className="w-40 rounded bg-card px-3 py-2 text-sm text-center text-foreground border border-border focus:border-primary focus:outline-none"
           />
         </div>
       </div>

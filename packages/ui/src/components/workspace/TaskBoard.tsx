@@ -40,7 +40,7 @@ const STATUS_COLORS: Record<TeamTask['status'], string> = {
 };
 
 const STATUS_TEXT_CLASS: Record<TeamTask['status'], string> = {
-  open: 'text-blue-500',
+  open: 'text-primary',
   in_progress: 'text-amber-500',
   done: 'text-green-500',
 };
@@ -104,7 +104,7 @@ export function TaskBoard({
           <button
             onClick={handleCreate}
             disabled={!newTitle.trim()}
-            className="px-2 py-1 bg-blue-500 text-white border-none rounded cursor-pointer text-[10px] disabled:opacity-50"
+            className="px-2 py-1 bg-primary text-primary-foreground border-none rounded cursor-pointer text-[10px] disabled:opacity-50"
           >
             Add
           </button>
@@ -145,7 +145,7 @@ export function TaskBoard({
                       }}
                       title={`Move to ${STATUS_LABELS[task.status === 'open' ? 'in_progress' : task.status === 'in_progress' ? 'done' : 'open']}`}
                       className={`w-3 h-3 rounded-full shrink-0 p-0 cursor-pointer border-2 ${
-                        task.status === 'open' ? 'border-blue-500 bg-transparent' :
+                        task.status === 'open' ? 'border-primary bg-transparent' :
                         task.status === 'in_progress' ? 'border-amber-500 bg-transparent' :
                         'border-green-500 bg-green-500'
                       }`}

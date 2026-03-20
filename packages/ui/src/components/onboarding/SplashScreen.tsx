@@ -22,7 +22,7 @@ export function SplashScreen({ phase, message, progress, error }: SplashScreenPr
   const percentage = Math.round(progress * 100);
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] text-gray-200 font-sans">
+    <div className="flex flex-col items-center justify-center h-screen bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] text-foreground font-sans">
       {/* Logo area */}
       <div className="text-5xl font-bold mb-8 tracking-wide text-[#f5a623]">
         Waggle

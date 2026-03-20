@@ -31,7 +31,7 @@ function ToolGroup({ tools }: { tools: ToolUseEvent[] }) {
       <div className="tool-group">
         <button
           onClick={() => setExpanded(false)}
-          className="text-xs text-gray-600 hover:text-gray-400 flex items-center gap-1 mb-1"
+          className="text-xs text-muted-foreground/60 hover:text-muted-foreground flex items-center gap-1 mb-1"
         >
           <span className="text-[8px] text-[#3fb950]">{'\u25CF'}</span>
           {tools.length} tools completed
@@ -49,7 +49,7 @@ function ToolGroup({ tools }: { tools: ToolUseEvent[] }) {
   return (
     <button
       onClick={() => setExpanded(true)}
-      className="tool-group--collapsed flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-400 transition-colors py-0.5"
+      className="tool-group--collapsed flex items-center gap-1.5 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors py-0.5"
       title={tools.map(t => t.name).join(', ')}
     >
       <span className="text-[8px] text-[#3fb950]">{'\u25CF'}</span>
@@ -183,8 +183,8 @@ export function ChatMessage({ message, messageIndex, sessionId, onToolApprove, o
       <div
         className={`max-w-[80%] rounded-lg px-4 py-2 ${
           isUser
-            ? 'bg-blue-600 text-white'
-            : 'bg-gray-800 text-gray-100'
+            ? 'bg-primary text-primary-foreground'
+            : 'bg-card text-foreground'
         }`}
       >
         {/* Message content */}
@@ -206,7 +206,7 @@ export function ChatMessage({ message, messageIndex, sessionId, onToolApprove, o
             {/* Trail toggle header */}
             <button
               onClick={() => setTrailExpanded(prev => !prev)}
-              className="chat-message__trail-toggle flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 mb-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+              className="chat-message__trail-toggle flex items-center gap-1.5 text-xs text-muted-foreground hover:text-muted-foreground mb-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
               aria-expanded={showTrail}
               aria-label={`${message.toolUse?.length ?? 0} tools used. ${showTrail ? 'Collapse' : 'Expand'} details`}
             >
@@ -216,7 +216,7 @@ export function ChatMessage({ message, messageIndex, sessionId, onToolApprove, o
                 {hasSteps ? ` \u00B7 ${message.steps!.length} step${message.steps!.length !== 1 ? 's' : ''}` : ''}
               </span>
               {hasActiveTools && (
-                <span className="text-blue-400 animate-pulse">{'\u25CF'}</span>
+                <span className="text-primary animate-pulse">{'\u25CF'}</span>
               )}
             </button>
 

@@ -23,7 +23,7 @@ export interface DiffViewerProps {
 const LINE_COLORS = {
   added: 'bg-green-900/30 text-green-300',
   removed: 'bg-red-900/30 text-red-300',
-  unchanged: 'text-gray-300',
+  unchanged: 'text-muted-foreground',
 } as const;
 
 const LINE_MARKERS = {
@@ -72,15 +72,15 @@ export function DiffViewer({ diff, mode = 'unified', onModeChange }: DiffViewerP
   }, [diffLines]);
 
   return (
-    <div className="diff-viewer bg-gray-900 rounded overflow-auto text-sm font-mono">
+    <div className="diff-viewer bg-background rounded overflow-auto text-sm font-mono">
       {/* Toolbar */}
-      <div className="diff-viewer__toolbar flex items-center justify-between px-3 py-1.5 border-b border-gray-700">
-        <span className="text-xs text-gray-400">{diff.name}</span>
+      <div className="diff-viewer__toolbar flex items-center justify-between px-3 py-1.5 border-b border-border">
+        <span className="text-xs text-muted-foreground">{diff.name}</span>
         {onModeChange && (
           <div className="flex gap-1">
             <button
               className={`text-xs px-2 py-0.5 rounded ${
-                mode === 'unified' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'
+                mode === 'unified' ? 'bg-secondary text-primary-foreground' : 'text-muted-foreground hover:text-primary-foreground'
               }`}
               onClick={() => onModeChange('unified')}
               type="button"
@@ -89,7 +89,7 @@ export function DiffViewer({ diff, mode = 'unified', onModeChange }: DiffViewerP
             </button>
             <button
               className={`text-xs px-2 py-0.5 rounded ${
-                mode === 'side-by-side' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'
+                mode === 'side-by-side' ? 'bg-secondary text-primary-foreground' : 'text-muted-foreground hover:text-primary-foreground'
               }`}
               onClick={() => onModeChange('side-by-side')}
               type="button"
@@ -105,10 +105,10 @@ export function DiffViewer({ diff, mode = 'unified', onModeChange }: DiffViewerP
         <div className="diff-viewer__unified py-1">
           {diffLines.map((line, i) => (
             <div key={i} className={`flex ${LINE_COLORS[line.type]} px-3 leading-5`}>
-              <span className="select-none w-10 text-right pr-2 text-gray-600 shrink-0">
+              <span className="select-none w-10 text-right pr-2 text-muted-foreground/60 shrink-0">
                 {line.lineNumber.old ?? ''}
               </span>
-              <span className="select-none w-10 text-right pr-2 text-gray-600 shrink-0">
+              <span className="select-none w-10 text-right pr-2 text-muted-foreground/60 shrink-0">
                 {line.lineNumber.new ?? ''}
               </span>
               <span className="select-none w-4 text-center shrink-0">
@@ -121,13 +121,13 @@ export function DiffViewer({ diff, mode = 'unified', onModeChange }: DiffViewerP
       ) : (
         <div className="diff-viewer__side-by-side flex">
           {/* Old side */}
-          <div className="flex-1 border-r border-gray-800 py-1">
+          <div className="flex-1 border-r border-border py-1">
             {sideBySideRows.map((row, i) => {
               const line = row.left;
               const type = line?.type === 'unchanged' ? 'unchanged' : line ? 'removed' : 'unchanged';
               return (
                 <div key={i} className={`flex ${line ? LINE_COLORS[type] : ''} px-3 leading-5`}>
-                  <span className="select-none w-10 text-right pr-2 text-gray-600 shrink-0">
+                  <span className="select-none w-10 text-right pr-2 text-muted-foreground/60 shrink-0">
                     {line?.lineNumber.old ?? ''}
                   </span>
                   <span className="flex-1 whitespace-pre">{line?.content || '\u00A0'}</span>
@@ -142,7 +142,7 @@ export function DiffViewer({ diff, mode = 'unified', onModeChange }: DiffViewerP
               const type = line?.type === 'unchanged' ? 'unchanged' : line ? 'added' : 'unchanged';
               return (
                 <div key={i} className={`flex ${line ? LINE_COLORS[type] : ''} px-3 leading-5`}>
-                  <span className="select-none w-10 text-right pr-2 text-gray-600 shrink-0">
+                  <span className="select-none w-10 text-right pr-2 text-muted-foreground/60 shrink-0">
                     {line?.lineNumber.new ?? ''}
                   </span>
                   <span className="flex-1 whitespace-pre">{line?.content || '\u00A0'}</span>

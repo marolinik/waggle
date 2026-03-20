@@ -27,7 +27,7 @@ export interface SubAgentProgressProps {
 /** Status dot CSS class by agent status */
 const STATUS_DOT_CLASS: Record<SubAgentInfo['status'], string> = {
   pending: 'bg-yellow-500',
-  running: 'bg-blue-500 animate-pulse',
+  running: 'bg-primary animate-pulse',
   done: 'bg-green-500',
   failed: 'bg-destructive',
 };

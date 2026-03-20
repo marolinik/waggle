@@ -24,7 +24,7 @@ export interface FilePreviewProps {
 }
 
 const ACTION_COLORS = {
-  read: 'text-blue-400',
+  read: 'text-primary',
   write: 'text-green-400',
   edit: 'text-yellow-400',
 } as const;
@@ -47,7 +47,7 @@ export function FilePreview({
   // Nothing selected
   if (!file && !diff) {
     return (
-      <div className="file-preview flex items-center justify-center h-full text-gray-500 text-sm">
+      <div className="file-preview flex items-center justify-center h-full text-muted-foreground text-sm">
         No file selected
       </div>
     );
@@ -57,11 +57,11 @@ export function FilePreview({
   const activeName = diff?.name ?? file?.name ?? '';
 
   return (
-    <div className="file-preview flex flex-col h-full bg-gray-850">
+    <div className="file-preview flex flex-col h-full bg-card">
       {/* Header */}
-      <div className="file-preview__header flex items-center gap-2 px-3 py-2 border-b border-gray-700">
-        <span className="text-xs text-gray-500">{getFileIcon(file?.extension ?? '')}</span>
-        <span className="text-sm text-gray-200 font-medium truncate" title={activePath}>
+      <div className="file-preview__header flex items-center gap-2 px-3 py-2 border-b border-border">
+        <span className="text-xs text-muted-foreground">{getFileIcon(file?.extension ?? '')}</span>
+        <span className="text-sm text-foreground font-medium truncate" title={activePath}>
           {activeName}
         </span>
         {file && (
@@ -74,7 +74,7 @@ export function FilePreview({
         <div className="ml-auto flex gap-1">
           {onOpenInApp && (
             <button
-              className="file-preview__action text-xs text-gray-400 hover:text-white px-1.5 py-0.5 rounded hover:bg-gray-700"
+              className="file-preview__action text-xs text-muted-foreground hover:text-primary-foreground px-1.5 py-0.5 rounded hover:bg-secondary"
               onClick={() => onOpenInApp(activePath)}
               title="Open in default app"
               type="button"
@@ -84,7 +84,7 @@ export function FilePreview({
           )}
           {onCopyPath && (
             <button
-              className="file-preview__action text-xs text-gray-400 hover:text-white px-1.5 py-0.5 rounded hover:bg-gray-700"
+              className="file-preview__action text-xs text-muted-foreground hover:text-primary-foreground px-1.5 py-0.5 rounded hover:bg-secondary"
               onClick={() => onCopyPath(activePath)}
               title="Copy file path"
               type="button"
@@ -94,7 +94,7 @@ export function FilePreview({
           )}
           {onSaveAs && (
             <button
-              className="file-preview__action text-xs text-gray-400 hover:text-white px-1.5 py-0.5 rounded hover:bg-gray-700"
+              className="file-preview__action text-xs text-muted-foreground hover:text-primary-foreground px-1.5 py-0.5 rounded hover:bg-secondary"
               onClick={() => onSaveAs(activePath)}
               title="Save as..."
               type="button"
@@ -117,7 +117,7 @@ export function FilePreview({
             language={file.language ?? getLanguageFromExtension(file.extension)}
           />
         ) : (
-          <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+          <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
             No preview available
           </div>
         )}
@@ -125,14 +125,14 @@ export function FilePreview({
 
       {/* Recent files sidebar */}
       {recentFiles.length > 0 && (
-        <div className="file-preview__history border-t border-gray-700">
-          <div className="px-3 py-1.5 text-xs text-gray-500 font-medium">Recent Files</div>
+        <div className="file-preview__history border-t border-border">
+          <div className="px-3 py-1.5 text-xs text-muted-foreground font-medium">Recent Files</div>
           <div className="max-h-32 overflow-y-auto">
             {recentFiles.map((f, i) => (
               <button
                 key={`${f.path}-${f.timestamp}-${i}`}
-                className={`file-preview__history-item w-full text-left flex items-center gap-2 px-3 py-1 text-xs hover:bg-gray-800 ${
-                  f.path === activePath ? 'bg-gray-800 text-white' : 'text-gray-400'
+                className={`file-preview__history-item w-full text-left flex items-center gap-2 px-3 py-1 text-xs hover:bg-card ${
+                  f.path === activePath ? 'bg-card text-primary-foreground' : 'text-muted-foreground'
                 }`}
                 onClick={() => onSelectFile?.(f)}
                 type="button"

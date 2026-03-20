@@ -58,8 +58,8 @@ export function WorkspaceCard({ workspace, isActive, onClick, onContextMenu, isA
     <button
       className={`workspace-card flex w-full items-center gap-2 rounded px-3 py-1.5 text-sm transition-colors ${
         isActive
-          ? 'text-blue-300'
-          : 'text-gray-300 hover:bg-gray-800'
+          ? 'text-primary/70'
+          : 'text-muted-foreground hover:bg-card'
       }`}
       style={{
         borderLeft: `3px solid hsl(${hue}, 60%, 50%)`,
@@ -103,7 +103,7 @@ export function WorkspaceCard({ workspace, isActive, onClick, onContextMenu, isA
       {/* Team badge */}
       {isTeam && (
         <span
-          className="workspace-card__team-badge rounded bg-blue-600/30 px-1.5 py-0.5 text-[10px] font-medium text-blue-300"
+          className="workspace-card__team-badge rounded bg-primary/30 px-1.5 py-0.5 text-[10px] font-medium text-primary/70"
           title={`Team workspace (${workspace.teamRole ?? 'member'})`}
         >
           Team

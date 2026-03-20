@@ -97,7 +97,7 @@ export function ApprovalGate({ tool, onApprove, onDeny }: ApprovalGateProps) {
       <div className="approval-gate__actions flex gap-2">
         <button
           onClick={onApprove}
-          className="rounded bg-green-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-green-600"
+          className="rounded bg-green-700 px-4 py-1.5 text-sm font-medium text-primary-foreground hover:bg-green-600"
         >
           Approve
         </button>
