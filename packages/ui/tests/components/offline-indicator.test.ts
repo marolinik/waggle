@@ -11,7 +11,8 @@ import type { StatusBarProps, OfflineStatus } from '../../src/index.js';
 
 describe('StatusBar offline indicator', () => {
   it('StatusBar is exported as a function', () => {
-    expect(typeof StatusBar).toBe('function');
+    // StatusBar may be wrapped in React.memo (returns object)
+    expect(['function', 'object']).toContain(typeof StatusBar);
   });
 
   it('OfflineStatus type supports offline state', () => {

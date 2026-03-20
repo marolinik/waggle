@@ -1,4 +1,3 @@
-import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import type { CronSchedule } from './types';
@@ -61,6 +60,8 @@ export function CronSchedulesCard({
                       )}
                       onClick={() => onToggle(s.id, s.enabled)}
                       disabled={togglingId === s.id}
+                      aria-label={`${s.enabled ? 'Disable' : 'Enable'} schedule ${s.name}`}
+                      aria-pressed={s.enabled}
                     >
                       {s.enabled ? 'ON' : 'OFF'}
                     </button>
@@ -73,6 +74,7 @@ export function CronSchedulesCard({
                       )}
                       onClick={() => onTrigger(s.id)}
                       disabled={triggeringId === s.id}
+                      aria-label={`Trigger schedule ${s.name}`}
                     >
                       {triggeringId === s.id ? 'Running...' : 'Trigger'}
                     </button>

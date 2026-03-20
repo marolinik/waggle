@@ -5,7 +5,7 @@
  * Manages onboarding state and delegates rendering to individual step components.
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { NameStep } from './steps/NameStep.js';
 import { ApiKeyStep } from './steps/ApiKeyStep.js';
 import { WorkspaceStep } from './steps/WorkspaceStep.js';
@@ -14,7 +14,6 @@ import {
   ONBOARDING_STEPS,
   getNextStep,
   getPrevStep,
-  isStepComplete,
 } from './utils.js';
 import type { OnboardingData } from './utils.js';
 
@@ -46,7 +45,6 @@ export function OnboardingWizard({ onComplete, onTestApiKey, initialStep }: Onbo
   });
 
   const stepIndex = ONBOARDING_STEPS.findIndex((s) => s.id === currentStep);
-  const stepConfig = ONBOARDING_STEPS[stepIndex];
 
   const goNext = () => {
     const next = getNextStep(currentStep);

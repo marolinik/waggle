@@ -6,8 +6,6 @@
  * Returns null when there are no messages (takes no space).
  */
 
-import React from 'react';
-
 export interface TeamMessage {
   id: string;
   type: 'waggle' | 'alert' | 'status' | 'request';
@@ -22,11 +20,18 @@ export interface TeamMessagesProps {
   maxVisible?: number;
 }
 
-const TYPE_COLORS: Record<string, string> = {
-  waggle: '#58a6ff',
-  alert: '#f85149',
-  status: '#3fb950',
-  request: '#d29922',
+const TYPE_BORDER_CLASS: Record<string, string> = {
+  waggle: 'border-l-blue-400',
+  alert: 'border-l-red-400',
+  status: 'border-l-green-400',
+  request: 'border-l-amber-500',
+};
+
+const TYPE_TEXT_CLASS: Record<string, string> = {
+  waggle: 'text-blue-400',
+  alert: 'text-red-400',
+  status: 'text-green-400',
+  request: 'text-amber-500',
 };
 
 function formatRelativeTime(iso: string): string {
@@ -49,13 +54,11 @@ export function TeamMessages({ messages, maxVisible = 10 }: TeamMessagesProps) {
         {messages.slice(0, maxVisible).map((msg, i) => (
           <div
             key={msg.id ?? i}
-            className="px-3 py-1.5 text-[11px] text-foreground ml-3 border-l-2"
-            style={{ borderLeftColor: TYPE_COLORS[msg.type] ?? '#484f58' }}
+            className={`px-3 py-1.5 text-[11px] text-foreground ml-3 border-l-2 ${TYPE_BORDER_CLASS[msg.type] ?? 'border-l-gray-500'}`}
           >
             <div className="flex justify-between items-center mb-0.5">
               <span
-                className="font-semibold text-[10px] uppercase tracking-wide"
-                style={{ color: TYPE_COLORS[msg.type] ?? '#8b949e' }}
+                className={`font-semibold text-[10px] uppercase tracking-wide ${TYPE_TEXT_CLASS[msg.type] ?? 'text-muted-foreground'}`}
               >
                 {msg.type}{msg.senderName ? ` \u00B7 ${msg.senderName}` : ''}
               </span>
@@ -72,5 +75,8 @@ export function TeamMessages({ messages, maxVisible = 10 }: TeamMessagesProps) {
     </div>
   );
 }
+
+/** @deprecated Use TYPE_BORDER_CLASS / TYPE_TEXT_CLASS instead. Kept for backward-compat re-export. */
+const TYPE_COLORS = TYPE_BORDER_CLASS;
 
 export { formatRelativeTime, TYPE_COLORS };

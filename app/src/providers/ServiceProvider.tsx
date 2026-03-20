@@ -43,8 +43,8 @@ export function ServiceProvider({ adapter, children }: ServiceProviderProps) {
       try {
         await adapter.connect();
         if (!cancelled) setConnected(true);
-      } catch (err: any) {
-        if (!cancelled) setError(err.message);
+      } catch (err: unknown) {
+        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
       }
     })();
 
@@ -56,22 +56,15 @@ export function ServiceProvider({ adapter, children }: ServiceProviderProps) {
 
   if (error) {
     return (
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '100vh',
-          background: '#0a0a1a',
-          color: '#f87171',
-          fontFamily: 'Inter, system-ui, sans-serif',
-          flexDirection: 'column',
-          gap: 12,
-        }}
-      >
-        <div style={{ fontSize: 18, fontWeight: 600 }}>Failed to connect</div>
-        <div style={{ fontSize: 14, color: '#aaa' }}>{error}</div>
-        <div style={{ fontSize: 12, color: '#666', marginTop: 8 }}>
+      <div className="flex items-center justify-center h-screen bg-background font-sans flex-col gap-3">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-destructive">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="15" y1="9" x2="9" y2="15" />
+          <line x1="9" y1="9" x2="15" y2="15" />
+        </svg>
+        <div className="text-lg font-semibold text-destructive">Failed to connect</div>
+        <div className="text-sm text-muted-foreground">{error}</div>
+        <div className="text-xs text-muted-foreground/60 mt-2">
           Make sure the Waggle service is running on localhost:3333
         </div>
       </div>
@@ -80,29 +73,9 @@ export function ServiceProvider({ adapter, children }: ServiceProviderProps) {
 
   if (!connected) {
     return (
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '100vh',
-          background: '#0a0a1a',
-          color: '#e0e0e0',
-          fontFamily: 'Inter, system-ui, sans-serif',
-          gap: 8,
-        }}
-      >
-        <div
-          style={{
-            width: 16,
-            height: 16,
-            border: '2px solid #555',
-            borderTopColor: '#e0e0e0',
-            borderRadius: '50%',
-            animation: 'spin 0.8s linear infinite',
-          }}
-        />
-        Connecting to Waggle...
+      <div className="flex items-center justify-center h-screen bg-background font-sans gap-2">
+        <div className="w-4 h-4 border-2 border-muted-foreground/30 border-t-primary rounded-full animate-spin" />
+        <span className="text-foreground">Connecting to Waggle...</span>
       </div>
     );
   }

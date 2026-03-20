@@ -230,16 +230,16 @@ describe('groupTasksByStatus', () => {
 });
 
 describe('getTaskStatusColor', () => {
-  it('returns blue for open', () => {
-    expect(getTaskStatusColor('open')).toBe('#3b82f6');
+  it('returns blue class for open', () => {
+    expect(getTaskStatusColor('open')).toBe('bg-blue-500');
   });
 
-  it('returns amber for in_progress', () => {
-    expect(getTaskStatusColor('in_progress')).toBe('#f59e0b');
+  it('returns amber class for in_progress', () => {
+    expect(getTaskStatusColor('in_progress')).toBe('bg-amber-500');
   });
 
-  it('returns green for done', () => {
-    expect(getTaskStatusColor('done')).toBe('#22c55e');
+  it('returns green class for done', () => {
+    expect(getTaskStatusColor('done')).toBe('bg-green-500');
   });
 });
 

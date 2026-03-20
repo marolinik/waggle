@@ -4,7 +4,7 @@
  * LiteLLM proxy controls removed (replaced by built-in Anthropic proxy post-M4).
  */
 
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import type { WaggleConfig } from '../../services/types.js';
 
 export interface MindFileInfo {
@@ -31,8 +31,8 @@ function formatBytes(bytes: number): string {
 }
 
 export function AdvancedSection({
-  config,
-  onConfigUpdate,
+  config: _config,
+  onConfigUpdate: _onConfigUpdate,
   dataDirectory = '~/.waggle',
   onExportConfig,
   onImportConfig,

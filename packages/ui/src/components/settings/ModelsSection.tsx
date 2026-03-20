@@ -5,7 +5,7 @@
  * when an API key is configured, and allows adding custom/local models.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { WaggleConfig } from '../../services/types.js';
 import { SUPPORTED_PROVIDERS, getCostTier, getSpeedTier, validateProviderConfig } from './utils.js';
 

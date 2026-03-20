@@ -1,4 +1,3 @@
-import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import type { ConnectorData } from './types';
@@ -67,6 +66,7 @@ export function ConnectorsCard({
                       )}
                       onClick={() => onDisconnect(c.id)}
                       disabled={connectingId === c.id}
+                      aria-label={`Disconnect ${c.name}`}
                     >
                       Disconnect
                     </button>
@@ -91,6 +91,7 @@ export function ConnectorsCard({
                       }
                       value={connectToken}
                       onChange={(e) => onConnectTokenChange(e.target.value)}
+                      aria-label={`${c.authType === 'bearer' ? 'Access token' : 'API key'} for ${c.name}`}
                       className="flex-1 bg-muted border border-border rounded-md px-2.5 py-1 text-[11px] text-foreground font-mono placeholder:text-muted-foreground"
                     />
                     <button
@@ -102,6 +103,7 @@ export function ConnectorsCard({
                       )}
                       onClick={() => connectToken && onConnect(c.id, connectToken)}
                       disabled={!connectToken || connectingId === c.id}
+                      aria-label={`Connect ${c.name}`}
                     >
                       {connectingId === c.id ? 'Connecting...' : 'Connect'}
                     </button>

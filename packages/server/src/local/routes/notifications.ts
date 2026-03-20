@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { validateOrigin } from '../cors-config.js';
 
 export interface NotificationEvent {
   type: 'notification';
@@ -84,7 +85,7 @@ export async function notificationRoutes(fastify: FastifyInstance) {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive',
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': validateOrigin(request.headers.origin as string | undefined),
     });
 
     reply.raw.write('data: {"type":"connected"}\n\n');

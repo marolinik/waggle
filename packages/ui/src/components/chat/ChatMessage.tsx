@@ -7,7 +7,7 @@
  * (interleaved reasoning steps and tool cards), collapsed by default.
  */
 
-import React, { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, memo } from 'react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import type { Message, ToolUseEvent } from '../../services/types.js';
@@ -33,7 +33,7 @@ function ToolGroup({ tools }: { tools: ToolUseEvent[] }) {
           onClick={() => setExpanded(false)}
           className="text-xs text-muted-foreground/60 hover:text-muted-foreground flex items-center gap-1 mb-1"
         >
-          <span className="text-[8px] text-[#3fb950]">{'\u25CF'}</span>
+          <span className="text-[8px] text-green-500 dark:text-green-400">{'\u25CF'}</span>
           {tools.length} tools completed
           <span className="text-[8px]">{'\u25B2'}</span>
         </button>
@@ -52,7 +52,7 @@ function ToolGroup({ tools }: { tools: ToolUseEvent[] }) {
       className="tool-group--collapsed flex items-center gap-1.5 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors py-0.5"
       title={tools.map(t => t.name).join(', ')}
     >
-      <span className="text-[8px] text-[#3fb950]">{'\u25CF'}</span>
+      <span className="text-[8px] text-green-500 dark:text-green-400">{'\u25CF'}</span>
       <span className="font-mono">
         {tools.length} tools completed ({tools.map(t => t.name.replace(/_/g, ' ')).join(', ')})
       </span>
@@ -123,7 +123,7 @@ export interface ChatMessageProps {
   onFeedback?: (rating: FeedbackRating, reason?: FeedbackReason, detail?: string) => void;
 }
 
-export function ChatMessage({ message, messageIndex, sessionId, onToolApprove, onToolDeny, onFeedback }: ChatMessageProps) {
+export const ChatMessage = memo(function ChatMessage({ message, messageIndex, sessionId, onToolApprove, onToolDeny, onFeedback }: ChatMessageProps) {
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
   const [trailExpanded, setTrailExpanded] = useState(false);
@@ -142,7 +142,11 @@ export function ChatMessage({ message, messageIndex, sessionId, onToolApprove, o
   const renderedContent = useMemo(() => {
     if (isUser || !message.content) return null;
     const rawHtml = marked.parse(message.content) as string;
-    return DOMPurify.sanitize(rawHtml);
+    return DOMPurify.sanitize(rawHtml, {
+      ALLOWED_TAGS: ['p','br','strong','em','code','pre','ul','ol','li','a','h1','h2','h3','h4','h5','h6','blockquote','table','thead','tbody','tr','th','td','span','div','hr','img','sup','sub','del','s'],
+      ALLOWED_ATTR: ['href','src','alt','class','id'],
+      FORBID_TAGS: ['form','input','textarea','button','iframe','object','embed','script','style'],
+    });
   }, [message.content, isUser]);
 
   const hasSteps = message.steps && message.steps.length > 0;
@@ -285,4 +289,4 @@ export function ChatMessage({ message, messageIndex, sessionId, onToolApprove, o
       </div>
     </div>
   );
-}
+});

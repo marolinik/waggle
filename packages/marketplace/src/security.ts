@@ -18,10 +18,10 @@
  *   CLEAN    → No issues found
  */
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync } from 'fs';
 import { join, dirname } from 'path';
 import { homedir } from 'os';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { createHash } from 'crypto';
 import type { MarketplacePackage, InstallManifest, McpServerConfig } from './types';
 import {
@@ -383,7 +383,7 @@ export class SecurityGate {
         args.push('--policy', this.config.cisco_scanner_policy);
       }
 
-      const output = execSync(`skill-scanner ${args.join(' ')}`, {
+      const output = execFileSync('skill-scanner', args, {
         timeout: 60_000,
         encoding: 'utf-8',
         stdio: ['pipe', 'pipe', 'pipe'],
@@ -422,7 +422,7 @@ export class SecurityGate {
       }
 
       // Clean up temp file
-      try { execSync(`rm -f ${tempFile}`); } catch { /* ignore */ }
+      try { unlinkSync(tempFile); } catch { /* ignore */ }
 
     } catch (err) {
       const errMsg = (err as any).stderr || (err as Error).message;
@@ -457,7 +457,7 @@ export class SecurityGate {
 
   private isCiscoScannerInstalled(): boolean {
     try {
-      execSync('skill-scanner --version', { stdio: 'pipe', timeout: 5_000 });
+      execFileSync('skill-scanner', ['--version'], { stdio: 'pipe', timeout: 5_000 });
       return true;
     } catch {
       return false;

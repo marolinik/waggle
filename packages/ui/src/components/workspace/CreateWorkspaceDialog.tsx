@@ -28,6 +28,14 @@ export interface WorkspaceTemplate {
   builtIn: boolean;
 }
 
+/** Persona catalog entry used by persona switcher and workspace creation. */
+export interface PersonaOption {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+}
+
 /** Persona display icons (mirrors MissionControlView) */
 const PERSONA_ICONS: Record<string, string> = {
   researcher: '\u{1F52C}',

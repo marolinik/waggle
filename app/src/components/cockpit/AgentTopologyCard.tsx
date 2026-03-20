@@ -1,4 +1,3 @@
-import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import type { HealthData, CapabilitiesData } from './types';
 
@@ -25,22 +24,22 @@ export function AgentTopologyCard({ health, capabilities }: AgentTopologyCardPro
         ) : (
           <div className="flex flex-col gap-3">
             {/* Model info */}
-            <div className="rounded-md border border-border bg-white/[0.03] p-3">
+            <div className="rounded-md border border-border bg-muted/10 p-3">
               <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Active Model</div>
               <div className="text-sm font-semibold text-primary">{modelName}</div>
             </div>
 
             {/* Stats row */}
             <div className="grid grid-cols-3 gap-2">
-              <div className="rounded-md border border-border bg-white/[0.03] px-3 py-2 text-center">
+              <div className="rounded-md border border-border bg-muted/10 px-3 py-2 text-center">
                 <div className="text-lg font-bold text-primary leading-none">{toolCount}</div>
                 <div className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">Tools</div>
               </div>
-              <div className="rounded-md border border-border bg-white/[0.03] px-3 py-2 text-center">
+              <div className="rounded-md border border-border bg-muted/10 px-3 py-2 text-center">
                 <div className="text-lg font-bold text-primary leading-none">{skillCount}</div>
                 <div className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">Skills</div>
               </div>
-              <div className="rounded-md border border-border bg-white/[0.03] px-3 py-2 text-center">
+              <div className="rounded-md border border-border bg-muted/10 px-3 py-2 text-center">
                 <div className="text-lg font-bold text-primary leading-none">{workflowTemplates.length}</div>
                 <div className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">Workflows</div>
               </div>

@@ -5,7 +5,7 @@
  * Actual syntax highlighting integration is deferred to the desktop app layer.
  */
 
-import React from 'react';
+import DOMPurify from 'dompurify';
 
 export interface CodePreviewProps {
   content: string;
@@ -30,7 +30,7 @@ export function CodePreview({ content, language, lineNumbers = true, highlighted
       {highlightedHtml ? (
         <div
           className="code-preview__content code-preview__highlighted py-2 px-3 overflow-x-auto"
-          dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(highlightedHtml, { ALLOWED_TAGS: ['span', 'pre', 'code', 'div'], ALLOWED_ATTR: ['class', 'style'] }) }}
         />
       ) : (
         <div className="code-preview__content flex">

@@ -4,7 +4,6 @@
  * Displayed in the "General" tab. Uses existing ThemeContext for theme management.
  */
 
-import React from 'react';
 import type { WaggleConfig } from '../../services/types.js';
 
 export interface ThemeSectionProps {

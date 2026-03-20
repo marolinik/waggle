@@ -29,6 +29,8 @@ export interface SubAgentResult {
   usage: { inputTokens: number; outputTokens: number };
   toolsUsed: string[];
   duration: number;
+  /** Timestamp when the result was stored */
+  completedAt: number;
 }
 
 export interface SubAgentToolsDeps {
@@ -51,6 +53,46 @@ export interface SubAgentToolsDeps {
 const activeAgents = new Map<string, SubAgentDef>();
 const agentResults = new Map<string, SubAgentResult>();
 let agentCounter = 0;
+
+/** Maximum number of entries to retain in agentResults before evicting oldest */
+const MAX_AGENT_RESULTS = 100;
+
+/** Maximum age (ms) for stale entries — 30 minutes */
+const STALE_THRESHOLD_MS = 30 * 60 * 1000;
+
+/**
+ * Evict the oldest entry from agentResults when the map exceeds MAX_AGENT_RESULTS.
+ * "Oldest" is determined by the lowest completedAt timestamp.
+ */
+function evictOldestResult(): void {
+  if (agentResults.size <= MAX_AGENT_RESULTS) return;
+  let oldestKey: string | null = null;
+  let oldestTime = Infinity;
+  for (const [key, result] of agentResults) {
+    if (result.completedAt < oldestTime) {
+      oldestTime = result.completedAt;
+      oldestKey = key;
+    }
+  }
+  if (oldestKey) {
+    agentResults.delete(oldestKey);
+  }
+}
+
+/**
+ * Remove entries older than STALE_THRESHOLD_MS from agentResults.
+ */
+export function cleanupStaleEntries(): number {
+  const cutoff = Date.now() - STALE_THRESHOLD_MS;
+  let removed = 0;
+  for (const [key, result] of agentResults) {
+    if (result.completedAt < cutoff) {
+      agentResults.delete(key);
+      removed++;
+    }
+  }
+  return removed;
+}
 
 /** Role → tool name filter mapping for common specialist roles */
 export const ROLE_TOOL_PRESETS: Record<string, string[]> = {
@@ -167,8 +209,10 @@ ${task}
             usage: { inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens },
             toolsUsed: result.toolsUsed,
             duration,
+            completedAt: Date.now(),
           };
           agentResults.set(id, subResult);
+          evictOldestResult();
           activeAgents.delete(id);
 
           return `## Sub-Agent Result: ${name}\n**Role:** ${role}\n**Duration:** ${(duration / 1000).toFixed(1)}s\n**Tools used:** ${result.toolsUsed.join(', ') || 'none'}\n**Tokens:** ${result.usage.inputTokens + result.usage.outputTokens} total\n\n---\n\n${result.content}`;
@@ -252,3 +296,6 @@ ${task}
     },
   ];
 }
+
+/** Expose internal state for testing */
+export { activeAgents, agentResults, agentCounter, MAX_AGENT_RESULTS, STALE_THRESHOLD_MS };

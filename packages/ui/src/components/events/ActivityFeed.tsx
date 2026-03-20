@@ -5,8 +5,6 @@
  * from all team members. Used in the context panel for team workspaces.
  */
 
-import React from 'react';
-
 export interface ActivityItem {
   id: string;
   type: 'session' | 'memory' | 'task' | 'join' | 'general';

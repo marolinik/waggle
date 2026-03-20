@@ -125,7 +125,7 @@ export function AppSidebar({
       {!collapsed ? (
         <div className="flex items-center gap-2">
           <img src="/waggle-logo.svg" alt="Waggle" className="w-6 h-[30px] shrink-0" />
-          <span className="text-[#E8920F] tracking-[0.15em] text-[11px] font-medium">WAGGLE</span>
+          <span className="text-primary tracking-[0.15em] text-[11px] font-medium">WAGGLE</span>
           <span className="text-[8px] text-muted-foreground/50 tracking-wider ml-auto">v1.0</span>
         </div>
       ) : (

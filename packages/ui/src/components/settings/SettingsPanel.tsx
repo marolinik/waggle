@@ -5,7 +5,7 @@
  * Permissions, Team, and Advanced tabs.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { WaggleConfig, TeamConnection } from '../../services/types.js';
 import { SETTINGS_TABS } from './utils.js';
 import { ModelsSection } from './ModelsSection.js';

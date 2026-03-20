@@ -1,4 +1,3 @@
-import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import type { CapabilitiesData } from './types';
 
@@ -8,7 +7,7 @@ interface CapabilityOverviewCardProps {
 
 function StatBox({ value, label }: { value: number; label: string }) {
   return (
-    <div className="rounded-md border border-border bg-white/[0.03] px-3 py-2.5 text-center">
+    <div className="rounded-md border border-border bg-muted/10 px-3 py-2.5 text-center">
       <div className="text-xl font-bold text-primary leading-none">{value}</div>
       <div className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">{label}</div>
     </div>

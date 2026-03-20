@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { SubAgentInfo } from '../components/chat/SubAgentProgress.js';
+import { subscribeSSE } from './useSSEStream.js';
 
 export interface WorkflowSuggestion {
   pattern: {
@@ -49,13 +50,11 @@ export function useSubAgentStatus(
     activeWorkspaceRef.current = activeWorkspaceId;
   }, [activeWorkspaceId]);
 
-  // SSE connection for sub-agent status and workflow suggestions
+  // Shared SSE connection for sub-agent status and workflow suggestions
   useEffect(() => {
     const url = `${serverUrl}/api/notifications/stream`;
-    const es = new EventSource(url);
 
-    // Listen for subagent_status named events
-    es.addEventListener('subagent_status', (event: MessageEvent) => {
+    const unsubStatus = subscribeSSE(url, 'subagent_status', (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data);
         // Only show agents for the active workspace
@@ -78,8 +77,7 @@ export function useSubAgentStatus(
       }
     });
 
-    // Listen for workflow_suggestion named events
-    es.addEventListener('workflow_suggestion', (event: MessageEvent) => {
+    const unsubSuggestion = subscribeSSE(url, 'workflow_suggestion', (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data);
         if (data.workspaceId && activeWorkspaceRef.current && data.workspaceId !== activeWorkspaceRef.current) {
@@ -101,11 +99,10 @@ export function useSubAgentStatus(
       }
     });
 
-    es.onerror = () => {
-      console.debug('[waggle] Sub-agent status SSE reconnecting...');
+    return () => {
+      unsubStatus();
+      unsubSuggestion();
     };
-
-    return () => es.close();
   }, [serverUrl]);
 
   // Clear sub-agents when workspace changes (stale data from another workspace)

@@ -284,7 +284,8 @@ describe('component exports', () => {
   });
 
   it('exports ChatMessage as a function', () => {
-    expect(typeof ChatMessage).toBe('function');
+    // ChatMessage may be wrapped in React.memo (returns object)
+    expect(['function', 'object']).toContain(typeof ChatMessage);
   });
 
   it('exports ChatInput as a function', () => {
@@ -292,7 +293,8 @@ describe('component exports', () => {
   });
 
   it('exports ToolCard as a function', () => {
-    expect(typeof ToolCard).toBe('function');
+    // ToolCard may be wrapped in React.memo (returns object)
+    expect(['function', 'object']).toContain(typeof ToolCard);
   });
 
   it('exports ApprovalGate as a function', () => {

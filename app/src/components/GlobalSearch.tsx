@@ -94,13 +94,8 @@ export function GlobalSearch({
                 onSelect={() => handleSelect('workspace', ws.id)}
               >
                 <span
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    background: `hsl(${workspaceHue(ws.name)}, 60%, 55%)`,
-                    flexShrink: 0,
-                  }}
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{ background: `hsl(${workspaceHue(ws.name)}, 60%, 55%)` }}
                 />
                 <span>{ws.name}</span>
                 {ws.group && (

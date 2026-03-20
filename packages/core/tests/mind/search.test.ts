@@ -299,6 +299,36 @@ describe('Hybrid Search (FTS5 + sqlite-vec + RRF + Relevance)', () => {
       expect(results.length).toBeGreaterThan(0);
     });
   });
+
+  describe('Frame ID validation (PRQ-010)', () => {
+    it('indexFrame throws for NaN frameId', async () => {
+      await expect(search.indexFrame(NaN, 'test content')).rejects.toThrow(
+        'Invalid frame ID for vector indexing'
+      );
+    });
+
+    it('indexFrame throws for Infinity frameId', async () => {
+      await expect(search.indexFrame(Infinity, 'test content')).rejects.toThrow(
+        'Invalid frame ID for vector indexing'
+      );
+    });
+
+    it('indexFramesBatch throws if any frame has NaN id', async () => {
+      await expect(
+        search.indexFramesBatch([
+          { id: 1, content: 'valid' },
+          { id: NaN, content: 'invalid' },
+        ])
+      ).rejects.toThrow('Invalid frame ID for vector indexing');
+    });
+
+    it('indexFrame accepts valid integer frameId', async () => {
+      const session = sessions.create();
+      const frame = frames.createIFrame(session.gop_id, 'valid content', 'normal');
+      // Should not throw
+      await expect(search.indexFrame(frame.id, 'valid content')).resolves.toBeUndefined();
+    });
+  });
 });
 
 function getTopicContent(i: number): string {

@@ -12,7 +12,7 @@
  * - Keyboard shortcuts
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import type { Message, WaggleConfig, WorkspaceContext, Frame, OnboardingData, FileEntry, DroppedFile, TeamMessage, WorkspaceMicroStatus } from '@waggle/ui';
 import {
   ThemeProvider,
@@ -44,18 +44,21 @@ import type { Toast, PersonaOption, OfflineStatus } from '@waggle/ui';
 import { ServiceProvider, useService } from './providers/ServiceProvider';
 import { AppSidebar } from './components/AppSidebar';
 import { ContextPanel } from './components/ContextPanel';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { ChatView } from './views/ChatView';
-import { SettingsView } from './views/SettingsView';
-import { MemoryView } from './views/MemoryView';
-import { EventsView } from './views/EventsView';
-import { CapabilitiesView } from './views/CapabilitiesView';
-import { CockpitView } from './views/CockpitView';
-import { MissionControlView } from './views/MissionControlView';
 import { GlobalSearch } from './components/GlobalSearch';
 import type { GlobalSearchResultType } from './components/GlobalSearch';
 import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
 import { PersonaSwitcher } from './components/PersonaSwitcher';
 import { getServerBaseUrl } from './lib/ipc';
+
+// ── Code-split views (loaded on demand) ─────────────────────────────────
+const SettingsView = React.lazy(() => import('./views/SettingsView'));
+const MemoryView = React.lazy(() => import('./views/MemoryView'));
+const EventsView = React.lazy(() => import('./views/EventsView'));
+const CapabilitiesView = React.lazy(() => import('./views/CapabilitiesView'));
+const CockpitView = React.lazy(() => import('./views/CockpitView'));
+const MissionControlView = React.lazy(() => import('./views/MissionControlView'));
 
 const SERVER_BASE = getServerBaseUrl();
 const adapter = new LocalAdapter({ baseUrl: SERVER_BASE });
@@ -180,6 +183,7 @@ function WaggleApp() {
         category: 'agent',
         title: 'Skill saved',
         body: `"${pattern.name}" is now a reusable skill.`,
+        createdAt: Date.now(),
       }, ...prev]);
     } catch {
       setToasts(prev => [{
@@ -187,6 +191,7 @@ function WaggleApp() {
         category: 'agent',
         title: 'Failed to save skill',
         body: 'Could not create skill from workflow pattern.',
+        createdAt: Date.now(),
       }, ...prev]);
     }
   }, [dismissSuggestion]);
@@ -213,7 +218,7 @@ function WaggleApp() {
 
   // ── Tray event listeners (Tauri only) ─────────────────────────
   useEffect(() => {
-    if (!(window as any).__TAURI_INTERNALS__) return;
+    if (!('__TAURI_INTERNALS__' in window)) return;
 
     const listeners: Array<() => void> = [];
 
@@ -385,9 +390,11 @@ function WaggleApp() {
                   id: `approval-${p.requestId}`,
                   role: 'assistant' as const,
                   content: '',
+                  timestamp: new Date().toISOString(),
                   toolUse: [{
                     name: p.toolName,
                     input: p.input,
+                    requiresApproval: true,
                     status: 'pending_approval' as const,
                     requestId: p.requestId,
                   }],
@@ -625,6 +632,7 @@ function WaggleApp() {
   const {
     frames,
     loading: memoryLoading,
+    error: memoryError,
     search: memorySearch,
     filters: memoryFilters,
     setFilters: setMemoryFilters,
@@ -676,7 +684,7 @@ function WaggleApp() {
       // B4: Save basic personal style preferences to personal mind via a chat message
       // This seeds the personal memory so draft-from-context has style data from day 1
       try {
-        const userName = (data as Record<string, unknown>).name ?? (data as Record<string, unknown>).displayName;
+        const userName = data.name;
         if (userName) {
           await fetch(`${SERVER_BASE}/api/chat`, {
             method: 'POST',
@@ -728,7 +736,7 @@ function WaggleApp() {
         const idx = parseInt(e.key, 10) - 1;
         if (idx < workspaces.length) {
           e.preventDefault();
-          setActiveWorkspace(workspaces[idx]);
+          setActiveWorkspace(workspaces[idx].id);
         }
       }
       // Cmd+N — create workspace
@@ -815,7 +823,7 @@ function WaggleApp() {
 
       if (!response.ok) {
         const err = await response.json().catch(() => ({ error: 'Upload failed' }));
-        sendMessage(`File upload failed: ${(err as any).error ?? 'Unknown error'}`);
+        sendMessage(`File upload failed: ${(err as Record<string, unknown>).error ?? 'Unknown error'}`);
         return;
       }
 
@@ -907,23 +915,23 @@ function WaggleApp() {
 
   // Check team status on mount
   useEffect(() => {
-    (adapter as any).getTeamStatus?.()
-      .then((tc: import('@waggle/ui').TeamConnection | null) => setTeamConnection(tc))
+    adapter.getTeamStatus()
+      .then((tc) => setTeamConnection(tc))
       .catch(() => {});
   }, []);
 
   const handleTeamConnect = useCallback(async (serverUrl: string, token: string) => {
-    const tc = await (adapter as any).connectTeam(serverUrl, token);
+    const tc = await adapter.connectTeam(serverUrl, token);
     setTeamConnection(tc);
   }, []);
 
   const handleTeamDisconnect = useCallback(async () => {
-    await (adapter as any).disconnectTeam();
+    await adapter.disconnectTeam();
     setTeamConnection(null);
   }, []);
 
   const handleFetchTeams = useCallback(async () => {
-    return (adapter as any).listTeams() ?? [];
+    return adapter.listTeams();
   }, []);
 
   // ── Workspace creation ────────────────────────────────────────────
@@ -932,12 +940,15 @@ function WaggleApp() {
     group: string;
     model?: string;
     personality?: string;
-    personaId?: string;
     directory?: string;
     teamId?: string;
     teamServerUrl?: string;
     teamRole?: 'owner' | 'admin' | 'member' | 'viewer';
     teamUserId?: string;
+    templateId?: string;
+    templateConnectors?: string[];
+    templateCommands?: string[];
+    templateMemory?: string[];
   }) => {
     await createWorkspace(wsConfig);
     setShowCreateWorkspace(false);
@@ -1026,7 +1037,7 @@ function WaggleApp() {
     switch (type) {
       case 'workspace': {
         const ws = workspaces.find(w => w.id === id);
-        if (ws) setActiveWorkspace(ws);
+        if (ws) setActiveWorkspace(ws.id);
         setCurrentView('chat');
         break;
       }
@@ -1067,12 +1078,7 @@ function WaggleApp() {
 
   if (showOnboarding) {
     return (
-      <div style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 1000,
-        background: 'var(--bg)',
-      }}>
+      <div className="fixed inset-0 z-[1000] bg-background">
         <OnboardingWizard
           onComplete={handleOnboardingComplete}
           onTestApiKey={(provider, key) => service.testApiKey(provider, key)}
@@ -1102,76 +1108,104 @@ function WaggleApp() {
         content={
           <div
             key={activeWorkspace?.id ?? 'none'}
-            className="workspace-transition"
-            style={{ '--workspace-hue': activeWorkspace ? workspaceHue(activeWorkspace.name) : 220, height: '100%', overflow: 'hidden' } as React.CSSProperties}
+            className="workspace-transition h-full overflow-hidden"
+            style={{ '--workspace-hue': activeWorkspace ? workspaceHue(activeWorkspace.name) : 220 } as React.CSSProperties}
           >
             {currentView === 'chat' && (
-              <ChatView
-                tabs={tabs.map((t) => ({ id: t.id, label: t.title, icon: t.workspaceIcon }))}
-                activeTabId={activeTabId}
-                onTabSelect={handleTabSelect}
-                onTabClose={handleTabClose}
-                onTabAdd={handleNewTab}
-                messages={messages}
-                isLoading={isLoading}
-                onSendMessage={sendMessage}
-                onSlashCommand={handleSlashCommand}
-                onFileDrop={handleFileDrop}
-                onFileSelect={handleFileSelect}
-                onToolApprove={handleToolApprove}
-                onToolDeny={handleToolDeny}
-                workspaceContext={workspaceContext}
-                onThreadSelect={handleSessionSelect}
-                workspaceName={activeWorkspace?.name}
-                currentPersona={currentPersona}
-                onPersonaClick={() => setShowPersonaSwitcher(true)}
-                subAgents={subAgents}
-                workflowSuggestion={workflowSuggestion}
-                onWorkflowAccept={handleWorkflowAccept}
-                onWorkflowDismiss={dismissSuggestion}
-              />
+              <ErrorBoundary viewName="Chat">
+                <ChatView
+                  tabs={tabs.map((t) => ({ id: t.id, label: t.title, icon: t.workspaceIcon }))}
+                  activeTabId={activeTabId}
+                  onTabSelect={handleTabSelect}
+                  onTabClose={handleTabClose}
+                  onTabAdd={handleNewTab}
+                  messages={messages}
+                  isLoading={isLoading}
+                  onSendMessage={sendMessage}
+                  onSlashCommand={handleSlashCommand}
+                  onFileDrop={handleFileDrop}
+                  onFileSelect={handleFileSelect}
+                  onToolApprove={handleToolApprove}
+                  onToolDeny={handleToolDeny}
+                  workspaceContext={workspaceContext}
+                  onThreadSelect={handleSessionSelect}
+                  workspaceName={activeWorkspace?.name}
+                  currentPersona={currentPersona}
+                  onPersonaClick={() => setShowPersonaSwitcher(true)}
+                  subAgents={subAgents}
+                  workflowSuggestion={workflowSuggestion}
+                  onWorkflowAccept={handleWorkflowAccept}
+                  onWorkflowDismiss={dismissSuggestion}
+                />
+              </ErrorBoundary>
             )}
             {currentView === 'settings' && (
-              <SettingsView
-                config={config}
-                onConfigUpdate={handleConfigUpdate}
-                onTestApiKey={(provider, key) => service.testApiKey(provider, key)}
-                teamConnection={teamConnection}
-                onTeamConnect={handleTeamConnect}
-                onTeamDisconnect={handleTeamDisconnect}
-                activeTab={settingsTab}
-                onTabChange={setSettingsTab}
-              />
+              <ErrorBoundary viewName="Settings">
+                <Suspense fallback={<div className="flex items-center justify-center h-full text-muted-foreground">Loading...</div>}>
+                  <SettingsView
+                    config={config}
+                    onConfigUpdate={handleConfigUpdate}
+                    onTestApiKey={(provider, key) => service.testApiKey(provider, key)}
+                    teamConnection={teamConnection}
+                    onTeamConnect={handleTeamConnect}
+                    onTeamDisconnect={handleTeamDisconnect}
+                    activeTab={settingsTab}
+                    onTabChange={setSettingsTab}
+                  />
+                </Suspense>
+              </ErrorBoundary>
             )}
             {currentView === 'memory' && (
-              <MemoryView
-                frames={frames}
-                selectedFrame={selectedFrame}
-                onSelectFrame={setSelectedFrame}
-                onSearch={memorySearch}
-                filters={memoryFilters}
-                onFiltersChange={setMemoryFilters}
-                stats={memoryStats ?? undefined}
-                loading={memoryLoading}
-              />
+              <ErrorBoundary viewName="Memory">
+                <Suspense fallback={<div className="flex items-center justify-center h-full text-muted-foreground">Loading...</div>}>
+                  <MemoryView
+                    frames={frames}
+                    selectedFrame={selectedFrame}
+                    onSelectFrame={setSelectedFrame}
+                    onSearch={memorySearch}
+                    filters={memoryFilters}
+                    onFiltersChange={setMemoryFilters}
+                    stats={memoryStats ?? undefined}
+                    loading={memoryLoading}
+                    error={memoryError}
+                    onRetry={() => memorySearch('')}
+                  />
+                </Suspense>
+              </ErrorBoundary>
             )}
             {currentView === 'events' && (
-              <EventsView
-                steps={steps}
-                autoScroll={autoScroll}
-                onToggleAutoScroll={toggleAutoScroll}
-                filter={eventFilter}
-                onFilterChange={setEventFilter}
-              />
+              <ErrorBoundary viewName="Events">
+                <Suspense fallback={<div className="flex items-center justify-center h-full text-muted-foreground">Loading...</div>}>
+                  <EventsView
+                    steps={steps}
+                    autoScroll={autoScroll}
+                    onToggleAutoScroll={toggleAutoScroll}
+                    filter={eventFilter}
+                    onFilterChange={setEventFilter}
+                  />
+                </Suspense>
+              </ErrorBoundary>
             )}
             {currentView === 'capabilities' && (
-              <CapabilitiesView />
+              <ErrorBoundary viewName="Capabilities">
+                <Suspense fallback={<div className="flex items-center justify-center h-full text-muted-foreground">Loading...</div>}>
+                  <CapabilitiesView />
+                </Suspense>
+              </ErrorBoundary>
             )}
             {currentView === 'cockpit' && (
-              <CockpitView />
+              <ErrorBoundary viewName="Cockpit">
+                <Suspense fallback={<div className="flex items-center justify-center h-full text-muted-foreground">Loading...</div>}>
+                  <CockpitView />
+                </Suspense>
+              </ErrorBoundary>
             )}
             {currentView === 'mission-control' && (
-              <MissionControlView />
+              <ErrorBoundary viewName="Mission Control">
+                <Suspense fallback={<div className="flex items-center justify-center h-full text-muted-foreground">Loading...</div>}>
+                  <MissionControlView />
+                </Suspense>
+              </ErrorBoundary>
             )}
           </div>
         }
@@ -1251,7 +1285,6 @@ function WaggleApp() {
         teamServerUrl={teamConnection?.serverUrl}
         teamUserId={teamConnection?.userId}
         onFetchTeams={handleFetchTeams}
-        personas={personas}
       />
 
       {/* File preview modal — B6: with "Open" button via Tauri shell */}
@@ -1291,11 +1324,13 @@ function WaggleApp() {
 
 export function App() {
   return (
-    <ThemeProvider defaultTheme="dark">
-      <ServiceProvider adapter={adapter}>
-        <WaggleApp />
-      </ServiceProvider>
-    </ThemeProvider>
+    <ErrorBoundary viewName="Waggle">
+      <ThemeProvider defaultTheme="dark">
+        <ServiceProvider adapter={adapter}>
+          <WaggleApp />
+        </ServiceProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

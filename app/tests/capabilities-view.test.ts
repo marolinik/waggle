@@ -58,20 +58,20 @@ describe('priorityLabel', () => {
 });
 
 describe('priorityColor', () => {
-  it('returns amber for core priority', () => {
-    expect(priorityColor('core')).toBe('#d4a843');
+  it('returns primary class for core priority', () => {
+    expect(priorityColor('core')).toBe('text-primary');
   });
 
-  it('returns blue for recommended priority', () => {
-    expect(priorityColor('recommended')).toContain('#58a6ff');
+  it('returns blue class for recommended priority', () => {
+    expect(priorityColor('recommended')).toBe('text-blue-500');
   });
 
-  it('returns muted for optional priority', () => {
-    expect(priorityColor('optional')).toContain('#8b949e');
+  it('returns muted class for optional priority', () => {
+    expect(priorityColor('optional')).toBe('text-muted-foreground');
   });
 
-  it('returns muted for unknown priority', () => {
-    expect(priorityColor('unknown')).toContain('#8b949e');
+  it('returns muted class for unknown priority', () => {
+    expect(priorityColor('unknown')).toBe('text-muted-foreground');
   });
 });
 

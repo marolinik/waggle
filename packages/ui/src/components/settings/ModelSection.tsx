@@ -4,9 +4,8 @@
  * Shows a default model dropdown and model cards with name, provider, cost tier, and speed indicator.
  */
 
-import React from 'react';
 import type { WaggleConfig } from '../../services/types.js';
-import { SUPPORTED_PROVIDERS, getCostTier, getSpeedTier, getProviderDisplayName } from './utils.js';
+import { SUPPORTED_PROVIDERS, getCostTier, getSpeedTier } from './utils.js';
 
 export interface ModelSectionProps {
   config: WaggleConfig;

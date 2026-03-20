@@ -6,7 +6,7 @@
  * Phase 5 basic: manual token entry. Phase 7+ will add full OAuth flow.
  */
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import type { TeamConnection } from '../../services/types.js';
 
 export interface TeamSectionProps {
@@ -39,8 +39,8 @@ export function TeamSection({ teamConnection, onConnect, onDisconnect }: TeamSec
     try {
       await onConnect(serverUrl.trim(), token.trim());
       setToken(''); // Clear token from form after successful connect
-    } catch (err: any) {
-      setError(err.message || 'Failed to connect to team server');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to connect to team server');
     } finally {
       setConnecting(false);
     }
@@ -52,8 +52,8 @@ export function TeamSection({ teamConnection, onConnect, onDisconnect }: TeamSec
       setServerUrl('');
       setToken('');
       setError(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to disconnect');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to disconnect');
     }
   };
 

@@ -6,8 +6,6 @@
  * Only external mutations require approval gates (handled separately).
  */
 
-import React from 'react';
-
 export interface ToolResultRendererProps {
   toolName: string;
   input: Record<string, unknown>;

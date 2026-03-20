@@ -323,7 +323,7 @@ export class LocalAdapter implements WaggleService {
     try {
       const res = await fetch(`${this.baseUrl}/api/agent/cost`);
       if (!res.ok) return { summary: 'No data', totalInputTokens: 0, totalOutputTokens: 0, estimatedCost: 0, turns: 0 };
-      return res.json() as Promise<any>;
+      return res.json() as Promise<{ summary: string; totalInputTokens: number; totalOutputTokens: number; estimatedCost: number; turns: number }>;
     } catch {
       return { summary: 'No data', totalInputTokens: 0, totalOutputTokens: 0, estimatedCost: 0, turns: 0 };
     }

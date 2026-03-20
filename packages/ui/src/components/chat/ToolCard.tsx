@@ -9,9 +9,9 @@
  * Auto-hides completed read-only tools after a delay.
  */
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import type { ToolUseEvent, ToolStatus } from '../../services/types.js';
-import { getToolStatusColor, formatDuration } from './utils.js';
+import { formatDuration } from './utils.js';
 import { ApprovalGate } from './ApprovalGate.js';
 
 export interface ToolCardProps {
@@ -216,7 +216,7 @@ function formatResultDetail(result: string): string {
 
 // ── Component ─────────────────────────────────────────────────────────
 
-export function ToolCard({ tool, onApprove, onDeny }: ToolCardProps) {
+export const ToolCard = memo(function ToolCard({ tool, onApprove, onDeny }: ToolCardProps) {
   const [layer, setLayer] = useState<1 | 2 | 3>(1); // Current transparency layer
   const [visible, setVisible] = useState(true);
   const [justCompleted, setJustCompleted] = useState(false);
@@ -266,8 +266,7 @@ export function ToolCard({ tool, onApprove, onDeny }: ToolCardProps) {
 
   return (
     <div
-      className={`tool-card rounded border-l-2 ${BORDER_CLASSES[status]} text-xs transition-all`}
-      style={justCompleted ? { opacity: 0.85, transition: 'opacity 0.3s ease-out, border-color 0.3s' } : { transition: 'opacity 0.3s ease-out, border-color 0.3s' }}
+      className={`tool-card rounded border-l-2 ${BORDER_CLASSES[status]} text-xs transition-[opacity,border-color] duration-300 ease-out ${justCompleted ? 'opacity-85' : ''}`}
     >
       {/* Layer 1 — Inline: status icon + description + summary */}
       <button
@@ -360,4 +359,4 @@ export function ToolCard({ tool, onApprove, onDeny }: ToolCardProps) {
       )}
     </div>
   );
-}
+});

@@ -5,7 +5,7 @@
  * Includes a "New Session" button at the top.
  */
 
-import React, { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import type { Session, SessionSearchResult } from '../../services/types.js';
 import { SessionCard } from './SessionCard.js';
 import { TIME_GROUPS } from './utils.js';
@@ -39,7 +39,7 @@ export function SessionList({
   onClearSearch,
 }: SessionListProps) {
   const [searchValue, setSearchValue] = useState('');
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;

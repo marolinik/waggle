@@ -2,7 +2,7 @@
  * ApiKeyStep — second onboarding step: configure at least one API key.
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { getProviderSignupUrl } from '../utils.js';
 
 export interface ApiKeyStepProps {

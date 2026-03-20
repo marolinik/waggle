@@ -5,7 +5,7 @@
  * External gates can be added/removed for specific operations.
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 export interface PermissionSectionProps {
   yoloMode?: boolean;

@@ -5,7 +5,7 @@
  * Compact view suitable for the context panel.
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 export interface TeamTask {
   id: string;
@@ -33,10 +33,10 @@ const STATUS_LABELS: Record<TeamTask['status'], string> = {
   done: 'Done',
 };
 
-const STATUS_COLORS: Record<TeamTask['status'], string> = {
-  open: '#3b82f6',      // blue
-  in_progress: '#f59e0b', // amber
-  done: '#22c55e',       // green
+const STATUS_BG_CLASS: Record<TeamTask['status'], string> = {
+  open: 'bg-blue-500',
+  in_progress: 'bg-amber-500',
+  done: 'bg-green-500',
 };
 
 const STATUS_TEXT_CLASS: Record<TeamTask['status'], string> = {
@@ -46,7 +46,7 @@ const STATUS_TEXT_CLASS: Record<TeamTask['status'], string> = {
 };
 
 export function getTaskStatusColor(status: TeamTask['status']): string {
-  return STATUS_COLORS[status] ?? '#6b7280';
+  return STATUS_BG_CLASS[status] ?? 'bg-gray-500';
 }
 
 export function groupTasksByStatus(tasks: TeamTask[]): Record<TeamTask['status'], TeamTask[]> {
@@ -67,8 +67,8 @@ export function TaskBoard({
   tasks,
   onCreateTask,
   onUpdateStatus,
-  onDeleteTask,
-  onClaimTask,
+  onDeleteTask: _onDeleteTask,
+  onClaimTask: _onClaimTask,
   loading,
 }: TaskBoardProps) {
   const [newTitle, setNewTitle] = useState('');

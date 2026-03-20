@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type { WaggleService, Message, ToolUseEvent, StreamEvent, ToolStatus } from '../services/types.js';
+import type { WaggleService, Message, ToolUseEvent, StreamEvent } from '../services/types.js';
 
 export interface UseChatOptions {
   service: WaggleService;

@@ -5,7 +5,6 @@
  * Only visible when a team workspace is active.
  */
 
-import React from 'react';
 import type { TeamMember } from '../../services/types.js';
 
 export interface TeamPresenceProps {
@@ -14,10 +13,10 @@ export interface TeamPresenceProps {
   maxVisible?: number;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  online: '#22c55e',  // green
-  away: '#f59e0b',    // amber
-  offline: '#6b7280', // gray
+const STATUS_BG_CLASS: Record<string, string> = {
+  online: 'bg-green-500',
+  away: 'bg-amber-500',
+  offline: 'bg-gray-500',
 };
 
 export function TeamPresence({ members, maxVisible = 5 }: TeamPresenceProps) {
@@ -53,8 +52,7 @@ export function TeamPresence({ members, maxVisible = 5 }: TeamPresenceProps) {
             )}
             {/* Status indicator */}
             <span
-              className="team-presence__status absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border border-border"
-              style={{ backgroundColor: STATUS_COLORS[member.status] ?? STATUS_COLORS.offline }}
+              className={`team-presence__status absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border border-border ${STATUS_BG_CLASS[member.status] ?? STATUS_BG_CLASS.offline}`}
             />
           </div>
         ))}

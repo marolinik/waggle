@@ -5,7 +5,7 @@
  * Each step is rendered as a StepCard with expand/collapse support.
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { AgentStep, StepFilter } from './utils.js';
 import { filterSteps, STEP_ICONS } from './utils.js';
 import { StepCard } from './StepCard.js';

@@ -4,8 +4,6 @@
  * Shows group name, workspace count, and an expand/collapse chevron.
  */
 
-import React from 'react';
-
 export interface GroupHeaderProps {
   name: string;
   count: number;

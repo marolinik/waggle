@@ -1,4 +1,3 @@
-import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import type { HealthData } from './types';
@@ -23,15 +22,15 @@ export function MemoryStatsCard({ health }: MemoryStatsCardProps) {
           <p className="text-xs text-muted-foreground py-2">Memory stats unavailable.</p>
         ) : (
           <div className="grid grid-cols-3 gap-2">
-            <div className="rounded-md border border-border bg-white/[0.03] px-3 py-2.5 text-center">
+            <div className="rounded-md border border-border bg-muted/10 px-3 py-2.5 text-center">
               <div className="text-xl font-bold text-primary leading-none">{stats.frameCount}</div>
               <div className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">Frames</div>
             </div>
-            <div className="rounded-md border border-border bg-white/[0.03] px-3 py-2.5 text-center">
+            <div className="rounded-md border border-border bg-muted/10 px-3 py-2.5 text-center">
               <div className="text-xl font-bold text-primary leading-none">{formatBytes(stats.mindSizeBytes)}</div>
               <div className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">Mind Size</div>
             </div>
-            <div className="rounded-md border border-border bg-white/[0.03] px-3 py-2.5 text-center">
+            <div className="rounded-md border border-border bg-muted/10 px-3 py-2.5 text-center">
               <div className={cn(
                 'text-xl font-bold leading-none',
                 stats.embeddingCoverage >= 80 ? 'text-green-500' :

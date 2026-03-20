@@ -8,8 +8,8 @@
  * No D3 or Cytoscape dependency — uses the pure layout functions from kg-utils.
  */
 
-import React, { useMemo, useState, useCallback, useRef } from 'react';
-import type { KGNode, KGEdge, KGData, KGFilters } from './kg-utils.js';
+import { useMemo, useState, useCallback, useRef } from 'react';
+import type { KGNode, KGData, KGFilters } from './kg-utils.js';
 import {
   getNodeColor,
   getNodeSize,
@@ -228,7 +228,7 @@ export function KGViewer({
           >
             {/* Edges — SVG overlay */}
             <svg
-              className="absolute inset-0 pointer-events-none"
+              className="absolute inset-0 pointer-events-none text-muted-foreground"
               width={width}
               height={height}
             >
@@ -243,7 +243,7 @@ export function KGViewer({
                       y1={sourcePos.y}
                       x2={targetPos.x}
                       y2={targetPos.y}
-                      stroke="#4B5563"
+                      stroke="currentColor"
                       strokeWidth={1}
                       opacity={0.6}
                     />
@@ -251,7 +251,7 @@ export function KGViewer({
                     <text
                       x={(sourcePos.x + targetPos.x) / 2}
                       y={(sourcePos.y + targetPos.y) / 2 - 4}
-                      fill="#6B7280"
+                      fill="currentColor"
                       fontSize={9}
                       textAnchor="middle"
                     >

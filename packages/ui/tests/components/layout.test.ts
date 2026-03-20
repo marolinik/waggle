@@ -141,7 +141,8 @@ describe('common component exports', () => {
   });
 
   it('exports StatusBar as a function', () => {
-    expect(typeof StatusBar).toBe('function');
+    // StatusBar may be wrapped in React.memo (returns object)
+    expect(['function', 'object']).toContain(typeof StatusBar);
   });
 
   it('exports Modal as a function', () => {

@@ -231,7 +231,8 @@ describe('Regression: @waggle/ui component exports', () => {
       FilePreview, CodePreview, DiffViewer, ImagePreview,
     ];
     for (const c of components) {
-      expect(typeof c).toBe('function');
+      // Components may be wrapped in React.memo (typeof returns 'object')
+      expect(['function', 'object']).toContain(typeof c);
     }
   });
 

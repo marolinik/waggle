@@ -177,6 +177,11 @@ export interface TeamConnection {
   teamSlug?: string;
 }
 
+export interface CustomModelEntry {
+  name: string;
+  baseUrl?: string;
+}
+
 export interface WaggleConfig {
   providers: Record<string, { apiKey: string; models: string[] }>;
   defaultModel: string;
@@ -184,6 +189,8 @@ export interface WaggleConfig {
   autostart: boolean;
   globalHotkey: string;
   teamConnection?: TeamConnection | null;
+  /** User-defined custom models (local or remote) */
+  customModels?: CustomModelEntry[];
 }
 
 // ── Install Center (Slice 3) ────────────────────────────────────────
@@ -261,6 +268,7 @@ export interface WaggleService {
   connectTeam(serverUrl: string, token: string): Promise<TeamConnection>;
   disconnectTeam(): Promise<void>;
   getTeamStatus(): Promise<TeamConnection | null>;
+  listTeams(): Promise<Array<{ id: string; name: string; slug: string; role: string }>>;
 
   // Install Center
   getStarterCatalog(): Promise<StarterCatalogResponse>;

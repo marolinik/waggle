@@ -8,7 +8,7 @@
  * Credentials are encrypted with AES-256-GCM in the local vault.
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 // ── Types ───────────────────────────────────────────────────────────
 

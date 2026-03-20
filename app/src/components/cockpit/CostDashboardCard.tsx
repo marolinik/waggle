@@ -7,7 +7,6 @@
  * Part of PM-4 — Agent Cost Dashboard.
  */
 
-import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import type { CostSummaryData, WorkspaceCostData } from './types';
@@ -83,19 +82,19 @@ export function CostDashboardCard({ costSummary, workspaceCosts }: CostDashboard
         <div className="flex flex-col gap-3">
           {/* ── Today summary ──────────────────────────────────── */}
           <div className="grid grid-cols-3 gap-2">
-            <div className="rounded-md border border-border bg-white/[0.03] px-3 py-2.5 text-center">
+            <div className="rounded-md border border-border bg-muted/10 px-3 py-2.5 text-center">
               <div className="text-lg font-bold font-mono text-primary leading-none">
                 {formatTokens(today.inputTokens)}
               </div>
               <div className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">Input</div>
             </div>
-            <div className="rounded-md border border-border bg-white/[0.03] px-3 py-2.5 text-center">
+            <div className="rounded-md border border-border bg-muted/10 px-3 py-2.5 text-center">
               <div className="text-lg font-bold font-mono text-primary leading-none">
                 {formatTokens(today.outputTokens)}
               </div>
               <div className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">Output</div>
             </div>
-            <div className="rounded-md border border-border bg-white/[0.03] px-3 py-2.5 text-center">
+            <div className="rounded-md border border-border bg-muted/10 px-3 py-2.5 text-center">
               <div className={cn(
                 'text-lg font-bold font-mono leading-none',
                 budget.budgetStatus === 'exceeded' ? 'text-red-400' :

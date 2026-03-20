@@ -5,7 +5,6 @@
  * and team attribution (author name) when present.
  */
 
-import React from 'react';
 import type { Frame } from '../../services/types.js';
 import {
   getFrameTypeIcon,

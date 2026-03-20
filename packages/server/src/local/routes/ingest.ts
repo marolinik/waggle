@@ -213,13 +213,10 @@ async function processDocx(name: string, b64: string): Promise<IngestFileResult>
 async function processPptx(name: string, b64: string): Promise<IngestFileResult> {
   // PPTX is a ZIP containing XML slide files. Extract text from slide XMLs.
   try {
-    const require = createRequire(import.meta.url);
-    const JSZip = require('xlsx').utils ? null : null; // xlsx doesn't help here
     // Use a simple ZIP approach — PPTX slides are in ppt/slides/slideN.xml
     const AdmZip = await tryLoadAdmZip();
     if (!AdmZip) {
-      // Fallback: try with xlsx's zip reader
-      return await processPptxWithXlsx(name, b64);
+      return { name, type: 'document', summary: 'PPTX presentation (install adm-zip for text extraction)' };
     }
     const buffer = Buffer.from(b64, 'base64');
     const zip = new AdmZip(buffer);
@@ -262,26 +259,31 @@ async function tryLoadAdmZip(): Promise<any> {
   }
 }
 
-/** Fallback PPTX extraction using basic XML parsing from the buffer */
-async function processPptxWithXlsx(name: string, b64: string): Promise<IngestFileResult> {
-  // Simple fallback: read the PPTX as a zip and extract slide text
-  // This uses Node's built-in zlib + manual ZIP parsing (minimal)
-  return { name, type: 'document', summary: 'PPTX presentation (install adm-zip for text extraction)' };
-}
-
 async function processXlsx(name: string, b64: string): Promise<IngestFileResult> {
   try {
     const require = createRequire(import.meta.url);
-    const XLSX = require('xlsx');
+    const ExcelJS = require('exceljs');
     const buffer = Buffer.from(b64, 'base64');
-    const workbook = XLSX.read(buffer, { type: 'buffer' });
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
 
     const sheetTexts: string[] = [];
-    for (const sheetName of workbook.SheetNames) {
-      const sheet = workbook.Sheets[sheetName];
-      const csv = XLSX.utils.sheet_to_csv(sheet);
+    for (const worksheet of workbook.worksheets) {
+      const rows: string[] = [];
+      worksheet.eachRow((row: any) => {
+        const values = row.values as any[];
+        // ExcelJS row.values is 1-indexed (index 0 is undefined), so slice from 1
+        const cells = values.slice(1).map((v: any) => {
+          if (v === null || v === undefined) return '';
+          if (typeof v === 'object' && v.result !== undefined) return String(v.result); // formula
+          if (typeof v === 'object' && v.text !== undefined) return String(v.text); // rich text
+          return String(v);
+        });
+        rows.push(cells.join(','));
+      });
+      const csv = rows.join('\n');
       if (csv.trim()) {
-        sheetTexts.push(`--- Sheet: ${sheetName} ---\n${csv}`);
+        sheetTexts.push(`--- Sheet: ${worksheet.name} ---\n${csv}`);
       }
     }
     if (sheetTexts.length === 0) {
@@ -291,7 +293,7 @@ async function processXlsx(name: string, b64: string): Promise<IngestFileResult>
     return {
       name,
       type: 'spreadsheet',
-      summary: `Spreadsheet — ${workbook.SheetNames.length} sheet(s), ${text.length} chars`,
+      summary: `Spreadsheet — ${workbook.worksheets.length} sheet(s), ${text.length} chars`,
       content: text,
     };
   } catch {

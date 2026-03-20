@@ -13,15 +13,38 @@ import type { CronStore, CronSchedule } from '@waggle/core';
 /** Function that executes a cron job. Injected to keep the scheduler generic and testable. */
 export type JobExecutor = (schedule: CronSchedule) => Promise<void>;
 
+/** Maximum consecutive failures before a job is auto-disabled */
+const MAX_CONSECUTIVE_FAILURES = 5;
+
 export class LocalScheduler {
   private store: CronStore;
   private executor: JobExecutor;
   private timer: NodeJS.Timeout | null = null;
   private ticking = false;
+  /** Track consecutive failure count per schedule ID */
+  private failCounts = new Map<number, number>();
+  /** Set of schedule IDs that have been disabled due to repeated failures */
+  private disabledJobs = new Set<number>();
 
   constructor(store: CronStore, executor: JobExecutor) {
     this.store = store;
     this.executor = executor;
+  }
+
+  /** Get the current fail count for a schedule (for testing). */
+  getFailCount(scheduleId: number): number {
+    return this.failCounts.get(scheduleId) ?? 0;
+  }
+
+  /** Check if a job has been disabled due to failures (for testing). */
+  isDisabled(scheduleId: number): boolean {
+    return this.disabledJobs.has(scheduleId);
+  }
+
+  /** Reset the failure state for a schedule (e.g., after manual re-enable). */
+  resetFailure(scheduleId: number): void {
+    this.failCounts.delete(scheduleId);
+    this.disabledJobs.delete(scheduleId);
   }
 
   /** Start the tick loop. Default interval is 60 seconds. */
@@ -58,12 +81,26 @@ export class LocalScheduler {
     try {
       const due = this.store.getDue();
       for (const schedule of due) {
+        // Skip jobs that have been disabled due to repeated failures
+        if (this.disabledJobs.has(schedule.id)) {
+          continue;
+        }
+
         try {
           await this.executor(schedule);
           this.store.markRun(schedule.id);
+          // Reset fail count on success
+          this.failCounts.delete(schedule.id);
           executed++;
-        } catch {
-          // Job failed — will retry on next tick
+        } catch (err) {
+          const count = (this.failCounts.get(schedule.id) ?? 0) + 1;
+          this.failCounts.set(schedule.id, count);
+          console.error('[cron] Job failed:', schedule.id, err);
+
+          if (count >= MAX_CONSECUTIVE_FAILURES) {
+            this.disabledJobs.add(schedule.id);
+            console.warn('[cron] Job disabled after 5 failures:', schedule.id);
+          }
         }
       }
     } finally {
@@ -72,3 +109,5 @@ export class LocalScheduler {
     return executed;
   }
 }
+
+export { MAX_CONSECUTIVE_FAILURES };

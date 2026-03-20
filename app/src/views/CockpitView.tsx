@@ -11,7 +11,7 @@
  * F8: Skeleton loading state while data is fetching, error recovery with retry.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   SystemHealthCard,
   CronSchedulesCard,
@@ -34,7 +34,7 @@ import type {
   WorkspaceCostData,
 } from '@/components/cockpit';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardContent } from '@/components/ui/card';
 
 // ── Constants ────────────────────────────────────────────────────────────
 
@@ -86,7 +86,7 @@ function CockpitError({ onRetry }: { onRetry: () => void }) {
 
 // ── Component ────────────────────────────────────────────────────────────
 
-export function CockpitView() {
+export default function CockpitView() {
   // ── State ──────────────────────────────────────────────────────────────
   const [health, setHealth] = useState<HealthData | null>(null);
   const [healthError, setHealthError] = useState(false);

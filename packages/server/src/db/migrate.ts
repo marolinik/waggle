@@ -1,7 +1,8 @@
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import { createDb } from './connection.js';
 
-const connectionString = process.env.DATABASE_URL ?? 'postgres://waggle:waggle_dev@localhost:5434/waggle';
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) throw new Error('DATABASE_URL environment variable is required');
 
 async function main() {
   const db = createDb(connectionString);

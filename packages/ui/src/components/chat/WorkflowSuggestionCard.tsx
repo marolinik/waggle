@@ -6,8 +6,6 @@
  * Dismiss is permanent per pattern per workspace.
  */
 
-import React from 'react';
-
 export interface WorkflowSuggestionProps {
   pattern: { name: string; steps: string[]; tools: string[] };
   onAccept: () => void;

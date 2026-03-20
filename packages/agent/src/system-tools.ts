@@ -20,9 +20,50 @@ interface BackgroundTask {
   stderr: string;
   status: 'running' | 'completed' | 'failed' | 'killed';
   exitCode?: number;
+  /** Timestamp when the task was created */
+  createdAt: number;
 }
 
 const backgroundTasks = new Map<string, BackgroundTask>();
+
+/** Maximum number of completed background tasks to retain */
+const MAX_BACKGROUND_TASKS = 100;
+
+/** Maximum age (ms) for stale completed tasks — 30 minutes */
+const STALE_TASK_THRESHOLD_MS = 30 * 60 * 1000;
+
+/**
+ * Evict the oldest completed/failed/killed task when the map exceeds MAX_BACKGROUND_TASKS.
+ */
+function evictOldestTask(): void {
+  if (backgroundTasks.size <= MAX_BACKGROUND_TASKS) return;
+  let oldestKey: string | null = null;
+  let oldestTime = Infinity;
+  for (const [key, task] of backgroundTasks) {
+    if (task.status !== 'running' && task.createdAt < oldestTime) {
+      oldestTime = task.createdAt;
+      oldestKey = key;
+    }
+  }
+  if (oldestKey) {
+    backgroundTasks.delete(oldestKey);
+  }
+}
+
+/**
+ * Remove completed/failed/killed entries older than STALE_TASK_THRESHOLD_MS.
+ */
+export function cleanupStaleTasks(): number {
+  const cutoff = Date.now() - STALE_TASK_THRESHOLD_MS;
+  let removed = 0;
+  for (const [key, task] of backgroundTasks) {
+    if (task.status !== 'running' && task.createdAt < cutoff) {
+      backgroundTasks.delete(key);
+      removed++;
+    }
+  }
+  return removed;
+}
 
 /**
  * Resolve a relative path within a workspace, rejecting traversal outside it.
@@ -73,8 +114,10 @@ export function createSystemTools(workspace: string): ToolDefinition[] {
             stdout: '',
             stderr: '',
             status: 'running',
+            createdAt: Date.now(),
           };
           backgroundTasks.set(taskId, task);
+          evictOldestTask();
 
           child.stdout?.on('data', (data: string) => { task.stdout += data; });
           child.stderr?.on('data', (data: string) => { task.stderr += data; });
@@ -728,5 +771,5 @@ export function createSystemTools(workspace: string): ToolDefinition[] {
   ];
 }
 
-/** Expose backgroundTasks for testing */
-export { backgroundTasks };
+/** Expose backgroundTasks and constants for testing */
+export { backgroundTasks, MAX_BACKGROUND_TASKS, STALE_TASK_THRESHOLD_MS };

@@ -1,12 +1,57 @@
 import type { FastifyInstance } from 'fastify';
 import type { WsClientEvent, WsServerEvent } from '@waggle/shared';
+import { createClerkClient } from '@clerk/fastify';
 import { ConnectionManager } from './connection-manager.js';
-import { teams, messages } from '../db/schema.js';
+import { teams, messages, users } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 
 export const connectionManager = new ConnectionManager();
 
+/**
+ * Validate that a string looks like a JWT (3 dot-separated base64url segments).
+ * This is a structural check, not a cryptographic verification.
+ */
+function isJwtStructure(token: string): boolean {
+  const parts = token.split('.');
+  if (parts.length !== 3) return false;
+  // Each segment should be non-empty and valid base64url
+  const base64urlRegex = /^[A-Za-z0-9_-]+$/;
+  return parts.every((part) => part.length > 0 && base64urlRegex.test(part));
+}
+
+/**
+ * Decode the payload segment of a JWT without verification.
+ * Used as a fallback when Clerk secret key is not configured.
+ */
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    // base64url -> base64 -> decode
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const json = Buffer.from(base64, 'base64').toString('utf-8');
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+// Overridable verifier for testing — allows tests to swap in a mock
+export type WsTokenVerifier = (token: string) => Promise<{ sub: string }>;
+let _wsTokenVerifier: WsTokenVerifier | null = null;
+
+/** Override the WS token verifier (for testing only) */
+export function setWsTokenVerifier(verifier: WsTokenVerifier | null): void {
+  _wsTokenVerifier = verifier;
+}
+
 export async function wsGateway(fastify: FastifyInstance) {
+  // Create Clerk client for JWT verification if secret key is available
+  const clerkSecretKey = fastify.config.clerkSecretKey;
+  const clerk = clerkSecretKey
+    ? createClerkClient({ secretKey: clerkSecretKey })
+    : null;
+
   fastify.get('/ws', { websocket: true }, (socket, request) => {
     let userId: string | null = null;
     let teamId: string | null = null;
@@ -17,10 +62,72 @@ export async function wsGateway(fastify: FastifyInstance) {
 
         switch (event.type) {
           case 'authenticate': {
-            // Simplified auth for pilot: token IS the userId
-            // In production: verify Clerk JWT, look up user
-            userId = event.token;
-            socket.send(JSON.stringify({ type: 'authenticated', userId }));
+            const token = event.token;
+
+            // Reject tokens that are not JWTs (plain userIds, random strings)
+            if (!isJwtStructure(token)) {
+              socket.send(
+                JSON.stringify({
+                  type: 'error',
+                  message: 'Invalid token: must be a valid JWT',
+                }),
+              );
+              return;
+            }
+
+            try {
+              let sub: string;
+
+              if (_wsTokenVerifier) {
+                // Test override path
+                const result = await _wsTokenVerifier(token);
+                sub = result.sub;
+              } else if (clerk) {
+                // Production path: full Clerk JWT verification
+                const payload = await clerk.verifyToken(token);
+                sub = payload.sub;
+              } else {
+                // Fallback: decode JWT payload and extract sub
+                // TODO: Replace with full Clerk verification once CLERK_SECRET_KEY is always configured
+                const payload = decodeJwtPayload(token);
+                if (!payload || typeof payload.sub !== 'string') {
+                  socket.send(
+                    JSON.stringify({
+                      type: 'error',
+                      message: 'Invalid token: missing sub claim',
+                    }),
+                  );
+                  return;
+                }
+                sub = payload.sub;
+              }
+
+              // Look up internal user by Clerk ID
+              const [user] = await fastify.db
+                .select()
+                .from(users)
+                .where(eq(users.clerkId, sub));
+
+              if (!user) {
+                socket.send(
+                  JSON.stringify({
+                    type: 'error',
+                    message: 'User not found',
+                  }),
+                );
+                return;
+              }
+
+              userId = user.id;
+              socket.send(JSON.stringify({ type: 'authenticated', userId }));
+            } catch {
+              socket.send(
+                JSON.stringify({
+                  type: 'error',
+                  message: 'Token verification failed',
+                }),
+              );
+            }
             break;
           }
 

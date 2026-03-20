@@ -6,9 +6,8 @@
  * Includes file history sidebar for recent files accessed in the session.
  */
 
-import React from 'react';
 import type { FileEntry, DiffEntry } from './utils.js';
-import { getFileIcon, getLanguageFromExtension, isImageFile, truncateFilePath } from './utils.js';
+import { getFileIcon, getLanguageFromExtension, truncateFilePath } from './utils.js';
 import { CodePreview } from './CodePreview.js';
 import { DiffViewer } from './DiffViewer.js';
 import { ImagePreview } from './ImagePreview.js';

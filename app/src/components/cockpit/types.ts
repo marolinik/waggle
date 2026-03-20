@@ -72,6 +72,15 @@ export interface ConnectorData {
   substrate: string;
 }
 
+/** Shape of GET /api/feedback/stats response. */
+export interface FeedbackStats {
+  totalFeedback: number;
+  correctionsThisWeek: number;
+  positiveRate: number;
+  improvementTrend: string;
+  topIssues: string[];
+}
+
 /** Shape of GET /api/cost/summary response. */
 export interface CostSummaryData {
   today: {

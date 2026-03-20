@@ -108,10 +108,12 @@ export function useMemory({ service, workspaceId, mindFileSize }: UseMemoryOptio
       if (cancelled) return;
       setAllFrames(frames);
       setStats({ totalFrames: frames.length, entities: 0, relations: 0, mindFileSize });
+      setError(null);
       setLoading(false);
-    }).catch(() => {
+    }).catch((err) => {
       if (cancelled) return;
       setAllFrames([]);
+      setError(err instanceof Error ? err.message : 'Failed to load memories');
       setLoading(false);
     });
     return () => { cancelled = true; };

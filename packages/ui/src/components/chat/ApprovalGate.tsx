@@ -4,7 +4,7 @@
  * C1: Shows human-readable descriptions instead of raw JSON.
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { ToolUseEvent } from '../../services/types.js';
 
 export interface ApprovalGateProps {

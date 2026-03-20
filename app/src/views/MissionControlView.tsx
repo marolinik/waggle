@@ -5,8 +5,8 @@
  * and resource usage. Complements Cockpit (system health) with agent-focused ops.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { useState, useEffect, useCallback } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { getServerBaseUrl } from '@/lib/ipc';
 
 const BASE_URL = getServerBaseUrl();
@@ -38,12 +38,6 @@ const PERSONA_ICONS: Record<string, string> = {
   'executive-assistant': '📧',
   'sales-rep': '🎯',
   marketer: '📢',
-};
-
-const STATUS_CLASS: Record<string, string> = {
-  active: 'border-primary text-primary',
-  paused: 'border-muted-foreground text-muted-foreground',
-  error: 'border-destructive text-destructive',
 };
 
 const STATUS_DOT_CLASS: Record<string, string> = {
@@ -108,6 +102,7 @@ function AgentFleetCard({
             {session.status === 'active' && (
               <button
                 onClick={() => onPause(session.workspaceId)}
+                aria-label={`Pause agent session ${session.workspaceId.slice(0, 12)}`}
                 className="px-2 py-1 text-[11px] rounded border border-border bg-transparent cursor-pointer text-foreground hover:bg-muted transition-colors"
               >
                 Pause
@@ -116,13 +111,19 @@ function AgentFleetCard({
             {session.status === 'paused' && (
               <button
                 onClick={() => onResume(session.workspaceId)}
+                aria-label={`Resume agent session ${session.workspaceId.slice(0, 12)}`}
                 className="px-2 py-1 text-[11px] rounded border border-primary bg-transparent cursor-pointer text-primary hover:bg-primary/10 transition-colors"
               >
                 Resume
               </button>
             )}
             <button
-              onClick={() => onKill(session.workspaceId)}
+              onClick={() => {
+                if (window.confirm(`Kill agent session ${session.workspaceId.slice(0, 12)}? This cannot be undone.`)) {
+                  onKill(session.workspaceId);
+                }
+              }}
+              aria-label={`Kill agent session ${session.workspaceId.slice(0, 12)}`}
               className="px-2 py-1 text-[11px] rounded border border-destructive bg-transparent cursor-pointer text-destructive hover:bg-destructive/10 transition-colors"
             >
               Kill
@@ -136,7 +137,7 @@ function AgentFleetCard({
 
 // ── Main View ────────────────────────────────────────────────────────
 
-export function MissionControlView() {
+export default function MissionControlView() {
   const [fleet, setFleet] = useState<FleetData>({ sessions: [], count: 0, maxSessions: 3 });
   const [error, setError] = useState<string | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);

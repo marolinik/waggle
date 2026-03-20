@@ -5,7 +5,7 @@
  * Shows status dots, agent name/role, current tool or status text, and elapsed time.
  */
 
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 
 export interface SubAgentInfo {
   id: string;

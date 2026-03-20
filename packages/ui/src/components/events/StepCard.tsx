@@ -5,7 +5,6 @@
  * and an expandable section with input/output, token count, cost.
  */
 
-import React from 'react';
 import type { AgentStep } from './utils.js';
 import { getStepIcon, getStepColor, getStepTypeColor, formatStepDuration, formatStepTimestamp } from './utils.js';
 

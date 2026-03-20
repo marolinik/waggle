@@ -8,7 +8,7 @@
  * "Workspace Now" block with summary, suggested prompts, and recent threads.
  */
 
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import type { Message, ToolUseEvent, WorkspaceContext } from '../../services/types.js';
 import { ChatMessage } from './ChatMessage.js';
 import { ChatInput, CLIENT_COMMANDS, type SlashCommand } from './ChatInput.js';
@@ -363,12 +363,10 @@ export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, o
           />
         ))}
         {isLoading && (
-          <div className="chat-area__loading" role="status" aria-label="Agent is thinking">
-            <div className="chat-area__loading-indicator">
-              <span className="chat-area__loading-dot" />
-              <span className="chat-area__loading-dot" />
-              <span className="chat-area__loading-dot" />
-            </div>
+          <div className="flex items-center gap-1.5 px-4 py-3" role="status" aria-label="Agent is thinking">
+            <span className="w-2 h-2 rounded-full bg-primary animate-bounce" />
+            <span className="w-2 h-2 rounded-full bg-primary animate-bounce [animation-delay:150ms]" />
+            <span className="w-2 h-2 rounded-full bg-primary animate-bounce [animation-delay:300ms]" />
           </div>
         )}
       </div>

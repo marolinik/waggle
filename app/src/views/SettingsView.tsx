@@ -2,6 +2,7 @@
  * SettingsView — Wrapper around SettingsPanel from @waggle/ui.
  */
 
+import { useState, useEffect } from 'react';
 import type { WaggleConfig, TeamConnection } from '@waggle/ui';
 import { SettingsPanel } from '@waggle/ui';
 
@@ -17,7 +18,7 @@ export interface SettingsViewProps {
   onTabChange?: (tab: string) => void;
 }
 
-export function SettingsView({
+export default function SettingsView({
   config,
   onConfigUpdate,
   onTestApiKey,
@@ -27,9 +28,36 @@ export function SettingsView({
   activeTab,
   onTabChange,
 }: SettingsViewProps) {
+  const [timedOut, setTimedOut] = useState(false);
+
+  // After 10 seconds of null config, show error state
+  useEffect(() => {
+    if (config) {
+      setTimedOut(false);
+      return;
+    }
+    const timer = setTimeout(() => setTimedOut(true), 10_000);
+    return () => clearTimeout(timer);
+  }, [config]);
+
   if (!config) {
+    if (timedOut) {
+      return (
+        <div className="flex flex-col items-center justify-center gap-4 py-16">
+          <div className="text-muted-foreground text-sm">
+            Failed to load settings. Is the server running?
+          </div>
+          <button
+            onClick={() => { setTimedOut(false); }}
+            className="px-4 py-2 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      );
+    }
     return (
-      <div className="p-6 text-muted-foreground/40">
+      <div className="p-6 text-muted-foreground">
         Loading settings...
       </div>
     );

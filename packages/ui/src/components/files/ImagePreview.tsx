@@ -5,7 +5,7 @@
  * and regular URLs.
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 export interface ImagePreviewProps {
   src: string;

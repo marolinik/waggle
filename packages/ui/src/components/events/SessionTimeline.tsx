@@ -6,7 +6,7 @@
  * Sub-agent calls (spawn_agent) render as nested child events.
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -153,7 +153,7 @@ function TimelineEventRow({
 
       {/* Expanded details */}
       {expanded && (
-        <div className="session-timeline__details ml-[18px] mt-1 mb-2 p-3 bg-black/30 rounded-md border border-primary/15">
+        <div className="session-timeline__details ml-[18px] mt-1 mb-2 p-3 bg-muted/50 rounded-md border border-primary/15">
           {/* Full Input */}
           <div className="mb-2">
             <div className="text-[10px] font-semibold text-muted-foreground/70 mb-1 uppercase tracking-wide">

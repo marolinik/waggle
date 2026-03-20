@@ -5,7 +5,7 @@
  * red/green coloring for removed/added lines.
  */
 
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import type { DiffEntry, DiffLine, DiffViewMode } from './utils.js';
 import { computeUnifiedDiff } from './utils.js';
 

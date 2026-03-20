@@ -3,11 +3,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type { FastifyPluginAsync } from 'fastify';
-import { runAgentLoop, needsConfirmation, CapabilityRouter, analyzeAndRecordCorrection, recordCapabilityGap, assessTrust, formatTrustSummary } from '@waggle/agent';
+import { runAgentLoop, needsConfirmation, CapabilityRouter, analyzeAndRecordCorrection, recordCapabilityGap, assessTrust, formatTrustSummary, scanForInjection } from '@waggle/agent';
 import type { AgentLoopConfig, AgentResponse } from '@waggle/agent';
 import { buildWorkspaceNowBlock, formatWorkspaceNowPrompt } from './workspace-context.js';
 import { formatWorkspaceStatePrompt } from '../workspace-state.js';
 import { emitNotification } from './notifications.js';
+import { validateOrigin } from '../cors-config.js';
 
 /**
  * Persist a chat message to the session's .jsonl file on disk.
@@ -64,6 +65,30 @@ function loadSessionMessages(
     }
   }
   return messages;
+}
+
+/** Maximum number of conversation messages passed to the agent loop per turn. */
+export const MAX_CONTEXT_MESSAGES = 50;
+
+/**
+ * Apply a sliding window to conversation history.
+ * Returns at most MAX_CONTEXT_MESSAGES messages.
+ * If the full history exceeds the limit, a system message is prepended
+ * informing the agent that earlier context was truncated.
+ */
+export function applyContextWindow(
+  fullHistory: Array<{ role: string; content: string }>,
+  maxMessages: number = MAX_CONTEXT_MESSAGES,
+): Array<{ role: string; content: string }> {
+  if (fullHistory.length <= maxMessages) {
+    return fullHistory;
+  }
+  const truncatedCount = fullHistory.length - maxMessages;
+  const truncationNotice: { role: string; content: string } = {
+    role: 'system',
+    content: `[Earlier context truncated. The conversation has ${truncatedCount} older messages not shown.]`,
+  };
+  return [truncationNotice, ...fullHistory.slice(-maxMessages)];
 }
 
 export type AgentRunner = (config: AgentLoopConfig) => Promise<AgentResponse>;
@@ -521,25 +546,35 @@ When approaching any task:
       return reply.status(400).send({ error: 'message is required' });
     }
 
+    // Security: scan for prompt injection patterns (log-only, non-blocking)
+    const injectionResult = scanForInjection(message, 'user_input');
+    if (injectionResult.score >= 0.3) {
+      console.warn('[security] Potential prompt injection detected:', injectionResult);
+    }
+
     // Hijack the response so Fastify doesn't try to send its own reply
     await reply.hijack();
 
     // Set SSE headers via raw response (include CORS since hijack bypasses Fastify plugins)
     const raw = reply.raw;
-    const origin = request.headers.origin ?? '*';
     raw.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive',
       'X-Accel-Buffering': 'no',
-      'Access-Control-Allow-Origin': origin,
-      'Access-Control-Allow-Credentials': 'true',
+      'Access-Control-Allow-Origin': validateOrigin(request.headers.origin as string | undefined),
     });
 
     // Helper to write SSE events
     const sendEvent = (event: string, data: unknown) => {
       raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     };
+
+    // Graceful shutdown: abort agent loop when client disconnects
+    const abortController = new AbortController();
+    request.raw.on('close', () => {
+      abortController.abort();
+    });
 
     try {
       const hasCustomRunner = !!server.agentRunner;
@@ -681,11 +716,12 @@ When approaching any task:
               timestamp: Date.now(),
             });
 
-            // Auto-approve after 5 minutes if no response (prevent infinite hang)
+            // Auto-DENY after 5 minutes if no response — fail safe, not fail open
             setTimeout(() => {
               if (server.agentState.pendingApprovals.has(requestId)) {
                 server.agentState.pendingApprovals.delete(requestId);
-                resolve(true);
+                console.warn(`[security] Approval timed out for ${toolName} (requestId: ${requestId}) — auto-denied for safety`);
+                resolve(false);
               }
             }, 300_000);
           });
@@ -722,18 +758,23 @@ When approaching any task:
           mcpRuntime: server.agentState.mcpRuntime,
         });
 
-        // Build agent loop config — with FULL conversation history + hooks
+        // Apply sliding window to conversation history — keep full history in RAM
+        // for persistence but only send recent messages to the agent loop
+        const windowedMessages = applyContextWindow(history);
+
+        // Build agent loop config — with windowed conversation history + hooks
         const agentConfig: AgentLoopConfig = {
           litellmUrl: getLitellmUrl(),
           litellmApiKey: server.agentState.litellmApiKey,
           model: resolvedModel,
           systemPrompt,
           tools: effectiveTools,
-          messages: history,
+          messages: windowedMessages,
           stream: true,
           maxTurns: 200, // Persistent agents need many turns for complex research + document generation
           hooks: hasCustomRunner ? undefined : hookRegistry,
           capabilityRouter,
+          signal: abortController.signal,
           onToken: (token: string) => {
             sendEvent('token', { content: token });
           },

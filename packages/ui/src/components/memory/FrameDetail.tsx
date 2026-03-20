@@ -5,7 +5,6 @@
  * and any related metadata.
  */
 
-import React from 'react';
 import type { Frame } from '../../services/types.js';
 import { getFrameTypeIcon, getFrameTypeLabel, getImportanceBadge, formatTimestamp } from './utils.js';
 

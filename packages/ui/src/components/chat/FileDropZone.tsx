@@ -101,9 +101,9 @@ export const FileDropZone: React.FC<FileDropZoneProps> = ({ onDrop, disabled, ch
       {dragActive && (
         <div
           data-testid="drop-overlay"
-          className="absolute inset-0 bg-indigo-500/[0.12] border-2 border-dashed border-indigo-500/60 rounded-lg flex items-center justify-center pointer-events-none z-10"
+          className="absolute inset-0 bg-primary/10 border-2 border-dashed border-primary/60 rounded-lg flex items-center justify-center pointer-events-none z-10"
         >
-          <span className="text-indigo-500 font-semibold text-sm">
+          <span className="text-primary font-semibold text-sm">
             Drop files here
           </span>
         </div>

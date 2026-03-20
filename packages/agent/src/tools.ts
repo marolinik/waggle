@@ -177,8 +177,8 @@ export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
           const raw = db.getDatabase();
           let fallbackFrames: Array<{ id: number; content: string; frame_type: string; importance: string }>;
           if (keywords.length > 0) {
-            const likeClauses = keywords.map(() => 'LOWER(content) LIKE ?').join(' OR ');
-            const likeParams = keywords.map(k => `%${k}%`);
+            const likeClauses = keywords.map(() => "LOWER(content) LIKE '%' || ? || '%' ESCAPE '\\'").join(' OR ');
+            const likeParams = keywords.map(k => k.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_'));
             fallbackFrames = raw.prepare(
               `SELECT id, content, frame_type, importance FROM memory_frames WHERE ${likeClauses} ORDER BY id DESC LIMIT ?`
             ).all(...likeParams, limit) as any[];

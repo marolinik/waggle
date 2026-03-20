@@ -26,19 +26,19 @@ export function NameStep({ name, onChange, onContinue }: NameStepProps) {
   return (
     <div className="name-step flex flex-col items-center gap-6 p-8">
       <div className="text-center mb-2">
-        <div className="text-[11px] font-semibold uppercase tracking-widest text-primary mb-2 font-[Inter,system-ui,sans-serif]">
+        <div className="text-[11px] font-semibold uppercase tracking-widest text-primary mb-2">
           Your AI Operating System
         </div>
-        <h2 className="text-2xl font-bold text-foreground font-[Inter,system-ui,sans-serif] -tracking-wide m-0">
+        <h2 className="text-2xl font-bold text-foreground -tracking-wide m-0">
           Welcome to Waggle
         </h2>
-        <p className="text-sm text-muted-foreground mt-2 font-[Inter,system-ui,sans-serif]">
+        <p className="text-sm text-muted-foreground mt-2">
           Persistent memory. Workspace-native. Built for knowledge work.
         </p>
       </div>
 
       <div className="w-full max-w-sm flex flex-col gap-1">
-        <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1 font-[Inter,system-ui,sans-serif]">
+        <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
           What should I call you?
         </label>
         <input
@@ -61,7 +61,7 @@ export function NameStep({ name, onChange, onContinue }: NameStepProps) {
         type="button"
         onClick={onContinue}
         disabled={!canContinue}
-        className={`border-none rounded-[10px] px-7 py-2.5 text-sm font-semibold font-[Inter,system-ui,sans-serif] transition-all duration-150 ${
+        className={`border-none rounded-[10px] px-7 py-2.5 text-sm font-semibold transition-all duration-150 ${
           canContinue
             ? 'bg-primary text-primary-foreground cursor-pointer'
             : 'bg-muted text-muted-foreground cursor-not-allowed'

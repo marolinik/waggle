@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { runAgentLoop, type AgentLoopConfig, type PluginToolProvider } from '../src/agent-loop.js';
 import type { ToolDefinition } from '../src/tools.js';
 import { CapabilityRouter } from '../src/capability-router.js';
+import Database from 'better-sqlite3';
 
 /**
  * Helper: create a mock fetch that returns predefined OpenAI-format responses in sequence.
@@ -285,5 +286,205 @@ describe('runAgentLoop', () => {
     expect(toolNames).toContain('base_tool');
     expect(toolNames).toContain('plugin_tool');
     expect(toolNames).toHaveLength(2);
+  });
+
+  it('terminates with error after 3 consecutive 429 rate-limit responses', async () => {
+    let callCount = 0;
+    const fetch = vi.fn(async () => {
+      callCount++;
+      return {
+        ok: false,
+        status: 429,
+        headers: { get: (name: string) => (name === 'retry-after' ? '0' : null) },
+        text: async () => 'rate limited',
+      } as unknown as Response;
+    });
+
+    await expect(
+      runAgentLoop(makeConfig({ fetch }))
+    ).rejects.toThrow('Rate limit retry cap exceeded (3 consecutive 429 responses)');
+
+    // Should have been called exactly 3 times (retries capped at 3)
+    expect(callCount).toBe(3);
+  });
+
+  it('terminates with error after 3 consecutive 502 server errors', async () => {
+    let callCount = 0;
+    const fetch = vi.fn(async () => {
+      callCount++;
+      return {
+        ok: false,
+        status: 502,
+        headers: { get: () => null },
+        text: async () => 'bad gateway',
+      } as unknown as Response;
+    });
+
+    await expect(
+      runAgentLoop(makeConfig({ fetch }))
+    ).rejects.toThrow('Server error retry cap exceeded (3 consecutive 502 errors)');
+
+    expect(callCount).toBe(3);
+  });
+
+  it('resets retry count after a successful response', async () => {
+    let callCount = 0;
+    const fetch = vi.fn(async () => {
+      callCount++;
+      // First call: 429, second call: success, third call: 429, fourth call: 429, fifth call: 429 → should cap
+      if (callCount === 1 || callCount >= 3) {
+        return {
+          ok: false,
+          status: 429,
+          headers: { get: (name: string) => (name === 'retry-after' ? '0' : null) },
+          text: async () => 'rate limited',
+        } as unknown as Response;
+      }
+      // Success response (no tool calls — terminates loop)
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          choices: [{ message: { role: 'assistant', content: 'Hello!' }, finish_reason: 'stop' }],
+          usage: { prompt_tokens: 10, completion_tokens: 5 },
+        }),
+      } as unknown as Response;
+    });
+
+    // After the first 429 retry count is 1, then success resets to 0, so loop ends with content
+    const result = await runAgentLoop(makeConfig({ fetch }));
+    expect(result.content).toBe('Hello!');
+    // Only 2 calls: one 429 + one success (loop terminates on success)
+    expect(callCount).toBe(2);
+  });
+
+  it('terminates gracefully when token budget is exceeded', async () => {
+    const fetch = mockFetch([
+      {
+        content: null,
+        tool_calls: [
+          { id: 'call_1', function: { name: 'echo', arguments: '{"text":"hi"}' } },
+        ],
+        usage: { prompt_tokens: 80, completion_tokens: 70 },
+      },
+      { content: 'Should not reach this.', usage: { prompt_tokens: 50, completion_tokens: 50 } },
+    ]);
+
+    const echoTool: ToolDefinition = {
+      name: 'echo',
+      description: 'Echoes input',
+      parameters: { type: 'object', properties: { text: { type: 'string' } } },
+      execute: async (args) => `Echo: ${args.text}`,
+    };
+
+    const result = await runAgentLoop(
+      makeConfig({ fetch, tools: [echoTool], maxTokenBudget: 100 })
+    );
+
+    expect(result.content).toContain('Token budget exceeded');
+    expect(result.content).toContain('used 150 tokens');
+    expect(result.content).toContain('limit 100');
+    expect(result.usage.inputTokens).toBe(80);
+    expect(result.usage.outputTokens).toBe(70);
+    // Only 1 LLM call — budget exceeded after the first response
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not enforce token budget when maxTokenBudget is not set', async () => {
+    const fetch = mockFetch([
+      { content: 'Big response.', usage: { prompt_tokens: 5000, completion_tokens: 5000 } },
+    ]);
+
+    const result = await runAgentLoop(makeConfig({ fetch }));
+    expect(result.content).toBe('Big response.');
+    expect(result.usage.inputTokens).toBe(5000);
+    expect(result.usage.outputTokens).toBe(5000);
+  });
+
+  it('terminates gracefully when abort signal is triggered between turns', async () => {
+    const abortController = new AbortController();
+
+    const tool: ToolDefinition = {
+      name: 'slow_tool',
+      description: 'A tool that aborts the signal',
+      parameters: { type: 'object', properties: {} },
+      execute: async () => {
+        // Simulate client disconnect during tool execution
+        abortController.abort();
+        return 'tool-result';
+      },
+    };
+
+    const fetch = mockFetch([
+      {
+        content: null,
+        tool_calls: [
+          { id: 'call_1', function: { name: 'slow_tool', arguments: '{}' } },
+        ],
+        usage: { prompt_tokens: 10, completion_tokens: 5 },
+      },
+      // This second response should never be reached because the signal was aborted
+      { content: 'Should not appear.', usage: { prompt_tokens: 10, completion_tokens: 5 } },
+    ]);
+
+    const result = await runAgentLoop(
+      makeConfig({ fetch, tools: [tool], signal: abortController.signal })
+    );
+
+    expect(result.content).toBe('Agent loop aborted (client disconnected).');
+    expect(result.toolsUsed).toEqual(['slow_tool']);
+    // Only one fetch call — the loop exited before making a second LLM request
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not abort when signal is not provided', async () => {
+    const fetch = mockFetch([{ content: 'Normal response.' }]);
+
+    const result = await runAgentLoop(makeConfig({ fetch }));
+    expect(result.content).toBe('Normal response.');
+  });
+});
+
+describe('LIKE wildcard escaping (PRQ-033)', () => {
+  it('escapes % in search keywords so it does not match everything', () => {
+    const db = new Database(':memory:');
+    db.exec(`CREATE TABLE test_frames (id INTEGER PRIMARY KEY, content TEXT)`);
+    db.exec(`INSERT INTO test_frames (content) VALUES ('normal text')`);
+    db.exec(`INSERT INTO test_frames (content) VALUES ('has 100% completion')`);
+    db.exec(`INSERT INTO test_frames (content) VALUES ('another row')`);
+
+    // Simulate the escaping logic from tools.ts search_memory LIKE fallback
+    const keyword = '100%';
+    const escaped = keyword.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+
+    const rows = db.prepare(
+      "SELECT id, content FROM test_frames WHERE LOWER(content) LIKE '%' || ? || '%' ESCAPE '\\'"
+    ).all(escaped) as { id: number; content: string }[];
+
+    // Should only match the row containing the literal "100%", not all rows
+    expect(rows).toHaveLength(1);
+    expect(rows[0].content).toBe('has 100% completion');
+
+    db.close();
+  });
+
+  it('escapes _ in search keywords so it does not match single characters', () => {
+    const db = new Database(':memory:');
+    db.exec(`CREATE TABLE test_frames (id INTEGER PRIMARY KEY, content TEXT)`);
+    db.exec(`INSERT INTO test_frames (content) VALUES ('file_name here')`);
+    db.exec(`INSERT INTO test_frames (content) VALUES ('filename here')`);
+
+    const keyword = 'file_name';
+    const escaped = keyword.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+
+    const rows = db.prepare(
+      "SELECT id, content FROM test_frames WHERE LOWER(content) LIKE '%' || ? || '%' ESCAPE '\\'"
+    ).all(escaped) as { id: number; content: string }[];
+
+    // Should only match the row with literal underscore
+    expect(rows).toHaveLength(1);
+    expect(rows[0].content).toBe('file_name here');
+
+    db.close();
   });
 });

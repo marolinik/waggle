@@ -19,9 +19,10 @@ describe('Tauri Production Configuration', () => {
     expect(conf.identifier).toBe('com.waggle.app');
   });
 
-  it('tauri.conf.json has NSIS bundle target', () => {
+  it('tauri.conf.json has bundle targets configured', () => {
     const conf = JSON.parse(fs.readFileSync(path.join(TAURI_DIR, 'tauri.conf.json'), 'utf-8'));
-    expect(conf.bundle.targets).toContain('nsis');
+    // targets: "all" builds for the current platform (NSIS on Windows, DMG on macOS, etc.)
+    expect(conf.bundle.targets).toBe('all');
     expect(conf.bundle.active).toBe(true);
   });
 

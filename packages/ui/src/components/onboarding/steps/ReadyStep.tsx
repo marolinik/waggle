@@ -10,6 +10,8 @@ import React, { useState, useRef, useCallback } from 'react';
 export interface ReadyStepProps {
   name: string;
   onComplete: () => void;
+  /** Base URL for the local server API (defaults to http://127.0.0.1:3333) */
+  baseUrl?: string;
 }
 
 interface ImportPreview {
@@ -24,7 +26,7 @@ interface ImportPreview {
   errors: string[];
 }
 
-const BASE_URL = 'http://127.0.0.1:3333';
+const DEFAULT_BASE_URL = 'http://127.0.0.1:3333';
 
 const FEATURE_HIGHLIGHTS = [
   {
@@ -61,7 +63,7 @@ const TYPE_ICONS: Record<string, string> = {
   topic: '○',
 };
 
-export function ReadyStep({ name, onComplete }: ReadyStepProps) {
+export function ReadyStep({ name, onComplete, baseUrl = DEFAULT_BASE_URL }: ReadyStepProps) {
   const [showImport, setShowImport] = useState(false);
   const [importSource, setImportSource] = useState<'chatgpt' | 'claude' | null>(null);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
@@ -82,7 +84,7 @@ export function ReadyStep({ name, onComplete }: ReadyStepProps) {
       const text = await file.text();
       const data = JSON.parse(text);
 
-      const res = await fetch(`${BASE_URL}/api/import/preview`, {
+      const res = await fetch(`${baseUrl}/api/import/preview`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ data, source: importSource }),
@@ -99,8 +101,9 @@ export function ReadyStep({ name, onComplete }: ReadyStepProps) {
       if (result.errors?.length > 0) {
         setImportError(result.errors[0]);
       }
-    } catch (err: any) {
-      setImportError(err.message?.includes('JSON') ? 'Invalid JSON file. Make sure you selected the conversations.json file.' : err.message);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setImportError(msg.includes('JSON') ? 'Invalid JSON file. Make sure you selected the conversations.json file.' : msg);
     }
   }, [importSource]);
 
@@ -118,7 +121,7 @@ export function ReadyStep({ name, onComplete }: ReadyStepProps) {
       const text = await file.text();
       const data = JSON.parse(text);
 
-      const res = await fetch(`${BASE_URL}/api/import/commit`, {
+      const res = await fetch(`${baseUrl}/api/import/commit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ data, source: importSource }),
@@ -133,8 +136,8 @@ export function ReadyStep({ name, onComplete }: ReadyStepProps) {
       const result = await res.json();
       setSavedCount(result.saved ?? 0);
       setImportDone(true);
-    } catch (err: any) {
-      setImportError(err.message);
+    } catch (err: unknown) {
+      setImportError(err instanceof Error ? err.message : String(err));
     } finally {
       setImporting(false);
     }
@@ -144,10 +147,10 @@ export function ReadyStep({ name, onComplete }: ReadyStepProps) {
     <div className="ready-step flex flex-col items-center gap-6 p-8 max-w-[560px] mx-auto">
       {/* Header */}
       <div className="text-center">
-        <div className="text-[28px] font-bold text-foreground font-[Inter,system-ui,sans-serif] -tracking-wide">
+        <div className="text-[28px] font-bold text-foreground -tracking-wide">
           You're all set{name ? `, ${name}` : ''}
         </div>
-        <p className="text-sm text-muted-foreground font-[Inter,system-ui,sans-serif] mt-2">
+        <p className="text-sm text-muted-foreground mt-2">
           Your workspace is ready. Here's what makes Waggle different:
         </p>
       </div>
@@ -158,7 +161,7 @@ export function ReadyStep({ name, onComplete }: ReadyStepProps) {
           <div key={f.title} className="bg-card border border-border rounded-xl px-4 py-3.5 flex gap-3 items-start">
             <span className="text-sm shrink-0 mt-0.5" style={{ color: f.color }}>{f.icon}</span>
             <div>
-              <h3 className="text-[13px] font-semibold text-foreground font-[Inter,system-ui,sans-serif] m-0">{f.title}</h3>
+              <h3 className="text-[13px] font-semibold text-foreground m-0">{f.title}</h3>
               <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{f.description}</p>
             </div>
           </div>
@@ -172,14 +175,14 @@ export function ReadyStep({ name, onComplete }: ReadyStepProps) {
             <button
               type="button"
               onClick={() => setShowImport(true)}
-              className="w-full flex items-center justify-center gap-2 bg-card border border-border rounded-[10px] px-5 py-2 text-[13px] font-medium text-muted-foreground font-[Inter,system-ui,sans-serif] cursor-pointer transition-all duration-150 hover:border-primary/30"
+              className="w-full flex items-center justify-center gap-2 bg-card border border-border rounded-[10px] px-5 py-2 text-[13px] font-medium text-muted-foreground cursor-pointer transition-all duration-150 hover:border-primary/30"
             >
               <span className="text-primary text-sm">◆</span>
               Import memory from ChatGPT or Claude
             </button>
           ) : (
             <div className="bg-card border border-border rounded-xl px-4 py-3.5 flex flex-col gap-3">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40 font-[Inter,system-ui,sans-serif]">Import prior conversations</div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40">Import prior conversations</div>
               <p className="text-xs text-muted-foreground leading-relaxed m-0">
                 Waggle can extract decisions, preferences, and key facts from your ChatGPT or Claude conversation history.
                 Export your data from the source app, then select the JSON file here.
@@ -188,10 +191,10 @@ export function ReadyStep({ name, onComplete }: ReadyStepProps) {
               {/* Source selection */}
               {!importSource && (
                 <div className="flex gap-2">
-                  <button type="button" onClick={() => setImportSource('chatgpt')} className="flex-1 bg-card border border-border rounded-[10px] px-5 py-2 text-[13px] font-medium text-muted-foreground font-[Inter,system-ui,sans-serif] cursor-pointer transition-all duration-150 hover:border-primary/30">
+                  <button type="button" onClick={() => setImportSource('chatgpt')} className="flex-1 bg-card border border-border rounded-[10px] px-5 py-2 text-[13px] font-medium text-muted-foreground cursor-pointer transition-all duration-150 hover:border-primary/30">
                     ChatGPT Export
                   </button>
-                  <button type="button" onClick={() => setImportSource('claude')} className="flex-1 bg-card border border-border rounded-[10px] px-5 py-2 text-[13px] font-medium text-muted-foreground font-[Inter,system-ui,sans-serif] cursor-pointer transition-all duration-150 hover:border-primary/30">
+                  <button type="button" onClick={() => setImportSource('claude')} className="flex-1 bg-card border border-border rounded-[10px] px-5 py-2 text-[13px] font-medium text-muted-foreground cursor-pointer transition-all duration-150 hover:border-primary/30">
                     Claude Export
                   </button>
                 </div>
@@ -218,7 +221,7 @@ export function ReadyStep({ name, onComplete }: ReadyStepProps) {
               {/* Preview */}
               {preview && !importDone && (
                 <div>
-                  <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40 font-[Inter,system-ui,sans-serif] mb-2">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40 mb-2">
                     Preview — {preview.conversationsParsed} conversations, {preview.knowledgeExtracted.length} items found
                   </div>
 
@@ -252,14 +255,14 @@ export function ReadyStep({ name, onComplete }: ReadyStepProps) {
                         type="button"
                         onClick={handleCommit}
                         disabled={importing}
-                        className={`flex-1 bg-primary text-primary-foreground border-none rounded-[10px] px-6 py-2.5 text-sm font-bold font-[Inter,system-ui,sans-serif] cursor-pointer transition-all duration-150 ${importing ? 'opacity-60' : ''}`}
+                        className={`flex-1 bg-primary text-primary-foreground border-none rounded-[10px] px-6 py-2.5 text-sm font-bold cursor-pointer transition-all duration-150 ${importing ? 'opacity-60' : ''}`}
                       >
                         {importing ? 'Importing...' : `Import ${preview.knowledgeExtracted.length} items`}
                       </button>
                       <button
                         type="button"
                         onClick={() => { setPreview(null); setImportSource(null); }}
-                        className="bg-card border border-border rounded-[10px] px-5 py-2 text-[13px] font-medium text-muted-foreground font-[Inter,system-ui,sans-serif] cursor-pointer transition-all duration-150 hover:border-primary/30"
+                        className="bg-card border border-border rounded-[10px] px-5 py-2 text-[13px] font-medium text-muted-foreground cursor-pointer transition-all duration-150 hover:border-primary/30"
                       >
                         Cancel
                       </button>
@@ -289,12 +292,12 @@ export function ReadyStep({ name, onComplete }: ReadyStepProps) {
 
       {/* CTA */}
       <div className="text-center mt-1">
-        <p className="text-xs text-muted-foreground/40 mb-4 font-[Inter,system-ui,sans-serif]">
+        <p className="text-xs text-muted-foreground/40 mb-4">
           {importDone
             ? 'Your imported knowledge is ready. Start a conversation and I\'ll use it.'
             : 'Try asking: "What can you help me with?" or "Catch me up on this workspace"'}
         </p>
-        <button type="button" onClick={onComplete} className="bg-primary text-primary-foreground border-none rounded-[10px] px-8 py-3 text-[15px] font-bold font-[Inter,system-ui,sans-serif] cursor-pointer transition-all duration-150 shadow-[0_0_20px_rgba(212,168,67,0.15)]">
+        <button type="button" onClick={onComplete} className="bg-primary text-primary-foreground border-none rounded-[10px] px-8 py-3 text-[15px] font-bold cursor-pointer transition-all duration-150 shadow-[0_0_20px_rgba(212,168,67,0.15)]">
           Start working &rarr;
         </button>
       </div>

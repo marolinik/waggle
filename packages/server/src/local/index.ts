@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -6,6 +7,7 @@ import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
 import websocket from '@fastify/websocket';
 import { MindDB, MultiMind, WorkspaceManager, WaggleConfig, createLiteLLMEmbedder, FrameStore, SessionStore, InstallAuditStore, CronStore, AwarenessLayer, VaultStore, SkillHashStore, OptimizationLogStore } from '@waggle/core';
+import { ALLOWED_ORIGINS } from './cors-config.js';
 import { MemoryWeaver } from '@waggle/weaver';
 import {
   Orchestrator,
@@ -179,6 +181,8 @@ export interface AgentState {
   commandRegistry: import('@waggle/agent').CommandRegistry;
   /** LLM provider status — which provider is active and whether it's truly healthy */
   llmProvider: LlmProviderStatus;
+  /** Session token for WebSocket authentication (generated on server startup) */
+  wsSessionToken: string;
 }
 
 declare module 'fastify' {
@@ -839,6 +843,7 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
       detail: 'Not yet initialized',
       checkedAt: new Date().toISOString(),
     },
+    wsSessionToken: crypto.randomBytes(32).toString('hex'),
   });
 
   // Wire up skill hot-reload callback
@@ -1119,7 +1124,16 @@ Return ONLY the improved system prompt text. No commentary, no markdown fences, 
   server.decorate('offlineManager', offlineManager);
 
   // Plugins
-  await server.register(cors, { origin: true });
+  // CORS restricted to known Tauri/dev origins — prevents cross-origin attacks from arbitrary websites
+  await server.register(cors, {
+    origin: (origin, cb) => {
+      if (!origin || ALLOWED_ORIGINS.some(o => origin.startsWith(o))) {
+        cb(null, true);
+      } else {
+        cb(new Error('CORS: origin not allowed'), false);
+      }
+    },
+  });
   await server.register(websocket);
 
   // Security middleware — headers + rate limiting (local server only)
@@ -1188,20 +1202,32 @@ Return ONLY the improved system prompt text. No commentary, no markdown fences, 
   }
 
   // WebSocket endpoint — event bus relay to frontend
-  server.get('/ws', { websocket: true }, (socket) => {
-    // Relay eventBus events to connected clients
-    const onEvent = (event: string, data: unknown) => {
-      try {
-        socket.send(JSON.stringify({ event, data }));
-      } catch {
-        // Client disconnected
-      }
-    };
+  // 11A-6: Require session token for WebSocket authentication
+  // 11A-8: Per-connection listener tracking (don't kill other clients on disconnect)
+  server.get('/ws', { websocket: true }, (socket, request) => {
+    // 11A-6: Validate session token from query param
+    const url = new URL(request.url, 'http://localhost');
+    const token = url.searchParams.get('token');
+    if (token !== server.agentState.wsSessionToken) {
+      socket.close(4001, 'Unauthorized: invalid session token');
+      return;
+    }
+
+    // Per-connection listener references for clean removal on disconnect
+    const listenerMap = new Map<string, (...args: unknown[]) => void>();
 
     // Forward approval events and agent events to the WebSocket client
-    const handlers = ['approval_required', 'step', 'tool', 'done', 'error', 'presence_update', 'notification'] as const;
-    for (const evt of handlers) {
-      eventBus.on(evt, (data: unknown) => onEvent(evt, data));
+    const eventTypes = ['approval_required', 'step', 'tool', 'done', 'error', 'presence_update', 'notification'] as const;
+    for (const evt of eventTypes) {
+      const handler = (data: unknown) => {
+        try {
+          socket.send(JSON.stringify({ event: evt, data }));
+        } catch {
+          // Client disconnected
+        }
+      };
+      listenerMap.set(evt, handler);
+      eventBus.on(evt, handler);
     }
 
     socket.on('message', (raw: Buffer) => {
@@ -1226,9 +1252,11 @@ Return ONLY the improved system prompt text. No commentary, no markdown fences, 
     });
 
     socket.on('close', () => {
-      for (const evt of handlers) {
-        eventBus.removeAllListeners(evt);
+      // Remove only THIS connection's listeners, not all clients'
+      for (const [evt, handler] of listenerMap) {
+        eventBus.removeListener(evt, handler);
       }
+      listenerMap.clear();
     });
   });
 
@@ -1304,6 +1332,7 @@ Return ONLY the improved system prompt text. No commentary, no markdown fences, 
       serviceHealth,
       defaultModel: server.agentState.currentModel,
       offline: offlineManager.state,
+      wsToken: server.agentState.wsSessionToken,
     };
   });
 

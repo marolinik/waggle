@@ -36,7 +36,7 @@ const EXTERNAL = [
   'drizzle-orm/*',
   'mammoth',
   'pdf-parse',
-  'xlsx',
+  'exceljs',
   'archiver',
   '@fastify/static',
   'playwright-core',

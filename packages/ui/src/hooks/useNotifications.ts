@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { subscribeSSE } from './useSSEStream.js';
 
 export interface NotificationEvent {
   type: 'notification';
@@ -40,12 +41,11 @@ export function useNotifications(serverUrl: string): UseNotificationsResult {
     })();
   }, []);
 
-  // SSE connection
+  // Shared SSE connection via singleton manager
   useEffect(() => {
     const url = `${serverUrl}/api/notifications/stream`;
-    const es = new EventSource(url);
 
-    es.onmessage = async (event) => {
+    const unsubscribe = subscribeSSE(url, 'message', async (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data);
         if (data.type !== 'notification') return;
@@ -69,13 +69,9 @@ export function useNotifications(serverUrl: string): UseNotificationsResult {
       } catch {
         // Ignore parse errors
       }
-    };
+    });
 
-    es.onerror = () => {
-      console.debug('[waggle] Notification SSE reconnecting...');
-    };
-
-    return () => es.close();
+    return () => unsubscribe();
   }, [serverUrl]);
 
   const clearAll = useCallback(() => setNotifications([]), []);

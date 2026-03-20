@@ -12,7 +12,7 @@
   "bundle": {
     "icon": ["icons/icon.ico"],
     "active": true,
-    "targets": ["nsis"],
+    "targets": "all",
     "resources": ["resources/*"],
     "windows": {
       "nsis": {
@@ -53,7 +53,7 @@
       "endpoints": [
         "https://github.com/marolinik/waggle/releases/latest/download/latest.json"
       ],
-      "pubkey": ""
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDhBNUM1OTgzQUU3RTcwOUQKUldTZGNINnVnMWxjaWtPUHdVM2VZYVI4alpSeHNmOFZmRjF0UUZMZXFmdy80UkhPMHJkS1JrVEYK"
     }
   }
 }

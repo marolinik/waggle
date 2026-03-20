@@ -5,7 +5,7 @@
  * Uses Tailwind utility classes for styling.
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { StarterCatalogResponse } from '../../services/types.js';
 import { SkillCard } from './SkillCard.js';
 

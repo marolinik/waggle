@@ -6,7 +6,7 @@
  * confirmation then hides.
  */
 
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -39,7 +39,7 @@ const REASON_OPTIONS: Array<{ value: FeedbackReason; label: string }> = [
 
 type FeedbackState = 'idle' | 'reason_form' | 'submitted';
 
-export function FeedbackButtons({ sessionId, messageIndex, onFeedback }: FeedbackButtonsProps) {
+export function FeedbackButtons({ sessionId: _sessionId, messageIndex: _messageIndex, onFeedback }: FeedbackButtonsProps) {
   const [state, setState] = useState<FeedbackState>('idle');
   const [reason, setReason] = useState<FeedbackReason>('wrong_answer');
   const [detail, setDetail] = useState('');
@@ -120,14 +120,14 @@ export function FeedbackButtons({ sessionId, messageIndex, onFeedback }: Feedbac
       <button
         onClick={handleThumbsUp}
         title="Good response"
-        className="feedback-btn feedback-btn--up bg-transparent border-none cursor-pointer text-[13px] px-1 py-px rounded text-muted-foreground opacity-60 transition-[opacity,color] duration-150 hover:opacity-100 hover:text-[#3fb950]"
+        className="feedback-btn feedback-btn--up bg-transparent border-none cursor-pointer text-[13px] px-1 py-px rounded text-muted-foreground opacity-60 transition-[opacity,color] duration-150 hover:opacity-100 hover:text-green-500"
       >
         {'\u25B2'}
       </button>
       <button
         onClick={handleThumbsDown}
         title="Needs improvement"
-        className="feedback-btn feedback-btn--down bg-transparent border-none cursor-pointer text-[13px] px-1 py-px rounded text-muted-foreground opacity-60 transition-[opacity,color] duration-150 hover:opacity-100 hover:text-[#f85149]"
+        className="feedback-btn feedback-btn--down bg-transparent border-none cursor-pointer text-[13px] px-1 py-px rounded text-muted-foreground opacity-60 transition-[opacity,color] duration-150 hover:opacity-100 hover:text-destructive"
       >
         {'\u25BC'}
       </button>

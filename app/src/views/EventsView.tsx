@@ -3,7 +3,7 @@
  * Includes a "Session Replay" tab for browsing tool event timelines.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { AgentStep, StepFilter, TimelineEvent } from '@waggle/ui';
 import { EventStream, SessionTimeline } from '@waggle/ui';
 
@@ -25,7 +25,7 @@ interface SessionOption {
 
 type ViewTab = 'live' | 'replay';
 
-export function EventsView({
+export default function EventsView({
   steps,
   autoScroll,
   onToggleAutoScroll,
@@ -40,11 +40,14 @@ export function EventsView({
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [loadingTimeline, setLoadingTimeline] = useState(false);
+  const [sessionsError, setSessionsError] = useState<string | null>(null);
+  const [timelineError, setTimelineError] = useState<string | null>(null);
 
   // Fetch sessions when switching to replay tab
   const fetchSessions = useCallback(async () => {
     if (!workspaceId) return;
     setLoadingSessions(true);
+    setSessionsError(null);
     try {
       const res = await fetch(`${serverUrl}/api/workspaces/${workspaceId}/sessions`);
       if (res.ok) {
@@ -53,9 +56,11 @@ export function EventsView({
         if (data.length > 0 && !selectedSessionId) {
           setSelectedSessionId(data[0].id);
         }
+      } else {
+        setSessionsError(`Failed to load sessions (${res.status})`);
       }
     } catch {
-      // Network error — sessions will remain empty
+      setSessionsError('Network error — cannot reach server');
     } finally {
       setLoadingSessions(false);
     }
@@ -68,6 +73,7 @@ export function EventsView({
       return;
     }
     setLoadingTimeline(true);
+    setTimelineError(null);
     try {
       const res = await fetch(
         `${serverUrl}/api/workspaces/${workspaceId}/sessions/${selectedSessionId}/timeline`
@@ -77,9 +83,11 @@ export function EventsView({
         setTimeline(data);
       } else {
         setTimeline([]);
+        setTimelineError(`Failed to load timeline (${res.status})`);
       }
     } catch {
       setTimeline([]);
+      setTimelineError('Network error — cannot reach server');
     } finally {
       setLoadingTimeline(false);
     }
@@ -100,9 +108,12 @@ export function EventsView({
   return (
     <div className="h-full overflow-hidden flex flex-col">
       {/* Tab bar */}
-      <div className="flex items-center gap-0.5 px-2 py-1 border-b border-border/30 bg-secondary shrink-0">
+      <div role="tablist" className="flex items-center gap-0.5 px-2 py-1 border-b border-border/30 bg-secondary shrink-0">
         <button
           type="button"
+          role="tab"
+          aria-selected={tab === 'live'}
+          aria-controls="events-tabpanel-live"
           onClick={() => setTab('live')}
           className={`px-3 py-1 rounded text-xs border-none cursor-pointer transition-colors ${
             tab === 'live'
@@ -114,6 +125,9 @@ export function EventsView({
         </button>
         <button
           type="button"
+          role="tab"
+          aria-selected={tab === 'replay'}
+          aria-controls="events-tabpanel-replay"
           onClick={() => setTab('replay')}
           className={`px-3 py-1 rounded text-xs border-none cursor-pointer transition-colors ${
             tab === 'replay'
@@ -127,7 +141,7 @@ export function EventsView({
 
       {/* Tab content */}
       {tab === 'live' ? (
-        <div className="flex-1 overflow-hidden">
+        <div id="events-tabpanel-live" role="tabpanel" className="flex-1 overflow-hidden">
           <EventStream
             steps={steps}
             autoScroll={autoScroll}
@@ -137,13 +151,24 @@ export function EventsView({
           />
         </div>
       ) : (
-        <div className="flex-1 overflow-hidden flex flex-col">
+        <div id="events-tabpanel-replay" role="tabpanel" className="flex-1 overflow-hidden flex flex-col">
           {/* Session picker */}
           <div className="px-3 py-2 border-b border-border/30 shrink-0">
             {loadingSessions ? (
               <span className="text-[11px] text-muted-foreground/70">
                 Loading sessions...
               </span>
+            ) : sessionsError ? (
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-destructive">{sessionsError}</span>
+                <button
+                  type="button"
+                  onClick={fetchSessions}
+                  className="text-[11px] px-2 py-0.5 rounded border border-border text-foreground hover:bg-muted"
+                >
+                  Retry
+                </button>
+              </div>
             ) : sessions.length === 0 ? (
               <span className="text-[11px] text-muted-foreground/70">
                 {workspaceId ? 'No sessions found' : 'Select a workspace first'}
@@ -152,7 +177,7 @@ export function EventsView({
               <select
                 value={selectedSessionId}
                 onChange={(e) => setSelectedSessionId(e.target.value)}
-                className="w-full px-2 py-1.5 rounded-md border border-primary/20 bg-black/30 text-foreground text-xs cursor-pointer"
+                className="w-full px-2 py-1.5 rounded-md border border-primary/20 bg-muted/50 text-foreground text-xs cursor-pointer"
               >
                 {sessions.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -165,7 +190,20 @@ export function EventsView({
 
           {/* Timeline */}
           <div className="flex-1 overflow-auto px-1 py-2">
-            <SessionTimeline events={timeline} loading={loadingTimeline} />
+            {timelineError ? (
+              <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
+                <p className="text-[11px] text-destructive">{timelineError}</p>
+                <button
+                  type="button"
+                  onClick={fetchTimeline}
+                  className="text-[11px] px-2 py-0.5 rounded border border-border text-foreground hover:bg-muted"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : (
+              <SessionTimeline events={timeline} loading={loadingTimeline} />
+            )}
           </div>
         </div>
       )}

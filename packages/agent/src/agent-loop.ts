@@ -39,6 +39,10 @@ export interface AgentLoopConfig {
   capabilityRouter?: CapabilityRouter;
   /** Optional plugin tool provider — merges active plugin tools into the agent's toolset */
   pluginTools?: PluginToolProvider;
+  /** Optional maximum token budget (input + output combined). Loop terminates gracefully when exceeded. */
+  maxTokenBudget?: number;
+  /** Optional abort signal — when aborted, the agent loop exits between turns */
+  signal?: AbortSignal;
 }
 
 export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentResponse> {
@@ -98,8 +102,19 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
   const guard = new LoopGuard();
+  let retryCount = 0;
+  const MAX_RETRIES = 3;
 
   for (let turn = 0; turn < maxTurns; turn++) {
+    // Check for abort between turns
+    if (config.signal?.aborted) {
+      return {
+        content: 'Agent loop aborted (client disconnected).',
+        toolsUsed,
+        usage: { inputTokens: totalInputTokens, outputTokens: totalOutputTokens },
+      };
+    }
+
     const body: Record<string, unknown> = {
       model,
       messages,
@@ -122,22 +137,30 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
     });
 
     if (response.status === 429) {
+      retryCount++;
+      if (retryCount >= MAX_RETRIES) {
+        throw new Error(`Rate limit retry cap exceeded (${MAX_RETRIES} consecutive 429 responses). Try again later.`);
+      }
       const retryAfter = parseInt(response.headers.get('retry-after') ?? '5', 10);
       const waitMs = Math.min(retryAfter * 1000, 60_000);
-      if (onToken) onToken(`\n[Rate limited — waiting ${retryAfter}s...]\n`);
+      if (onToken) onToken(`\n[Rate limited — waiting ${retryAfter}s (retry ${retryCount}/${MAX_RETRIES})...]\n`);
       await new Promise(r => setTimeout(r, waitMs));
-      turn--; // retry this turn
+      turn--; // retry this turn without consuming a turn
       continue;
     }
 
     if (!response.ok) {
       const errorBody = await response.text().catch(() => 'Unknown error');
       // Retry on transient server errors (502, 503, 504)
-      if ([502, 503, 504].includes(response.status) && turn < maxTurns - 1) {
-        const waitMs = Math.min(2000 * (turn + 1), 10_000);
-        if (onToken) onToken(`\n[Server error ${response.status} — retrying in ${waitMs / 1000}s...]\n`);
+      if ([502, 503, 504].includes(response.status)) {
+        retryCount++;
+        if (retryCount >= MAX_RETRIES) {
+          throw new Error(`Server error retry cap exceeded (${MAX_RETRIES} consecutive ${response.status} errors): ${errorBody}`);
+        }
+        const waitMs = Math.min(2000 * (retryCount), 10_000);
+        if (onToken) onToken(`\n[Server error ${response.status} — retrying in ${waitMs / 1000}s (retry ${retryCount}/${MAX_RETRIES})...]\n`);
         await new Promise(r => setTimeout(r, waitMs));
-        turn--; // retry this turn
+        turn--; // retry this turn without consuming a turn
         continue;
       }
       throw new Error(`LLM error (${response.status}): ${errorBody}`);
@@ -253,6 +276,17 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
 
     totalInputTokens += turnInputTokens;
     totalOutputTokens += turnOutputTokens;
+    retryCount = 0; // Reset retry counter on successful response
+
+    // Check token budget
+    if (config.maxTokenBudget && (totalInputTokens + totalOutputTokens) > config.maxTokenBudget) {
+      const used = totalInputTokens + totalOutputTokens;
+      return {
+        content: `Token budget exceeded (used ${used} tokens, limit ${config.maxTokenBudget}).`,
+        toolsUsed,
+        usage: { inputTokens: totalInputTokens, outputTokens: totalOutputTokens },
+      };
+    }
 
     // No tool calls — return the final response
     if (!assistantMessage.tool_calls || assistantMessage.tool_calls.length === 0) {

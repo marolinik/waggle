@@ -27,6 +27,12 @@ export default defineConfig({
       external: [
         /^@tauri-apps\/.*/,
       ],
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          markdown: ['marked', 'dompurify'],
+        },
+      },
     },
   },
 

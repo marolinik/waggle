@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 
 export interface Toast {
   id: string;
@@ -16,12 +16,12 @@ interface ToastContainerProps {
   maxVisible?: number;
 }
 
-const CATEGORY_COLORS: Record<string, string> = {
-  cron: '#3b82f6',
-  approval: '#10b981',
-  task: '#f59e0b',
-  message: '#8b5cf6',
-  agent: '#6366f1',
+const CATEGORY_BORDER_CLASS: Record<string, string> = {
+  cron: 'border-blue-500',
+  approval: 'border-green-500',
+  task: 'border-amber-500',
+  message: 'border-purple-500',
+  agent: 'border-indigo-500',
 };
 
 export function ToastContainer({ toasts, onDismiss, onAction, maxVisible = 3 }: ToastContainerProps) {
@@ -51,15 +51,11 @@ function ToastItem({ toast, onDismiss, onAction }: {
     return () => clearTimeout(timer);
   }, [toast.id, onDismiss]);
 
-  const color = CATEGORY_COLORS[toast.category] ?? '#6b7280';
+  const borderClass = CATEGORY_BORDER_CLASS[toast.category] ?? 'border-gray-500';
 
   return (
     <div
-      className={`bg-card rounded-lg px-3.5 py-2.5 min-w-[280px] max-w-[360px] shadow-[0_4px_12px_rgba(0,0,0,0.3)] pointer-events-auto border border-l-[3px] ${toast.actionUrl ? 'cursor-pointer' : 'cursor-default'}`}
-      style={{
-        borderColor: `${color}40`,
-        borderLeftColor: color,
-      }}
+      className={`bg-card rounded-lg px-3.5 py-2.5 min-w-[280px] max-w-[360px] shadow-[0_4px_12px_rgba(0,0,0,0.3)] pointer-events-auto border border-border/40 border-l-[3px] ${borderClass} ${toast.actionUrl ? 'cursor-pointer' : 'cursor-default'}`}
       onClick={() => {
         if (toast.actionUrl && onAction) onAction(toast.actionUrl);
         onDismiss(toast.id);

@@ -14,9 +14,11 @@ export interface MemoryViewProps {
   onFiltersChange: (filters: FrameFilters) => void;
   stats?: MemoryStats;
   loading: boolean;
+  error?: string | null;
+  onRetry?: () => void;
 }
 
-export function MemoryView({
+export default function MemoryView({
   frames,
   selectedFrame,
   onSelectFrame,
@@ -25,6 +27,8 @@ export function MemoryView({
   onFiltersChange,
   stats,
   loading,
+  error,
+  onRetry,
 }: MemoryViewProps) {
   return (
     <div className="h-full overflow-hidden">
@@ -37,6 +41,8 @@ export function MemoryView({
         onFiltersChange={onFiltersChange}
         stats={stats}
         loading={loading}
+        error={error}
+        onRetry={onRetry}
       />
     </div>
   );

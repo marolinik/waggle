@@ -8,6 +8,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { FastifyPluginAsync } from 'fastify';
+import { validateOrigin } from '../cors-config.js';
 
 interface OpenAIMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
@@ -136,12 +137,11 @@ export const anthropicProxyRoutes: FastifyPluginAsync = async (server) => {
       // Stream SSE — translate Anthropic stream to OpenAI stream format
       await reply.hijack();
       const raw = reply.raw;
-      const origin = request.headers.origin ?? '*';
       raw.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': origin,
+        'Access-Control-Allow-Origin': validateOrigin(request.headers.origin as string | undefined),
       });
 
       const reader = anthropicRes.body!.getReader();

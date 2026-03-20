@@ -4,8 +4,6 @@
  * Renders tabs with active state, close buttons, and a [+] new tab button.
  */
 
-import React from 'react';
-
 export interface Tab {
   id: string;
   label: string;

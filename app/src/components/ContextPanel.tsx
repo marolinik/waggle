@@ -13,7 +13,7 @@ import { useState, useCallback } from 'react';
 import type { Session, SessionSearchResult, Frame, FileEntry, TeamMember, ActivityItem, TeamMessage } from '@waggle/ui';
 import { SessionList, FrameDetail, FilePreview, TeamPresence, ActivityFeed, TeamMessages } from '@waggle/ui';
 
-type AppView = 'chat' | 'memory' | 'events' | 'capabilities' | 'cockpit' | 'settings';
+type AppView = 'chat' | 'memory' | 'events' | 'capabilities' | 'cockpit' | 'mission-control' | 'settings';
 
 export interface ContextPanelProps {
   currentView: AppView;

@@ -389,6 +389,9 @@ export type { NotificationEvent, UseNotificationsResult } from './hooks/useNotif
 export { useSubAgentStatus } from './hooks/useSubAgentStatus.js';
 export type { WorkflowSuggestion, UseSubAgentStatusResult } from './hooks/useSubAgentStatus.js';
 
+// SSE — shared singleton EventSource manager
+export { subscribeSSE, getActiveConnectionCount, getRefCount, resetSSEConnections } from './hooks/useSSEStream.js';
+
 // Components — notifications
 export { ToastContainer } from './components/ToastContainer.js';
 export type { Toast } from './components/ToastContainer.js';

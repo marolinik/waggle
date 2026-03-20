@@ -5,7 +5,6 @@
  * Orchestrates search, filtering, and frame selection.
  */
 
-import React from 'react';
 import type { Frame } from '../../services/types.js';
 import type { FrameFilters, MemoryStats } from './utils.js';
 import { FRAME_TYPES } from './utils.js';
@@ -22,6 +21,8 @@ export interface MemoryBrowserProps {
   onFiltersChange: (filters: FrameFilters) => void;
   stats?: MemoryStats;
   loading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
 }
 
 function formatBytes(bytes: number): string {
@@ -39,6 +40,8 @@ export function MemoryBrowser({
   onFiltersChange,
   stats,
   loading = false,
+  error = null,
+  onRetry,
 }: MemoryBrowserProps) {
   return (
     <div className="memory-browser flex h-full flex-col bg-background">
@@ -97,6 +100,19 @@ export function MemoryBrowser({
           {loading ? (
             <div className="flex items-center justify-center p-8 text-muted-foreground">
               <p className="text-sm animate-pulse">Loading memories...</p>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center h-full gap-3 text-center p-8">
+              <p className="text-sm text-destructive">Failed to load memories</p>
+              <p className="text-xs text-muted-foreground max-w-xs">{error}</p>
+              {onRetry && (
+                <button
+                  onClick={onRetry}
+                  className="rounded border border-border px-3 py-1.5 text-sm text-foreground hover:bg-secondary transition-colors"
+                >
+                  Retry
+                </button>
+              )}
             </div>
           ) : frames.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full gap-3 text-center p-8">

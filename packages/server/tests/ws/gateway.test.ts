@@ -1,5 +1,19 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { ConnectionManager } from '../../src/ws/connection-manager.js';
+import { setWsTokenVerifier } from '../../src/ws/gateway.js';
+
+/**
+ * Create a structurally valid JWT with a given payload.
+ * Header: {"alg":"HS256","typ":"JWT"}, signature: fake.
+ * This is NOT cryptographically signed — it's for testing JWT structure validation.
+ */
+function makeTestJwt(payload: Record<string, unknown>): string {
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
+    .toString('base64url');
+  const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const signature = Buffer.from('test-signature').toString('base64url');
+  return `${header}.${body}.${signature}`;
+}
 
 // ─── ConnectionManager unit tests ───────────────────────────────────────────
 
@@ -154,14 +168,17 @@ describe('WebSocket Gateway (integration)', () => {
   let server: Awaited<ReturnType<typeof import('../../src/index.js').buildServer>>;
   let address: string;
   let userId: string;
+  let clerkId: string;
   let teamSlug: string;
+  /** A structurally valid JWT whose sub matches our test user's clerkId */
+  let validJwt: string;
 
   beforeAll(async () => {
     const { buildServer } = await import('../../src/index.js');
     const { sql: drizzleSql } = await import('drizzle-orm');
     server = await buildServer();
 
-    // Override auth to bypass Clerk
+    // Override auth to bypass Clerk for REST routes
     (server as any)._authHandler.fn = async (req: any, reply: any) => {
       const testUserId = req.headers['x-test-user-id'] as string;
       if (!testUserId) return reply.code(401).send({ error: 'Missing test user' });
@@ -181,15 +198,28 @@ describe('WebSocket Gateway (integration)', () => {
 
     // Create test user and team with unique IDs
     const suffix = Date.now();
+    clerkId = `wstest_user_${suffix}`;
     const [user] = await server.db
       .insert(users)
       .values({
-        clerkId: `wstest_user_${suffix}`,
+        clerkId,
         displayName: 'WS User',
         email: `wsuser_${suffix}@test.com`,
       })
       .returning();
     userId = user.id;
+
+    // Build a valid test JWT with the user's clerkId as `sub`
+    validJwt = makeTestJwt({ sub: clerkId, iat: Math.floor(Date.now() / 1000) });
+
+    // Override the WS token verifier so tests don't need a real Clerk secret key.
+    // The verifier accepts any structurally valid JWT and returns its decoded `sub`.
+    setWsTokenVerifier(async (token: string) => {
+      const parts = token.split('.');
+      const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
+      if (typeof payload.sub !== 'string') throw new Error('Missing sub');
+      return { sub: payload.sub };
+    });
 
     teamSlug = `ws-test-team-${suffix}`;
     const [team] = await server.db
@@ -208,6 +238,9 @@ describe('WebSocket Gateway (integration)', () => {
   });
 
   afterAll(async () => {
+    // Clear the WS token verifier override
+    setWsTokenVerifier(null);
+
     if (!server) return;
     const { sql } = await import('drizzle-orm');
     await server.db.execute(
@@ -254,7 +287,7 @@ describe('WebSocket Gateway (integration)', () => {
   it('connects and authenticates via WebSocket', async () => {
     const { ws, messages } = await connectWs();
 
-    ws.send(JSON.stringify({ type: 'authenticate', token: userId }));
+    ws.send(JSON.stringify({ type: 'authenticate', token: validJwt }));
     await waitForMessages(messages, 1);
 
     expect(messages).toHaveLength(1);
@@ -277,7 +310,7 @@ describe('WebSocket Gateway (integration)', () => {
   it('joins team room after authentication', async () => {
     const { ws, messages } = await connectWs();
 
-    ws.send(JSON.stringify({ type: 'authenticate', token: userId }));
+    ws.send(JSON.stringify({ type: 'authenticate', token: validJwt }));
     await waitForMessages(messages, 1);
 
     ws.send(JSON.stringify({ type: 'join_team', teamSlug }));
@@ -291,7 +324,7 @@ describe('WebSocket Gateway (integration)', () => {
   it('returns error for nonexistent team', async () => {
     const { ws, messages } = await connectWs();
 
-    ws.send(JSON.stringify({ type: 'authenticate', token: userId }));
+    ws.send(JSON.stringify({ type: 'authenticate', token: validJwt }));
     await waitForMessages(messages, 1);
 
     ws.send(JSON.stringify({ type: 'join_team', teamSlug: 'does-not-exist' }));
@@ -305,7 +338,7 @@ describe('WebSocket Gateway (integration)', () => {
   it('rejects send_message before joining team', async () => {
     const { ws, messages } = await connectWs();
 
-    ws.send(JSON.stringify({ type: 'authenticate', token: userId }));
+    ws.send(JSON.stringify({ type: 'authenticate', token: validJwt }));
     await waitForMessages(messages, 1);
 
     ws.send(
@@ -331,6 +364,63 @@ describe('WebSocket Gateway (integration)', () => {
     await wait(200);
 
     expect(messages[0]).toEqual({ type: 'error', message: 'Invalid message' });
+
+    ws.close();
+  });
+
+  // ─── JWT auth security tests ──────────────────────────────────────────────
+
+  it('rejects plain userId string as token (not a JWT)', async () => {
+    const { ws, messages } = await connectWs();
+
+    // Sending a raw userId (UUID) should be rejected — it's not a JWT
+    ws.send(JSON.stringify({ type: 'authenticate', token: userId }));
+    await waitForMessages(messages, 1);
+
+    expect(messages[0]).toEqual({
+      type: 'error',
+      message: 'Invalid token: must be a valid JWT',
+    });
+
+    ws.close();
+  });
+
+  it('rejects random non-JWT string as token', async () => {
+    const { ws, messages } = await connectWs();
+
+    ws.send(JSON.stringify({ type: 'authenticate', token: 'not-a-jwt-token' }));
+    await waitForMessages(messages, 1);
+
+    expect(messages[0]).toEqual({
+      type: 'error',
+      message: 'Invalid token: must be a valid JWT',
+    });
+
+    ws.close();
+  });
+
+  it('rejects JWT with nonexistent user (unknown clerkId)', async () => {
+    const { ws, messages } = await connectWs();
+
+    const fakeJwt = makeTestJwt({ sub: 'clerk_user_does_not_exist', iat: Math.floor(Date.now() / 1000) });
+    ws.send(JSON.stringify({ type: 'authenticate', token: fakeJwt }));
+    await waitForMessages(messages, 1);
+
+    expect(messages[0]).toEqual({
+      type: 'error',
+      message: 'User not found',
+    });
+
+    ws.close();
+  });
+
+  it('authenticates with valid JWT and maps clerkId to internal userId', async () => {
+    const { ws, messages } = await connectWs();
+
+    ws.send(JSON.stringify({ type: 'authenticate', token: validJwt }));
+    await waitForMessages(messages, 1);
+
+    expect(messages[0]).toEqual({ type: 'authenticated', userId });
 
     ws.close();
   });

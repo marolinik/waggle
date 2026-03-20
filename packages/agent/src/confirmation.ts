@@ -37,7 +37,18 @@ const DESTRUCTIVE_BASH_PATTERNS = [
   /\bchmod\b/,
   /\bchown\b/,
   /\bsudo\b/,
+  // Exfiltration patterns
+  /\bcurl\s+.*-d\b/,
+  /\bcurl\s+.*--data\b/,
+  /\bwget\s+.*--post\b/,
+  /\bnc\s/,
+  /\bncat\s/,
+  /\bnetcat\s/,
 ];
+
+// Chain operators that could be used to bypass safe pattern checks.
+// If ANY of these appear in a command, we never auto-approve via safe patterns.
+const CHAIN_OPERATORS = /&&|\|\||;|\|/;
 
 /** Known high-risk connector actions (never trust LLM-provided metadata for this) */
 const CONNECTOR_HIGH_RISK_ACTIONS = new Set([
@@ -64,9 +75,17 @@ export function needsConfirmation(toolName: string, args?: Record<string, unknow
   const command = String(args?.command ?? '').trim();
   if (!command) return true; // empty command — suspicious, confirm
 
-  // Check if it matches a safe pattern
-  for (const pattern of SAFE_BASH_PATTERNS) {
-    if (pattern.test(command)) return false;
+  // If the command contains chain operators (&&, ||, ;, |), ALWAYS require
+  // confirmation regardless of safe patterns. An attacker could prepend a
+  // benign command (e.g. `echo hello`) to smuggle a dangerous payload past
+  // the safe-pattern check.
+  const hasChainOperator = CHAIN_OPERATORS.test(command);
+
+  // Check if it matches a safe pattern (only if no chain operators)
+  if (!hasChainOperator) {
+    for (const pattern of SAFE_BASH_PATTERNS) {
+      if (pattern.test(command)) return false;
+    }
   }
 
   // Check if it matches a destructive pattern

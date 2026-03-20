@@ -4,7 +4,7 @@
  * PM-6: Offline indicator with queued message count.
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 import { formatTokenCount, formatCost } from './utils.js';
 
 /** PM-6: Offline state passed from the app */
@@ -51,7 +51,7 @@ function WifiOffIcon() {
   );
 }
 
-export function StatusBar({
+export const StatusBar = memo(function StatusBar({
   model,
   workspace,
   tokens,
@@ -86,7 +86,7 @@ export function StatusBar({
 
   return (
     <footer
-      className="waggle-statusbar flex items-center justify-between h-7 px-3 text-xs bg-[#0a0a1a] text-muted-foreground border-t border-border"
+      className="waggle-statusbar flex items-center justify-between h-7 px-3 text-xs bg-card text-muted-foreground border-t border-border"
     >
       <div className="flex gap-4 items-center">
         <span>{workspace}</span>
@@ -96,7 +96,7 @@ export function StatusBar({
         {isOffline && (
           <div ref={offlineRef} className="relative">
             <button
-              className="waggle-offline-indicator inline-flex items-center gap-1 bg-[#d4a843] text-[#1a1a2e] border-none rounded px-2 py-0.5 text-[11px] font-semibold cursor-pointer animate-[waggle-offline-pulse_2s_ease-in-out_infinite]"
+              className="waggle-offline-indicator inline-flex items-center gap-1 bg-primary text-primary-foreground border-none rounded px-2 py-0.5 text-[11px] font-semibold cursor-pointer animate-[waggle-offline-pulse_2s_ease-in-out_infinite]"
               onClick={() => setShowOfflineTooltip(prev => !prev)}
               title="LLM connection lost"
             >
@@ -104,7 +104,7 @@ export function StatusBar({
               Offline
               {offlineStatus.queuedMessages > 0 && (
                 <span
-                  className="waggle-offline-badge inline-flex items-center justify-center bg-[#1a1a2e] text-[#d4a843] rounded-full w-4 h-4 text-[10px] font-bold ml-0.5"
+                  className="waggle-offline-badge inline-flex items-center justify-center bg-primary-foreground text-primary rounded-full w-4 h-4 text-[10px] font-bold ml-0.5"
                 >
                   {offlineStatus.queuedMessages}
                 </span>
@@ -115,7 +115,7 @@ export function StatusBar({
               <div
                 className="absolute bottom-7 left-0 min-w-[260px] bg-card border border-border rounded-md shadow-[0_-4px_16px_rgba(0,0,0,0.5)] z-[1000] px-3.5 py-2.5 text-xs text-foreground"
               >
-                <div className="font-semibold mb-1.5 text-[#d4a843]">
+                <div className="font-semibold mb-1.5 text-primary">
                   LLM Connection Lost
                 </div>
                 <div className="mb-1 text-muted-foreground">
@@ -178,4 +178,4 @@ export function StatusBar({
       </div>
     </footer>
   );
-}
+});

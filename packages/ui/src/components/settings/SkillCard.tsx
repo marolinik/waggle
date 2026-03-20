@@ -4,7 +4,6 @@
  * Matches the dark-theme inline-style pattern used by CapabilitySection.
  */
 
-import React from 'react';
 import type { StarterSkillEntry } from '../../services/types.js';
 
 export interface SkillCardProps {

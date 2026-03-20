@@ -9,7 +9,7 @@
  *          type/category/sort chips, improved UX.
  */
 
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { InstallCenter } from '@waggle/ui';
 import { getServerBaseUrl } from '../lib/ipc';
 
@@ -120,10 +120,10 @@ export function priorityLabel(priority: string): string {
 
 export function priorityColor(priority: string): string {
   switch (priority) {
-    case 'core': return '#d4a843';
-    case 'recommended': return 'var(--primary, #58a6ff)';
-    case 'optional': return 'var(--text-muted, #8b949e)';
-    default: return 'var(--text-muted, #8b949e)';
+    case 'core': return 'text-primary';
+    case 'recommended': return 'text-blue-500';
+    case 'optional': return 'text-muted-foreground';
+    default: return 'text-muted-foreground';
   }
 }
 
@@ -138,10 +138,10 @@ export function installTypeLabel(type: string): string {
 
 export function installTypeColor(type: string): string {
   switch (type) {
-    case 'skill': return '#3fb950';
-    case 'plugin': return 'var(--primary, #58a6ff)';
-    case 'mcp': return '#d4a843';
-    default: return 'var(--text-muted, #8b949e)';
+    case 'skill': return 'text-green-500';
+    case 'plugin': return 'text-blue-500';
+    case 'mcp': return 'text-primary';
+    default: return 'text-muted-foreground';
   }
 }
 
@@ -157,7 +157,7 @@ function installTypeBadgeClasses(type: string): string {
   switch (type) {
     case 'skill': return 'bg-green-500/10 text-green-500 border-green-500/20';
     case 'plugin': return 'bg-primary/10 text-primary border-primary/20';
-    case 'mcp': return 'bg-[#d4a843]/10 text-[#d4a843] border-[#d4a843]/20';
+    case 'mcp': return 'bg-primary/10 text-primary border-primary/20';
     default: return 'bg-muted/10 text-muted-foreground border-border';
   }
 }
@@ -190,7 +190,7 @@ function skillLabelClasses(state: string): string {
 
 // ── Component ────────────────────────────────────────────────────────────
 
-export function CapabilitiesView() {
+export default function CapabilitiesView() {
   const [activeTab, setActiveTab] = useState<'packs' | 'marketplace' | 'skills'>('packs');
 
   // ── Create Skill panel state ──
@@ -667,7 +667,7 @@ export function CapabilitiesView() {
           {/* ── Recommended Section ─────────────────────────────────── */}
           <div className="flex items-center gap-2 mb-4 mt-2">
             <span className="text-[13px] font-semibold text-foreground tracking-wide">Recommended</span>
-            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-widest bg-[#d4a843]/15 text-[#d4a843]">Waggle</span>
+            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-widest bg-primary/15 text-primary">Waggle</span>
           </div>
 
           {packsLoading ? (
@@ -688,7 +688,7 @@ export function CapabilitiesView() {
             <div className="text-muted-foreground text-xs p-6">No recommended packs available.</div>
           ) : (
             packs.map(pack => (
-              <div key={pack.id} className="bg-card border border-border border-l-[3px] border-l-[#d4a843]/50 rounded-lg p-4 mb-3">
+              <div key={pack.id} className="bg-card border border-border border-l-[3px] border-l-primary/50 rounded-lg p-4 mb-3">
                 <div className="flex justify-between items-start">
                   <div>
                     <div className="text-sm font-semibold text-foreground mb-1">{pack.name}</div>
@@ -758,7 +758,7 @@ export function CapabilitiesView() {
                     key={cp.slug}
                     className={`bg-card border border-border rounded-lg p-4 mb-3 ${
                       cp.priority === 'core'
-                        ? 'border-l-[3px] border-l-[#d4a843]/30 shadow-[0_0_8px_rgba(212,168,67,0.06)]'
+                        ? 'border-l-[3px] border-l-primary/30 shadow-sm'
                         : 'border-l-[3px] border-l-transparent'
                     }`}
                     data-testid={`community-pack-${cp.slug}`}
@@ -768,9 +768,7 @@ export function CapabilitiesView() {
                         <div className="flex items-center gap-2 mb-1">
                           {cp.icon && <span className="text-base">{cp.icon}</span>}
                           <span className="text-sm font-semibold text-foreground">{cp.display_name}</span>
-                          <span className="text-[10px] px-1.5 py-px rounded bg-primary/[0.08] border border-primary/10 text-muted-foreground"
-                            style={{ color: priorityColor(cp.priority) }}
-                          >
+                          <span className={`text-[10px] px-1.5 py-px rounded bg-primary/[0.08] border border-primary/10 ${priorityColor(cp.priority)}`}>
                             {priorityLabel(cp.priority)}
                           </span>
                         </div>
@@ -789,7 +787,7 @@ export function CapabilitiesView() {
                         {isInstalled ? (
                           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusBadgeClasses('complete')}`}>Installed</span>
                         ) : isInstalling ? (
-                          <span className="text-[11px] text-[#d4a843] font-medium">
+                          <span className="text-[11px] text-primary font-medium">
                             Installing {progress.current}/{progress.total}...
                           </span>
                         ) : progress?.done && progress.errors.length > 0 ? (
@@ -813,9 +811,9 @@ export function CapabilitiesView() {
                     {/* Progress bar */}
                     {isInstalling && progress && (
                       <div>
-                        <div className="h-1 bg-white/[0.06] rounded-sm mt-2 overflow-hidden">
+                        <div className="h-1 bg-muted/15 rounded-sm mt-2 overflow-hidden">
                           <div
-                            className="h-full bg-[#d4a843] rounded-sm transition-[width] duration-300 ease-in-out"
+                            className="h-full bg-primary rounded-sm transition-[width] duration-300 ease-in-out"
                             style={{ width: progress.total > 0 ? `${(progress.current / progress.total) * 100}%` : '0%' }}
                           />
                         </div>
@@ -1039,7 +1037,7 @@ export function CapabilitiesView() {
                             <span className="text-[10px] px-1.5 py-px rounded bg-card text-muted-foreground border border-border">{pkg.category}</span>
                           )}
                           {pkg.stars > 0 && (
-                            <span className="text-[10px] text-[#d4a843] flex items-center gap-[3px]">
+                            <span className="text-[10px] text-primary flex items-center gap-[3px]">
                               <span className="text-[11px]">{'\u2605'}</span>
                               {formatDownloads(pkg.stars)}
                             </span>
@@ -1209,7 +1207,7 @@ export function CapabilitiesView() {
                   className={`border-none rounded-md px-5 py-2 text-[13px] font-semibold transition-colors ${
                     creating
                       ? 'bg-muted text-muted-foreground cursor-default opacity-70'
-                      : 'bg-[#d4a843] text-black cursor-pointer hover:bg-[#d4a843]/90'
+                      : 'bg-primary text-primary-foreground cursor-pointer hover:bg-primary/90'
                   }`}
                   data-testid="create-skill-submit"
                 >

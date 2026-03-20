@@ -187,6 +187,9 @@ export class HybridSearch {
   }
 
   async indexFrame(frameId: number, content: string): Promise<void> {
+    if (!Number.isFinite(frameId)) {
+      throw new Error('Invalid frame ID for vector indexing');
+    }
     const embedding = await this.embedder.embed(content);
     const raw = this.db.getDatabase();
     // sqlite-vec vec0 requires rowid as SQL literal (parameterized rowid not supported)
@@ -198,6 +201,11 @@ export class HybridSearch {
 
   async indexFramesBatch(frames: { id: number; content: string }[]): Promise<void> {
     if (frames.length === 0) return;
+    for (const f of frames) {
+      if (!Number.isFinite(f.id)) {
+        throw new Error('Invalid frame ID for vector indexing');
+      }
+    }
     const contents = frames.map(f => f.content);
     const embeddings = await this.embedder.embedBatch(contents);
     const raw = this.db.getDatabase();

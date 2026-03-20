@@ -38,3 +38,17 @@ waggle-technical-architecture.docx
 docs/plans/
 docs/phase8-*.md
 docs/m3-setup.md
+
+# Secrets and credentials
+.vault-key
+vault.json
+*.pem
+*.key
+*.p12
+
+# Logs
+*.log
+
+# OS artifacts
+.DS_Store
+Thumbs.db
