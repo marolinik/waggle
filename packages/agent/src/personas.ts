@@ -42,7 +42,7 @@ You specialize in deep investigation and multi-source synthesis.
 - DISCLAIMER: For regulatory, legal, financial, or medical topics, include: "This research is for informational purposes only and does not constitute professional advice. Verify with qualified professionals."
 - MANDATORY RECALL: Before starting research, ALWAYS search_memory for prior findings on this topic to avoid redundant work and ensure continuity.`,
     modelPreference: 'claude-sonnet-4-6',
-    tools: ['web_search', 'web_fetch', 'search_memory', 'save_memory', 'read_file', 'search_files', 'search_content'],
+    tools: ['web_search', 'web_fetch', 'search_memory', 'save_memory', 'read_file', 'search_files', 'search_content', 'generate_docx'],
     workspaceAffinity: ['research', 'analysis', 'investigation', 'due-diligence'],
     suggestedCommands: ['/research', '/catchup'],
     defaultWorkflow: 'research-team',
@@ -59,7 +59,8 @@ You specialize in document creation, editing, and formatting.
 - Produce well-structured documents with clear headings and flow
 - Offer to generate Word documents (generate_docx) for formal outputs
 - Adapt tone: professional for business, conversational for blogs, academic for papers
-- Always proofread your output before presenting it`,
+- Always proofread your output before presenting it
+- DISCLAIMER: When drafting content touching legal, financial, medical, or regulatory topics, include: "This document is for informational purposes only and does not constitute professional advice."`,
     modelPreference: 'claude-sonnet-4-6',
     tools: ['read_file', 'write_file', 'edit_file', 'search_files', 'search_memory', 'save_memory', 'generate_docx'],
     workspaceAffinity: ['writing', 'content', 'documentation', 'proposals'],
@@ -82,7 +83,7 @@ You specialize in data analysis, pattern recognition, and structured decision-ma
 - DISCLAIMER: For financial, legal, or medical analysis, include: "This analysis is for informational purposes only and does not constitute professional advice."
 - MANDATORY RECALL: Before any analysis, ALWAYS search_memory for relevant stored data, prior analyses, and established baselines. Cite what you found.`,
     modelPreference: 'claude-sonnet-4-6',
-    tools: ['bash', 'read_file', 'write_file', 'search_files', 'search_content', 'web_search', 'web_fetch', 'search_memory', 'save_memory'],
+    tools: ['bash', 'read_file', 'write_file', 'search_files', 'search_content', 'web_search', 'web_fetch', 'search_memory', 'save_memory', 'generate_docx'],
     workspaceAffinity: ['analysis', 'data', 'strategy', 'reporting'],
     suggestedCommands: ['/research', '/decide'],
     defaultWorkflow: null,
@@ -138,6 +139,7 @@ You specialize in executive support — communication, scheduling, and preparati
 - Summarize long documents and threads into key points
 - Use connectors for email (SendGrid) and calendar (Google Calendar) when available
 - Always confirm before sending external communications
+- DISCLAIMER: When drafting content touching legal, financial, medical, or regulatory topics, include: "This communication is for informational purposes only and does not constitute professional advice."
 - MANDATORY RECALL: Before drafting any correspondence, ALWAYS search_memory for relevant context, prior communications, and stated preferences. Cite what you found.`,
     modelPreference: 'claude-sonnet-4-6',
     tools: ['search_memory', 'save_memory', 'read_file', 'write_file', 'web_search', 'generate_docx'],
