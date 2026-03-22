@@ -131,34 +131,47 @@ export function CostDashboardCard({ costSummary, workspaceCosts }: CostDashboard
           {/* ── 7-day trend bar chart ───────────────────────── */}
           <div>
             <div className="text-[11px] text-muted-foreground mb-1.5 font-medium">Last 7 days</div>
-            <div className="flex items-end gap-[3px] h-10">
-              {daily.slice(-7).map((d) => {
-                const heightPct = maxDailyCost > 0 ? Math.max((d.cost / maxDailyCost) * 100, 2) : 2;
-                const isToday = d.date === daily[daily.length - 1]?.date;
-                return (
-                  <div
-                    key={d.date}
-                    className="flex-1 flex flex-col items-center gap-0.5"
-                    title={`${d.date}: ${formatCost(d.cost)} (${formatTokens(d.inputTokens + d.outputTokens)} tokens)`}
-                  >
-                    <div
-                      className={cn(
-                        'w-full rounded-t-sm min-h-[2px] transition-all',
-                        isToday ? 'bg-primary' : 'bg-primary/40',
-                      )}
-                      style={{ height: `${heightPct}%` }}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-            <div className="flex justify-between text-[9px] text-muted-foreground mt-0.5">
-              {daily.slice(-7).map((d, i) => (
-                <span key={d.date} className="flex-1 text-center">
-                  {i === 0 || i === 6 ? d.date.slice(5) : ''}
-                </span>
-              ))}
-            </div>
+            {daily.length === 0 ? (
+              <div className="flex items-center justify-center h-10 text-[10px] text-muted-foreground/40">
+                No usage data yet — send messages to start tracking
+              </div>
+            ) : (
+              <>
+                <div className="flex items-end gap-[3px] h-12">
+                  {daily.slice(-7).map((d) => {
+                    // IMP-6: Use pixel height for reliable rendering instead of percentage
+                    const maxH = 48; // h-12 = 48px
+                    const barH = maxDailyCost > 0 ? Math.max(Math.round((d.cost / maxDailyCost) * maxH), 4) : 4;
+                    const isToday = d.date === daily[daily.length - 1]?.date;
+                    return (
+                      <div
+                        key={d.date}
+                        className="flex-1 flex flex-col items-center justify-end"
+                        title={`${d.date}: ${formatCost(d.cost)} (${formatTokens(d.inputTokens + d.outputTokens)} tokens)`}
+                      >
+                        <div className="text-[8px] text-muted-foreground/40 mb-0.5">
+                          {d.cost > 0 ? formatCost(d.cost) : ''}
+                        </div>
+                        <div
+                          className={cn(
+                            'w-full rounded-t-sm transition-all',
+                            isToday ? 'bg-primary' : 'bg-primary/40',
+                          )}
+                          style={{ height: `${barH}px` }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex justify-between text-[9px] text-muted-foreground mt-0.5">
+                  {daily.slice(-7).map((d, i) => (
+                    <span key={d.date} className="flex-1 text-center">
+                      {i === 0 || i === daily.slice(-7).length - 1 ? d.date.slice(5) : ''}
+                    </span>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
 
           {/* ── Per-workspace breakdown ──────────────────────── */}

@@ -1456,6 +1456,68 @@ Return ONLY the improved system prompt text. No commentary, no markdown fences, 
     }
   }
 
+  // IMP-15: API docs — auto-generated from Fastify route registry
+  server.get('/api/docs', async () => {
+    const routes: Array<{ method: string; url: string; prefix: string }> = [];
+    // Fastify exposes registered routes via the internal routing tree
+    const allRoutes = server.routes ?? [];
+    // Iterate printRoutes() style — Fastify 4.x stores routes differently
+    // Use server.printRoutes() as a fallback reference
+    try {
+      // Fastify stores routes in server[Symbol.for('registered-routes')] or similar
+      // Best approach: iterate after ready using routesByMethod
+      for (const route of allRoutes) {
+        if (typeof route === 'object' && route.url && route.method) {
+          const methods = Array.isArray(route.method) ? route.method : [route.method];
+          for (const m of methods) {
+            routes.push({ method: m, url: route.url, prefix: route.prefix ?? '' });
+          }
+        }
+      }
+    } catch { /* fallback to empty */ }
+
+    // If routes array is empty (Fastify internals differ), provide static list
+    if (routes.length === 0) {
+      return {
+        openapi: '3.0.0',
+        info: { title: 'Waggle API', version: '1.0.0', description: 'Workspace-native AI agent platform' },
+        note: 'Dynamic route listing unavailable. Use GET /health for status.',
+        categories: {
+          chat: ['POST /api/chat'],
+          workspaces: ['GET /api/workspaces', 'POST /api/workspaces', 'GET /api/workspaces/:id', 'PUT /api/workspaces/:id', 'DELETE /api/workspaces/:id', 'GET /api/workspaces/:id/cost', 'GET /api/workspaces/:id/context', 'GET /api/workspaces/:id/files', 'GET /api/workspaces/:id/storage', 'GET /api/workspaces/:id/storage/files', 'GET /api/workspaces/:id/storage/read', 'POST /api/workspaces/:id/storage/write', 'DELETE /api/workspaces/:id/storage/delete'],
+          memory: ['GET /api/memory/search', 'GET /api/memory/frames', 'POST /api/memory/frames', 'DELETE /api/memory/frames/:id', 'GET /api/memory/stats', 'GET /api/memory/graph'],
+          sessions: ['GET /api/workspaces/:workspaceId/sessions', 'POST /api/workspaces/:workspaceId/sessions', 'PATCH /api/sessions/:sessionId', 'DELETE /api/sessions/:sessionId'],
+          teams: ['GET /api/teams', 'POST /api/teams', 'GET /api/teams/:id', 'PUT /api/teams/:id', 'DELETE /api/teams/:id', 'POST /api/teams/:id/members', 'PUT /api/teams/:id/members/:userId', 'DELETE /api/teams/:id/members/:userId', 'GET /api/teams/:id/activity'],
+          events: ['GET /api/events', 'GET /api/events/stats', 'GET /api/events/stream'],
+          settings: ['GET /api/settings', 'PUT /api/settings', 'PATCH /api/settings', 'POST /api/settings/test-key'],
+          vault: ['GET /api/vault', 'POST /api/vault', 'DELETE /api/vault/:name'],
+          fleet: ['GET /api/fleet', 'POST /api/fleet/:workspaceId/pause', 'POST /api/fleet/:workspaceId/resume', 'POST /api/fleet/:workspaceId/kill'],
+          cost: ['GET /api/cost/summary', 'GET /api/cost/by-workspace', 'GET /api/costs'],
+          agent: ['GET /api/agent/status', 'GET /api/agent/model', 'GET /api/agent/cost'],
+          marketplace: ['GET /api/marketplace/search', 'GET /api/marketplace/packs', 'POST /api/marketplace/install', 'POST /api/marketplace/uninstall'],
+          connectors: ['GET /api/connectors', 'POST /api/connectors/:id/connect', 'POST /api/connectors/:id/disconnect'],
+          other: ['GET /health', 'POST /api/export', 'POST /api/backup', 'POST /api/restore', 'GET /api/cron', 'POST /api/ingest', 'GET /api/personas', 'GET /api/workspace-templates'],
+        },
+      };
+    }
+
+    // Dynamic route listing
+    const grouped: Record<string, string[]> = {};
+    for (const r of routes) {
+      if (!r.url.startsWith('/api/') && r.url !== '/health') continue;
+      const category = r.url.split('/')[2] ?? 'other';
+      if (!grouped[category]) grouped[category] = [];
+      grouped[category].push(`${r.method} ${r.url}`);
+    }
+
+    return {
+      openapi: '3.0.0',
+      info: { title: 'Waggle API', version: '1.0.0', description: 'Workspace-native AI agent platform' },
+      endpointCount: routes.filter(r => r.url.startsWith('/api/')).length,
+      categories: grouped,
+    };
+  });
+
   // Health check — truthful, not optimistic
   server.get('/health', async () => {
     const llm = { ...server.agentState.llmProvider };

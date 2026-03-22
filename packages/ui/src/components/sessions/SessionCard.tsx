@@ -93,9 +93,24 @@ export function SessionCard({
           {session.summary}
         </span>
       )}
-      <span className="session-card__meta block text-xs text-muted-foreground">
-        {session.messageCount} messages · {formatLastActive(session.lastActive)}
-      </span>
+      <div className="session-card__meta flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+        <span>{session.messageCount} msg</span>
+        <span className="text-muted-foreground/30">·</span>
+        <span>{formatLastActive(session.lastActive)}</span>
+        {/* IMP-13: Inline delete button for quick access */}
+        {onDelete && !editing && (
+          <>
+            <span className="text-muted-foreground/30 ml-auto">·</span>
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className="text-[10px] text-muted-foreground/30 hover:text-destructive transition-colors"
+              title="Delete session"
+            >
+              ×
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 
