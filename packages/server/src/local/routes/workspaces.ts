@@ -60,14 +60,19 @@ function composeWorkspaceSummary(
 }
 
 export const workspaceRoutes: FastifyPluginAsync = async (server) => {
-  // GET /api/workspaces — list all workspaces (F6: optional ?group filter)
+  // GET /api/workspaces — list all workspaces (F6: optional ?group and ?teamId filters)
   server.get<{
-    Querystring: { group?: string };
+    Querystring: { group?: string; teamId?: string };
   }>('/api/workspaces', async (request) => {
-    const workspaces = server.workspaceManager.list();
+    let workspaces = server.workspaceManager.list();
     const groupFilter = request.query.group;
+    const teamFilter = request.query.teamId;
     if (groupFilter) {
-      return workspaces.filter(ws => ws.group === groupFilter);
+      workspaces = workspaces.filter(ws => ws.group === groupFilter);
+    }
+    // F3: Filter by teamId — return only workspaces linked to this team
+    if (teamFilter) {
+      workspaces = workspaces.filter((ws: any) => ws.teamId === teamFilter || ws.team === teamFilter);
     }
     return workspaces;
   });

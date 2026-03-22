@@ -105,6 +105,7 @@ import { backupRoutes } from './routes/backup.js';
 import { offlineRoutes } from './routes/offline.js';
 import { weaverRoutes } from './routes/weaver.js';
 import { eventRoutes, closeAuditDb, cleanupAuditEvents } from './routes/events.js';
+import { closeTeamsDb } from './routes/team.js';
 import { OfflineManager } from './offline-manager.js';
 import { securityMiddleware } from './security-middleware.js';
 import { LocalScheduler } from './cron.js';
@@ -1570,8 +1571,9 @@ Return ONLY the improved system prompt text. No commentary, no markdown fences, 
     workspaceMindCache.clear();
     multiMind.close();
 
-    // Close audit DB
+    // Close audit DB and teams DB
     closeAuditDb();
+    closeTeamsDb();
 
     // Close marketplace DB
     if (marketplaceDb) {

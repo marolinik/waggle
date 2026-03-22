@@ -54,7 +54,7 @@ export interface AuditEvent {
 
 let auditDb: Database.Database | null = null;
 
-function getAuditDb(dataDir: string): Database.Database {
+export function getAuditDb(dataDir: string): Database.Database {
   if (auditDb) return auditDb;
 
   const dbPath = path.join(dataDir, 'audit.db');
