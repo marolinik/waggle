@@ -389,7 +389,7 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
   // PUT /api/workspaces/:id — update workspace
   server.put<{
     Params: { id: string };
-    Body: { name?: string; group?: string; icon?: string; model?: string; personaId?: string | null; directory?: string };
+    Body: { name?: string; group?: string; icon?: string; model?: string; personaId?: string | null; directory?: string; budget?: number | null };
   }>('/api/workspaces/:id', async (request, reply) => {
     assertSafeSegment(request.params.id, 'id');
     const existing = server.workspaceManager.get(request.params.id);
@@ -414,5 +414,51 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
     server.workspaceManager.delete(request.params.id);
     emitAuditEvent(server, { workspaceId: request.params.id, eventType: 'workspace_delete' });
     return reply.status(204).send();
+  });
+
+  // GET /api/workspaces/:id/cost — per-workspace cost and budget status
+  server.get<{ Params: { id: string } }>('/api/workspaces/:id/cost', async (request, reply) => {
+    assertSafeSegment(request.params.id, 'id');
+    const ws = server.workspaceManager.get(request.params.id);
+    if (!ws) {
+      return reply.status(404).send({ error: 'Workspace not found' });
+    }
+
+    const costTracker = server.agentState.costTracker;
+    const used = costTracker.getWorkspaceCost(request.params.id);
+    const budget = (ws as any).budget ?? null;
+    const remaining = budget != null ? Math.max(0, budget - used) : null;
+
+    // Budget status
+    let budgetStatus: 'ok' | 'warning' | 'exceeded' = 'ok';
+    if (budget != null && budget > 0) {
+      const pct = (used / budget) * 100;
+      if (pct >= 100) budgetStatus = 'exceeded';
+      else if (pct >= 80) budgetStatus = 'warning';
+    }
+
+    // Usage history (last 7 days from cost tracker entries)
+    const entries = costTracker.getUsageEntries();
+    const wsEntries = entries.filter((e: any) => e.workspaceId === request.params.id);
+    const dailyMap = new Map<string, number>();
+    for (const e of wsEntries) {
+      const day = (e as any).timestamp?.slice(0, 10) ?? '';
+      if (!day) continue;
+      const cost = costTracker.calculateCost((e as any).input, (e as any).output, (e as any).model);
+      dailyMap.set(day, (dailyMap.get(day) ?? 0) + cost);
+    }
+    const history = Array.from(dailyMap.entries())
+      .map(([date, cost]) => ({ date, cost: Math.round(cost * 10000) / 10000 }))
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(-7);
+
+    return {
+      used: Math.round(used * 10000) / 10000,
+      budget,
+      remaining: remaining != null ? Math.round(remaining * 10000) / 10000 : null,
+      budgetStatus,
+      turns: wsEntries.length,
+      history,
+    };
   });
 };

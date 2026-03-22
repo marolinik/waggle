@@ -13,16 +13,31 @@ export async function fleetRoutes(fastify: FastifyInstance) {
       return { sessions: [], count: 0 };
     }
 
-    const sessions = sessionManager.getActive().map((s: any) => ({
-      workspaceId: s.workspaceId,
-      personaId: s.personaId,
-      status: s.status,
-      lastActivity: s.lastActivity,
-      durationMs: Date.now() - s.lastActivity,
-      toolCount: s.tools?.length ?? 0,
-    }));
+    const costTracker = fastify.agentState?.costTracker;
+    const sessions = sessionManager.getActive().map((s: any) => {
+      // Enrich with workspace config (model, budget)
+      const wsConfig = fastify.workspaceManager?.get(s.workspaceId);
+      const wsCost = costTracker?.getWorkspaceCost(s.workspaceId) ?? 0;
+      return {
+        workspaceId: s.workspaceId,
+        workspaceName: wsConfig?.name ?? s.workspaceId,
+        personaId: s.personaId ?? wsConfig?.personaId ?? null,
+        model: wsConfig?.model ?? fastify.agentState?.currentModel ?? 'default',
+        status: s.status,
+        lastActivity: s.lastActivity,
+        durationMs: Date.now() - s.lastActivity,
+        toolCount: s.tools?.length ?? 0,
+        tokensUsed: 0, // TODO: track per-session tokens
+        costEstimate: Math.round(wsCost * 10000) / 10000,
+      };
+    });
 
-    return { sessions, count: sessions.length, maxSessions: 3 };
+    // Tier-based maxSessions: Solo=3, Teams=10, Business=25, Enterprise=unlimited
+    const tier = (fastify as any).localConfig?.tier ?? 'solo';
+    const maxByTier: Record<string, number> = { solo: 3, teams: 10, business: 25, enterprise: 100 };
+    const maxSessions = maxByTier[tier] ?? 3;
+
+    return { sessions, count: sessions.length, maxSessions };
   });
 
   // POST /api/fleet/:workspaceId/pause — pause a workspace session

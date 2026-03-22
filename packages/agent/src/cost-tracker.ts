@@ -81,6 +81,17 @@ export class CostTracker {
     return { totalInputTokens: totalInput, totalOutputTokens: totalOutput, estimatedCost: totalCost, turns: this.usage.length, byModel };
   }
 
+  /** Get total estimated cost for a specific workspace (current session). */
+  getWorkspaceCost(workspaceId: string): number {
+    let total = 0;
+    for (const u of this.usage) {
+      if (u.workspaceId === workspaceId) {
+        total += this.calculateCost(u.input, u.output, u.model);
+      }
+    }
+    return total;
+  }
+
   formatSummary(): string {
     const stats = this.getStats();
     return `Tokens: ${stats.totalInputTokens} in / ${stats.totalOutputTokens} out (${stats.turns} turns) | Est. cost: $${stats.estimatedCost.toFixed(4)}`;

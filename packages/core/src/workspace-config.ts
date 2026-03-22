@@ -27,6 +27,10 @@ export interface WorkspaceConfig {
   /** Current user's ID on the team server. */
   teamUserId?: string;
 
+  // --- Budget ---
+  /** Monthly cost budget in USD. null = unlimited. */
+  budget?: number | null;
+
   // --- Optimization fields (GEPA/Ax) ---
   /** Enable GEPA prompt optimization for this workspace (opt-in, default false). */
   optimizationEnabled?: boolean;
@@ -53,6 +57,9 @@ export interface CreateWorkspaceOptions {
   teamServerUrl?: string;
   teamRole?: 'owner' | 'admin' | 'member' | 'viewer';
   teamUserId?: string;
+
+  // --- Budget ---
+  budget?: number | null;
 
   // --- Optimization fields (GEPA/Ax) ---
   optimizationEnabled?: boolean;

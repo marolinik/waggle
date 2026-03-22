@@ -34,6 +34,41 @@ export interface ChatInputProps {
   placeholder?: string;
   /** Merged command list from server + client. Falls back to CLIENT_COMMANDS. */
   commands?: SlashCommand[];
+  /** Current model name for quick-switch chip display */
+  currentModel?: string;
+  /** Available models for quick-switch dropdown */
+  availableModels?: string[];
+  /** Callback when user selects a model from quick-switch */
+  onModelSwitch?: (model: string) => void;
+}
+
+/** Model color accents — subtle visual cue for which model is active */
+const MODEL_COLORS: Record<string, string> = {
+  opus: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+  sonnet: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  haiku: 'bg-green-500/20 text-green-400 border-green-500/30',
+  gpt: 'bg-teal-500/20 text-teal-400 border-teal-500/30',
+  gemini: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+  default: 'bg-secondary text-muted-foreground border-border',
+};
+
+function getModelColor(model: string): string {
+  const lower = model.toLowerCase();
+  if (lower.includes('opus')) return MODEL_COLORS.opus;
+  if (lower.includes('sonnet')) return MODEL_COLORS.sonnet;
+  if (lower.includes('haiku')) return MODEL_COLORS.haiku;
+  if (lower.includes('gpt')) return MODEL_COLORS.gpt;
+  if (lower.includes('gemini')) return MODEL_COLORS.gemini;
+  return MODEL_COLORS.default;
+}
+
+function formatModelName(model: string): string {
+  return model
+    .replace('claude-', '')
+    .replace('gpt-', 'GPT-')
+    .replace(/-\d+$/, '')
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase());
 }
 
 export function ChatInput({
@@ -43,10 +78,14 @@ export function ChatInput({
   disabled = false,
   placeholder = 'Type a message... (/ for commands)',
   commands,
+  currentModel,
+  availableModels,
+  onModelSwitch,
 }: ChatInputProps) {
   const [text, setText] = useState('');
   const [showCommands, setShowCommands] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [showModelPicker, setShowModelPicker] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const commandsRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -196,6 +235,38 @@ export function ChatInput({
           e.target.value = '';
         }}
       />
+
+      {/* Quick model switch chip */}
+      {currentModel && (
+        <div className="flex items-center gap-2 mb-1.5 px-0.5">
+          <button
+            onClick={() => onModelSwitch ? setShowModelPicker(!showModelPicker) : undefined}
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium transition-colors ${getModelColor(currentModel)} ${onModelSwitch ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}`}
+            title={onModelSwitch ? 'Click to switch model' : currentModel}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
+            {formatModelName(currentModel)}
+            {onModelSwitch && <span className="text-[8px] opacity-50 ml-0.5">▼</span>}
+          </button>
+          {showModelPicker && availableModels && availableModels.length > 0 && (
+            <div className="absolute bottom-full left-3 bg-muted border border-border rounded-lg p-1 mb-1 z-50 shadow-lg min-w-[180px]">
+              {availableModels.map(m => (
+                <button
+                  key={m}
+                  onClick={() => { onModelSwitch?.(m); setShowModelPicker(false); }}
+                  className={`flex items-center gap-2 w-full py-1.5 px-2.5 rounded-md text-[11px] text-left transition-colors ${
+                    m === currentModel ? 'bg-primary/15 text-primary' : 'text-foreground hover:bg-secondary'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${m === currentModel ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
+                  {formatModelName(m)}
+                  {m === currentModel && <span className="ml-auto text-[9px] text-primary">✓</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="flex items-end gap-2">
         {/* Attachment button */}

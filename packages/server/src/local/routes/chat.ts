@@ -707,8 +707,10 @@ When approaching any task:
       // Resolve the agent runner (injectable for tests)
       const agentRunner: AgentRunner = server.agentRunner ?? runAgentLoop;
 
-      // Resolve model: request param > server state > fallback
-      const resolvedModel = model ?? server.agentState.currentModel ?? 'claude-sonnet-4-6';
+      // Resolve model: request param > workspace config > global default > fallback
+      // Per-workspace model selection: each workspace can specify its own model
+      const wsModelConfig = workspace ? server.workspaceManager?.get(workspace)?.model : undefined;
+      const resolvedModel = model ?? wsModelConfig ?? server.agentState.currentModel ?? 'claude-sonnet-4-6';
 
       // ── Conversation history management (moved before LLM check so echo mode also persists) ──
       const sessionId = session ?? workspace ?? 'default';
@@ -854,6 +856,17 @@ When approaching any task:
       if (shouldRunAgentLoop) {
         // Use rerouted message if from a slash command, otherwise use original
         const agentMessage = reroutedMessage ?? message;
+
+        // ── Budget check — warn if workspace is over budget ──
+        if (!hasCustomRunner && effectiveWorkspace !== 'default') {
+          const wsBudgetConfig = server.workspaceManager?.get(effectiveWorkspace);
+          if (wsBudgetConfig?.budget != null && wsBudgetConfig.budget > 0) {
+            const wsUsage = costTracker.getWorkspaceCost(effectiveWorkspace);
+            if (wsUsage >= wsBudgetConfig.budget) {
+              sendEvent('step', { content: `\u26a0\ufe0f Budget limit reached ($${wsUsage.toFixed(2)} / $${wsBudgetConfig.budget.toFixed(2)}). Responses may be limited.` });
+            }
+          }
+        }
 
         // ── Activate workspace mind (A2: guard against silent fallback) ──
         // Open workspace.mind so search/save routes to the right mind.

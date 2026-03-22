@@ -15,6 +15,17 @@ import { SessionList, FrameDetail, FilePreview, TeamPresence, ActivityFeed, Team
 
 type AppView = 'chat' | 'memory' | 'events' | 'capabilities' | 'cockpit' | 'mission-control' | 'settings';
 
+/** Model badge color mapping — matches ChatInput.tsx MODEL_COLORS */
+function getModelBadgeColor(model: string): string {
+  const lower = model.toLowerCase();
+  if (lower.includes('opus')) return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
+  if (lower.includes('sonnet')) return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+  if (lower.includes('haiku')) return 'bg-green-500/20 text-green-400 border-green-500/30';
+  if (lower.includes('gpt')) return 'bg-teal-500/20 text-teal-400 border-teal-500/30';
+  if (lower.includes('gemini')) return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
+  return 'bg-secondary text-muted-foreground border-border';
+}
+
 /** E5: Workspace info for the persistent context card at top of every panel view */
 export interface WorkspaceInfo {
   name: string;
@@ -23,6 +34,11 @@ export interface WorkspaceInfo {
   memoryCount: number;
   sessionCount: number;
   lastActive?: string;
+  /** Budget status for workspace cost tracking */
+  budget?: number | null;
+  budgetUsed?: number;
+  /** Whether an agent is currently active for this workspace */
+  agentActive?: boolean;
 }
 
 export interface ContextPanelProps {
@@ -87,11 +103,39 @@ function WorkspaceContextCard({ info }: { info?: WorkspaceInfo }) {
           <span className="text-[9px] text-muted-foreground/60 bg-secondary px-1.5 py-0.5 rounded shrink-0">{info.group}</span>
         )}
       </div>
-      <div className="flex items-center gap-3 text-[10px] text-muted-foreground/50">
-        {info.model && <span className="font-mono">{info.model.replace('claude-', '').replace('-4-6', '')}</span>}
+      <div className="flex items-center gap-2 text-[10px] text-muted-foreground/50 flex-wrap">
+        {info.model && (
+          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[9px] font-medium ${getModelBadgeColor(info.model)}`}>
+            <span className="w-1 h-1 rounded-full bg-current opacity-60" />
+            {info.model.replace('claude-', '').replace(/-4-6$/, '')}
+          </span>
+        )}
+        {info.agentActive && (
+          <span className="inline-flex items-center gap-1 text-[9px] text-green-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+            Active
+          </span>
+        )}
         <span>{info.memoryCount} memories</span>
         <span>{info.sessionCount} sessions</span>
       </div>
+      {info.budget != null && info.budget > 0 && info.budgetUsed != null && (
+        <div className="mt-1">
+          <div className="flex justify-between text-[9px] text-muted-foreground/40">
+            <span>${info.budgetUsed.toFixed(2)} / ${info.budget.toFixed(2)}</span>
+            <span>{Math.round((info.budgetUsed / info.budget) * 100)}%</span>
+          </div>
+          <div className="h-1 rounded-full bg-muted mt-0.5 overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all ${
+                info.budgetUsed / info.budget >= 1 ? 'bg-red-500' :
+                info.budgetUsed / info.budget >= 0.8 ? 'bg-yellow-500' : 'bg-green-500'
+              }`}
+              style={{ width: `${Math.min((info.budgetUsed / info.budget) * 100, 100)}%` }}
+            />
+          </div>
+        </div>
+      )}
       {info.lastActive && (
         <div className="text-[9px] text-muted-foreground/30 mt-0.5">
           Active {formatLastActive(info.lastActive)}
