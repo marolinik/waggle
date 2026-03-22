@@ -56,7 +56,7 @@ export function WorkspaceCard({ workspace, isActive, onClick, onContextMenu, isA
 
   return (
     <button
-      className={`workspace-card flex w-full items-center gap-2 rounded px-3 py-1.5 text-sm transition-colors ${
+      className={`workspace-card waggle-nav-hover flex w-full items-center gap-2 rounded px-3 py-1.5 text-sm ${
         isActive
           ? 'text-primary/70'
           : 'text-muted-foreground hover:bg-card'

@@ -641,10 +641,10 @@ export function VaultSection({ baseUrl = 'http://127.0.0.1:3333' }: VaultSection
         setConnectors(data.connectors ?? []);
         setError(null);
       } else {
-        setError(`Failed to load connectors (${res.status})`);
+        setError(`Unable to load connectors (${res.status})`);
       }
     } catch {
-      setError('Failed to connect to server');
+      setError('Unable to connect. Please check your settings.');
     } finally {
       setLoading(false);
     }

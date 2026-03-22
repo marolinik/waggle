@@ -59,9 +59,16 @@ function composeWorkspaceSummary(
 }
 
 export const workspaceRoutes: FastifyPluginAsync = async (server) => {
-  // GET /api/workspaces — list all workspaces
-  server.get('/api/workspaces', async () => {
-    return server.workspaceManager.list();
+  // GET /api/workspaces — list all workspaces (F6: optional ?group filter)
+  server.get<{
+    Querystring: { group?: string };
+  }>('/api/workspaces', async (request) => {
+    const workspaces = server.workspaceManager.list();
+    const groupFilter = request.query.group;
+    if (groupFilter) {
+      return workspaces.filter(ws => ws.group === groupFilter);
+    }
+    return workspaces;
   });
 
   // POST /api/workspaces — create workspace
@@ -375,7 +382,7 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
   // PUT /api/workspaces/:id — update workspace
   server.put<{
     Params: { id: string };
-    Body: { name?: string; group?: string; icon?: string; model?: string; personaId?: string | null };
+    Body: { name?: string; group?: string; icon?: string; model?: string; personaId?: string | null; directory?: string };
   }>('/api/workspaces/:id', async (request, reply) => {
     assertSafeSegment(request.params.id, 'id');
     const existing = server.workspaceManager.get(request.params.id);
@@ -393,6 +400,8 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
     if (!existing) {
       return reply.status(404).send({ error: 'Workspace not found' });
     }
+    // A6: Close workspace mind DB before filesystem deletion to prevent EBUSY
+    server.agentState.closeWorkspaceMind(request.params.id);
     server.workspaceManager.delete(request.params.id);
     return reply.status(204).send();
   });

@@ -339,6 +339,9 @@ export class Orchestrator {
 
       if (personalResults.length > 0) {
         allLines.push('## Personal Memory');
+        if (this.workspaceLayers) {
+          allLines.push('_(Cross-workspace personal knowledge — not specific to this workspace)_');
+        }
         for (const r of personalResults) {
           const date = r.frame.created_at?.slice(0, 10) ?? 'unknown';
           allLines.push(`- [${date}, ${r.frame.importance}] ${r.frame.content.slice(0, 300)}`);
@@ -518,16 +521,68 @@ export class Orchestrator {
       }
     }
 
-    // ── Pattern: Substantial work output (A5: improved distillation) ──
-    if (assistantMsg.length > 500 && (assistantMsg.includes('\n- ') || assistantMsg.includes('\n## ') || assistantMsg.includes('1.'))) {
-      // Extract meaningful summary: first heading + first 2-3 key points
+    // ── F29: Structured extraction from substantial work output ──
+    // Instead of saving one opaque "Work completed:" blob, extract structured elements.
+    if (assistantMsg.length > 200) {
       const lines = assistantMsg.split('\n').filter(l => l.trim().length > 5);
-      const heading = lines.find(l => l.startsWith('#'))?.replace(/^#+\s+/, '') ?? '';
-      const bullets = lines.filter(l => l.match(/^[-*]\s/) || l.match(/^\d+\.\s/)).slice(0, 3);
-      const summary = heading
-        ? `${heading}${bullets.length > 0 ? ': ' + bullets.map(b => b.replace(/^[-*\d.]\s+/, '').trim()).join('; ') : ''}`
-        : lines[0]?.trim() ?? 'Work output produced';
-      await save(`Work completed: ${summary.slice(0, 400)}`, 'normal');
+      let savedStructured = false;
+
+      // F29a: Extract inline decisions from assistant response (different patterns than the explicit decision block above)
+      const inlineDecisionPatterns = [
+        /\b(?:recommended|recommend|suggestion is|best approach|should use|going with)\b/i,
+        /\b(?:conclusion|concluded|summary|in summary)\b/i,
+      ];
+      for (const pat of inlineDecisionPatterns) {
+        const decisionLines = lines.filter(l => pat.test(l));
+        if (decisionLines.length > 0 && saved.length < 5) {
+          const decisionText = decisionLines[0].replace(/^[-*\d.#]+\s*/, '').trim();
+          if (decisionText.length > 20) {
+            await save(`Recommendation: ${decisionText.slice(0, 300)}`, 'important');
+            savedStructured = true;
+            break;
+          }
+        }
+      }
+
+      // F29b: Save user's original question/statement as a frame (if substantive)
+      if (userMsg.length >= 30 && userMsg.length <= 500 && saved.length < 5) {
+        // Only if not already captured by other patterns (preferences, corrections, decisions)
+        const alreadyCapturedUser = saved.some(s =>
+          s.startsWith('User preference:') || s.startsWith('Correction from user:') || s.startsWith('Decision:')
+        );
+        if (!alreadyCapturedUser) {
+          await save(`User asked: ${userMsg.slice(0, 300)}`, 'temporary');
+          savedStructured = true;
+        }
+      }
+
+      // F29c: Extract key facts from bullet points or numbered lists
+      if (assistantMsg.length > 500) {
+        const bullets = lines
+          .filter(l => l.match(/^[-*]\s/) || l.match(/^\d+\.\s/))
+          .map(l => l.replace(/^[-*\d.]+\s+/, '').trim())
+          .filter(l => l.length > 15 && l.length < 300);
+
+        if (bullets.length >= 2 && saved.length < 5) {
+          // Save top 3 key points as one concise frame
+          const keyPoints = bullets.slice(0, 3).join('; ');
+          const heading = lines.find(l => l.startsWith('#'))?.replace(/^#+\s+/, '') ?? '';
+          const prefix = heading ? `${heading}: ` : 'Key points: ';
+          await save(`${prefix}${keyPoints.slice(0, 400)}`, 'normal');
+          savedStructured = true;
+        }
+      }
+
+      // F29d: Fallback — if nothing structured was extracted and response is substantial,
+      // save a compact summary (not the full blob)
+      if (!savedStructured && assistantMsg.length > 500 && saved.length === 0) {
+        const heading = lines.find(l => l.startsWith('#'))?.replace(/^#+\s+/, '') ?? '';
+        const firstMeaningful = lines.find(l => !l.startsWith('#') && l.length > 20)?.trim() ?? '';
+        const summary = heading
+          ? `${heading}${firstMeaningful ? ': ' + firstMeaningful : ''}`
+          : firstMeaningful || 'Work output produced';
+        await save(`Work completed: ${summary.slice(0, 300)}`, 'normal');
+      }
     }
 
     return saved;

@@ -52,7 +52,7 @@ export interface RateLimiterConfig {
  * Value: max requests per window.
  */
 export const ENDPOINT_RATE_LIMITS: Record<string, number> = {
-  '/api/chat': 10,              // spawns LLM calls
+  '/api/chat': 120,             // raised: echo mode + slash commands are free; LLM calls self-throttle via provider
   '/api/vault/*/reveal': 5,     // decrypts secrets (matched via routeOptions.url pattern)
   '/api/backup': 2,             // reads entire data dir
   '/api/restore': 2,            // writes entire data dir

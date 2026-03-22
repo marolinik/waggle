@@ -9,8 +9,12 @@
  */
 
 import type { FastifyInstance } from 'fastify';
+import { existsSync, readFileSync } from 'fs';
+import { join } from 'path';
+import { homedir } from 'os';
 import { MarketplaceDB, MarketplaceInstaller, MarketplaceSync, SecurityGate, ENTERPRISE_PACKS, PACKAGE_CATEGORIES, recategorizeAll, isCiscoScannerAvailable } from '@waggle/marketplace';
-import type { InstallationType, SearchSort, ScanResult } from '@waggle/marketplace';
+import type { InstallationType, SearchSort, ScanResult, MarketplacePackage } from '@waggle/marketplace';
+import { validateSkillMd } from '@waggle/sdk';
 import { getKvarkConfig } from '../../kvark/kvark-config.js';
 import { emitNotification } from './notifications.js';
 
@@ -660,5 +664,136 @@ export async function marketplaceRoutes(fastify: FastifyInstance) {
         ? undefined
         : 'For enhanced security scanning, install the Cisco skill-scanner: pip install cisco-ai-skill-scanner',
     };
+  });
+
+  // ── POST /api/marketplace/publish ─────────────────────────────────
+  // Publish a local skill to the marketplace catalog.
+  // Reads the skill from ~/.waggle/skills/, validates frontmatter,
+  // runs SecurityGate scan, then upserts into the marketplace DB.
+
+  fastify.post('/api/marketplace/publish', async (request, reply) => {
+    const db = requireDb(reply);
+    if (!db) return;
+
+    const body = request.body as { skillName?: string };
+
+    if (!body.skillName) {
+      return reply.code(400).send({ error: 'skillName is required' });
+    }
+
+    const skillName = body.skillName;
+
+    // Prevent path traversal
+    if (skillName.includes('..') || skillName.includes('/') || skillName.includes('\\')) {
+      return reply.code(400).send({ error: 'Invalid skill name' });
+    }
+
+    // Read the skill file from ~/.waggle/skills/
+    const waggleHome = (fastify as any).localConfig?.dataDir || join(homedir(), '.waggle');
+    const skillPath = join(waggleHome, 'skills', `${skillName}.md`);
+
+    if (!existsSync(skillPath)) {
+      return reply.code(404).send({
+        error: `Skill "${skillName}" not found`,
+        hint: `Expected file at ${skillPath}`,
+      });
+    }
+
+    const content = readFileSync(skillPath, 'utf-8');
+
+    // Validate YAML frontmatter
+    const validation = validateSkillMd(content);
+    if (!validation.valid) {
+      return reply.code(422).send({
+        error: 'Skill validation failed',
+        details: validation.errors,
+        hint: 'Skill file must have YAML frontmatter with name and description fields wrapped in --- delimiters',
+      });
+    }
+
+    const metadata = validation.metadata!;
+
+    // Run SecurityGate scan
+    const gate = new SecurityGate({
+      enable_gen_trust_hub: false,
+      enable_cisco_scanner: false,
+      enable_mcp_guardian: false,
+      enable_heuristics: true,
+    });
+
+    const fakePkg = {
+      id: 0,
+      name: skillName,
+      display_name: metadata.name,
+      description: metadata.description,
+      waggle_install_type: 'skill',
+    } as MarketplacePackage;
+
+    const scanResult = await gate.scan(fakePkg, content);
+
+    if (scanResult.blocked) {
+      return reply.code(403).send({
+        error: 'Skill blocked by security scan',
+        severity: scanResult.overall_severity,
+        score: scanResult.security_score,
+        findings: scanResult.findings,
+      });
+    }
+
+    // Ensure a "user-published" source exists
+    let source = db.getSourceByName('user-published');
+    if (!source) {
+      db.addSource({
+        name: 'user-published',
+        display_name: 'User Published',
+        url: 'local://user-published',
+        source_type: 'community_repo',
+        platform: 'waggle',
+        install_method: 'manual',
+        description: 'Skills published by the local user',
+      });
+      source = db.getSourceByName('user-published')!;
+    }
+
+    // Upsert into marketplace DB
+    const packageId = db.upsertPackage({
+      name: skillName,
+      source_id: source.id,
+      display_name: metadata.name,
+      description: metadata.description,
+      author: metadata.author || 'local-user',
+      package_type: 'skill',
+      waggle_install_type: 'skill',
+      waggle_install_path: skillPath,
+      version: metadata.version || '1.0.0',
+      category: 'custom',
+      downloads: 0,
+      stars: 0,
+      rating: 0,
+      rating_count: 0,
+      platforms: JSON.stringify(['all']) as any,
+      dependencies: JSON.stringify([]) as any,
+      packs: JSON.stringify([]) as any,
+      install_manifest: JSON.stringify({
+        skill_content: content,
+      }) as any,
+    });
+
+    return reply.code(201).send({
+      success: true,
+      packageId,
+      skillName,
+      metadata: {
+        name: metadata.name,
+        description: metadata.description,
+        version: metadata.version,
+        author: metadata.author,
+      },
+      security: {
+        severity: scanResult.overall_severity,
+        score: scanResult.security_score,
+        findingsCount: scanResult.findings.length,
+      },
+    });
   });
 }

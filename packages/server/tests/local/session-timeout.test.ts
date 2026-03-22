@@ -169,10 +169,14 @@ describe('Session timeout in solo vs team mode', () => {
     // and only creates a SessionTimeoutTracker when it's present.
     //
     // In solo mode (no CLERK_SECRET_KEY), session timeout is null/disabled.
-    const isTeamMode = !!process.env.CLERK_SECRET_KEY;
+    const original = process.env.CLERK_SECRET_KEY;
+    delete process.env.CLERK_SECRET_KEY;
 
-    // In test environment, CLERK_SECRET_KEY is not set → solo mode
+    const isTeamMode = !!process.env.CLERK_SECRET_KEY;
     expect(isTeamMode).toBe(false);
+
+    // Restore for other tests
+    if (original) process.env.CLERK_SECRET_KEY = original;
   });
 
   it('exempt paths are correctly defined', () => {

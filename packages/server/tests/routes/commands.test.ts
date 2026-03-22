@@ -101,7 +101,7 @@ describe('Command Execution Route', () => {
     expect(body.error).toBe('command is required');
   });
 
-  it('POST /api/commands/execute with /research (no runWorkflow) returns not available', async () => {
+  it('POST /api/commands/execute with /research (no runWorkflow) returns agent-loop reroute', async () => {
     const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/commands/execute',
@@ -109,11 +109,12 @@ describe('Command Execution Route', () => {
     });
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
-    // runWorkflow is not wired, so the command should return "not available"
-    expect(body.result).toContain('not available');
+    // B2: Without runWorkflow, /research returns agent-loop reroute instruction
+    expect(body.result).toContain('Research the following topic');
+    expect(body.result).toContain('quantum computing');
   });
 
-  it('POST /api/commands/execute with /decide returns decision matrix template', async () => {
+  it('POST /api/commands/execute with /decide (no runWorkflow) returns agent-loop reroute', async () => {
     const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/commands/execute',
@@ -121,11 +122,9 @@ describe('Command Execution Route', () => {
     });
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
-    expect(body.result).toContain('Decision Matrix');
-    expect(body.result).toContain('Should we use PostgreSQL or MongoDB?');
-    expect(body.result).toContain('Option A');
-    expect(body.result).toContain('Pros');
-    expect(body.result).toContain('Cons');
+    // B7: Without runWorkflow, /decide returns agent-loop reroute instruction
+    expect(body.result).toContain('decision');
+    expect(body.result).toContain('PostgreSQL or MongoDB');
   });
 
   it('POST /api/commands/execute with unknown command returns error', async () => {
@@ -139,7 +138,7 @@ describe('Command Execution Route', () => {
     expect(body.result).toContain('Unknown command');
   });
 
-  it('POST /api/commands/execute with /spawn (no spawnAgent) returns not available', async () => {
+  it('POST /api/commands/execute with /spawn (no spawnAgent) returns agent-loop reroute', async () => {
     const res = await injectWithAuth(server, {
       method: 'POST',
       url: '/api/commands/execute',
@@ -147,6 +146,7 @@ describe('Command Execution Route', () => {
     });
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
-    expect(body.result).toContain('not available');
+    // B4: Without spawnAgent, /spawn returns agent-loop reroute instruction
+    expect(body.result).toContain('specialist researcher');
   });
 });

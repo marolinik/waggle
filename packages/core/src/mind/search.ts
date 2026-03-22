@@ -14,6 +14,10 @@ export interface SearchOptions {
   gopId?: string; // scope to a specific session
   profile?: ScoringProfile;
   context?: ScoringContext;
+  /** F20: Only include frames created on or after this ISO date string. */
+  since?: string;
+  /** F20: Only include frames created on or before this ISO date string. */
+  until?: string;
 }
 
 export interface SearchResult {
@@ -39,7 +43,7 @@ export class HybridSearch {
   }
 
   async search(query: string, options: SearchOptions = {}): Promise<SearchResult[]> {
-    const { limit = 20, gopId, profile = 'balanced', context = {} } = options;
+    const { limit = 20, gopId, profile = 'balanced', context = {}, since, until } = options;
     const weights = SCORING_PROFILES[profile];
 
     // Run keyword and vector searches in parallel
@@ -63,12 +67,28 @@ export class HybridSearch {
     const frameIds = [...rrfScores.keys()];
     if (frameIds.length === 0) return [];
 
-    // Fetch frames in batch
+    // F20: Fetch frames with optional temporal filtering
     const raw = this.db.getDatabase();
     const placeholders = frameIds.map(() => '?').join(',');
+    const temporalConditions: string[] = [];
+    const temporalParams: unknown[] = [...frameIds];
+
+    if (since) {
+      temporalConditions.push('created_at >= ?');
+      temporalParams.push(since);
+    }
+    if (until) {
+      temporalConditions.push('created_at <= ?');
+      temporalParams.push(until);
+    }
+
+    const whereExtra = temporalConditions.length > 0
+      ? ` AND ${temporalConditions.join(' AND ')}`
+      : '';
+
     const frames = raw.prepare(
-      `SELECT * FROM memory_frames WHERE id IN (${placeholders})`
-    ).all(...frameIds) as MemoryFrame[];
+      `SELECT * FROM memory_frames WHERE id IN (${placeholders})${whereExtra}`
+    ).all(...temporalParams) as MemoryFrame[];
 
     const frameMap = new Map(frames.map(f => [f.id, f]));
 

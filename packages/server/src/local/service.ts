@@ -155,7 +155,7 @@ export async function startService(options?: ServiceOptions): Promise<ServiceRes
     try { fs.unlinkSync(path.join(dataDir, 'server.pid')); } catch { /* ok */ }
   });
 
-  await server.listen({ port, host: '127.0.0.1' });
+  await server.listen({ port, host: process.env.WAGGLE_HOST ?? '0.0.0.0' });
 
   // Write PID file for stale-process detection
   try {
@@ -184,7 +184,7 @@ export async function startService(options?: ServiceOptions): Promise<ServiceRes
   } else {
     // Fall back to built-in Anthropic proxy
     const selfUrl = `http://127.0.0.1:${port}/v1`;
-    server.agentState.litellmApiKey = 'built-in';
+    server.agentState.litellmApiKey = server.agentState.wsSessionToken;
     (server.localConfig as any).litellmUrl = selfUrl;
     providerName = 'anthropic-proxy';
 

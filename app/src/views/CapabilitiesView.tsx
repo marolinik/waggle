@@ -267,7 +267,7 @@ export default function CapabilitiesView() {
       } else if (res.status === 503) {
         setCommunityPacks([]);
       } else {
-        setCommunityError('Failed to load community packs');
+        setCommunityError('Unable to load community packs. Please try again.');
       }
     } catch {
       setCommunityPacks([]);
@@ -297,7 +297,7 @@ export default function CapabilitiesView() {
         setMarketplacePackages([]);
         setMarketplaceTotal(0);
       } else {
-        setMarketplaceError('Failed to load marketplace');
+        setMarketplaceError('Unable to load marketplace. Please try again.');
       }
     } catch {
       setMarketplacePackages([]);
@@ -671,11 +671,19 @@ export default function CapabilitiesView() {
           </div>
 
           {packsLoading ? (
-            <div className="text-muted-foreground text-xs p-6">Loading packs...</div>
+            <div className="flex flex-col gap-3 p-6">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="animate-pulse rounded-lg border border-border p-4">
+                  <div className="h-4 w-32 bg-muted rounded mb-2" />
+                  <div className="h-3 w-full bg-muted rounded mb-1" />
+                  <div className="h-3 w-3/4 bg-muted rounded" />
+                </div>
+              ))}
+            </div>
           ) : fetchFailed && packs.length === 0 ? (
             <div className="flex flex-col items-center gap-3 p-8">
               <div className="text-muted-foreground text-xs">
-                Failed to load capability packs. Is the server running?
+                Unable to load capability packs. Check your connection and try again.
               </div>
               <button
                 onClick={fetchPacks}
@@ -964,7 +972,7 @@ export default function CapabilitiesView() {
           {/* ── Loading state ─────────────────────────────────────── */}
           {marketplaceLoading ? (
             <div className="text-muted-foreground text-xs p-6 text-center">
-              Loading marketplace packages...
+              Loading marketplace...
             </div>
           ) : sortedPackages.length === 0 ? (
             /* ── Empty state ──────────────────────────────────────── */
@@ -975,12 +983,12 @@ export default function CapabilitiesView() {
               <div className="text-[13px] font-medium mb-1.5 text-foreground">
                 {searchQuery
                   ? 'No packages match your filters'
-                  : 'Marketplace is empty'}
+                  : 'Explore the Marketplace'}
               </div>
               <div className="text-[11px]">
                 {searchQuery
                   ? 'Try adjusting your search query or removing some filters.'
-                  : 'No packages available. Try syncing the marketplace.'}
+                  : 'Browse capabilities to expand what Waggle can do — from research workflows to document generation.'}
               </div>
               {(searchQuery || typeFilter !== 'all' || categoryFilter !== 'all') && (
                 <button

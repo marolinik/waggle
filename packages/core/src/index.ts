@@ -48,6 +48,10 @@ export {
   type SkillHash,
 } from './skill-hashes.js';
 export { reconcileIndexes, reconcileFtsIndex, reconcileVecIndex, type ReconcileResult } from './mind/reconcile.js';
+export {
+  ConceptTracker, CONCEPT_MASTERY_TABLE_SQL,
+  type ConceptEntry, type ConceptUpdate,
+} from './mind/concept-tracker.js';
 export { processImport, parseChatGPTExport, parseClaudeExport, extractKnowledge } from './memory-import.js';
 export type { ImportSource, ImportResult, ExtractedKnowledge, ParsedConversation, ConversationMessage } from './memory-import.js';
 export {

@@ -72,7 +72,7 @@ function CockpitError({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center gap-4 py-16">
       <div className="text-muted-foreground text-sm">
-        Failed to load cockpit data. Is the server running?
+        Unable to load cockpit data. Check your connection and try again.
       </div>
       <button
         onClick={onRetry}

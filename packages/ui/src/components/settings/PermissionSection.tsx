@@ -57,14 +57,14 @@ export function PermissionSection({
     <div className="permission-section space-y-6">
       <h2 className="text-lg font-semibold">Permissions</h2>
 
-      {/* YOLO mode */}
+      {/* Auto-Approve mode (C2: renamed from YOLO Mode for clarity) */}
       <div className="rounded-lg border border-border p-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-medium">YOLO Mode</h3>
+            <h3 className="text-sm font-medium">Auto-Approve Mode</h3>
             <p className="text-xs text-muted-foreground mt-1">
-              When enabled, all tool executions are auto-approved. Only external mutations
-              (network requests, file deletions outside workspace) will prompt for confirmation.
+              When enabled, most tool executions are auto-approved. Only destructive operations
+              (file deletions, git push, external API calls) will prompt for confirmation.
             </p>
           </div>
           <button
@@ -86,7 +86,7 @@ export function PermissionSection({
       <div className="space-y-3">
         <h3 className="text-sm font-medium">External Mutation Gates</h3>
         <p className="text-xs text-muted-foreground">
-          Operations that always require manual approval, even in YOLO mode.
+          Operations that always require manual approval, even in Auto-Approve mode.
         </p>
 
         {externalGates.length > 0 && (

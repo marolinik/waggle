@@ -6,10 +6,67 @@ import type {
   SessionStore,
   HybridSearch,
   KnowledgeGraph,
+  Embedder,
 } from '@waggle/core';
 import type { CognifyPipeline } from './cognify.js';
 import type { CombinedRetrievalResult, CombinedResult } from './combined-retrieval.js';
 import type { FeedbackHandler } from './feedback-handler.js';
+
+// ── F16: Text normalization for fuzzy dedup ──────────────────────────────
+/** Normalize text for fuzzy dedup: lowercase, collapse whitespace, strip punctuation */
+function normalizeForDedup(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s]/g, '')    // strip punctuation
+    .replace(/\s+/g, ' ')       // collapse whitespace
+    .trim();
+}
+
+/** Compute cosine similarity between two Float32Arrays */
+function cosineSimilarity(a: Float32Array, b: Float32Array): number {
+  if (a.length !== b.length || a.length === 0) return 0;
+  let dot = 0, magA = 0, magB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    magA += a[i] * a[i];
+    magB += b[i] * b[i];
+  }
+  const denom = Math.sqrt(magA) * Math.sqrt(magB);
+  return denom === 0 ? 0 : dot / denom;
+}
+
+// ── F22: Dramatic claims detection ───────────────────────────────────────
+const DRAMATIC_CLAIM_PATTERNS: RegExp[] = [
+  /\b(shut(?:ting)?\s*down|clos(?:ing|ed)\s+(?:the\s+)?company|going\s+bankrupt|bankrupt(?:cy)?|dissolv(?:ing|ed))\b/i,
+  /\b(mass\s+layoff|laid?\s+off\s+everyone|fir(?:ing|ed)\s+(?:all|everyone|the\s+entire))\b/i,
+  /\b(lawsuit|legal\s+threat|su(?:ing|ed)\s+(?:us|them|the\s+company)|cease\s+and\s+desist)\b/i,
+  /\b(revenue\s*(?:is|=|dropped?\s+to)\s*(?:\$?\s*)?0|lost\s+all\s+(?:our\s+)?funding|funding\s+(?:fell?\s+through|collapsed?))\b/i,
+];
+
+/** Detect dramatic claim patterns in content. Returns matched pattern descriptions. */
+function detectDramaticClaims(content: string): string[] {
+  const labels = ['company_shutdown', 'mass_layoffs', 'legal_threats', 'dramatic_financial'];
+  const matches: string[] = [];
+  for (let i = 0; i < DRAMATIC_CLAIM_PATTERNS.length; i++) {
+    if (DRAMATIC_CLAIM_PATTERNS[i].test(content)) {
+      matches.push(labels[i]);
+    }
+  }
+  return matches;
+}
+
+// ── F6: Confidence level type ────────────────────────────────────────────
+export type ConfidenceLevel = 'high' | 'medium' | 'low' | 'unverified';
+
+/** Derive default confidence from source provenance */
+function deriveConfidence(source: string): ConfidenceLevel {
+  switch (source) {
+    case 'tool_verified': return 'high';
+    case 'user_stated':   return 'medium';
+    case 'agent_inferred': return 'low';
+    default:              return 'unverified';
+  }
+}
 
 export interface ToolDefinition {
   name: string;
@@ -70,6 +127,8 @@ export interface MindToolDeps {
   knowledge: KnowledgeGraph;
   cognify?: CognifyPipeline;
   feedback?: FeedbackHandler;
+  /** F16: Optional embedder for semantic dedup (cosine similarity) */
+  embedder?: Embedder;
   /** Dynamic accessor for workspace layers — checked at call time */
   getWorkspaceLayers?: () => WorkspaceLayers | null;
   /** W5.7: Accessor for ALL workspace search instances (for cross-workspace search) */
@@ -138,6 +197,19 @@ export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
             description: 'Which mind to search (default: all)',
           },
           limit: { type: 'number', description: 'Max results to return' },
+          importance: {
+            type: 'string',
+            enum: ['critical', 'important', 'normal', 'temporary', 'all'],
+            description: 'Filter by importance level (default: all)',
+          },
+          since: {
+            type: 'string',
+            description: 'ISO date — only return frames created after this date (e.g., "2026-03-14")',
+          },
+          until: {
+            type: 'string',
+            description: 'ISO date — only return frames created before this date (e.g., "2026-03-21")',
+          },
         },
         required: ['query'],
       },
@@ -146,13 +218,23 @@ export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
         const scope = (args.scope as string) ?? 'all';
         const query = args.query as string;
         const profile = (args.profile as 'balanced') ?? 'balanced';
+        const importanceFilter = (args.importance as string) ?? 'all';
+        // F20: Temporal filtering params
+        const since = args.since as string | undefined;
+        const until = args.until as string | undefined;
         const wsLayers = deps.getWorkspaceLayers?.();
 
         const sections: string[] = [];
 
+        // F14: Helper to filter results by importance level
+        const filterByImportance = <T extends { frame: { importance: string } }>(results: T[]): T[] => {
+          if (importanceFilter === 'all') return results;
+          return results.filter(r => r.frame.importance === importanceFilter);
+        };
+
         // W2.6: Search workspace mind FIRST (results shown before personal, boosted priority)
         if (wsLayers && (scope === 'all' || scope === 'workspace')) {
-          const wsResults = await wsLayers.search.search(query, { limit, profile });
+          const wsResults = filterByImportance(await wsLayers.search.search(query, { limit, profile, since, until }));
           if (wsResults.length > 0) {
             sections.push('## Workspace Memory');
             sections.push(...wsResults.map((r, i) =>
@@ -165,10 +247,11 @@ export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
         if (scope === 'all' || scope === 'personal') {
           // W2.6: When inside a workspace, cap personal results to reduce noise
           const personalLimit = (wsLayers && scope === 'all') ? Math.min(limit, 3) : limit;
-          const personalResults = await deps.search.search(query, { limit: personalLimit, profile });
+          const personalResults = filterByImportance(await deps.search.search(query, { limit: personalLimit, profile, since, until }));
           if (personalResults.length > 0) {
-            const label = wsLayers ? '## Personal Memory' : '';
-            if (label) sections.push(label);
+            if (wsLayers) {
+              sections.push('## Personal Memory\n_(Cross-workspace — not specific to this workspace)_');
+            }
             sections.push(...personalResults.map((r, i) =>
               `[${i + 1}] (score: ${r.finalScore.toFixed(3)}, type: ${r.frame.frame_type}, importance: ${r.frame.importance}, source: ${(r.frame as any).source ?? 'user_stated'})\n${r.frame.content}`
             ));
@@ -264,7 +347,13 @@ export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
     },
     {
       name: 'save_memory',
-      description: 'Save a new memory. Defaults to workspace mind when active. Use target="personal" for user preferences, communication style, cross-workspace knowledge.',
+      description: 'Save a new memory. Defaults to workspace mind when active.\n\n'
+        + 'CRITICAL ROUTING RULES:\n'
+        + '- target="workspace" (DEFAULT): ALL project data, client data, decisions, tasks, meeting notes, research findings, confidential information, names, budgets, timelines. '
+        + 'Workspace memories are ISOLATED — they cannot be seen from other workspaces. Use this for ANYTHING workspace-specific.\n'
+        + '- target="personal": ONLY for user preferences (favorite color, communication style), personal facts (name, role, timezone), '
+        + 'and cross-workspace knowledge (general skills, tool preferences). Personal memories are shared across ALL workspaces.\n\n'
+        + 'When in doubt, use workspace. Never save client names, budgets, confidential data, or project-specific information to personal mind.',
       offlineCapable: true,
       parameters: {
         type: 'object',
@@ -278,12 +367,17 @@ export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
           target: {
             type: 'string',
             enum: ['workspace', 'personal'],
-            description: 'Which mind to save to. Workspace (default): project context, decisions, tasks. Personal: preferences, style, cross-workspace knowledge.',
+            description: 'Which mind to save to. Workspace (default): ALL project/client/confidential data — isolated per workspace. Personal: ONLY user preferences and cross-workspace knowledge — shared across all workspaces.',
           },
           source: {
             type: 'string',
             enum: ['user_stated', 'tool_verified', 'agent_inferred'],
             description: 'Provenance: user_stated = the user said this, tool_verified = confirmed via tool output, agent_inferred = your own analysis/synthesis.',
+          },
+          confidence: {
+            type: 'string',
+            enum: ['high', 'medium', 'low', 'unverified'],
+            description: 'Confidence level. Auto-derived from source if omitted: tool_verified→high, user_stated→medium, agent_inferred→low.',
           },
         },
         required: ['content'],
@@ -295,35 +389,134 @@ export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
           return `Memory save rate limit reached (${MAX_SAVES_PER_SESSION} saves this session). This prevents memory flooding. Start a new session to save more memories.`;
         }
 
-        const importance = (args.importance as string) ?? 'normal';
+        let importance = (args.importance as string) ?? 'normal';
         const content = args.content as string;
         const target = (args.target as string) ?? 'workspace';
         const source = (args.source as string) ?? 'user_stated';
         const wsLayers = deps.getWorkspaceLayers?.();
 
-        // Determine which layers to use
-        const useWorkspace = target === 'workspace' && wsLayers;
-        const targetFrames = useWorkspace ? wsLayers.frames : deps.frames;
-        const targetSessions = useWorkspace ? wsLayers.sessions : deps.sessions;
-        const targetCognify = useWorkspace ? wsLayers.cognify : deps.cognify;
-        const targetDb = useWorkspace ? wsLayers.db : deps.db;
+        // F6: Derive confidence from source if not explicitly provided
+        const confidence: ConfidenceLevel = (args.confidence as ConfidenceLevel) ?? deriveConfidence(source);
+
+        // F7: Strict workspace routing — respect target parameter, with safety guardrail
+        // When target='workspace' AND workspace is active → save to workspace only
+        // When target='personal' → save to personal, UNLESS content appears workspace-specific
+        let effectiveTarget = target;
+
+        // B1-guardrail: Detect workspace-specific content being routed to personal mind
+        // If workspace is active and content contains confidential/project signals, redirect to workspace
+        if (effectiveTarget === 'personal' && wsLayers != null) {
+          const contentLower = content.toLowerCase();
+          const workspaceSpecificPatterns = [
+            /\bconfidential\b/i, /\bclient\b/i, /\bbudget\b/i, /\bengagement\b/i,
+            /\bdeliverable\b/i, /\bmilestone\b/i, /\btimeline\b/i, /\bdeadline\b/i,
+            /\bceo\b/i, /\bcto\b/i, /\bcfo\b/i, /\bcoo\b/i,
+            /\$\d{2,}[,.]?\d*[kmb]?\b/i, // dollar amounts ($500K, $1.2M, etc.)
+            /\bproject\b.*\b(?:plan|status|update)\b/i,
+            /\bcontract\b/i, /\bproposal\b/i, /\bnda\b/i, /\bsow\b/i,
+          ];
+          const hasWorkspaceSignal = workspaceSpecificPatterns.some(p => p.test(content));
+          if (hasWorkspaceSignal) {
+            effectiveTarget = 'workspace';
+          }
+        }
+
+        const useWorkspace = effectiveTarget === 'workspace' && wsLayers != null;
+        const targetFrames = useWorkspace ? wsLayers!.frames : deps.frames;
+        const targetSessions = useWorkspace ? wsLayers!.sessions : deps.sessions;
+        const targetCognify = useWorkspace ? wsLayers!.cognify : deps.cognify;
+        const targetDb = useWorkspace ? wsLayers!.db : deps.db;
         const mindLabel = useWorkspace ? 'workspace' : 'personal';
 
-        // W2.4: Dedup check — skip save if near-identical content already exists
-        try {
-          const raw = targetDb.getDatabase();
-          const existing = raw.prepare(
-            "SELECT id, content FROM memory_frames WHERE content = ? LIMIT 1"
-          ).get(content) as { id: number; content: string } | undefined;
-          if (existing) {
-            return `Memory already exists (frame ${existing.id}) — skipped duplicate save.`;
+        // F22: Detect dramatic claims and flag them
+        const dramaticClaims = detectDramaticClaims(content);
+        let dramaticFlag = '';
+        if (dramaticClaims.length > 0) {
+          // Downgrade importance to 'temporary' for dramatic claims unless explicitly set to critical
+          if (!args.importance || (importance !== 'critical')) {
+            importance = 'temporary';
           }
-        } catch { /* non-blocking — proceed with save if dedup check fails */ }
+          dramaticFlag = ` [flag: dramatic_claim (${dramaticClaims.join(', ')})]`;
+        }
+
+        // ── Dedup checks (F7 cross-mind + F16 enhanced) ──────────────
+
+        // Helper: check a single database for exact or normalized duplicates
+        const checkDedupInDb = async (db: MindDB, label: string): Promise<string | null> => {
+          try {
+            const raw = db.getDatabase();
+
+            // Exact-match dedup (original W2.4 check)
+            const exactMatch = raw.prepare(
+              "SELECT id, content FROM memory_frames WHERE content = ? LIMIT 1"
+            ).get(content) as { id: number; content: string } | undefined;
+            if (exactMatch) {
+              return `Memory already exists in ${label} mind (frame ${exactMatch.id}) — skipped duplicate save.`;
+            }
+
+            // F16: Normalized string comparison
+            const normalizedContent = normalizeForDedup(content);
+            if (normalizedContent.length > 0) {
+              // Fetch recent frames for normalized comparison (cap at 100 to avoid perf issues)
+              const recentFrames = raw.prepare(
+                "SELECT id, content FROM memory_frames ORDER BY id DESC LIMIT 100"
+              ).all() as Array<{ id: number; content: string }>;
+
+              for (const frame of recentFrames) {
+                if (normalizeForDedup(frame.content) === normalizedContent) {
+                  return `Memory already exists in ${label} mind (frame ${frame.id}, normalized match) — skipped duplicate save.`;
+                }
+              }
+            }
+
+            // F16: Embedding-based similarity dedup (if embedder available)
+            if (deps.embedder && normalizedContent.length > 0) {
+              try {
+                const candidateFrames = raw.prepare(
+                  "SELECT id, content FROM memory_frames ORDER BY id DESC LIMIT 50"
+                ).all() as Array<{ id: number; content: string }>;
+
+                if (candidateFrames.length > 0) {
+                  const newEmbedding = await deps.embedder.embed(content);
+                  const candidateTexts = candidateFrames.map(f => f.content);
+                  const candidateEmbeddings = await deps.embedder.embedBatch(candidateTexts);
+
+                  for (let i = 0; i < candidateEmbeddings.length; i++) {
+                    const similarity = cosineSimilarity(newEmbedding, candidateEmbeddings[i]);
+                    if (similarity > 0.95) {
+                      return `Memory already exists in ${label} mind (frame ${candidateFrames[i].id}, semantic similarity: ${similarity.toFixed(3)}) — skipped duplicate save.`;
+                    }
+                  }
+                }
+              } catch { /* non-blocking — continue if embedding dedup fails */ }
+            }
+          } catch { /* non-blocking — proceed with save if dedup check fails */ }
+          return null;
+        };
+
+        // F7: Cross-mind dedup — check BOTH workspace and personal mind before saving
+        const targetDedupResult = await checkDedupInDb(targetDb, mindLabel);
+        if (targetDedupResult) return targetDedupResult;
+
+        // Check the OTHER mind for cross-mind duplicates
+        if (useWorkspace) {
+          // Saving to workspace — also check personal mind
+          const crossDedupResult = await checkDedupInDb(deps.db, 'personal');
+          if (crossDedupResult) {
+            return crossDedupResult.replace('skipped duplicate save', 'skipped cross-mind duplicate save');
+          }
+        } else if (wsLayers) {
+          // Saving to personal — also check workspace mind
+          const crossDedupResult = await checkDedupInDb(wsLayers.db, 'workspace');
+          if (crossDedupResult) {
+            return crossDedupResult.replace('skipped duplicate save', 'skipped cross-mind duplicate save');
+          }
+        }
 
         // Use cognify pipeline if available (extracts entities + indexes for search)
         if (targetCognify) {
           const result = await targetCognify.cognify(content, importance as any);
-          return `Memory saved to ${mindLabel} mind (importance: ${importance}, source: ${source}, entities: ${result.entitiesExtracted}, relations: ${result.relationsCreated}).`;
+          return `Memory saved to ${mindLabel} mind (importance: ${importance}, source: ${source}, confidence: ${confidence}${dramaticFlag}, entities: ${result.entitiesExtracted}, relations: ${result.relationsCreated}).`;
         }
 
         // Fallback: raw frame creation (no entity extraction or vector indexing)
@@ -341,18 +534,18 @@ export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
         } else {
           targetFrames.createIFrame(gopId, content, importance as any, source as any);
         }
-        return `Memory saved to ${mindLabel} mind (importance: ${importance}, source: ${source}).`;
+        return `Memory saved to ${mindLabel} mind (importance: ${importance}, source: ${source}, confidence: ${confidence}${dramaticFlag}).`;
       },
     },
     {
       name: 'query_knowledge',
-      description: 'Query the knowledge graph for entities and their relationships',
+      description: 'Query the knowledge graph for entities and their relationships. Use query="*" to list all known entities.',
       offlineCapable: true,
       parameters: {
         type: 'object',
         properties: {
-          query: { type: 'string', description: 'Entity name or type to search for' },
-          type: { type: 'string', description: 'Filter by entity type (e.g., person, project)' },
+          query: { type: 'string', description: 'Entity name to search for, or "*" to list all entities' },
+          type: { type: 'string', description: 'Filter by entity type (e.g., person, project, technology, concept, organization)' },
         },
         required: ['query'],
       },
@@ -361,7 +554,10 @@ export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
         const entityType = args.type as string | undefined;
 
         let entities;
-        if (entityType) {
+        // F5: Wildcard support — list all entities
+        if (query === '*' || query.toLowerCase() === 'all') {
+          entities = deps.knowledge.getEntitiesByType(entityType ?? '');
+        } else if (entityType) {
           entities = deps.knowledge.getEntitiesByType(entityType);
           entities = entities.filter(e => e.name.toLowerCase().includes(query.toLowerCase()));
         } else {
@@ -370,8 +566,9 @@ export function createMindTools(deps: MindToolDeps): ToolDefinition[] {
 
         if (entities.length === 0) return `No entities found matching "${query}".`;
 
+        const maxEntities = (query === '*' || query.toLowerCase() === 'all') ? 50 : 10;
         const results: string[] = [];
-        for (const entity of entities.slice(0, 10)) {
+        for (const entity of entities.slice(0, maxEntities)) {
           const rels = deps.knowledge.getRelationsFrom(entity.id);
           const relStr = rels.length > 0
             ? rels.map(r => {

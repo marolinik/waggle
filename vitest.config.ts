@@ -11,6 +11,7 @@ export default defineConfig({
   test: {
     globals: true,
     testTimeout: 30_000,
+    setupFiles: ['./vitest.setup.ts'],
     include: ['packages/*/tests/**/*.test.ts', 'packages/*/tests/**/*.test.tsx', 'tests/**/*.test.ts', 'app/scripts/**/*.test.ts', 'app/tests/**/*.test.ts'],
     coverage: {
       provider: 'v8',

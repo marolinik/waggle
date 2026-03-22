@@ -113,3 +113,39 @@
 .direction-d-card:hover {
   border-color: hsl(var(--primary) / 0.3);
 }
+
+/* E3: Micro-interaction utilities for interactive elements */
+.waggle-interactive {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+.waggle-interactive:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px hsl(var(--foreground) / 0.05);
+}
+.waggle-interactive:active {
+  transform: translateY(0);
+}
+
+/* Card hover lift for dashboards and lists */
+.waggle-card-lift {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.2s ease;
+}
+.waggle-card-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px hsl(var(--foreground) / 0.08);
+  border-color: hsl(var(--primary) / 0.3);
+}
+
+/* Nav item hover for sidebar */
+.waggle-nav-hover {
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+.waggle-nav-hover:hover {
+  background-color: hsl(var(--muted));
+}
+
+/* Button press feedback */
+.waggle-press:active {
+  transform: scale(0.97);
+  transition: transform 0.08s ease;
+}

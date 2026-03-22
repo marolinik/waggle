@@ -84,7 +84,13 @@ export function useSessions({ service, workspaceId }: UseSessionsOptions): UseSe
     return () => { cancelled = true; };
   }, [loadSessions]);
 
-  const grouped = useMemo(() => groupSessionsByTime(sessions), [sessions]);
+  // F4: Filter out auto-created empty sessions (UUID-named with 0 messages) before grouping
+  const UUID_SESSION_RE = /^session-[0-9a-f]{8}-/;
+  const displaySessions = useMemo(
+    () => sessions.filter(s => s.messageCount > 0 || !UUID_SESSION_RE.test(s.id)),
+    [sessions]
+  );
+  const grouped = useMemo(() => groupSessionsByTime(displaySessions), [displaySessions]);
 
   const selectSession = useCallback((id: string) => {
     setActiveSessionId(id);

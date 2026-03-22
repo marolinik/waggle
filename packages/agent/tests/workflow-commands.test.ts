@@ -223,14 +223,13 @@ describe('Workflow Commands', () => {
     expect(result).toContain('/decide <question>');
   });
 
-  it('/decide with question returns decision matrix', async () => {
+  it('/decide with question delegates to runWorkflow when available', async () => {
     const ctx = mockContext();
     const result = await registry.execute('/decide PostgreSQL or MongoDB?', ctx);
 
-    expect(result).toContain('Decision Matrix');
-    expect(result).toContain('PostgreSQL or MongoDB?');
-    expect(result).toContain('Pros');
-    expect(result).toContain('Cons');
+    // B7: With runWorkflow available, /decide delegates to workflow
+    expect(ctx.runWorkflow).toHaveBeenCalledWith('decision-analysis', 'PostgreSQL or MongoDB?');
+    expect(result).toBe('Workflow result');
   });
 
   it('/review calls runWorkflow', async () => {

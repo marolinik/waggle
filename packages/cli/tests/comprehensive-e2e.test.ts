@@ -324,10 +324,12 @@ describe('Comprehensive CLI E2E Test', () => {
     await expect(orchestrator.executeTool('nonexistent_tool', {})).rejects.toThrow('Unknown tool');
   });
 
-  // ─── Test 17: Heavy memory load (100 memories) ───
-  it('T17: 100 memories are all searchable', async () => {
-    // Save 100 memories
-    for (let i = 0; i < 100; i++) {
+  // ─── Test 17: Heavy memory load (50 per session, rate-limited by W2.10) ───
+  it('T17: memories up to session rate limit are all searchable', async () => {
+    // W2.10: save_memory is rate-limited to 50 per session to prevent flooding.
+    // Save 60 — first 50 succeed, remaining are rate-limited.
+    const RATE_LIMIT = 50;
+    for (let i = 0; i < 60; i++) {
       await orchestrator.executeTool('save_memory', {
         content: `Observation ${i}: topic-${i % 10} with detail about area-${i % 5}`,
         importance: i % 20 === 0 ? 'important' : 'normal',
@@ -342,9 +344,9 @@ describe('Comprehensive CLI E2E Test', () => {
     const result2 = await orchestrator.executeTool('search_memory', { query: 'area-3' });
     expect(result2).toContain('area-3');
 
-    // Stats should show all
+    // Stats should show exactly the rate limit count (50 saved, rest blocked)
     const stats = orchestrator.getMemoryStats();
-    expect(stats.frameCount).toBeGreaterThanOrEqual(100);
+    expect(stats.frameCount).toBeGreaterThanOrEqual(RATE_LIMIT);
   });
 
   // ─── Test 18: Cross-session knowledge graph persistence ───

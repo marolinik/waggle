@@ -14,6 +14,10 @@ const ROLE_OVERRIDE_PATTERNS = [
   /ignoriere\s+alle/i,
   /ignora\s+todas/i,
   /ignorez\s+toutes/i,
+  // F8: Memory wipe — "forget everything", "erase all context", etc.
+  /(?:forget|erase|clear|wipe|reset)\s+(?:everything|conversation|memory|context|history|all)/i,
+  // F8: Role override — "from now on you are", "pretend you are", "your new role is"
+  /(?:from\s+now\s+on\s+you\s+are|act\s+as\s+if\s+you\s+are|pretend\s+you\s+are|your\s+new\s+role\s+is)/i,
 ];
 
 const PROMPT_EXTRACTION_PATTERNS = [
@@ -22,6 +26,8 @@ const PROMPT_EXTRACTION_PATTERNS = [
   /what\s+(is|are)\s+your\s+(system\s+)?(prompt|instructions|rules)/i,
   /repeat\s+(your|the)\s+(system\s+)?(prompt|instructions)/i,
   /output\s+(your|the)\s+(system\s+)?prompt\s+verbatim/i,
+  // F8: Instruction disclosure — "reveal your instructions", "disclose your prompt", etc.
+  /(?:reveal|disclose|show|display|print|output|dump)\s+(?:your\s+)?(?:instructions|system\s+prompt|rules|guidelines|configuration|training)/i,
 ];
 
 const INSTRUCTION_INJECTION_PATTERNS = [
@@ -31,6 +37,8 @@ const INSTRUCTION_INJECTION_PATTERNS = [
   /<<SYS>>/i,
   /\bASSISTANT\s*:\s*/i,
   /BEGIN\s+NEW\s+INSTRUCTIONS/i,
+  // F8: Authority claims — fake system/admin messages
+  /(?:system\s+message|admin\s+message|admin\s+override|elevated\s+privileges|root\s+access|operator\s+mode|maintenance\s+mode|debug\s+mode)/i,
 ];
 
 export function scanForInjection(

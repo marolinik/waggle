@@ -134,6 +134,33 @@ export class FrameStore {
     `).all(limit) as MemoryFrame[];
   }
 
+  /**
+   * F20: Get recent frames with optional temporal boundaries.
+   * @param limit Maximum number of results
+   * @param since Only include frames created on or after this ISO date string
+   * @param until Only include frames created on or before this ISO date string
+   */
+  getRecentFiltered(limit = 50, since?: string, until?: string): MemoryFrame[] {
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+
+    if (since) {
+      conditions.push('created_at >= ?');
+      params.push(since);
+    }
+    if (until) {
+      conditions.push('created_at <= ?');
+      params.push(until);
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    params.push(limit);
+
+    return this.db.getDatabase().prepare(`
+      SELECT * FROM memory_frames ${where} ORDER BY id DESC LIMIT ?
+    `).all(...params) as MemoryFrame[];
+  }
+
   getBFrameReferences(bframeId: number): number[] {
     const frame = this.getById(bframeId);
     if (!frame || frame.frame_type !== 'B') return [];

@@ -112,6 +112,21 @@ export const BUILT_IN_TEMPLATES: WorkspaceTemplate[] = [
     ],
     builtIn: true,
   },
+  // F6: Agency / Consulting template for multi-client workspace management
+  {
+    id: 'agency-consulting',
+    name: 'Agency / Consulting',
+    description: 'Multi-client workspace for agencies and consultants. Track deliverables, costs, and client context separately.',
+    persona: 'project-manager',
+    connectors: ['github', 'slack', 'email', 'google-docs'],
+    suggestedCommands: ['/status', '/draft', '/catchup', '/plan'],
+    starterMemory: [
+      'This workspace manages a client engagement. Key fields: client name, budget, timeline, deliverables, stakeholders.',
+      'Use separate workspaces per client to maintain confidentiality. Memory is isolated between workspaces.',
+      'Use /status for project metrics, /draft for deliverables, /catchup for quick briefings.',
+    ],
+    builtIn: true,
+  },
 ];
 
 /** Read user-created templates from disk. */

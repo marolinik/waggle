@@ -86,6 +86,13 @@ export async function startLiteLLM(port?: number): Promise<LiteLLMStatus> {
     litellmProcess = spawn(pythonBin, ['-m', 'litellm', '--port', String(p)], {
       stdio: 'ignore',
       detached: false,
+      env: {
+        ...process.env,
+        // F3 fix: Prevent UnicodeEncodeError on Windows cp1252 during
+        // LiteLLM startup banner (Python defaults to the system code page)
+        PYTHONIOENCODING: 'utf-8',
+        PYTHONUNBUFFERED: '1',
+      },
     });
 
     // Handle spawn errors

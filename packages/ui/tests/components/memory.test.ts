@@ -61,20 +61,20 @@ describe('getFrameTypeIcon', () => {
 // ── getFrameTypeLabel ───────────────────────────────────────────────
 
 describe('getFrameTypeLabel', () => {
-  it('returns "I-Frame" for I', () => {
-    expect(getFrameTypeLabel('I')).toBe('I-Frame');
+  it('returns "Fact" for I', () => {
+    expect(getFrameTypeLabel('I')).toBe('Fact');
   });
 
-  it('returns "P-Frame" for P', () => {
-    expect(getFrameTypeLabel('P')).toBe('P-Frame');
+  it('returns "Prediction" for P', () => {
+    expect(getFrameTypeLabel('P')).toBe('Prediction');
   });
 
-  it('returns "B-Frame" for B', () => {
-    expect(getFrameTypeLabel('B')).toBe('B-Frame');
+  it('returns "Background" for B', () => {
+    expect(getFrameTypeLabel('B')).toBe('Background');
   });
 
   it('returns raw type for unknown', () => {
-    expect(getFrameTypeLabel('Z')).toBe('Z-Frame');
+    expect(getFrameTypeLabel('Z')).toBe('Z');
   });
 });
 

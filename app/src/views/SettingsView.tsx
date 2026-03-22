@@ -48,7 +48,7 @@ export default function SettingsView({
       return (
         <div className="flex flex-col items-center justify-center gap-4 py-16">
           <div className="text-muted-foreground text-sm">
-            Failed to load settings. Is the server running?
+            Unable to load settings. Check your connection and try again.
           </div>
           <button
             onClick={() => { setTimedOut(false); }}

@@ -49,7 +49,7 @@ describe('Workspace Templates API', () => {
     }
   });
 
-  it('GET /api/workspace-templates returns 6 built-in templates', async () => {
+  it('GET /api/workspace-templates returns 7 built-in templates', async () => {
     const res = await injectWithAuth(server, {
       method: 'GET',
       url: '/api/workspace-templates',
@@ -58,8 +58,8 @@ describe('Workspace Templates API', () => {
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body) as { templates: TemplateResponse[]; count: number };
     expect(body.templates).toBeDefined();
-    expect(body.count).toBe(6);
-    expect(body.templates.length).toBe(6);
+    expect(body.count).toBe(7);
+    expect(body.templates.length).toBe(7);
   });
 
   it('each built-in template has all required fields', async () => {
@@ -150,8 +150,8 @@ describe('Workspace Templates API', () => {
     });
 
     const body = JSON.parse(res.body) as { templates: TemplateResponse[]; count: number };
-    // 6 built-in + 1 custom from previous test
-    expect(body.count).toBe(7);
+    // 7 built-in + 1 custom from previous test
+    expect(body.count).toBe(8);
     const custom = body.templates.find(t => t.name === 'My Custom Template');
     expect(custom).toBeDefined();
     expect(custom!.builtIn).toBe(false);

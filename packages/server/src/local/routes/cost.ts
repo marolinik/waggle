@@ -256,4 +256,9 @@ export const costRoutes: FastifyPluginAsync = async (server) => {
 
     return { workspaces: result, totalCost: Math.round(totalCost * 10000) / 10000 };
   });
+
+  // D2: Alias /api/costs → /api/cost/summary for API discoverability
+  server.get('/api/costs', async (request, reply) => {
+    return reply.redirect('/api/cost/summary');
+  });
 };

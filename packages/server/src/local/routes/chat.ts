@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type { FastifyPluginAsync } from 'fastify';
-import { runAgentLoop, needsConfirmation, CapabilityRouter, analyzeAndRecordCorrection, recordCapabilityGap, assessTrust, formatTrustSummary, scanForInjection } from '@waggle/agent';
+import { runAgentLoop, needsConfirmation, CapabilityRouter, analyzeAndRecordCorrection, recordCapabilityGap, assessTrust, formatTrustSummary, scanForInjection, AGENT_LOOP_REROUTE_PREFIX } from '@waggle/agent';
 import type { AgentLoopConfig, AgentResponse } from '@waggle/agent';
 import { buildWorkspaceNowBlock, formatWorkspaceNowPrompt } from './workspace-context.js';
 import { formatWorkspaceStatePrompt } from '../workspace-state.js';
@@ -639,11 +639,25 @@ When approaching any task:
   server.post<{
     Body: { message: string; workspace?: string; model?: string; session?: string; workspacePath?: string };
   }>('/api/chat', async (request, reply) => {
-    const { message, workspace, model, session, workspacePath } = request.body ?? {};
+    const { message, workspace, model, session, workspacePath: explicitWorkspacePath } = request.body ?? {};
+
+    // A2: Resolve workspace directory — use explicit path, or look up from workspace config
+    let workspacePath = explicitWorkspacePath;
+    if (!workspacePath && workspace) {
+      const wsConfig = server.workspaceManager?.get(workspace);
+      if (wsConfig?.directory) {
+        workspacePath = wsConfig.directory;
+      }
+    }
 
     // Validation — return standard JSON error before starting SSE
     if (!message) {
       return reply.status(400).send({ error: 'message is required' });
+    }
+    // F17: Message size limit — reject payloads over 50KB to prevent abuse
+    const MAX_MESSAGE_LENGTH = parseInt(process.env.WAGGLE_MAX_MESSAGE_LENGTH ?? '50000', 10);
+    if (message.length > MAX_MESSAGE_LENGTH) {
+      return reply.status(400).send({ error: `Message too long (${message.length} chars, max ${MAX_MESSAGE_LENGTH})`, code: 'MESSAGE_TOO_LONG' });
     }
 
     // Security: scan for prompt injection patterns
@@ -693,49 +707,139 @@ When approaching any task:
       // Resolve model: request param > server state > fallback
       const resolvedModel = model ?? server.agentState.currentModel ?? 'claude-sonnet-4-6';
 
+      // ── Conversation history management (moved before LLM check so echo mode also persists) ──
+      const sessionId = session ?? workspace ?? 'default';
+      const effectiveWorkspace = workspace ?? 'default';
+
+      // Get or create session history — load from disk if not in RAM
+      if (!sessionHistories.has(sessionId)) {
+        const saved = loadSessionMessages(
+          server.localConfig.dataDir, effectiveWorkspace, sessionId
+        );
+        sessionHistories.set(sessionId, saved);
+      }
+      const history = sessionHistories.get(sessionId)!;
+
+      // Add user message to history and persist to disk
+      history.push({ role: 'user', content: message });
+      persistMessage(server.localConfig.dataDir, effectiveWorkspace, sessionId, { role: 'user', content: message });
+
       // Check if LiteLLM is available — if not, use echo mode
+      // F2 fix: When using the built-in Anthropic proxy, the /health/liveliness
+      // endpoint doesn't exist — so the HTTP probe always fails, dropping into
+      // echo mode even when an API key is configured. Instead, trust the
+      // provider status that was determined at startup (or updated at runtime).
       let litellmAvailable = hasCustomRunner; // trust injected runners
       if (!hasCustomRunner) {
-        try {
-          const healthRes = await fetch(`${getLitellmUrl()}/health/liveliness`, {
-            signal: AbortSignal.timeout(3000),
-          });
-          litellmAvailable = healthRes.ok;
-        } catch {
-          // LiteLLM not reachable
+        const llmStatus = server.agentState.llmProvider;
+        if (llmStatus.provider === 'anthropic-proxy' && llmStatus.health === 'healthy') {
+          // Built-in proxy with a valid API key — skip HTTP probe
+          litellmAvailable = true;
+        } else {
+          try {
+            const healthHeaders: Record<string, string> = {};
+            const token = server.agentState.wsSessionToken;
+            if (token) {
+              healthHeaders['Authorization'] = `Bearer ${token}`;
+            }
+            const healthRes = await fetch(`${getLitellmUrl()}/health/liveliness`, {
+              signal: AbortSignal.timeout(3000),
+              headers: healthHeaders,
+            });
+            litellmAvailable = healthRes.ok;
+          } catch {
+            // LiteLLM not reachable
+          }
         }
       }
 
-      if (!litellmAvailable) {
+      // ── Slash command routing (works even in echo mode) ──
+      const { commandRegistry } = server.agentState;
+      if (commandRegistry.isCommand(message)) {
+        // Build a lightweight command context (same as commands.ts route)
+        const cmdContext = {
+          workspaceId: effectiveWorkspace,
+          sessionId,
+          searchMemory: async (query: string): Promise<string> => {
+            try {
+              const recall = await orchestrator.recallMemory(query);
+              if (recall.count === 0) return 'No relevant memories found.';
+              const items = (recall.recalled ?? []).slice(0, 5);
+              return items.map((item: string, i: number) => `${i + 1}. ${item}`).join('\n');
+            } catch {
+              return 'Memory search unavailable.';
+            }
+          },
+          getWorkspaceState: async (): Promise<string> => {
+            const block = buildWorkspaceNowBlock({
+              dataDir: server.localConfig.dataDir,
+              workspaceId: effectiveWorkspace,
+              wsManager: server.workspaceManager,
+              activateWorkspaceMind: server.agentState.activateWorkspaceMind,
+            });
+            if (!block) return 'No workspace state available.';
+            return formatWorkspaceNowPrompt(block);
+          },
+          listSkills: (): string[] => {
+            return server.agentState.skills.map(s => s.name);
+          },
+        };
+        const cmdResult = await commandRegistry.execute(message, cmdContext);
+
+        // B1-B7: Check if the command wants to be re-processed through the agent loop
+        if (cmdResult.startsWith(AGENT_LOOP_REROUTE_PREFIX) && litellmAvailable) {
+          // Extract the rewritten message and fall through to agent loop processing
+          const rerouted = cmdResult.slice(AGENT_LOOP_REROUTE_PREFIX.length);
+          sendEvent('step', { content: `Processing /${message.trim().split(/\s+/)[0].slice(1)} via AI...` });
+          // Replace the message in history with the original slash command (already persisted)
+          // and process the rewritten message through the agent loop below
+          // We achieve this by NOT returning here — the code falls through to the agent loop
+          // with the rerouted message replacing the original
+          Object.assign(request, { _reroutedMessage: rerouted });
+        } else {
+          // Stream the command result as SSE tokens
+          const cmdWords = cmdResult.split(' ');
+          for (const word of cmdWords) {
+            sendEvent('token', { content: word + ' ' });
+            await new Promise((r) => setTimeout(r, 10));
+          }
+          // Persist command result
+          history.push({ role: 'assistant', content: cmdResult });
+          persistMessage(server.localConfig.dataDir, effectiveWorkspace, sessionId, { role: 'assistant', content: cmdResult });
+          sendEvent('done', {
+            content: cmdResult,
+            usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+            toolsUsed: [],
+          });
+        }
+      }
+
+      // B1-B7: Check if a slash command requested agent-loop rerouting
+      const reroutedMessage = (request as any)._reroutedMessage as string | undefined;
+      const shouldRunAgentLoop = reroutedMessage || (!commandRegistry.isCommand(message) && litellmAvailable);
+      const shouldEchoMode = !reroutedMessage && !commandRegistry.isCommand(message) && !litellmAvailable;
+
+      if (shouldEchoMode) {
         // Echo mode — respond without LLM so the UI is functional
-        const echoResponse = `**Waggle is running in local mode** (no LLM proxy connected).\n\nYour message: "${message}"\n\nTo enable AI responses, start LiteLLM or configure an API key in Settings > API Keys.`;
+        const echoResponse = `**Waggle is running in local mode** (no LLM proxy connected).\n\nYour message: "${message}"\n\nTo enable AI responses, configure an API key in Settings > API Keys.`;
         const words = echoResponse.split(' ');
         for (const word of words) {
           sendEvent('token', { content: word + ' ' });
           await new Promise((r) => setTimeout(r, 15));
         }
+        // Persist echo response so session continuity is maintained
+        history.push({ role: 'assistant', content: echoResponse });
+        persistMessage(server.localConfig.dataDir, effectiveWorkspace, sessionId, { role: 'assistant', content: echoResponse });
         sendEvent('done', {
           content: echoResponse,
           usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
           toolsUsed: [],
         });
-      } else {
-        // ── Conversation history management ──────────────────────
-        const sessionId = session ?? workspace ?? 'default';
-        const effectiveWorkspace = workspace ?? 'default';
+      }
 
-        // Get or create session history — load from disk if not in RAM
-        if (!sessionHistories.has(sessionId)) {
-          const saved = loadSessionMessages(
-            server.localConfig.dataDir, effectiveWorkspace, sessionId
-          );
-          sessionHistories.set(sessionId, saved);
-        }
-        const history = sessionHistories.get(sessionId)!;
-
-        // Add user message to history and persist to disk
-        history.push({ role: 'user', content: message });
-        persistMessage(server.localConfig.dataDir, effectiveWorkspace, sessionId, { role: 'user', content: message });
+      if (shouldRunAgentLoop) {
+        // Use rerouted message if from a slash command, otherwise use original
+        const agentMessage = reroutedMessage ?? message;
 
         // ── Activate workspace mind (A2: guard against silent fallback) ──
         // Open workspace.mind so search/save routes to the right mind.
@@ -755,9 +859,9 @@ When approaching any task:
         if (!hasCustomRunner) {
           try {
             sendEvent('step', { content: 'Recalling relevant memories...' });
-            sendEvent('tool', { name: 'auto_recall', input: { query: message } });
+            sendEvent('tool', { name: 'auto_recall', input: { query: agentMessage } });
             const recallStart = Date.now();
-            const recall = await orchestrator.recallMemory(message);
+            const recall = await orchestrator.recallMemory(agentMessage);
             const recallDuration = Date.now() - recallStart;
             if (recall.count > 0) {
               recalledContext = '\n\n' + recall.text;
@@ -855,6 +959,9 @@ When approaching any task:
           'acquire_capability', 'install_capability', 'compose_workflow', 'create_plan',
           'add_plan_step', 'execute_step', 'show_plan',
         ]);
+        // Resolve persona from workspace config (same source as buildSystemPrompt)
+        const wsConfig = effectiveWorkspace ? server.workspaceManager?.get(effectiveWorkspace) : null;
+        const activePersonaId = wsConfig?.personaId ?? null;
         if (!hasCustomRunner && activePersonaId) {
           const persona = getPersona(activePersonaId);
           if (persona && persona.tools.length > 0) {
@@ -880,6 +987,18 @@ When approaching any task:
           subAgentRoles: ['researcher', 'writer', 'coder', 'analyst', 'reviewer', 'planner'],
           mcpRuntime: server.agentState.mcpRuntime,
         });
+
+        // B1-B7: If this is a rerouted slash command, replace the last user message
+        // with the enriched agent prompt so the LLM gets better instructions
+        if (reroutedMessage) {
+          // The original slash command is already persisted to disk at line 724.
+          // For the agent loop, swap in the rerouted message so the LLM sees the
+          // enhanced prompt (e.g., "Draft the following. Search memory first...")
+          const lastUserIdx = history.findLastIndex(m => m.role === 'user');
+          if (lastUserIdx >= 0) {
+            history[lastUserIdx] = { role: 'user', content: reroutedMessage };
+          }
+        }
 
         // Apply sliding window to conversation history — keep full history in RAM
         // for persistence but only send recent messages to the agent loop

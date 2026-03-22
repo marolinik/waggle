@@ -50,7 +50,7 @@ export function InstallCenter({ baseUrl = 'http://127.0.0.1:3333' }: InstallCent
       if (catalogRes.ok) {
         setCatalog(await catalogRes.json());
       } else {
-        setError(`Failed to load catalog (${catalogRes.status})`);
+        setError(`Unable to load catalog (${catalogRes.status})`);
       }
 
       if (runtimeRes.ok) {

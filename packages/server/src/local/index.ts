@@ -103,6 +103,7 @@ import { exportRoutes } from './routes/export.js';
 import { costRoutes } from './routes/cost.js';
 import { backupRoutes } from './routes/backup.js';
 import { offlineRoutes } from './routes/offline.js';
+import { weaverRoutes } from './routes/weaver.js';
 import { OfflineManager } from './offline-manager.js';
 import { securityMiddleware } from './security-middleware.js';
 import { LocalScheduler } from './cron.js';
@@ -169,6 +170,8 @@ export interface AgentState {
   activateWorkspaceMind: (workspaceId: string) => boolean;
   /** Get a cached workspace MindDB (opens on demand). Returns null if workspace not found. */
   getWorkspaceMindDb: (workspaceId: string) => import('@waggle/core').MindDB | null;
+  /** Close and remove a workspace MindDB from cache. Used before workspace deletion to prevent EBUSY. */
+  closeWorkspaceMind: (workspaceId: string) => void;
   /** Currently active workspace ID (null = personal only) */
   activeWorkspaceId: string | null;
   /** Current sub-agent orchestrator instance (set during workflow execution) */
@@ -207,7 +210,7 @@ declare module 'fastify' {
 export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   const fullConfig: LocalConfig = {
     port: parseInt(process.env.WAGGLE_PORT ?? '3333'),
-    host: '127.0.0.1',
+    host: process.env.WAGGLE_HOST ?? '0.0.0.0',
     dataDir: config.dataDir ?? process.env.WAGGLE_DATA_DIR ?? '',
     litellmUrl: config.litellmUrl ?? 'http://localhost:4000',
     ...config,
@@ -736,17 +739,26 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   const weaverTimers: NodeJS.Timeout[] = [];
   const workspaceWeavers = new Map<string, { weaver: MemoryWeaver; timers: NodeJS.Timeout[] }>();
 
+  // F2: Track weaver last-run timestamps for status endpoint
+  const weaverState: { lastPersonalConsolidation: string | null; lastPersonalDecay: string | null } = {
+    lastPersonalConsolidation: null,
+    lastPersonalDecay: null,
+  };
+  const workspaceWeaverStatus: Record<string, { lastConsolidation: string | null }> = {};
+
   // Run personal mind weaver on intervals
   const runPersonalConsolidation = () => {
     try {
       const active = personalSessions.getActive();
       for (const s of active) personalWeaver.consolidateGop(s.gop_id);
+      weaverState.lastPersonalConsolidation = new Date().toISOString();
     } catch { /* non-blocking */ }
   };
   const runPersonalDecay = () => {
     try {
       personalWeaver.decayFrames();
       personalWeaver.strengthenFrames();
+      weaverState.lastPersonalDecay = new Date().toISOString();
     } catch { /* non-blocking */ }
   };
   weaverTimers.push(setInterval(runPersonalConsolidation, 60 * 60 * 1000)); // hourly
@@ -812,6 +824,20 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   };
 
   // Helper: get a cached workspace MindDB (opens on demand)
+  // A6: Close and remove workspace mind DB from cache before deletion
+  const closeWorkspaceMind = (workspaceId: string): void => {
+    const wsDb = workspaceMindCache.get(workspaceId);
+    if (wsDb) {
+      try { wsDb.close(); } catch { /* already closed or never opened */ }
+      workspaceMindCache.delete(workspaceId);
+    }
+    // If this was the active workspace, clear it
+    if (activeWorkspaceId === workspaceId) {
+      orchestrator.clearWorkspaceMind();
+      activeWorkspaceId = null;
+    }
+  };
+
   const getWorkspaceMindDb = (workspaceId: string): MindDB | null => {
     let wsDb = workspaceMindCache.get(workspaceId);
     if (wsDb) return wsDb;
@@ -841,7 +867,10 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
     buildToolsForWorkspace,
     activateWorkspaceMind: activateWorkspaceMindWithWeaver,
     getWorkspaceMindDb,
+    closeWorkspaceMind,
     activeWorkspaceId,
+    weaverState,
+    workspaceWeaverStatus,
     subagentOrchestrator: null,
     pluginRuntimeManager,
     mcpRuntime,
@@ -1121,6 +1150,90 @@ Return ONLY the improved system prompt text. No commentary, no markdown fences, 
         }
         break;
       }
+      case 'agent_task': {
+        // F9: Execute an agent task prompt in a workspace context
+        const taskConfig = JSON.parse(schedule.job_config || '{}');
+        const taskPrompt = taskConfig.prompt as string | undefined;
+        const taskWorkspace = schedule.workspace_id;
+
+        if (!taskPrompt) {
+          console.warn(`[cron] agent_task "${schedule.name}" has no prompt in job_config, skipping`);
+          break;
+        }
+
+        try {
+          // Determine target workspaces: "*" means all, otherwise single workspace
+          const targetWorkspaces: Array<{ id: string; name: string }> = [];
+          if (taskWorkspace === '*') {
+            // F30: Global/cross-workspace — iterate all workspaces
+            const allWs = wsManager.list();
+            for (const ws of allWs) {
+              targetWorkspaces.push({ id: ws.id, name: ws.name });
+            }
+          } else if (taskWorkspace) {
+            const ws = wsManager.get(taskWorkspace);
+            if (ws) {
+              targetWorkspaces.push({ id: ws.id, name: ws.name });
+            } else {
+              console.warn(`[cron] agent_task "${schedule.name}" references unknown workspace "${taskWorkspace}"`);
+            }
+          }
+
+          if (targetWorkspaces.length === 0) {
+            console.warn(`[cron] agent_task "${schedule.name}" has no valid target workspaces`);
+            break;
+          }
+
+          for (const target of targetWorkspaces) {
+            try {
+              // Activate workspace mind so agent has context
+              activateWorkspaceMindWithWeaver(target.id);
+
+              // Use the built-in Anthropic proxy to process the prompt
+              const proxyUrl = `http://127.0.0.1:${fullConfig.port ?? 3333}/v1/chat/completions`;
+              const response = await fetch(proxyUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  model: server.agentState.currentModel ?? 'claude-sonnet-4-6',
+                  max_tokens: 2048,
+                  messages: [
+                    {
+                      role: 'user',
+                      content: `[Scheduled task for workspace "${target.name}"]\n\n${taskPrompt}`,
+                    },
+                  ],
+                }),
+                signal: AbortSignal.timeout(120_000),
+              });
+
+              if (response.ok) {
+                const body = await response.json() as {
+                  choices?: Array<{ message?: { content?: string } }>;
+                };
+                const output = body.choices?.[0]?.message?.content ?? '';
+                const summary = output.length > 200 ? output.slice(0, 197) + '...' : output;
+
+                emitNotification(server, {
+                  title: `Scheduled task: ${schedule.name}`,
+                  body: summary || 'Task completed',
+                  category: 'cron',
+                  actionUrl: `/workspace/${target.id}`,
+                });
+
+                console.log(`[cron] agent_task "${schedule.name}" completed for workspace "${target.name}" (${output.length} chars)`);
+              } else {
+                console.warn(`[cron] agent_task "${schedule.name}" LLM call failed: HTTP ${response.status}`);
+              }
+            } catch (wsErr) {
+              console.warn(`[cron] agent_task "${schedule.name}" failed for workspace "${target.name}": ${(wsErr as Error).message}`);
+            }
+          }
+        } catch (err) {
+          console.warn(`[cron] agent_task handler failed: ${(err as Error).message}`);
+        }
+        break;
+      }
       case 'monthly_assessment': {
         try {
           const assessment = generateMonthlyAssessment(fullConfig, multiMind.personal);
@@ -1204,6 +1317,7 @@ Return ONLY the improved system prompt text. No commentary, no markdown fences, 
   await server.register(costRoutes);
   await server.register(backupRoutes);
   await server.register(offlineRoutes);
+  await server.register(weaverRoutes);
 
   // ── Static file serving for web mode ──────────────────────────
   // When WAGGLE_FRONTEND_DIR is set (or app/dist exists), serve the React frontend

@@ -112,7 +112,7 @@ describe('Waggle CLI Launcher', () => {
       const pkg = JSON.parse(
         readFileSync(resolve(import.meta.dirname, '..', 'package.json'), 'utf-8')
       );
-      expect(pkg.name).toBe('waggle');
+      expect(pkg.name).toBe('@waggle-ai/waggle');
       expect(pkg.bin).toBeDefined();
       expect(pkg.bin.waggle).toContain('cli');
     });

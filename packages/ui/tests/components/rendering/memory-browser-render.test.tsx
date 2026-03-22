@@ -42,7 +42,7 @@ describe('MemoryBrowser rendering', () => {
     );
 
     expect(screen.getByText('No memories yet')).toBeTruthy();
-    expect(screen.getByText(/As you chat, important context/)).toBeTruthy();
+    expect(screen.getByText(/As you work with Waggle, it learns and remembers/)).toBeTruthy();
   });
 
   it('shows error state with retry button when error prop is set', () => {
@@ -60,7 +60,7 @@ describe('MemoryBrowser rendering', () => {
       />
     );
 
-    expect(screen.getByText('Failed to load memories')).toBeTruthy();
+    expect(screen.getByText('Unable to load memories')).toBeTruthy();
     expect(screen.getByText('Connection timeout')).toBeTruthy();
 
     const retryButton = screen.getByText('Retry');
@@ -94,7 +94,7 @@ describe('MemoryBrowser rendering', () => {
     expect(timeline).not.toBeNull();
 
     // Should not show error state
-    expect(screen.queryByText('Failed to load memories')).toBeNull();
+    expect(screen.queryByText('Unable to load memories')).toBeNull();
   });
 
   it('shows loading state when loading prop is true', () => {

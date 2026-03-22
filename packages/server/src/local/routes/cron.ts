@@ -49,13 +49,16 @@ export const cronRoutes: FastifyPluginAsync = async (server) => {
       return reply.status(400).send({ error: 'name, cronExpr, and jobType are required' });
     }
 
+    // F30: Normalize "global" to "*" for cross-workspace cron jobs
+    const normalizedWorkspaceId = workspaceId === 'global' ? '*' : workspaceId;
+
     try {
       const schedule = server.cronStore.create({
         name,
         cronExpr,
         jobType,
         jobConfig,
-        workspaceId,
+        workspaceId: normalizedWorkspaceId,
         enabled,
       });
       return toResponse(schedule);

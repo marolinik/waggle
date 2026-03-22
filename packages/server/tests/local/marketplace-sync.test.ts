@@ -42,7 +42,7 @@ describe('POST /api/marketplace/sync', () => {
     // a full server instance which is validated by integration tests.
   });
 
-  it('MarketplaceSync.syncAll returns result format', async () => {
+  it('MarketplaceSync.syncAll returns result format', { timeout: 60_000 }, async () => {
     const dbPath = getMarketplaceDbPath();
     if (!dbPath) return;
 

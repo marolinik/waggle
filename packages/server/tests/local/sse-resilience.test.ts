@@ -49,9 +49,11 @@ describe('SSE Stream Resilience', () => {
   // ── Connection drop simulation ──────────────────────────────────
 
   describe('Chat SSE connection drop', () => {
-    it.skip('chat endpoint sets up abort handling and completes in echo mode', async () => {
-      // POST /api/chat with a message — since no LLM is available, it falls
-      // back to echo mode, which completes the stream and closes the connection.
+    it('chat endpoint sets up abort handling and completes in echo mode', async () => {
+      // Force echo mode by marking LLM provider as unavailable
+      const prevProvider = (server as any).agentState.llmProvider;
+      (server as any).agentState.llmProvider = { provider: 'none', health: 'unavailable', detail: 'Test: force echo mode', checkedAt: new Date().toISOString() };
+
       const res = await injectWithAuth(server, {
         method: 'POST',
         url: '/api/chat',
@@ -67,6 +69,9 @@ describe('SSE Stream Resilience', () => {
       expect(body).toContain('event: done');
       // The done event should contain the echo response mentioning the message
       expect(body).toContain('test abort handling');
+
+      // Restore provider
+      (server as any).agentState.llmProvider = prevProvider;
     });
 
     it('returns 400 when message is missing', async () => {
@@ -81,7 +86,11 @@ describe('SSE Stream Resilience', () => {
       expect(body.error).toBe('message is required');
     });
 
-    it.skip('echo mode includes "local mode" indicator in response', async () => {
+    it('echo mode includes "local mode" indicator in response', async () => {
+      // Force echo mode
+      const prevProvider = (server as any).agentState.llmProvider;
+      (server as any).agentState.llmProvider = { provider: 'none', health: 'unavailable', detail: 'Test: force echo mode', checkedAt: new Date().toISOString() };
+
       const res = await injectWithAuth(server, {
         method: 'POST',
         url: '/api/chat',
@@ -91,6 +100,9 @@ describe('SSE Stream Resilience', () => {
       expect(res.statusCode).toBe(200);
       // Echo mode should mention "local mode" or "no LLM proxy"
       expect(res.body).toContain('local mode');
+
+      // Restore provider
+      (server as any).agentState.llmProvider = prevProvider;
     });
   });
 
@@ -175,7 +187,11 @@ describe('SSE Stream Resilience', () => {
   // ── Multiple concurrent chat streams ────────────────────────────
 
   describe('Multiple concurrent SSE connections', () => {
-    it.skip('two chat streams complete independently in echo mode', async () => {
+    it('two chat streams complete independently in echo mode', async () => {
+      // Force echo mode
+      const prevProvider = (server as any).agentState.llmProvider;
+      (server as any).agentState.llmProvider = { provider: 'none', health: 'unavailable', detail: 'Test: force echo mode', checkedAt: new Date().toISOString() };
+
       // Open two chat requests simultaneously — both should complete in echo mode
       const [res1, res2] = await Promise.all([
         injectWithAuth(server, {
@@ -201,6 +217,9 @@ describe('SSE Stream Resilience', () => {
       // Both should have the SSE structure
       expect(res1.body).toContain('event: done');
       expect(res2.body).toContain('event: done');
+
+      // Restore provider
+      (server as any).agentState.llmProvider = prevProvider;
     });
 
     it('event bus delivers to multiple listeners independently', async () => {

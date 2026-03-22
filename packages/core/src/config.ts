@@ -20,6 +20,8 @@ interface ConfigData {
   providers: Record<string, ProviderEntry>;
   mindPath?: string;
   teamServer?: TeamServerConfig;
+  /** F8: Daily cost budget in dollars. null = no limit. */
+  dailyBudget?: number | null;
 }
 
 const DEFAULT_MODEL = 'claude-sonnet-4-6';
@@ -88,6 +90,15 @@ export class WaggleConfig {
 
   getConfigDir(): string {
     return this.configDir;
+  }
+
+  // F8: Daily cost budget
+  getDailyBudget(): number | null {
+    return this.data.dailyBudget ?? null;
+  }
+
+  setDailyBudget(budget: number | null): void {
+    this.data.dailyBudget = budget;
   }
 
   // --- Team Server (Phase 5) ---

@@ -271,7 +271,7 @@ describe('Per-Client Rate Limit Keying', () => {
 
 describe('Per-Endpoint Rate Limits', () => {
   it('ENDPOINT_RATE_LIMITS has expected entries', () => {
-    expect(ENDPOINT_RATE_LIMITS['/api/chat']).toBe(10);
+    expect(ENDPOINT_RATE_LIMITS['/api/chat']).toBe(120);
     expect(ENDPOINT_RATE_LIMITS['/api/vault/*/reveal']).toBe(5);
     expect(ENDPOINT_RATE_LIMITS['/api/backup']).toBe(2);
     expect(ENDPOINT_RATE_LIMITS['/api/restore']).toBe(2);
@@ -279,7 +279,7 @@ describe('Per-Endpoint Rate Limits', () => {
 
   it('getEffectiveLimit returns per-endpoint limits for expensive routes', () => {
     const limiter = new RateLimiter();
-    expect(limiter.getEffectiveLimit('/api/chat')).toBe(10);
+    expect(limiter.getEffectiveLimit('/api/chat')).toBe(120);
     expect(limiter.getEffectiveLimit('/api/vault/MY_SECRET/reveal')).toBe(5);
     expect(limiter.getEffectiveLimit('/api/backup')).toBe(2);
     expect(limiter.getEffectiveLimit('/api/restore')).toBe(2);
@@ -304,7 +304,7 @@ describe('Per-Endpoint Rate Limits', () => {
     const server = await createTestServer({ rateLimiter: { maxRequests: 100, windowMs: 60_000 } });
     try {
       const chatRes = await server.inject({ method: 'POST', url: '/api/chat' });
-      expect(chatRes.headers['x-ratelimit-limit']).toBe('10');
+      expect(chatRes.headers['x-ratelimit-limit']).toBe('120');
 
       const backupRes = await server.inject({ method: 'POST', url: '/api/backup' });
       expect(backupRes.headers['x-ratelimit-limit']).toBe('2');

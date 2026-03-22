@@ -252,8 +252,8 @@ describe('Chat Streaming API', () => {
     expect(capturedMessages!.length).toBe(MAX_CONTEXT_MESSAGES + 1);
     // First message should be the truncation notice
     expect(capturedMessages![0].role).toBe('system');
-    expect(capturedMessages![0].content).toContain('Earlier context truncated');
-    expect(capturedMessages![0].content).toContain('11 older messages');
+    expect(capturedMessages![0].content).toContain('Context summary');
+    expect(capturedMessages![0].content).toContain('11 earlier messages');
     // Last message should be the latest user message
     expect(capturedMessages![capturedMessages!.length - 1].content).toBe('final message');
 
@@ -325,8 +325,8 @@ describe('applyContextWindow', () => {
 
     // First message is the truncation notice
     expect(result[0].role).toBe('system');
-    expect(result[0].content).toContain('Earlier context truncated');
-    expect(result[0].content).toContain(`${totalMessages - MAX_CONTEXT_MESSAGES} older messages`);
+    expect(result[0].content).toContain('Context summary');
+    expect(result[0].content).toContain(`${totalMessages - MAX_CONTEXT_MESSAGES} earlier messages`);
 
     // Remaining messages are the last MAX_CONTEXT_MESSAGES from the original
     const expectedMessages = messages.slice(-MAX_CONTEXT_MESSAGES);
@@ -357,7 +357,7 @@ describe('applyContextWindow', () => {
     const result = applyContextWindow(messages, 5);
     expect(result.length).toBe(6); // 5 messages + 1 truncation notice
     expect(result[0].role).toBe('system');
-    expect(result[0].content).toContain('5 older messages');
+    expect(result[0].content).toContain('5 earlier messages');
     expect(result[1].content).toBe('msg-5');
   });
 });

@@ -14,7 +14,7 @@ import path from 'node:path';
 import { PassThrough } from 'node:stream';
 import type { FastifyPluginAsync } from 'fastify';
 import archiver from 'archiver';
-import { FrameStore, WaggleConfig } from '@waggle/core';
+import { FrameStore, MindDB, WaggleConfig } from '@waggle/core';
 import { exportSessionToMarkdown } from './sessions.js';
 
 function maskApiKey(key: string): string {
@@ -23,10 +23,12 @@ function maskApiKey(key: string): string {
 }
 
 export const exportRoutes: FastifyPluginAsync = async (server) => {
-  // POST /api/export — generate and download a ZIP of all user data
-  server.post('/api/export', async (request, reply) => {
+  // POST /api/export — generate and download a ZIP of user data
+  // D1: Optional workspaceId body parameter for per-workspace export (agency/privacy use case)
+  server.post<{ Body: { workspaceId?: string } }>('/api/export', async (request, reply) => {
     const dataDir = server.localConfig.dataDir;
     const today = new Date().toISOString().slice(0, 10);
+    const scopedWorkspaceId = (request.body as any)?.workspaceId as string | undefined;
 
     // Create ZIP archive
     const archive = archiver('zip', { zlib: { level: 6 } });
@@ -34,20 +36,42 @@ export const exportRoutes: FastifyPluginAsync = async (server) => {
     archive.pipe(passthrough);
 
     // ── 1. Memories (from personal mind) ────────────────────────────
-    try {
-      const personalDb = server.multiMind.personal;
-      const frameStore = new FrameStore(personalDb);
-      const frames = frameStore.list({ limit: 100000 });
-      archive.append(JSON.stringify(frames, null, 2), { name: 'memories/personal-frames.json' });
-    } catch {
-      archive.append('[]', { name: 'memories/personal-frames.json' });
+    // D1: Skip personal mind when exporting a single workspace (privacy for agency/multi-client)
+    if (!scopedWorkspaceId) {
+      try {
+        const personalDb = server.multiMind.personal;
+        const frameStore = new FrameStore(personalDb);
+        const frames = frameStore.list({ limit: 100000 });
+        archive.append(JSON.stringify(frames, null, 2), { name: 'memories/personal-frames.json' });
+      } catch {
+        archive.append('[]', { name: 'memories/personal-frames.json' });
+      }
     }
 
     // Export workspace mind frames too
-    const workspaces = server.workspaceManager.list();
+    // F1 fix: Load MindDB from disk when not in cache. The cached getter
+    // (getWorkspaceMindDb) may return null if the workspace was never
+    // activated during this server session, even though frames exist on disk.
+    // D1: When scopedWorkspaceId is provided, export only that workspace
+    const allWorkspaces = server.workspaceManager.list();
+    const workspaces = scopedWorkspaceId
+      ? allWorkspaces.filter(ws => ws.id === scopedWorkspaceId)
+      : allWorkspaces;
     for (const ws of workspaces) {
+      let ownedDb: MindDB | null = null;
       try {
-        const wsDb = server.agentState.getWorkspaceMindDb(ws.id);
+        // Try the cached getter first (avoids re-opening if already loaded)
+        let wsDb = server.agentState.getWorkspaceMindDb(ws.id);
+
+        // Fallback: open directly from disk if the cache returned null
+        if (!wsDb) {
+          const mindPath = path.join(dataDir, 'workspaces', ws.id, 'workspace.mind');
+          if (fs.existsSync(mindPath)) {
+            ownedDb = new MindDB(mindPath);
+            wsDb = ownedDb;
+          }
+        }
+
         if (wsDb) {
           const wsFrameStore = new FrameStore(wsDb);
           const wsFrames = wsFrameStore.list({ limit: 100000 });
@@ -57,6 +81,11 @@ export const exportRoutes: FastifyPluginAsync = async (server) => {
         }
       } catch {
         // Skip inaccessible workspace minds
+      } finally {
+        // Close the DB we opened (don't leak handles for export-only opens)
+        if (ownedDb) {
+          try { ownedDb.close(); } catch { /* already closed */ }
+        }
       }
     }
 

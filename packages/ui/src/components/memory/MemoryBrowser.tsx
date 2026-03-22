@@ -103,7 +103,7 @@ export function MemoryBrowser({
             </div>
           ) : error ? (
             <div className="flex flex-col items-center justify-center h-full gap-3 text-center p-8">
-              <p className="text-sm text-destructive">Failed to load memories</p>
+              <p className="text-sm text-destructive">Unable to load memories</p>
               <p className="text-xs text-muted-foreground max-w-xs">{error}</p>
               {onRetry && (
                 <button
@@ -119,7 +119,7 @@ export function MemoryBrowser({
               <div className="text-4xl">🧠</div>
               <h3 className="text-base font-medium text-foreground">No memories yet</h3>
               <p className="text-sm text-muted-foreground max-w-xs">
-                As you chat, important context is automatically saved here.
+                As you work with Waggle, it learns and remembers — decisions, research findings, and key insights are stored here automatically.
               </p>
             </div>
           ) : (

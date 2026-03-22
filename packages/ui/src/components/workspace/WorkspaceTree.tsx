@@ -4,7 +4,7 @@
  * Groups are collapsible headers. Active workspace is highlighted.
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { Workspace } from '../../services/types.js';
 import { GroupHeader } from './GroupHeader.js';
 import { WorkspaceCard } from './WorkspaceCard.js';
@@ -33,8 +33,23 @@ export function WorkspaceTree({ workspaces, activeId, onSelect, onContextMenu, m
   const grouped = useMemo(() => groupWorkspacesByGroup(workspaces), [workspaces]);
   const sortedGroupNames = useMemo(() => sortGroups(Object.keys(grouped)), [grouped]);
 
-  // Track which groups are expanded — all expanded by default
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  // C4: Collapse all groups by default — expand only the active workspace's group
+  const initialCollapsed = useMemo(() => new Set(sortedGroupNames), [sortedGroupNames]);
+  const [collapsed, setCollapsed] = useState<Set<string>>(initialCollapsed);
+
+  // Auto-expand the group containing the active workspace
+  useEffect(() => {
+    if (!activeId) return;
+    const activeWs = workspaces.find(w => w.id === activeId);
+    if (activeWs?.group) {
+      setCollapsed(prev => {
+        if (!prev.has(activeWs.group)) return prev;
+        const next = new Set(prev);
+        next.delete(activeWs.group);
+        return next;
+      });
+    }
+  }, [activeId, workspaces]);
 
   const toggleGroup = (name: string) => {
     setCollapsed((prev) => {

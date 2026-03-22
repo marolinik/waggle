@@ -399,6 +399,12 @@ export function createSystemTools(workspace: string): ToolDefinition[] {
             nodir: true,
           });
           if (matches.length === 0) return 'No files found.';
+          // A3: Cap file list to prevent token overflow
+          const MAX_FILE_RESULTS = 200;
+          if (matches.length > MAX_FILE_RESULTS) {
+            return matches.slice(0, MAX_FILE_RESULTS).join('\n')
+              + `\n\n[Showing ${MAX_FILE_RESULTS} of ${matches.length} files. Use a more specific pattern to narrow results.]`;
+          }
           return matches.join('\n');
         } catch (err: any) {
           return `Error: ${err.message}`;
@@ -432,7 +438,10 @@ export function createSystemTools(workspace: string): ToolDefinition[] {
           const contextAfter = (args.context_after as number) ?? 0;
           const outputMode = (args.output_mode as string) ?? 'content';
           const fileType = args.file_type as string | undefined;
-          const maxResults = args.max_results as number | undefined;
+          // A3: Default cap on results to prevent token overflow (211K tokens from unbounded search)
+          const MAX_SEARCH_RESULTS = 50;
+          const MAX_SEARCH_OUTPUT_CHARS = 30_000;
+          const maxResults = Math.min((args.max_results as number) ?? MAX_SEARCH_RESULTS, MAX_SEARCH_RESULTS);
 
           // If file_type is specified, override glob with extension-specific pattern
           if (fileType) {
@@ -522,7 +531,16 @@ export function createSystemTools(workspace: string): ToolDefinition[] {
           }
 
           if (results.length === 0) return 'No matches found.';
-          return results.join('\n');
+          let output = results.join('\n');
+          // A3: Hard output size cap to prevent token overflow
+          if (output.length > MAX_SEARCH_OUTPUT_CHARS) {
+            output = output.slice(0, MAX_SEARCH_OUTPUT_CHARS)
+              + `\n\n[Truncated: showing first ${MAX_SEARCH_OUTPUT_CHARS} chars of ${output.length}. Use a more specific pattern or path to narrow results.]`;
+          }
+          if (totalResults >= maxResults) {
+            output += `\n\n[Showing ${maxResults} matches. Use max_results parameter or a more specific pattern for different results.]`;
+          }
+          return output;
         } catch (err: any) {
           return `Error: ${err.message}`;
         }

@@ -1043,6 +1043,20 @@ function WaggleApp() {
           showContextPanel ? (
             <ContextPanel
               currentView={currentView}
+              workspaceInfo={workspaceContext ? {
+                name: workspaceContext.workspace.name,
+                group: workspaceContext.workspace.group,
+                model: workspaceContext.workspace.model,
+                memoryCount: workspaceContext.stats.memoryCount,
+                sessionCount: workspaceContext.stats.sessionCount,
+                lastActive: workspaceContext.lastActive,
+              } : activeWorkspace ? {
+                name: activeWorkspace.name,
+                group: activeWorkspace.group,
+                model: activeWorkspace.model,
+                memoryCount: 0,
+                sessionCount: 0,
+              } : undefined}
               groupedSessions={groupedSessions}
               activeSessionId={activeSessionId ?? undefined}
               onSelectSession={handleSessionSelect}

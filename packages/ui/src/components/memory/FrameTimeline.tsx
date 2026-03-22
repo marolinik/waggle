@@ -8,9 +8,12 @@
 import type { Frame } from '../../services/types.js';
 import {
   getFrameTypeIcon,
+  getFrameTypeLabel,
   getImportanceBadge,
+  getSourceLabel,
   truncateContent,
   formatTimestamp,
+  groupFramesByDate,
 } from './utils.js';
 
 export interface FrameTimelineProps {
@@ -22,15 +25,24 @@ export interface FrameTimelineProps {
 export function FrameTimeline({ frames, selectedId, onSelect }: FrameTimelineProps) {
   if (frames.length === 0) {
     return (
-      <div className="frame-timeline__empty flex items-center justify-center p-8 text-muted-foreground">
-        No memory frames found
+      <div className="frame-timeline__empty flex flex-col items-center justify-center gap-2 p-8 text-center">
+        <div className="text-sm text-muted-foreground">No memories match your filters</div>
+        <div className="text-xs text-muted-foreground/60">Try adjusting the frame type or date filters above.</div>
       </div>
     );
   }
 
+  // E4: Group frames by date period
+  const dateGroups = groupFramesByDate(frames);
+
   return (
     <div className="frame-timeline flex flex-col gap-1 overflow-y-auto">
-      {frames.map((frame) => {
+      {dateGroups.map((group) => (
+        <div key={group.label}>
+          <div className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider px-3 pt-3 pb-1">
+            {group.label}
+          </div>
+          {group.frames.map((frame) => {
         const isSelected = frame.id === selectedId;
         const badge = getImportanceBadge(frame.importance);
         const icon = getFrameTypeIcon(frame.frameType);
@@ -49,7 +61,7 @@ export function FrameTimeline({ frames, selectedId, onSelect }: FrameTimelinePro
             {/* Top row: icon + timestamp + importance */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground" title={icon}>
+                <span className="text-xs text-muted-foreground" title={getFrameTypeLabel(frame.frameType)}>
                   {icon === 'keyframe' ? '◆' : icon === 'prediction' ? '▶' : icon === 'bidirectional' ? '◀▶' : '■'}
                 </span>
                 <span className="text-xs text-muted-foreground">
@@ -72,8 +84,8 @@ export function FrameTimeline({ frames, selectedId, onSelect }: FrameTimelinePro
 
             {/* Source badge + attribution */}
             <div className="flex items-center gap-2">
-              <span className="text-[10px] text-muted-foreground/60 capitalize">
-                {frame.source}
+              <span className="text-[10px] text-muted-foreground/60">
+                {getSourceLabel(frame.source)}
               </span>
               {frame.authorName && (
                 <span
@@ -87,6 +99,8 @@ export function FrameTimeline({ frames, selectedId, onSelect }: FrameTimelinePro
           </button>
         );
       })}
+        </div>
+      ))}
     </div>
   );
 }

@@ -57,10 +57,10 @@ export default function EventsView({
           setSelectedSessionId(data[0].id);
         }
       } else {
-        setSessionsError(`Failed to load sessions (${res.status})`);
+        setSessionsError(`Unable to load sessions (${res.status})`);
       }
     } catch {
-      setSessionsError('Network error — cannot reach server');
+      setSessionsError('Connection lost. Check that Waggle is running and try again.');
     } finally {
       setLoadingSessions(false);
     }
@@ -83,11 +83,11 @@ export default function EventsView({
         setTimeline(data);
       } else {
         setTimeline([]);
-        setTimelineError(`Failed to load timeline (${res.status})`);
+        setTimelineError(`Unable to load timeline (${res.status})`);
       }
     } catch {
       setTimeline([]);
-      setTimelineError('Network error — cannot reach server');
+      setTimelineError('Connection lost. Check that Waggle is running and try again.');
     } finally {
       setLoadingTimeline(false);
     }

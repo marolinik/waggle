@@ -29,9 +29,9 @@ export interface FrameTypeOption {
 // ── Constants ───────────────────────────────────────────────────────
 
 export const FRAME_TYPES: FrameTypeOption[] = [
-  { value: 'I', label: 'I-Frame' },
-  { value: 'P', label: 'P-Frame' },
-  { value: 'B', label: 'B-Frame' },
+  { value: 'I', label: 'Fact' },
+  { value: 'P', label: 'Prediction' },
+  { value: 'B', label: 'Background' },
 ];
 
 const ICON_MAP: Record<string, string> = {
@@ -63,10 +63,51 @@ export function getFrameTypeIcon(frameType: string): string {
 }
 
 /**
- * Map frame type to display label.
+ * Map frame type to human-readable display label.
+ * C2: Renamed from I-Frame/P-Frame/B-Frame to Fact/Prediction/Background.
  */
+const FRAME_TYPE_LABELS: Record<string, string> = {
+  I: 'Fact',
+  P: 'Prediction',
+  B: 'Background',
+};
+
 export function getFrameTypeLabel(frameType: string): string {
-  return `${frameType}-Frame`;
+  return FRAME_TYPE_LABELS[frameType] ?? frameType;
+}
+
+/**
+ * Map memory source to human-readable display label.
+ * C2: Replaces raw values like "user_stated" with friendly labels.
+ */
+const SOURCE_LABELS: Record<string, string> = {
+  user_stated: 'From you',
+  tool_verified: 'Verified',
+  agent_inferred: 'Inferred',
+  import: 'Imported',
+  system: 'System',
+  workspace: 'Workspace',
+  personal: 'Personal',
+};
+
+export function getSourceLabel(source: string): string {
+  return SOURCE_LABELS[source] ?? source;
+}
+
+/**
+ * Map memory importance to human-readable display label.
+ * C2: Replaces raw values like "deprecated" with friendly labels.
+ */
+const IMPORTANCE_LABELS: Record<string, string> = {
+  critical: 'Critical',
+  important: 'Important',
+  normal: 'Normal',
+  temporary: 'Temporary',
+  deprecated: 'Superseded',
+};
+
+export function getImportanceLabel(importance: string): string {
+  return IMPORTANCE_LABELS[importance] ?? importance;
 }
 
 /**
@@ -106,6 +147,42 @@ export function formatTimestamp(timestamp: string): string {
   // Older than a week — return formatted date
   const d = new Date(timestamp);
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+/**
+ * E4: Group frames by date period for visual separation.
+ * Returns groups: Today, Yesterday, This Week, Older.
+ */
+export function groupFramesByDate(frames: Frame[]): Array<{ label: string; frames: Frame[] }> {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today.getTime() - 86400000);
+  const weekAgo = new Date(today.getTime() - 7 * 86400000);
+
+  const groups: Record<string, Frame[]> = {
+    'Today': [],
+    'Yesterday': [],
+    'This Week': [],
+    'Older': [],
+  };
+
+  for (const frame of frames) {
+    const frameDate = new Date(frame.timestamp);
+    if (frameDate >= today) {
+      groups['Today'].push(frame);
+    } else if (frameDate >= yesterday) {
+      groups['Yesterday'].push(frame);
+    } else if (frameDate >= weekAgo) {
+      groups['This Week'].push(frame);
+    } else {
+      groups['Older'].push(frame);
+    }
+  }
+
+  // Return only non-empty groups
+  return Object.entries(groups)
+    .filter(([, frames]) => frames.length > 0)
+    .map(([label, frames]) => ({ label, frames }));
 }
 
 /**

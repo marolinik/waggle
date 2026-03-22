@@ -5,6 +5,13 @@
  * The registry supports aliases and partial-match search for autocomplete.
  */
 
+/**
+ * B1-B7: Magic prefix that tells the chat route to re-process this command
+ * through the full agent loop instead of returning a static response.
+ * Format: AGENT_LOOP_REROUTE::<rewritten natural language message>
+ */
+export const AGENT_LOOP_REROUTE_PREFIX = 'AGENT_LOOP_REROUTE::';
+
 export interface CommandContext {
   workspaceId: string;
   sessionId: string;

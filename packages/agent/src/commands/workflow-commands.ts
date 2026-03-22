@@ -3,9 +3,14 @@
  *
  * Each command validates its args, formats markdown output, and delegates
  * the real work to the CommandContext (workflow runner, memory, skills, etc.).
+ *
+ * B1-B7: When workflow runner or spawn agent are unavailable, commands now
+ * return AGENT_LOOP_REROUTE:: prefix to tell the chat route to re-process
+ * the request through the full agent loop as a natural language message.
  */
 
 import type { CommandRegistry, CommandDefinition } from './command-registry.js';
+import { AGENT_LOOP_REROUTE_PREFIX } from './command-registry.js';
 
 // ── Individual command factories ────────────────────────────────────────
 
@@ -16,11 +21,23 @@ function catchupCommand(): CommandDefinition {
     description: 'Workspace restart summary — get up to speed instantly',
     usage: '/catchup',
     handler: async (_args, ctx) => {
-      if (!ctx.getWorkspaceState) {
-        return 'Workspace state is not available in this context.';
+      // Try workspace state first
+      if (ctx.getWorkspaceState) {
+        const state = await ctx.getWorkspaceState();
+        if (state && state !== 'No workspace state available.') {
+          return `## Catch-Up Briefing\n\nHere's what's been happening in this workspace:\n\n${state}`;
+        }
       }
-      const state = await ctx.getWorkspaceState();
-      return `## Catch-Up Briefing\n\nHere's what's been happening in this workspace:\n\n${state}`;
+
+      // B5: Fallback — search memory for recent activity when workspace state is empty
+      if (ctx.searchMemory) {
+        const memories = await ctx.searchMemory('recent activity decisions progress updates');
+        if (memories && memories !== 'No relevant memories found.' && memories !== 'Memory search unavailable.') {
+          return `## Catch-Up Briefing\n\nHere's what I found in workspace memory:\n\n${memories}\n\n_Based on stored memories. Start a conversation to build richer context._`;
+        }
+      }
+
+      return `## Catch-Up Briefing\n\nThis workspace is fresh — no activity yet.\n\nTry:\n- Send a message to start a conversation\n- Use \`/memory <topic>\` to search for saved knowledge\n- Save an insight with the chat: "Remember that..."`;
     },
   };
 }
@@ -32,11 +49,22 @@ function nowCommand(): CommandDefinition {
     description: 'Current workspace state — what\'s happening right now',
     usage: '/now',
     handler: async (_args, ctx) => {
-      if (!ctx.getWorkspaceState) {
-        return 'Workspace state is not available in this context.';
+      if (ctx.getWorkspaceState) {
+        const state = await ctx.getWorkspaceState();
+        if (state && state !== 'No workspace state available.') {
+          return `## Right Now\n\n${state}`;
+        }
       }
-      const state = await ctx.getWorkspaceState();
-      return `## Right Now\n\n${state}`;
+
+      // Fallback with memory search
+      if (ctx.searchMemory) {
+        const memories = await ctx.searchMemory('current status tasks in progress');
+        if (memories && memories !== 'No relevant memories found.' && memories !== 'Memory search unavailable.') {
+          return `## Right Now\n\n${memories}`;
+        }
+      }
+
+      return `## Right Now\n\nNo active context in this workspace yet. Send a message to get started.`;
     },
   };
 }
@@ -51,10 +79,11 @@ function researchCommand(): CommandDefinition {
       if (!args.trim()) {
         return 'Missing topic. Usage: `/research <topic>`\n\nExample: `/research quantum computing applications`';
       }
-      if (!ctx.runWorkflow) {
-        return 'Workflow runner is not available in this context.';
+      if (ctx.runWorkflow) {
+        return ctx.runWorkflow('research-team', args.trim());
       }
-      return ctx.runWorkflow('research-team', args.trim());
+      // B2: Re-route through agent loop — the agent has web_search, search_memory tools
+      return `${AGENT_LOOP_REROUTE_PREFIX}Research the following topic thoroughly. Use web_search for current information and search_memory for existing knowledge. Provide a comprehensive summary with key findings, sources, and implications:\n\n${args.trim()}`;
     },
   };
 }
@@ -72,7 +101,8 @@ function draftCommand(): CommandDefinition {
       if (ctx.runWorkflow) {
         return ctx.runWorkflow('review-pair', args.trim());
       }
-      return `## Draft Prompt\n\nPlease draft the following:\n\n**${args.trim()}**\n\n_Tip: A review workflow is not available. The agent will draft directly._`;
+      // B1: Re-route through agent loop — the agent can draft with memory context
+      return `${AGENT_LOOP_REROUTE_PREFIX}Draft the following. Search memory first for relevant context, then produce a complete, well-structured draft. If appropriate, generate a DOCX file:\n\n${args.trim()}`;
     },
   };
 }
@@ -83,34 +113,15 @@ function decideCommand(): CommandDefinition {
     aliases: ['decision', 'weigh'],
     description: 'Create a structured decision matrix',
     usage: '/decide <question>',
-    handler: async (args, _ctx) => {
+    handler: async (args, ctx) => {
       if (!args.trim()) {
         return 'Missing question. Usage: `/decide <question>`\n\nExample: `/decide Should we use PostgreSQL or MongoDB?`';
       }
-      const question = args.trim();
-      return [
-        `## Decision Matrix`,
-        ``,
-        `**Question:** ${question}`,
-        ``,
-        `### Options`,
-        `| Option | Pros | Cons | Risk | Effort |`,
-        `|--------|------|------|------|--------|`,
-        `| Option A | | | | |`,
-        `| Option B | | | | |`,
-        `| Option C | | | | |`,
-        ``,
-        `### Evaluation Criteria`,
-        `1. Impact on goals`,
-        `2. Effort / cost`,
-        `3. Reversibility`,
-        `4. Time sensitivity`,
-        ``,
-        `### Recommendation`,
-        `_Fill in after analysis._`,
-        ``,
-        `> Use this framework to structure your thinking. Ask the agent to help fill it in with \`Please analyze this decision for me.\``,
-      ].join('\n');
+      if (ctx.runWorkflow) {
+        return ctx.runWorkflow('decision-analysis', args.trim());
+      }
+      // B7: Re-route through agent loop to fill in the decision matrix with real analysis
+      return `${AGENT_LOOP_REROUTE_PREFIX}Analyze this decision and provide a filled-in decision matrix with specific pros, cons, risks, effort estimates, and a clear recommendation. Search memory for any prior context on this topic:\n\n${args.trim()}`;
     },
   };
 }
@@ -122,10 +133,11 @@ function reviewCommand(): CommandDefinition {
     description: 'Review the last output with a critic agent',
     usage: '/review',
     handler: async (_args, ctx) => {
-      if (!ctx.runWorkflow) {
-        return 'Workflow runner is not available in this context.';
+      if (ctx.runWorkflow) {
+        return ctx.runWorkflow('review-pair', 'Review the last output for accuracy, completeness, and quality.');
       }
-      return ctx.runWorkflow('review-pair', 'Review the last output for accuracy, completeness, and quality.');
+      // Re-route through agent loop
+      return `${AGENT_LOOP_REROUTE_PREFIX}Review your last response for accuracy, completeness, and quality. Identify any issues, gaps, or improvements. Be critical and specific.`;
     },
   };
 }
@@ -140,13 +152,17 @@ function spawnCommand(): CommandDefinition {
       if (!args.trim()) {
         return 'Missing role. Usage: `/spawn <role> [task]`\n\nAvailable roles: `researcher`, `writer`, `coder`, `analyst`, `reviewer`, `planner`\n\nExample: `/spawn researcher Find recent papers on transformer architectures`';
       }
-      if (!ctx.spawnAgent) {
-        return 'Sub-agent spawning is not available in this context.';
+      if (ctx.spawnAgent) {
+        const parts = args.trim().split(/\s+/);
+        const role = parts[0];
+        const task = parts.slice(1).join(' ') || `Act as a ${role} and assist with the current workspace task.`;
+        return ctx.spawnAgent(role, task);
       }
+      // B4: Re-route through agent loop — the agent can act in the requested role directly
       const parts = args.trim().split(/\s+/);
       const role = parts[0];
-      const task = parts.slice(1).join(' ') || `Act as a ${role} and assist with the current workspace task.`;
-      return ctx.spawnAgent(role, task);
+      const task = parts.slice(1).join(' ') || 'assist with the current workspace task';
+      return `${AGENT_LOOP_REROUTE_PREFIX}Act as a specialist ${role}. ${task}. Use all available tools (web_search, search_memory, bash, read_file, etc.) to deliver thorough results.`;
     },
   };
 }
@@ -178,11 +194,38 @@ function statusCommand(): CommandDefinition {
     description: 'Project status summary',
     usage: '/status',
     handler: async (_args, ctx) => {
-      if (!ctx.getWorkspaceState) {
-        return 'Workspace state is not available in this context.';
+      // B6: /status returns METRICS (distinct from /catchup which returns narrative)
+      const sections: string[] = ['## Status Report'];
+
+      // Workspace state (includes memory count, sessions, etc.)
+      if (ctx.getWorkspaceState) {
+        const state = await ctx.getWorkspaceState();
+        if (state && state !== 'No workspace state available.') {
+          sections.push(state);
+        }
       }
-      const state = await ctx.getWorkspaceState();
-      return `## Status Report\n\n${state}`;
+
+      // Skills count
+      if (ctx.listSkills) {
+        const skills = ctx.listSkills();
+        sections.push(`**Skills loaded:** ${skills.length}`);
+      }
+
+      if (sections.length === 1) {
+        // Only header — no data available
+        if (ctx.searchMemory) {
+          const memories = await ctx.searchMemory('status progress milestones');
+          if (memories && memories !== 'No relevant memories found.' && memories !== 'Memory search unavailable.') {
+            sections.push(memories);
+          }
+        }
+      }
+
+      if (sections.length === 1) {
+        sections.push('No workspace data available yet. Start a conversation to build context.');
+      }
+
+      return sections.join('\n\n');
     },
   };
 }
@@ -216,10 +259,11 @@ function planCommand(): CommandDefinition {
       if (!args.trim()) {
         return 'Missing goal. Usage: `/plan <goal>`\n\nExample: `/plan Build a user dashboard with analytics`';
       }
-      if (!ctx.runWorkflow) {
-        return 'Workflow runner is not available in this context.';
+      if (ctx.runWorkflow) {
+        return ctx.runWorkflow('plan-execute', args.trim());
       }
-      return ctx.runWorkflow('plan-execute', args.trim());
+      // B3: Re-route through agent loop — the agent can create structured plans
+      return `${AGENT_LOOP_REROUTE_PREFIX}Create a detailed, actionable plan for the following goal. Break it into phases, each with specific tasks, dependencies, and deliverables. Search memory for any existing context:\n\n${args.trim()}`;
     },
   };
 }
@@ -260,15 +304,15 @@ function helpCommand(): CommandDefinition {
         `|---------|-------------|`,
         `| \`/catchup\` | Workspace restart summary — get up to speed instantly |`,
         `| \`/now\` | Current workspace state — what's happening right now |`,
-        `| \`/research <topic>\` | Launch multi-agent research on a topic |`,
-        `| \`/draft <type> [topic]\` | Start a drafting workflow with review cycle |`,
-        `| \`/decide <question>\` | Create a structured decision matrix |`,
-        `| \`/review\` | Review the last output with a critic agent |`,
-        `| \`/spawn <role> [task]\` | Spawn a specialist sub-agent |`,
+        `| \`/research <topic>\` | Research a topic using web search and memory |`,
+        `| \`/draft <type> [topic]\` | Draft content with workspace context |`,
+        `| \`/decide <question>\` | Analyze a decision with pros, cons, and recommendation |`,
+        `| \`/review\` | Review the last output for quality |`,
+        `| \`/spawn <role> [task]\` | Act as a specialist (researcher, writer, coder, etc.) |`,
         `| \`/skills\` | Show active skills in this workspace |`,
-        `| \`/status\` | Project status summary |`,
+        `| \`/status\` | Project status summary with metrics |`,
         `| \`/memory [query]\` | Search or browse workspace memory |`,
-        `| \`/plan <goal>\` | Break a goal into an actionable task list |`,
+        `| \`/plan <goal>\` | Break a goal into an actionable plan |`,
         `| \`/focus <topic>\` | Narrow agent focus to a specific topic |`,
         `| \`/help\` | List all available commands |`,
       ];

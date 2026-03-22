@@ -150,7 +150,7 @@ export default function MissionControlView() {
         setError(null);
       }
     } catch {
-      setError('Cannot reach server');
+      setError('Connection lost. Check that Waggle is running and try again.');
     } finally {
       setInitialLoading(false);
     }
@@ -210,9 +210,10 @@ export default function MissionControlView() {
         {fleet.sessions.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-3 text-center py-12">
             <div className="text-4xl">🐝</div>
-            <h3 className="text-base font-medium text-foreground">No active agents</h3>
+            <h3 className="text-base font-medium text-foreground">No active agents yet</h3>
             <p className="text-sm text-muted-foreground max-w-xs">
-              Spawn sub-agents from chat or start parallel workspaces.
+              Multi-agent workflows let you run research, analysis, and drafting in parallel.
+              Try <code className="text-xs bg-secondary px-1 rounded">/spawn researcher [topic]</code> in chat to get started.
             </p>
           </div>
         ) : (

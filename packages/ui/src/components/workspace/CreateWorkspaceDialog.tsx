@@ -148,7 +148,7 @@ export function CreateWorkspaceDialog({
           }
         })
         .catch(() => {
-          setError('Failed to load teams from server');
+          setError('Unable to load teams. Please try again.');
         })
         .finally(() => setTeamsLoading(false));
     }

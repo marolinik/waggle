@@ -44,18 +44,24 @@ export const settingsRoutes: FastifyPluginAsync = async (server) => {
       mindPath: config.getMindPath(),
       dataDir: server.localConfig.dataDir,
       litellmUrl: server.localConfig.litellmUrl,
+      dailyBudget: config.getDailyBudget(),
     };
   });
 
   // PUT /api/settings — update config (keys to vault, non-secret fields to config.json)
   server.put<{
-    Body: { defaultModel?: string; providers?: Record<string, unknown> };
+    Body: { defaultModel?: string; providers?: Record<string, unknown>; dailyBudget?: number | null };
   }>('/api/settings', async (request) => {
     const config = new WaggleConfig(server.localConfig.dataDir);
-    const { defaultModel, providers } = request.body;
+    const { defaultModel, providers, dailyBudget } = request.body;
 
     if (defaultModel) {
       config.setDefaultModel(defaultModel);
+    }
+
+    // F8: Update daily cost budget
+    if (dailyBudget !== undefined) {
+      config.setDailyBudget(dailyBudget);
     }
 
     if (providers && typeof providers === 'object') {

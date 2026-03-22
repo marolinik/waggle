@@ -1,5 +1,5 @@
 export { Orchestrator, type OrchestratorConfig } from './orchestrator.js';
-export { createMindTools, createToolUtilizationTracker, formatCombinedResult, type ToolDefinition, type MindToolDeps, type ToolUtilizationTracker } from './tools.js';
+export { createMindTools, createToolUtilizationTracker, formatCombinedResult, type ToolDefinition, type MindToolDeps, type ToolUtilizationTracker, type ConfidenceLevel } from './tools.js';
 export { createSystemTools } from './system-tools.js';
 export {
   ModelRouter,
@@ -56,7 +56,7 @@ export {
   composeWorkflow, validateTemplate,
   type WorkflowPlan, type ExecutionMode, type PlanStep as ComposerPlanStep, type ComposerContext, type ValidationError,
 } from './workflow-composer.js';
-export { CommandRegistry, type CommandDefinition, type CommandContext } from './commands/command-registry.js';
+export { CommandRegistry, AGENT_LOOP_REROUTE_PREFIX, type CommandDefinition, type CommandContext } from './commands/command-registry.js';
 export { registerWorkflowCommands } from './commands/workflow-commands.js';
 export { registerMarketplaceCommands } from './commands/marketplace-commands.js';
 export { createCronTools } from './cron-tools.js';
@@ -91,6 +91,7 @@ export {
 } from './connectors/index.js';
 export { captureInteraction, getRecentLogs, isWithinBudget, type CaptureInteractionInput } from './optimization-capture.js';
 export { detectCorrection, detectCorrectionsInHistory, type DetectedCorrection, type CorrectionDurability } from './correction-detector.js';
+export { detectContradiction, type ContradictionResult } from './contradiction-detector.js';
 export {
   recordCapabilityGap, analyzeAndRecordCorrection, recordWorkflowPattern,
   buildAwarenessSummary, formatAwarenessPrompt, markSummarySurfaced,

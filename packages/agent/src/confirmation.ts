@@ -6,7 +6,7 @@
  */
 
 // Tools that ALWAYS need confirmation (they modify state)
-const ALWAYS_CONFIRM = new Set(['write_file', 'edit_file', 'git_commit', 'install_capability']);
+const ALWAYS_CONFIRM = new Set(['write_file', 'edit_file', 'generate_docx', 'git_commit', 'install_capability']);
 
 // Connector action name patterns that indicate write operations
 const CONNECTOR_WRITE_PATTERNS = /_(create|update|delete|send|post|transition|remove|add|set|put)_/;
@@ -25,7 +25,9 @@ const SAFE_BASH_PATTERNS = [
 const DESTRUCTIVE_BASH_PATTERNS = [
   /\brm\s+-[rf]/,
   /\brmdir\b/,
-  /\bdel\s+\/[sfq]/i,
+  /\brd\b/,          // Windows alias for rmdir
+  /\bdel\b/i,        // Windows delete (any form — always confirm)
+  /\berase\b/i,      // Windows alias for del
   /\bformat\b/,
   /\bmkfs\b/,
   /\bdd\s+if=/,
@@ -37,6 +39,9 @@ const DESTRUCTIVE_BASH_PATTERNS = [
   /\bchmod\b/,
   /\bchown\b/,
   /\bsudo\b/,
+  /\breg\s+delete\b/i,  // Windows registry delete
+  /\bpowershell\b/i,    // PowerShell (can do anything)
+  /\bpwsh\b/i,          // PowerShell Core
   // Exfiltration patterns
   /\bcurl\s+.*-d\b/,
   /\bcurl\s+.*--data\b/,

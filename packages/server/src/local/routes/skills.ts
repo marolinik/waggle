@@ -549,6 +549,118 @@ export const skillRoutes: FastifyPluginAsync = async (server) => {
     return result;
   });
 
+  // POST /api/skills/test — dry-run / sandbox for skills (F15)
+  // Returns what a skill would inject into the system prompt, plus metadata.
+  // Allows previewing a skill's behavior without installing it or sending chat.
+  server.post<{
+    Body: { skillName: string; testInput?: string };
+  }>('/api/skills/test', async (request, reply) => {
+    const { skillName, testInput } = request.body ?? {};
+    if (!skillName) {
+      return reply.status(400).send({ error: 'skillName is required' });
+    }
+
+    // Prevent path traversal
+    if (skillName.includes('..') || skillName.includes('/') || skillName.includes('\\')) {
+      return reply.status(400).send({ error: 'Invalid skill name' });
+    }
+
+    // Try to load from installed skills first
+    let content: string | null = null;
+    const installedPath = path.join(skillsDir, `${skillName}.md`);
+    if (fs.existsSync(installedPath)) {
+      content = fs.readFileSync(installedPath, 'utf-8');
+    }
+
+    // If not installed, try starter pack
+    if (!content) {
+      try {
+        const starterDir = getStarterSkillsDir();
+        const starterPath = path.join(starterDir, `${skillName}.md`);
+        if (fs.existsSync(starterPath)) {
+          content = fs.readFileSync(starterPath, 'utf-8');
+        }
+      } catch { /* starter dir not available */ }
+    }
+
+    if (!content) {
+      return reply.status(404).send({ error: `Skill "${skillName}" not found in installed or starter skills` });
+    }
+
+    // Parse metadata
+    let name = skillName;
+    let description = '';
+    let permissions: string[] = [];
+    const lines = content.split('\n');
+
+    // Check for YAML frontmatter
+    const fmMatch = content.match(/^---\s*\n([\s\S]*?)\n---\s*\n?([\s\S]*)$/);
+    if (fmMatch) {
+      const fmLines = fmMatch[1].split('\n');
+      for (const line of fmLines) {
+        const colonIdx = line.indexOf(':');
+        if (colonIdx === -1) continue;
+        const key = line.slice(0, colonIdx).trim().toLowerCase();
+        const value = line.slice(colonIdx + 1).trim();
+        if (key === 'name') name = value;
+        if (key === 'description') description = value;
+        if (key === 'permissions') {
+          permissions = value.split(',').map(p => p.trim()).filter(Boolean);
+        }
+      }
+    }
+
+    // If no frontmatter description, extract from first paragraph
+    if (!description) {
+      const titleLine = lines.find(l => l.startsWith('# '));
+      if (titleLine) {
+        name = titleLine.replace(/^#\s+/, '').replace(/\s*—.*$/, '').trim();
+      }
+      let foundTitle = false;
+      for (const line of lines) {
+        if (line.startsWith('# ')) { foundTitle = true; continue; }
+        if (!foundTitle) continue;
+        const trimmed = line.trim();
+        if (trimmed === '' || trimmed.startsWith('#') || trimmed.startsWith('---')) continue;
+        description = trimmed;
+        break;
+      }
+    }
+
+    // Determine what would be injected into the system prompt
+    // Skills are injected as their full content after frontmatter
+    const promptContent = fmMatch ? fmMatch[2].trim() : content;
+
+    // Determine family info if available
+    const familyInfo = SKILL_FAMILIES[skillName] ?? { family: 'other', label: 'Other' };
+
+    const response: Record<string, unknown> = {
+      skill: {
+        name: skillName,
+        displayName: name,
+        description,
+        permissions,
+        family: familyInfo.family,
+        familyLabel: familyInfo.label,
+        isWorkflow: WORKFLOW_SKILLS.has(skillName),
+        contentLength: content.length,
+      },
+      wouldInject: promptContent,
+      wouldInjectLength: promptContent.length,
+    };
+
+    // If testInput is provided, show what the combined prompt context would look like
+    if (testInput) {
+      response.testPreview = {
+        input: testInput,
+        combinedContext: `[Skill: ${name}]\n${promptContent}\n\n[User Input]\n${testInput}`,
+        note: 'This shows how the skill instructions and your input would be combined. Actual LLM execution is not performed in sandbox mode.',
+      };
+    }
+
+    return response;
+  });
+
   // ── Audit Trail ─────────────────────────────────────────────────
 
   // GET /api/audit/installs — recent install audit trail

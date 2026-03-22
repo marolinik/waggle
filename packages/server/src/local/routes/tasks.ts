@@ -54,6 +54,34 @@ export const taskRoutes: FastifyPluginAsync = async (fastify) => {
   const dataDir = (fastify as any).localConfig.dataDir as string;
 
   /**
+   * D3: GET /api/tasks — global task view across all workspaces.
+   * Team Lead / CEO persona needs cross-workspace task visibility.
+   */
+  fastify.get<{
+    Querystring: { status?: string };
+  }>('/api/tasks', async (request, reply) => {
+    const workspaces = (fastify as any).workspaceManager?.list() ?? [];
+    const allTasks: Array<TeamTask & { workspaceId: string; workspaceName: string }> = [];
+
+    for (const ws of workspaces) {
+      const wsTasks = readTasks(dataDir, ws.id);
+      for (const task of wsTasks) {
+        allTasks.push({ ...task, workspaceId: ws.id, workspaceName: ws.name });
+      }
+    }
+
+    let filtered = allTasks;
+    if (request.query.status) {
+      filtered = filtered.filter(t => t.status === request.query.status);
+    }
+
+    // Sort by most recent first
+    filtered.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
+    return reply.code(200).send({ tasks: filtered, total: filtered.length });
+  });
+
+  /**
    * GET /api/workspaces/:id/tasks
    * List all tasks for a workspace.
    */

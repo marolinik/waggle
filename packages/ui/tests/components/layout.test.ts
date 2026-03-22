@@ -49,16 +49,21 @@ describe('formatTokenCount', () => {
 
 describe('formatCost', () => {
   it('formats sub-cent amounts with cent symbol', () => {
-    expect(formatCost(0)).toBe('$0.00\u00A2');
-    expect(formatCost(0.005)).toBe('$0.50\u00A2');
-    expect(formatCost(0.0099)).toBe('$0.99\u00A2');
+    expect(formatCost(0)).toBe('0.0\u00A2');
+    expect(formatCost(0.005)).toBe('0.5\u00A2');
+    expect(formatCost(0.0099)).toBe('1.0\u00A2');
   });
 
-  it('formats dollar amounts with 3 decimal places', () => {
-    expect(formatCost(0.01)).toBe('$0.010');
-    expect(formatCost(0.123)).toBe('$0.123');
-    expect(formatCost(1.5)).toBe('$1.500');
-    expect(formatCost(42.999)).toBe('$42.999');
+  it('formats dollar amounts with 2 decimal places', () => {
+    expect(formatCost(0.01)).toBe('$0.01');
+    expect(formatCost(0.123)).toBe('$0.12');
+    expect(formatCost(1.5)).toBe('$1.50');
+    expect(formatCost(42.999)).toBe('$43.00');
+  });
+
+  it('formats large amounts with rounding', () => {
+    expect(formatCost(100)).toBe('~$100');
+    expect(formatCost(234.56)).toBe('~$235');
   });
 });
 

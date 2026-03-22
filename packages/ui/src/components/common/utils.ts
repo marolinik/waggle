@@ -13,10 +13,13 @@ export function formatTokenCount(tokens: number): string {
 }
 
 /**
- * Format a dollar cost for compact display.
- * <$0.01: shows in cents, otherwise $X.XXX
+ * Format a dollar cost for compact, human-friendly display.
+ * C4: Changed from raw $22.944 to friendlier format.
+ * <$0.01: shows in cents, <$1: $0.XX, <$100: $X.XX, >=100: ~$XXX
  */
 export function formatCost(dollars: number): string {
-  if (dollars < 0.01) return `$${(dollars * 100).toFixed(2)}\u00A2`;
-  return `$${dollars.toFixed(3)}`;
+  if (dollars < 0.01) return `${(dollars * 100).toFixed(1)}\u00A2`;
+  if (dollars < 1) return `$${dollars.toFixed(2)}`;
+  if (dollars < 100) return `$${dollars.toFixed(2)}`;
+  return `~$${Math.round(dollars)}`;
 }

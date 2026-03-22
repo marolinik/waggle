@@ -183,8 +183,8 @@ export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, o
               )}
               <div className="text-sm text-muted-foreground">
                 {workspaceContext.stats.memoryCount > 0
-                  ? `${workspaceContext.stats.memoryCount} memories · ${workspaceContext.stats.sessionCount} sessions${workspaceContext.stats.fileCount ? ` · ${workspaceContext.stats.fileCount} files` : ''}`
-                  : 'No memories yet'}
+                  ? `Your agent knows ${workspaceContext.stats.memoryCount} things · ${workspaceContext.stats.sessionCount} sessions${workspaceContext.stats.fileCount ? ` · ${workspaceContext.stats.fileCount} files` : ''}`
+                  : 'Ready for your first conversation'}
                 {workspaceContext.workspace.model && ` · ${workspaceContext.workspace.model}`}
               </div>
               {workspaceContext.lastActive && (

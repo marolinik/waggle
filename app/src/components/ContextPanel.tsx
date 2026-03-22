@@ -15,8 +15,20 @@ import { SessionList, FrameDetail, FilePreview, TeamPresence, ActivityFeed, Team
 
 type AppView = 'chat' | 'memory' | 'events' | 'capabilities' | 'cockpit' | 'mission-control' | 'settings';
 
+/** E5: Workspace info for the persistent context card at top of every panel view */
+export interface WorkspaceInfo {
+  name: string;
+  group?: string;
+  model?: string;
+  memoryCount: number;
+  sessionCount: number;
+  lastActive?: string;
+}
+
 export interface ContextPanelProps {
   currentView: AppView;
+  /** E5: Workspace info shown as persistent card at top of panel */
+  workspaceInfo?: WorkspaceInfo;
   groupedSessions: Record<string, Session[]>;
   activeSessionId?: string;
   onSelectSession: (id: string) => void;
@@ -52,6 +64,43 @@ export interface ContextPanelProps {
   onEventFiltersChange?: (filters: Record<string, boolean>) => void;
 }
 
+/** E5: Persistent workspace context card — always at top of every panel view */
+function WorkspaceContextCard({ info }: { info?: WorkspaceInfo }) {
+  if (!info) return null;
+
+  const formatLastActive = (iso: string): string => {
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    return `${days}d ago`;
+  };
+
+  return (
+    <div className="px-3 py-2.5 border-b border-border bg-card/30">
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-xs font-medium text-foreground truncate">{info.name}</span>
+        {info.group && (
+          <span className="text-[9px] text-muted-foreground/60 bg-secondary px-1.5 py-0.5 rounded shrink-0">{info.group}</span>
+        )}
+      </div>
+      <div className="flex items-center gap-3 text-[10px] text-muted-foreground/50">
+        {info.model && <span className="font-mono">{info.model.replace('claude-', '').replace('-4-6', '')}</span>}
+        <span>{info.memoryCount} memories</span>
+        <span>{info.sessionCount} sessions</span>
+      </div>
+      {info.lastActive && (
+        <div className="text-[9px] text-muted-foreground/30 mt-0.5">
+          Active {formatLastActive(info.lastActive)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PanelHeader({ label, action }: { label: string; action?: { label: string; onClick: () => void } }) {
   return (
     <div className="px-3 py-2.5 border-b border-border text-[9px] font-semibold text-muted-foreground/40 uppercase tracking-widest font-mono flex justify-between items-center">
@@ -70,6 +119,7 @@ function PanelHeader({ label, action }: { label: string; action?: { label: strin
 
 export function ContextPanel({
   currentView,
+  workspaceInfo,
   groupedSessions,
   activeSessionId,
   onSelectSession,
@@ -99,6 +149,7 @@ export function ContextPanel({
     if (previewFile) {
       return (
         <div className="flex flex-col h-full">
+          <WorkspaceContextCard info={workspaceInfo} />
           <PanelHeader
             label="Document Preview"
             action={onClosePreview ? { label: '\u2715 Close', onClick: onClosePreview } : undefined}
@@ -128,6 +179,7 @@ export function ContextPanel({
 
     return (
       <div className="flex flex-col h-full">
+        <WorkspaceContextCard info={workspaceInfo} />
         {recentMemories && recentMemories.length > 0 && (
           <>
             <PanelHeader label="Memory" />
@@ -200,6 +252,7 @@ export function ContextPanel({
   if (currentView === 'memory' && selectedFrame) {
     return (
       <div className="flex flex-col h-full">
+        <WorkspaceContextCard info={workspaceInfo} />
         <PanelHeader label="Frame Detail" />
         <div className="flex-1 overflow-auto p-2.5">
           <FrameDetail frame={selectedFrame} />
@@ -210,21 +263,34 @@ export function ContextPanel({
 
   // ── F5: Capabilities view context ──────────────────────────────────
   if (currentView === 'capabilities') {
-    return <CapabilitiesContext />;
+    return (
+      <div className="flex flex-col h-full">
+        <WorkspaceContextCard info={workspaceInfo} />
+        <CapabilitiesContext />
+      </div>
+    );
   }
 
   // ── F5: Cockpit view context ───────────────────────────────────────
   if (currentView === 'cockpit') {
-    return <CockpitContext onRefreshHealth={onRefreshHealth} />;
+    return (
+      <div className="flex flex-col h-full">
+        <WorkspaceContextCard info={workspaceInfo} />
+        <CockpitContext onRefreshHealth={onRefreshHealth} />
+      </div>
+    );
   }
 
   // ── F5: Events view context ────────────────────────────────────────
   if (currentView === 'events') {
     return (
-      <EventsContext
-        filters={eventFilters}
-        onFiltersChange={onEventFiltersChange}
-      />
+      <div className="flex flex-col h-full">
+        <WorkspaceContextCard info={workspaceInfo} />
+        <EventsContext
+          filters={eventFilters}
+          onFiltersChange={onEventFiltersChange}
+        />
+      </div>
     );
   }
 
@@ -232,6 +298,7 @@ export function ContextPanel({
   if (currentView === 'mission-control') {
     return (
       <div className="flex flex-col h-full">
+        <WorkspaceContextCard info={workspaceInfo} />
         <PanelHeader label="Fleet Info" />
         <div className="px-3 py-3 space-y-3 text-[11px] text-muted-foreground">
           <div>
@@ -257,7 +324,12 @@ export function ContextPanel({
 
   // ── F5: Settings view context ──────────────────────────────────────
   if (currentView === 'settings') {
-    return <SettingsContext activeTab={settingsTab} />;
+    return (
+      <div className="flex flex-col h-full">
+        <WorkspaceContextCard info={workspaceInfo} />
+        <SettingsContext activeTab={settingsTab} />
+      </div>
+    );
   }
 
   return null;
@@ -277,7 +349,7 @@ const BUILT_IN_PACKS = [
 
 function CapabilitiesContext() {
   return (
-    <div className="flex flex-col h-full">
+    <>
       <PanelHeader label="Installed" />
       <div className="px-3 py-2 border-b border-border">
         {BUILT_IN_PACKS.map((pack) => (
@@ -297,7 +369,7 @@ function CapabilitiesContext() {
       <div className="p-3 text-[11px] text-muted-foreground/40 leading-relaxed font-mono">
         Marketplace suggestions will appear here after Wave 8A.
       </div>
-    </div>
+    </>
   );
 }
 
@@ -316,7 +388,7 @@ function CockpitContext({ onRefreshHealth }: { onRefreshHealth?: () => void }) {
   }, [onRefreshHealth, refreshing]);
 
   return (
-    <div className="flex flex-col h-full">
+    <>
       <PanelHeader label="Quick Actions" />
       <div className="px-3 py-2 flex flex-col gap-1.5">
         <button
@@ -336,7 +408,7 @@ function CockpitContext({ onRefreshHealth }: { onRefreshHealth?: () => void }) {
           Trigger Sync
         </button>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -358,7 +430,7 @@ function EventsContext({
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <>
       <PanelHeader label="Filter" />
       <div className="px-3 py-2 border-b border-border">
         {EVENT_TYPES.map((type) => (
@@ -380,7 +452,7 @@ function EventsContext({
       <div className="p-3 text-[11px] text-muted-foreground/40 leading-loose font-mono">
         <div>Event statistics available during active agent sessions.</div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -399,7 +471,7 @@ function SettingsContext({ activeTab }: { activeTab?: string }) {
   const tabName = tab.charAt(0).toUpperCase() + tab.slice(1);
 
   return (
-    <div className="flex flex-col h-full">
+    <>
       <PanelHeader label="Help" />
       <div className="p-3">
         <div className="text-xs font-semibold text-foreground mb-1.5 font-mono">
@@ -427,6 +499,6 @@ function SettingsContext({ activeTab }: { activeTab?: string }) {
           </div>
         ))}
       </div>
-    </div>
+    </>
   );
 }

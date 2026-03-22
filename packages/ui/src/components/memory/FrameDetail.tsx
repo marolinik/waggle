@@ -6,7 +6,7 @@
  */
 
 import type { Frame } from '../../services/types.js';
-import { getFrameTypeIcon, getFrameTypeLabel, getImportanceBadge, formatTimestamp } from './utils.js';
+import { getFrameTypeIcon, getFrameTypeLabel, getImportanceBadge, getSourceLabel, formatTimestamp } from './utils.js';
 
 export interface FrameDetailProps {
   frame: Frame;
@@ -22,7 +22,7 @@ export function FrameDetail({ frame }: FrameDetailProps) {
       {/* Header */}
       <div className="frame-detail__header flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="frame-detail__icon text-lg" title={icon}>
+          <span className="frame-detail__icon text-lg" title={label}>
             {icon === 'keyframe' ? '◆' : icon === 'prediction' ? '▶' : icon === 'bidirectional' ? '◀▶' : '■'}
           </span>
           <span className="frame-detail__type text-sm font-medium text-muted-foreground">
@@ -42,7 +42,7 @@ export function FrameDetail({ frame }: FrameDetailProps) {
       <div className="frame-detail__meta flex flex-wrap gap-4 text-xs text-muted-foreground">
         <span>ID: {frame.id}</span>
         <span>{formatTimestamp(frame.timestamp)}</span>
-        <span className="capitalize">{frame.source}</span>
+        <span>{getSourceLabel(frame.source)}</span>
         {frame.score !== undefined && (
           <span>Score: {frame.score.toFixed(2)}</span>
         )}
