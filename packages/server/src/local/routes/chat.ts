@@ -325,7 +325,11 @@ You remember everything important. You build knowledge over time. You get better
 - Platform: ${process.platform} (${process.arch})
 - Shell: ${process.platform === 'win32' ? 'cmd.exe (use /t flag for date, time)' : '/bin/sh'}
 - Working directory: ${workspacePath ?? os.homedir()}
-${workspacePath ? `- Workspace: ${workspacePath} (all file operations are relative to this directory)\n- Generated files will appear in: ${workspacePath}` : `- No workspace directory set. File operations use the user's home directory: ${os.homedir()}`}
+${workspacePath
+  ? (workspacePath.includes('/files') || workspacePath.includes('\\files')
+    ? `- Workspace files: managed storage (${workspacePath})\n- Generated files will appear in managed workspace storage.`
+    : `- Workspace linked to: ${workspacePath} (all file operations are relative to this directory)\n- Generated files will appear in: ${workspacePath}`)
+  : `- No workspace directory set. Use save_memory to store information instead of files.`}
 ${process.platform === 'win32' ? '- Windows note: use `date /t` and `time /t` (not bare `date` which prompts for input). Use `dir` instead of `ls`.' : ''}
 ${sessionId ? `- Session: ${sessionId}` : ''}
 ${historyLength && historyLength > 0 ? `- This is a continuing conversation (${historyLength} previous messages in context). You can see the full conversation history above.` : '- This is a new conversation. Search memory (search_memory) to recall what happened in previous sessions.'}
@@ -644,12 +648,16 @@ When approaching any task:
     const { message, workspace: _ws, workspaceId: _wsId, model, session, workspacePath: explicitWorkspacePath } = request.body ?? {};
     const workspace = _ws ?? _wsId;
 
-    // A2: Resolve workspace directory — use explicit path, or look up from workspace config
+    // A2: Resolve workspace directory — use explicit path, workspace config, or virtual storage
+    // NEVER fall back to user homedir — use managed storage instead
     let workspacePath = explicitWorkspacePath;
     if (!workspacePath && workspace) {
       const wsConfig = server.workspaceManager?.get(workspace);
-      if (wsConfig?.directory) {
-        workspacePath = wsConfig.directory;
+      if (wsConfig?.directory && fs.existsSync(wsConfig.directory)) {
+        workspacePath = wsConfig.directory; // linked mode
+      } else if (workspace !== 'default') {
+        // Virtual workspace storage — managed files directory
+        workspacePath = path.join(server.localConfig.dataDir, 'workspaces', workspace, 'files');
       }
     }
 

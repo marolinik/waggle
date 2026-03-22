@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type { FastifyPluginAsync } from 'fastify';
-import { MindDB } from '@waggle/core';
+import { MindDB, createFileStore } from '@waggle/core';
 import { assertSafeSegment } from './validate.js';
 import { extractProgressItems, type ProgressItem } from './sessions.js';
 import { readFileRegistry, type FileRegistryEntry } from './ingest.js';
@@ -460,5 +460,108 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
       turns: wsEntries.length,
       history,
     };
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // Virtual workspace storage — file API endpoints
+  // ═══════════════════════════════════════════════════════════════════
+
+  // GET /api/workspaces/:id/storage — storage stats
+  server.get<{ Params: { id: string } }>('/api/workspaces/:id/storage', async (request, reply) => {
+    assertSafeSegment(request.params.id, 'id');
+    const ws = server.workspaceManager.get(request.params.id);
+    if (!ws) return reply.status(404).send({ error: 'Workspace not found' });
+
+    const store = createFileStore(server.localConfig.dataDir, request.params.id, ws.directory);
+    const info = await store.getStorageInfo();
+    return {
+      workspaceId: request.params.id,
+      storageType: store.getStorageType(),
+      directory: store.getStorageType() === 'linked' ? ws.directory : undefined,
+      rootPath: store.getRootPath(),
+      ...info,
+    };
+  });
+
+  // GET /api/workspaces/:id/storage/files — list files (optionally in a subdirectory)
+  server.get<{
+    Params: { id: string };
+    Querystring: { dir?: string };
+  }>('/api/workspaces/:id/storage/files', async (request, reply) => {
+    assertSafeSegment(request.params.id, 'id');
+    const ws = server.workspaceManager.get(request.params.id);
+    if (!ws) return reply.status(404).send({ error: 'Workspace not found' });
+
+    const store = createFileStore(server.localConfig.dataDir, request.params.id, ws.directory);
+    const files = await store.listFiles(request.query.dir);
+    return { files, storageType: store.getStorageType() };
+  });
+
+  // GET /api/workspaces/:id/storage/read?path=relative/path — read file content
+  server.get<{
+    Params: { id: string };
+    Querystring: { path: string };
+  }>('/api/workspaces/:id/storage/read', async (request, reply) => {
+    assertSafeSegment(request.params.id, 'id');
+    const filePath = request.query.path;
+    if (!filePath) return reply.status(400).send({ error: 'path query param is required' });
+
+    const ws = server.workspaceManager.get(request.params.id);
+    if (!ws) return reply.status(404).send({ error: 'Workspace not found' });
+
+    const store = createFileStore(server.localConfig.dataDir, request.params.id, ws.directory);
+    try {
+      const content = await store.readFile(filePath);
+      // Detect if binary or text
+      const ext = path.extname(filePath).toLowerCase();
+      const textExts = new Set(['.txt', '.md', '.json', '.ts', '.tsx', '.js', '.jsx', '.html', '.css', '.yml', '.yaml', '.toml', '.xml', '.csv', '.log', '.env', '.sh', '.bat', '.py', '.rs', '.go']);
+      if (textExts.has(ext)) {
+        return reply.type('text/plain').send(content.toString('utf-8'));
+      }
+      return reply.type('application/octet-stream').send(content);
+    } catch (err) {
+      return reply.status(404).send({ error: 'File not found' });
+    }
+  });
+
+  // POST /api/workspaces/:id/storage/write?path=relative/path — write file
+  server.post<{
+    Params: { id: string };
+    Querystring: { path: string };
+    Body: { content: string };
+  }>('/api/workspaces/:id/storage/write', async (request, reply) => {
+    assertSafeSegment(request.params.id, 'id');
+    const filePath = request.query.path;
+    if (!filePath) return reply.status(400).send({ error: 'path query param is required' });
+
+    const ws = server.workspaceManager.get(request.params.id);
+    if (!ws) return reply.status(404).send({ error: 'Workspace not found' });
+
+    const store = createFileStore(server.localConfig.dataDir, request.params.id, ws.directory);
+    const content = request.body?.content ?? '';
+    await store.writeFile(filePath, content);
+    emitAuditEvent(server, { workspaceId: request.params.id, eventType: 'tool_call', toolName: 'file_write', input: JSON.stringify({ path: filePath }) });
+    return reply.status(201).send({ written: true, path: filePath });
+  });
+
+  // DELETE /api/workspaces/:id/storage/delete?path=relative/path — delete file
+  server.delete<{
+    Params: { id: string };
+    Querystring: { path: string };
+  }>('/api/workspaces/:id/storage/delete', async (request, reply) => {
+    assertSafeSegment(request.params.id, 'id');
+    const filePath = request.query.path;
+    if (!filePath) return reply.status(400).send({ error: 'path query param is required' });
+
+    const ws = server.workspaceManager.get(request.params.id);
+    if (!ws) return reply.status(404).send({ error: 'Workspace not found' });
+
+    const store = createFileStore(server.localConfig.dataDir, request.params.id, ws.directory);
+    try {
+      await store.deleteFile(filePath);
+      return reply.status(204).send();
+    } catch {
+      return reply.status(404).send({ error: 'File not found' });
+    }
   });
 };
