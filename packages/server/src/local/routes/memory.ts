@@ -243,6 +243,18 @@ export const memoryRoutes: FastifyPluginAsync = async (server) => {
       gopId = active[0].gop_id;
     }
 
+    // BUG-R1-01: Dedup check at route level — catches both I-Frames and P-Frames
+    const existingDup = frames.findDuplicate(content);
+    if (existingDup) {
+      return {
+        saved: false,
+        duplicate: true,
+        frameId: existingDup.id,
+        mind: mindLabel,
+        message: 'Identical content already exists. Access count updated.',
+      };
+    }
+
     // Create frame
     const latestI = frames.getLatestIFrame(gopId);
     let frame;
@@ -377,14 +389,15 @@ export const memoryRoutes: FastifyPluginAsync = async (server) => {
   // L2: DELETE /api/memory/frames/:id — delete a memory frame by ID
   server.delete<{
     Params: { id: string };
-    Querystring: { workspace?: string };
+    Querystring: { workspace?: string; workspaceId?: string };
   }>('/api/memory/frames/:id', async (request, reply) => {
     const frameId = parseInt(request.params.id, 10);
     if (isNaN(frameId)) {
       return reply.status(400).send({ error: 'Invalid frame ID' });
     }
 
-    const workspace = request.query.workspace;
+    // BUG-R1-02: Accept both 'workspace' and 'workspaceId' for workspace-specific deletion
+    const workspace = request.query.workspace ?? request.query.workspaceId;
 
     // Try workspace mind first, then personal
     let deleted = false;
@@ -409,6 +422,6 @@ export const memoryRoutes: FastifyPluginAsync = async (server) => {
       eventType: 'memory_delete',
       input: JSON.stringify({ frameId }),
     });
-    return reply.status(204).send();
+    return reply.status(200).send({ deleted: true, frameId });
   });
 };

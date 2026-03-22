@@ -306,8 +306,10 @@ function WaggleApp() {
 
     const fetchMicroStatus = async () => {
       const status: Record<string, WorkspaceMicroStatus> = {};
+      // BUG-R2-04: Limit context fetches to first 5 workspaces to prevent request storm
+      const toFetch = workspaces.slice(0, 5);
       await Promise.allSettled(
-        workspaces.map(async (ws) => {
+        toFetch.map(async (ws) => {
           try {
             const res = await fetch(`${SERVER_BASE}/api/workspaces/${ws.id}/context`);
             if (res.ok) {

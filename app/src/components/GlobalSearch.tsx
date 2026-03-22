@@ -7,7 +7,7 @@
  *   - Settings tabs (General, Models, Vault, Permissions, Team, Advanced)
  */
 
-import { useCallback } from 'react';
+import { useCallback, Suspense } from 'react';
 import type { Workspace } from '@waggle/ui';
 import {
   CommandDialog,
@@ -72,6 +72,11 @@ export function GlobalSearch({
     },
     [onSelect, onClose],
   );
+
+  // BUG-R2-01: Guard against cmdk store subscription error.
+  // Only mount CommandDialog when open — prevents useSyncExternalStore crash
+  // when the cmdk internal store isn't ready during initial render.
+  if (!open) return null;
 
   return (
     <CommandDialog

@@ -475,11 +475,11 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
     const store = createFileStore(server.localConfig.dataDir, request.params.id, ws.directory);
     const info = await store.getStorageInfo();
     return {
+      ...info,
       workspaceId: request.params.id,
       storageType: store.getStorageType(),
       directory: store.getStorageType() === 'linked' ? ws.directory : undefined,
       rootPath: store.getRootPath(),
-      ...info,
     };
   });
 
@@ -498,9 +498,10 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
   });
 
   // GET /api/workspaces/:id/storage/read?path=relative/path — read file content
+  // BUG-R3-04: Return JSON by default, raw content with ?raw=true
   server.get<{
     Params: { id: string };
-    Querystring: { path: string };
+    Querystring: { path: string; raw?: string };
   }>('/api/workspaces/:id/storage/read', async (request, reply) => {
     assertSafeSegment(request.params.id, 'id');
     const filePath = request.query.path;
@@ -512,14 +513,24 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
     const store = createFileStore(server.localConfig.dataDir, request.params.id, ws.directory);
     try {
       const content = await store.readFile(filePath);
-      // Detect if binary or text
       const ext = path.extname(filePath).toLowerCase();
       const textExts = new Set(['.txt', '.md', '.json', '.ts', '.tsx', '.js', '.jsx', '.html', '.css', '.yml', '.yaml', '.toml', '.xml', '.csv', '.log', '.env', '.sh', '.bat', '.py', '.rs', '.go']);
-      if (textExts.has(ext)) {
-        return reply.type('text/plain').send(content.toString('utf-8'));
+      const isText = textExts.has(ext);
+
+      // Raw mode: return content directly
+      if (request.query.raw === 'true') {
+        return reply.type(isText ? 'text/plain' : 'application/octet-stream').send(isText ? content.toString('utf-8') : content);
       }
-      return reply.type('application/octet-stream').send(content);
-    } catch (err) {
+
+      // Default: return JSON wrapper
+      return {
+        path: filePath,
+        content: isText ? content.toString('utf-8') : content.toString('base64'),
+        encoding: isText ? 'utf-8' : 'base64',
+        size: content.length,
+        mimeType: isText ? 'text/plain' : 'application/octet-stream',
+      };
+    } catch {
       return reply.status(404).send({ error: 'File not found' });
     }
   });

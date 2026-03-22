@@ -383,12 +383,13 @@ export function ContextPanel({
 // F5: Sub-components for each view's context panel
 // ═══════════════════════════════════════════════════════════════════════
 
+// IMP-2: Distinct icons and accent colors for each capability pack
 const BUILT_IN_PACKS = [
-  { name: 'Research Workflow', id: 'research-workflow' },
-  { name: 'Writing Suite', id: 'writing-suite' },
-  { name: 'Planning Master', id: 'planning-master' },
-  { name: 'Team Collaboration', id: 'team-collaboration' },
-  { name: 'Decision Framework', id: 'decision-framework' },
+  { name: 'Research Workflow', id: 'research-workflow', icon: '🔬', color: 'bg-green-500' },
+  { name: 'Writing Suite', id: 'writing-suite', icon: '✍️', color: 'bg-purple-500' },
+  { name: 'Planning Master', id: 'planning-master', icon: '📋', color: 'bg-blue-500' },
+  { name: 'Team Collaboration', id: 'team-collaboration', icon: '👥', color: 'bg-orange-500' },
+  { name: 'Decision Framework', id: 'decision-framework', icon: '⚖️', color: 'bg-teal-500' },
 ];
 
 function CapabilitiesContext() {
@@ -401,7 +402,7 @@ function CapabilitiesContext() {
             key={pack.id}
             className="flex items-center gap-2 py-[5px] text-[11px] text-muted-foreground"
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
+            <span className="text-sm shrink-0">{pack.icon}</span>
             <span className="flex-1">{pack.name}</span>
             <span className="text-[9px] text-muted-foreground/40 opacity-60">
               built-in

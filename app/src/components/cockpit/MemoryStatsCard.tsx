@@ -42,6 +42,18 @@ export function MemoryStatsCard({ health }: MemoryStatsCardProps) {
               <div className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">Embedded</div>
             </div>
           </div>
+          {/* IMP-9: Warning when embedding coverage is low */}
+          {stats.embeddingCoverage < 80 && stats.frameCount > 0 && (
+            <div className={cn(
+              'mt-3 rounded-md px-3 py-2 text-[11px] border',
+              stats.embeddingCoverage < 40
+                ? 'bg-red-500/10 border-red-500/20 text-red-400'
+                : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
+            )}>
+              <strong>{100 - stats.embeddingCoverage}% of frames</strong> lack vector embeddings and won't appear in semantic search.
+              {stats.embeddingCoverage < 40 && ' Send more messages to build memory coverage.'}
+            </div>
+          )}
         )}
       </CardContent>
     </Card>

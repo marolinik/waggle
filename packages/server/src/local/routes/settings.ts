@@ -38,6 +38,15 @@ export const settingsRoutes: FastifyPluginAsync = async (server) => {
       }
     }
 
+    // BUG-R3-02: Include onboarding state in settings response
+    let onboardingCompleted = false;
+    try {
+      const configPath = path.join(server.localConfig.dataDir, 'config.json');
+      if (fs.existsSync(configPath)) {
+        const raw = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+        onboardingCompleted = raw.onboardingCompleted === true;
+      }
+    } catch { /* ignore */ }
     return {
       defaultModel: config.getDefaultModel(),
       providers,
@@ -45,6 +54,7 @@ export const settingsRoutes: FastifyPluginAsync = async (server) => {
       dataDir: server.localConfig.dataDir,
       litellmUrl: server.localConfig.litellmUrl,
       dailyBudget: config.getDailyBudget(),
+      onboardingCompleted,
     };
   });
 
@@ -108,6 +118,25 @@ export const settingsRoutes: FastifyPluginAsync = async (server) => {
       providers: responseProviders,
       mindPath: config.getMindPath(),
     };
+  });
+
+  // PATCH /api/settings — partial update for non-provider settings (onboarding, preferences)
+  server.patch<{
+    Body: { onboardingCompleted?: boolean; [key: string]: unknown };
+  }>('/api/settings', async (request) => {
+    const configPath = path.join(server.localConfig.dataDir, 'config.json');
+    let raw: Record<string, unknown> = {};
+    try {
+      if (fs.existsSync(configPath)) {
+        raw = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      }
+    } catch { /* fresh config */ }
+    const { onboardingCompleted, ...rest } = request.body ?? {};
+    if (onboardingCompleted !== undefined) raw.onboardingCompleted = onboardingCompleted;
+    // Merge any other simple fields
+    Object.assign(raw, rest);
+    fs.writeFileSync(configPath, JSON.stringify(raw, null, 2), 'utf-8');
+    return { updated: true, onboardingCompleted: raw.onboardingCompleted };
   });
 
   // POST /api/settings/test-key — test an API key by validating its format

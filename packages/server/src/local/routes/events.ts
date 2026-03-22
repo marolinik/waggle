@@ -163,6 +163,7 @@ export const eventRoutes: FastifyPluginAsync = async (server) => {
       workspaceId?: string;
       workspace?: string;
       type?: string;
+      eventType?: string;
       from?: string;
       to?: string;
       sessionId?: string;
@@ -173,7 +174,8 @@ export const eventRoutes: FastifyPluginAsync = async (server) => {
     const db = getAuditDb(dataDir);
     const q = request.query;
     const wsId = q.workspaceId ?? q.workspace;
-    const eventType = q.type;
+    // BUG-R3-01: Accept both 'type' and 'eventType' query params
+    const eventType = q.eventType ?? q.type;
     const from = q.from;
     const to = q.to;
     const sessionId = q.sessionId;
@@ -215,10 +217,14 @@ export const eventRoutes: FastifyPluginAsync = async (server) => {
     ).all(...params, limit, offset);
 
     return {
-      events: events.map(normalizeEvent),
+      events: (events as Record<string, unknown>[]).map(normalizeEvent),
       total: countRow.total,
       limit,
       offset,
+      // IMP-10: Pagination support
+      hasMore: offset + limit < countRow.total,
+      page: Math.floor(offset / limit) + 1,
+      totalPages: Math.ceil(countRow.total / limit),
     };
   });
 

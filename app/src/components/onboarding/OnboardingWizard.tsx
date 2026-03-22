@@ -188,6 +188,23 @@ export function OnboardingWizard({
         </div>
       )}
 
+      {/* IMP-1: Step indicator dots */}
+      {step > 0 && step < 5 && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2">
+          {[1, 2, 3, 4].map(s => (
+            <div
+              key={s}
+              className={`w-2 h-2 rounded-full transition-all ${
+                s === step ? 'bg-primary scale-125' : s < step ? 'bg-primary/40' : 'bg-muted-foreground/20'
+              }`}
+            />
+          ))}
+          <span className="text-[10px] text-muted-foreground/40 ml-1">
+            {step} of {totalSteps - 1}
+          </span>
+        </div>
+      )}
+
       {/* Skip link */}
       {step > 0 && step < 5 && (
         <button
