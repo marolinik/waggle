@@ -57,6 +57,8 @@ import { GlobalSearch } from './components/GlobalSearch';
 import type { GlobalSearchResultType } from './components/GlobalSearch';
 import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
 import { PersonaSwitcher } from './components/PersonaSwitcher';
+import { OnboardingWizard as EnhancedOnboardingWizard, OnboardingTooltips } from './components/onboarding/OnboardingWizard';
+import { useOnboarding } from './hooks/useOnboarding';
 import { getServerBaseUrl } from './lib/ipc';
 
 // ── Extracted hooks ──────────────────────────────────────────────────────
@@ -901,14 +903,35 @@ function WaggleApp() {
 
   // ── Render ────────────────────────────────────────────────────────
 
-  if (showOnboarding) {
+  // Enhanced onboarding wizard state
+  const onboarding = useOnboarding();
+
+  // Show enhanced wizard on first run, or fall back to basic wizard if needed
+  if (showOnboarding || onboarding.showWizard) {
     return (
-      <div className="fixed inset-0 z-[1000] bg-background">
-        <OnboardingWizard
-          onComplete={handleOnboardingComplete}
-          onTestApiKey={(provider, key) => service.testApiKey(provider, key)}
-        />
-      </div>
+      <EnhancedOnboardingWizard
+        serverBaseUrl={SERVER_BASE}
+        state={onboarding.state}
+        onUpdate={onboarding.updateState}
+        onNext={onboarding.nextStep}
+        onComplete={(url) => {
+          onboarding.complete(url);
+          setShowOnboarding(false);
+          service.getConfig().then(setConfig).catch(() => {});
+        }}
+        onDismiss={() => {
+          onboarding.dismiss();
+          setShowOnboarding(false);
+        }}
+        onFinish={(workspaceId, firstMessage) => {
+          // Switch to new workspace — useWorkspaces auto-refreshes
+          setActiveWorkspace(workspaceId);
+          // Send the first message to kick off the "wow" moment
+          if (firstMessage) {
+            setTimeout(() => sendMessage(firstMessage), 800);
+          }
+        }}
+      />
     );
   }
 
