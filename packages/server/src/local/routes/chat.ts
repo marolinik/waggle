@@ -8,6 +8,7 @@ import type { AgentLoopConfig, AgentResponse } from '@waggle/agent';
 import { buildWorkspaceNowBlock, formatWorkspaceNowPrompt } from './workspace-context.js';
 import { formatWorkspaceStatePrompt } from '../workspace-state.js';
 import { emitNotification } from './notifications.js';
+import { emitAuditEvent } from './events.js';
 import { validateOrigin } from '../cors-config.js';
 import { getPersona, composePersonaPrompt } from '@waggle/agent';
 
@@ -937,6 +938,14 @@ When approaching any task:
 
           // Send approval_required SSE event to the client
           sendEvent('approval_required', { requestId, toolName, input, ...trustMeta });
+            // F2: Audit trail — approval requested
+            emitAuditEvent(server, {
+              workspaceId: effectiveWorkspace,
+              eventType: 'approval_requested',
+              toolName,
+              input: JSON.stringify(input),
+              sessionId,
+            });
 
           // Wait for the client to approve or deny
           const approved = await new Promise<boolean>((resolve) => {
@@ -959,9 +968,11 @@ When approaching any task:
 
           if (!approved) {
             sendEvent('step', { content: `\u2716 ${toolName} denied by user` });
+            emitAuditEvent(server, { workspaceId: effectiveWorkspace, eventType: 'approval_denied', toolName, sessionId, approved: false });
             return { cancel: true, reason: `User denied ${toolName}` };
           }
           sendEvent('step', { content: `\u2714 ${toolName} approved` });
+            emitAuditEvent(server, { workspaceId: effectiveWorkspace, eventType: 'approval_granted', toolName, sessionId, approved: true });
         });
 
         // Use workspace-scoped tools if a workspacePath was specified
@@ -1050,6 +1061,15 @@ When approaching any task:
             sendEvent('tool', { name, input });
             // Track start time for duration calculation
             toolStartTimes.set(name + ':' + toolStartCounter++, Date.now());
+            // F2: Audit trail — log tool call
+            emitAuditEvent(server, {
+              workspaceId: effectiveWorkspace,
+              eventType: 'tool_call',
+              toolName: name,
+              input: JSON.stringify(input),
+              sessionId,
+              model: resolvedModel,
+            });
           },
           onToolResult: (name: string, input: Record<string, unknown>, result: string) => {
             // Calculate duration from the most recent start of this tool
@@ -1066,6 +1086,14 @@ When approaching any task:
             // Send tool_result SSE event so client can update status + show result
             const isError = result.startsWith('Error:') || result.startsWith('Error ');
             sendEvent('tool_result', { name, result, duration, isError });
+            // F2: Audit trail — log tool result (truncated output)
+            emitAuditEvent(server, {
+              workspaceId: effectiveWorkspace,
+              eventType: 'tool_result',
+              toolName: name,
+              output: result.length > 2000 ? result.slice(0, 2000) + '...[truncated]' : result,
+              sessionId,
+            });
 
             // Emit file_created events for file-writing tools
             const fileTools: Record<string, 'write' | 'edit' | 'generate'> = {

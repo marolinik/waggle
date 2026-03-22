@@ -16,6 +16,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import archiver from 'archiver';
 import { FrameStore, MindDB, WaggleConfig } from '@waggle/core';
 import { exportSessionToMarkdown } from './sessions.js';
+import { emitAuditEvent } from './events.js';
 
 function maskApiKey(key: string): string {
   if (!key || key.length < 12) return '****';
@@ -198,6 +199,13 @@ export const exportRoutes: FastifyPluginAsync = async (server) => {
         // Skip telemetry directory issues
       }
     }
+
+    // F2: Audit trail — export event
+    emitAuditEvent(server, {
+      workspaceId: scopedWorkspaceId ?? 'all',
+      eventType: 'export',
+      input: JSON.stringify({ scopedWorkspaceId }),
+    });
 
     // Finalize archive
     archive.finalize();

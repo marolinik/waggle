@@ -7,6 +7,7 @@ import { assertSafeSegment } from './validate.js';
 import { extractProgressItems, type ProgressItem } from './sessions.js';
 import { readFileRegistry, type FileRegistryEntry } from './ingest.js';
 import { buildWorkspaceState, type WorkspaceState } from '../workspace-state.js';
+import { emitAuditEvent } from './events.js';
 
 /**
  * A6: Compose a structured workspace summary — the "return reward moment."
@@ -110,6 +111,7 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
       // Non-blocking — starter skill installation failure shouldn't block workspace creation
     }
 
+    emitAuditEvent(server, { workspaceId: ws.id, eventType: 'workspace_create', input: JSON.stringify({ name: ws.name, group: ws.group }) });
     return reply.status(201).send(ws);
   });
 
@@ -389,7 +391,9 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
     if (!existing) {
       return reply.status(404).send({ error: 'Workspace not found' });
     }
-    server.workspaceManager.update(request.params.id, request.body);
+    const { personaId, ...rest } = request.body;
+    server.workspaceManager.update(request.params.id, { ...rest, ...(personaId !== null ? { personaId } : {}) });
+    emitAuditEvent(server, { workspaceId: request.params.id, eventType: 'workspace_update', input: JSON.stringify(request.body) });
     return server.workspaceManager.get(request.params.id);
   });
 
@@ -403,6 +407,7 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
     // A6: Close workspace mind DB before filesystem deletion to prevent EBUSY
     server.agentState.closeWorkspaceMind(request.params.id);
     server.workspaceManager.delete(request.params.id);
+    emitAuditEvent(server, { workspaceId: request.params.id, eventType: 'workspace_delete' });
     return reply.status(204).send();
   });
 };

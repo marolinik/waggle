@@ -104,6 +104,7 @@ import { costRoutes } from './routes/cost.js';
 import { backupRoutes } from './routes/backup.js';
 import { offlineRoutes } from './routes/offline.js';
 import { weaverRoutes } from './routes/weaver.js';
+import { eventRoutes, closeAuditDb, cleanupAuditEvents } from './routes/events.js';
 import { OfflineManager } from './offline-manager.js';
 import { securityMiddleware } from './security-middleware.js';
 import { LocalScheduler } from './cron.js';
@@ -1255,6 +1256,15 @@ Return ONLY the improved system prompt text. No commentary, no markdown fences, 
   scheduler.start();
   server.decorate('scheduler', scheduler);
 
+  // F2: Daily audit event cleanup (retain 90 days by default)
+  const auditRetentionDays = parseInt(process.env.WAGGLE_AUDIT_RETENTION_DAYS ?? '90', 10);
+  const auditCleanupTimer = setInterval(() => {
+    const deleted = cleanupAuditEvents(fullConfig.dataDir, auditRetentionDays);
+    if (deleted > 0) {
+      console.log(`[audit] Cleaned up ${deleted} events older than ${auditRetentionDays} days`);
+    }
+  }, 24 * 60 * 60 * 1000); // once per day
+
   // PM-6: Offline manager — periodic LLM health checks
   const offlineManager = new OfflineManager({
     dataDir: fullConfig.dataDir,
@@ -1318,6 +1328,7 @@ Return ONLY the improved system prompt text. No commentary, no markdown fences, 
   await server.register(backupRoutes);
   await server.register(offlineRoutes);
   await server.register(weaverRoutes);
+  await server.register(eventRoutes);
 
   // ── Static file serving for web mode ──────────────────────────
   // When WAGGLE_FRONTEND_DIR is set (or app/dist exists), serve the React frontend
@@ -1537,6 +1548,7 @@ Return ONLY the improved system prompt text. No commentary, no markdown fences, 
     // Stop cron scheduler
     scheduler.stop();
     offlineManager.stop();
+    clearInterval(auditCleanupTimer);
 
     // Stop MCP servers
     await mcpRuntime.stopAll().catch(() => {});
@@ -1557,6 +1569,9 @@ Return ONLY the improved system prompt text. No commentary, no markdown fences, 
     }
     workspaceMindCache.clear();
     multiMind.close();
+
+    // Close audit DB
+    closeAuditDb();
 
     // Close marketplace DB
     if (marketplaceDb) {

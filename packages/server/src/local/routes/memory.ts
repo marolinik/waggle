@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import type { SearchScope, Importance } from '@waggle/core';
 import { FrameStore, SessionStore, KnowledgeGraph } from '@waggle/core';
 import { extractEntities } from '@waggle/agent';
+import { emitAuditEvent } from './events.js';
 
 /**
  * M4: Sanitize memory frame content to prevent stored XSS.
@@ -300,6 +301,14 @@ export const memoryRoutes: FastifyPluginAsync = async (server) => {
       }
     }
 
+    // F2: Audit trail — memory write
+    emitAuditEvent(server, {
+      workspaceId: workspace ?? 'personal',
+      eventType: 'memory_write',
+      input: JSON.stringify({ content: content.slice(0, 500), importance: imp, source: src }),
+      output: JSON.stringify({ frameId: frame.id, mind: mindLabel }),
+    });
+
     return {
       saved: true,
       frameId: frame.id,
@@ -394,6 +403,12 @@ export const memoryRoutes: FastifyPluginAsync = async (server) => {
     if (!deleted) {
       return reply.status(404).send({ error: 'Frame not found' });
     }
+    // F2: Audit trail — memory delete
+    emitAuditEvent(server, {
+      workspaceId: workspace ?? 'personal',
+      eventType: 'memory_delete',
+      input: JSON.stringify({ frameId }),
+    });
     return reply.status(204).send();
   });
 };
