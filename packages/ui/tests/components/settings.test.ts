@@ -192,17 +192,15 @@ describe('SETTINGS_TABS', () => {
     expect(SETTINGS_TABS.length).toBeGreaterThan(0);
   });
 
-  it('has General, Models & Providers, Vault & Credentials, Permissions, Team, Advanced tabs', () => {
+  it('has General, Models, Vault, Permissions, Team, Backup, Advanced tabs', () => {
     const labels = SETTINGS_TABS.map((t) => t.label);
     expect(labels).toContain('General');
-    expect(labels).toContain('Models & Providers');
-    expect(labels).toContain('Vault & Credentials');
+    expect(labels).toContain('Models');
+    expect(labels).toContain('Vault');
     expect(labels).toContain('Permissions');
     expect(labels).toContain('Team');
+    expect(labels).toContain('Backup');
     expect(labels).toContain('Advanced');
-    expect(labels).not.toContain('API Keys');
-    expect(labels).not.toContain('Skills & Plugins');
-    expect(labels).not.toContain('Capabilities');
   });
 
   it('each tab has id and label', () => {

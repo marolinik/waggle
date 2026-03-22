@@ -192,7 +192,12 @@ export function ModelsSection({ config, onConfigUpdate, onTestApiKey, serverUrl 
                   : 'bg-card border border-border hover:border-primary/30'
               }`}
             >
-              <div className="text-[13px] font-medium text-foreground">{model.displayName}</div>
+              <div className="flex items-center gap-2">
+                <span className="text-[13px] font-medium text-foreground">{model.displayName}</span>
+                {config.defaultModel === model.name && (
+                  <span className="text-[9px] font-semibold text-primary bg-primary/15 px-1.5 py-0.5 rounded">DEFAULT</span>
+                )}
+              </div>
               <div className="flex items-center gap-2 mt-1 text-[11px]">
                 <span className="text-muted-foreground">{model.providerName}</span>
                 <span className="text-yellow-500">{model.cost}</span>

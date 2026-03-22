@@ -371,6 +371,15 @@ export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, o
         )}
       </div>
 
+      {/* IMP-14: Subtle follow-up hint when conversation has messages but agent is idle */}
+      {messages.length > 0 && !isLoading && !showWorkspaceHome && (
+        <div className="px-4 py-2 text-center">
+          <p className="text-[11px] text-muted-foreground/25 italic">
+            Ask a follow-up, try <span className="text-muted-foreground/35">/help</span> for commands, or start a new topic
+          </p>
+        </div>
+      )}
+
       {/* Sub-agent progress panel — above input, hidden when no agents */}
       <SubAgentProgress agents={subAgents ?? []} />
 

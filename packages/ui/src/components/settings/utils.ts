@@ -141,13 +141,14 @@ export interface SettingsTab {
   label: string;
 }
 
+// BUG-R2-03: Shortened labels prevent wrapping at 1024px
 export const SETTINGS_TABS: SettingsTab[] = [
   { id: 'general', label: 'General' },
-  { id: 'models', label: 'Models & Providers' },
-  { id: 'vault', label: 'Vault & Credentials' },
+  { id: 'models', label: 'Models' },
+  { id: 'vault', label: 'Vault' },
   { id: 'permissions', label: 'Permissions' },
   { id: 'team', label: 'Team' },
-  { id: 'backup', label: 'Backup & Restore' },
+  { id: 'backup', label: 'Backup' },
   { id: 'advanced', label: 'Advanced' },
 ];
 
