@@ -1,0 +1,315 @@
+event: step
+data: {"content":"Recalling relevant memories..."}
+
+event: tool
+data: {"name":"auto_recall","input":{"query":"What did we decide about the Series B timeline?"}}
+
+event: step
+data: {"content":"Recalled 12 relevant memories."}
+
+event: tool_result
+data: {"name":"auto_recall","result":"12 memories recalled:\n  - Research findings: Memory Architecture for Your Work Life\n  - Decision: Q2 board decided to delay Series B to Q4 due to market conditions\n  - Decision: Q2 board decided to delay Series B to Q4 due to market conditions\n---\nDecision: Q2 board decided to delay Seri","duration":15,"isError":false}
+
+event: token
+data: {"content":"From"}
+
+event: token
+data: {"content":" your"}
+
+event: token
+data: {"content":" workspace"}
+
+event: token
+data: {"content":" memory"}
+
+event: token
+data: {"content":", here"}
+
+event: token
+data: {"content":"'s what was"}
+
+event: token
+data: {"content":" decided:"}
+
+event: token
+data: {"content":"\n\n**Series"}
+
+event: token
+data: {"content":" B Timeline Decision"}
+
+event: token
+data: {"content":"**"}
+
+event: token
+data: {"content":"\n\nThe"}
+
+event: token
+data: {"content":" Q2 board decided to **"}
+
+event: token
+data: {"content":"delay the"}
+
+event: token
+data: {"content":" Series B to"}
+
+event: token
+data: {"content":" Q4**"}
+
+event: token
+data: {"content":" due to market conditions and investor sentiment"}
+
+event: token
+data: {"content":"."}
+
+event: token
+data: {"content":"\n\n**Related"}
+
+event: token
+data: {"content":" decisions"}
+
+event: token
+data: {"content":" made"}
+
+event: token
+data: {"content":" around"}
+
+event: token
+data: {"content":" the"}
+
+event: token
+data: {"content":" same time:**\n-"}
+
+event: token
+data: {"content":" And"}
+
+event: token
+data: {"content":"rej Petrovic hired"}
+
+event: token
+data: {"content":" as Head of Sales,"}
+
+event: token
+data: {"content":" effective April 1 "}
+
+event: token
+data: {"content":"(280k package with equity)"}
+
+event: token
+data: {"content":"\n- New"}
+
+event: token
+data: {"content":" h"}
+
+event: token
+data: {"content":"ires/"}
+
+event: token
+data: {"content":"budget"}
+
+event: token
+data: {"content":" frozen"}
+
+event: token
+data: {"content":" ("}
+
+event: token
+data: {"content":"partial"}
+
+event: token
+data: {"content":" record"}
+
+event: token
+data: {"content":" —"}
+
+event: token
+data: {"content":" the"}
+
+event: token
+data: {"content":" memory"}
+
+event: token
+data: {"content":" was"}
+
+event: token
+data: {"content":" cut"}
+
+event: token
+data: {"content":" off)\n- All"}
+
+event: token
+data: {"content":" partnerships exploration paused until after Series"}
+
+event: token
+data: {"content":" B closes"}
+
+event: token
+data: {"content":"\n- And"}
+
+event: token
+data: {"content":"rej approved"}
+
+event: token
+data: {"content":" to"}
+
+event: token
+data: {"content":" hire 2 SDRs"}
+
+event: token
+data: {"content":" and 1 AE by"}
+
+event: token
+data: {"content":" end of April\n\n**One"}
+
+event: token
+data: {"content":" conflict"}
+
+event: token
+data: {"content":" in"}
+
+event: token
+data: {"content":" memory"}
+
+event: token
+data: {"content":" worth"}
+
+event: token
+data: {"content":" flag"}
+
+event: token
+data: {"content":"ging:**"}
+
+event: token
+data: {"content":" There"}
+
+event: token
+data: {"content":" are"}
+
+event: token
+data: {"content":" two contrad"}
+
+event: token
+data: {"content":"ictory decisions about the CM"}
+
+event: token
+data: {"content":"O role stored"}
+
+event: token
+data: {"content":" ("}
+
+event: token
+data: {"content":"both"}
+
+event: token
+data: {"content":" marked"}
+
+event: token
+data: {"content":" deprecated"}
+
+event: token
+data: {"content":"):"}
+
+event: token
+data: {"content":"\n- Day"}
+
+event: token
+data: {"content":" 2"}
+
+event: token
+data: {"content":": No CMO hire until after"}
+
+event: token
+data: {"content":" Series B ("}
+
+event: token
+data: {"content":"board unanimous"}
+
+event: token
+data: {"content":")\n- Day 4:"}
+
+event: token
+data: {"content":" Post CMO role immediately, "}
+
+event: token
+data: {"content":"60-day close target ("}
+
+event: token
+data: {"content":"Andrej convinced the"}
+
+event: token
+data: {"content":" team marketing"}
+
+event: token
+data: {"content":" leadership needed"}
+
+event: token
+data: {"content":" before the"}
+
+event: token
+data: {"content":" Series B pitch)\n\nThe"}
+
+event: token
+data: {"content":" Day"}
+
+event: token
+data: {"content":" 4"}
+
+event: token
+data: {"content":" decision appears to be the"}
+
+event: token
+data: {"content":" more recent"}
+
+event: token
+data: {"content":" and"}
+
+event: token
+data: {"content":" final"}
+
+event: token
+data: {"content":" one, but"}
+
+event: token
+data: {"content":" I"}
+
+event: token
+data: {"content":"'d"}
+
+event: token
+data: {"content":" confirm"}
+
+event: token
+data: {"content":" —"}
+
+event: token
+data: {"content":" do"}
+
+event: token
+data: {"content":" you want me to clean"}
+
+event: token
+data: {"content":" up those"}
+
+event: token
+data: {"content":" deprecated"}
+
+event: token
+data: {"content":" entries"}
+
+event: token
+data: {"content":" and"}
+
+event: token
+data: {"content":" save"}
+
+event: token
+data: {"content":" the author"}
+
+event: token
+data: {"content":"itative version?"}
+
+event: step
+data: {"content":"Auto-saved 2 memories from this exchange."}
+
+event: done
+data: {"content":"From your workspace memory, here's what was decided:\n\n**Series B Timeline Decision**\n\nThe Q2 board decided to **delay the Series B to Q4** due to market conditions and investor sentiment.\n\n**Related decisions made around the same time:**\n- Andrej Petrovic hired as Head of Sales, effective April 1 (280k package with equity)\n- New hires/budget frozen (partial record — the memory was cut off)\n- All partnerships exploration paused until after Series B closes\n- Andrej approved to hire 2 SDRs and 1 AE by end of April\n\n**One conflict in memory worth flagging:** There are two contradictory decisions about the CMO role stored (both marked deprecated):\n- Day 2: No CMO hire until after Series B (board unanimous)\n- Day 4: Post CMO role immediately, 60-day close target (Andrej convinced the team marketing leadership needed before the Series B pitch)\n\nThe Day 4 decision appears to be the more recent and final one, but I'd confirm — do you want me to clean up those deprecated entries and save the authoritative version?","usage":{"inputTokens":25964,"outputTokens":256},"toolsUsed":[],"model":"claude-sonnet-4-6"}
+
