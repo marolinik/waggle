@@ -59,10 +59,18 @@ export function checkPortAvailable(port: number): Promise<boolean> {
 }
 
 /**
- * Check if an Anthropic API key is available (env or config file).
+ * Check if an Anthropic API key is available (env, vault, or config file).
+ * P0-3 fix: Also checks vault to match getAnthropicKey() in anthropic-proxy.ts.
  */
-function hasAnthropicKey(dataDir: string): boolean {
+function hasAnthropicKey(dataDir: string, server?: FastifyInstance): boolean {
   if (process.env.ANTHROPIC_API_KEY) return true;
+  // Check vault (encrypted storage from Settings UI)
+  if (server && (server as any).vault) {
+    try {
+      const entry = (server as any).vault.get('anthropic');
+      if (entry?.value) return true;
+    } catch { /* vault read failed */ }
+  }
   try {
     const configPath = path.join(dataDir, 'config.json');
     if (fs.existsSync(configPath)) {
@@ -188,7 +196,7 @@ export async function startService(options?: ServiceOptions): Promise<ServiceRes
     (server.localConfig as any).litellmUrl = selfUrl;
     providerName = 'anthropic-proxy';
 
-    const hasKey = hasAnthropicKey(dataDir);
+    const hasKey = hasAnthropicKey(dataDir, server);
     if (hasKey) {
       providerHealth = 'healthy';
       providerDetail = 'Built-in Anthropic proxy (API key configured)';

@@ -492,7 +492,7 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
 
   // Search tools — Tavily + Brave with vault-backed API keys
   const searchTools = createSearchTools(async (key: string) => {
-    try { return vault.get(key); } catch { return null; }
+    try { return vault.get(key)?.value ?? null; } catch { return null; }
   });
 
   // Browser tools — Playwright-based browser automation
@@ -618,7 +618,7 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
             console.log(`[waggle] Skipping plugin "${pluginName}": invalid manifest — ${validation.errors.join(', ')}`);
             continue;
           }
-          pluginRuntimeManager.register(raw as Parameters<typeof pluginRuntimeManager.register>[0]);
+          pluginRuntimeManager.register(raw as unknown as Parameters<typeof pluginRuntimeManager.register>[0]);
           await pluginRuntimeManager.enable(raw.name as string);
         } catch (err) {
           console.log(`[waggle] Failed to load plugin "${pluginName}": ${(err as Error).message}`);
@@ -1409,9 +1409,56 @@ Return ONLY the improved system prompt text. No commentary, no markdown fences, 
     });
   });
 
+  // P0-3: Cached API key validation — verify key actually works, not just exists
+  let keyValidationCache: { valid: boolean; checkedAt: number } | null = null;
+  const KEY_VALIDATION_TTL = 5 * 60 * 1000; // 5 minutes
+
+  async function validateAnthropicKey(): Promise<boolean> {
+    // Return cached result if fresh
+    if (keyValidationCache && Date.now() - keyValidationCache.checkedAt < KEY_VALIDATION_TTL) {
+      return keyValidationCache.valid;
+    }
+    try {
+      // Lightweight API call to verify key works
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.ANTHROPIC_API_KEY ?? '',
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 1,
+          messages: [{ role: 'user', content: 'hi' }],
+        }),
+        signal: AbortSignal.timeout(5000),
+      });
+      // 200 = valid, 401 = invalid/expired, 400 = valid key but bad request (still means key works)
+      const valid = res.status !== 401 && res.status !== 403;
+      keyValidationCache = { valid, checkedAt: Date.now() };
+      return valid;
+    } catch {
+      // Network error — don't cache failure, key might be fine
+      return keyValidationCache?.valid ?? true;
+    }
+  }
+
   // Health check — truthful, not optimistic
   server.get('/health', async () => {
-    const llm = server.agentState.llmProvider;
+    const llm = { ...server.agentState.llmProvider };
+
+    // P0-3: If provider is anthropic-proxy and claims healthy, validate the key actually works
+    if (llm.provider === 'anthropic-proxy' && llm.health === 'healthy') {
+      const keyValid = await validateAnthropicKey();
+      if (!keyValid) {
+        llm.health = 'degraded';
+        llm.detail = 'Built-in Anthropic proxy (API key invalid or expired — update in Settings > API Keys)';
+        // Also update the cached provider status so chat route picks it up
+        server.agentState.llmProvider.health = 'degraded';
+        server.agentState.llmProvider.detail = llm.detail;
+      }
+    }
     const dbHealthy = (() => {
       try {
         multiMind.personal.getDatabase().prepare('SELECT 1').get();

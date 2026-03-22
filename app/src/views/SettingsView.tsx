@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react';
 import type { WaggleConfig, TeamConnection } from '@waggle/ui';
 import { SettingsPanel } from '@waggle/ui';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export interface SettingsViewProps {
   config: WaggleConfig | null;
@@ -60,8 +61,18 @@ export default function SettingsView({
       );
     }
     return (
-      <div className="p-6 text-muted-foreground">
-        Loading settings...
+      <div className="p-6 max-w-[700px] mx-auto">
+        <Skeleton className="h-5 w-32 mb-6" />
+        <div className="flex gap-2 mb-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-8 w-20 rounded-md" />
+          ))}
+        </div>
+        <div className="flex flex-col gap-4">
+          <Skeleton className="h-10 w-full rounded-md" />
+          <Skeleton className="h-10 w-full rounded-md" />
+          <Skeleton className="h-10 w-3/4 rounded-md" />
+        </div>
       </div>
     );
   }

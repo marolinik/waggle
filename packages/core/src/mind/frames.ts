@@ -1,8 +1,9 @@
+import { createHash } from 'node:crypto';
 import type { MindDB } from './db.js';
 
 export type FrameType = 'I' | 'P' | 'B';
 export type Importance = 'critical' | 'important' | 'normal' | 'temporary' | 'deprecated';
-export type FrameSource = 'user_stated' | 'tool_verified' | 'agent_inferred' | 'import' | 'system';
+export type FrameSource = 'user_stated' | 'tool_verified' | 'agent_inferred' | 'import' | 'system' | 'personal' | 'workspace';
 
 export interface MemoryFrame {
   id: number;
@@ -39,6 +40,10 @@ export class FrameStore {
   }
 
   createIFrame(gopId: string, content: string, importance: Importance = 'normal', source: FrameSource = 'user_stated'): MemoryFrame {
+    // L1: Dedup — if identical content exists, update access count instead of duplicating
+    const existing = this.findDuplicate(content);
+    if (existing) return existing;
+
     const t = this.nextT(gopId);
     const raw = this.db.getDatabase();
     const result = raw.prepare(`
@@ -127,6 +132,11 @@ export class FrameStore {
     return IMPORTANCE_MULTIPLIERS[importance];
   }
 
+  /** List frames with an options bag (convenience wrapper used by server routes). */
+  list(opts: { limit?: number } = {}): MemoryFrame[] {
+    return this.getRecent(opts.limit ?? 50);
+  }
+
   /** Get the most recent frames ordered by creation time descending. */
   getRecent(limit = 50): MemoryFrame[] {
     return this.db.getDatabase().prepare(`
@@ -170,6 +180,43 @@ export class FrameStore {
     } catch {
       return [];
     }
+  }
+
+  /**
+   * L1: Check for duplicate content before inserting.
+   * Returns the existing frame if content hash matches, null otherwise.
+   * If a duplicate is found, updates its access_count instead of creating a new frame.
+   */
+  findDuplicate(content: string): MemoryFrame | null {
+    const hash = createHash('sha256').update(content.trim()).digest('hex');
+    // Check recent frames (last 500) for content hash match
+    const existing = this.db.getDatabase().prepare(`
+      SELECT * FROM memory_frames
+      WHERE length(content) = length(?)
+      ORDER BY id DESC LIMIT 500
+    `).all(content.trim()) as MemoryFrame[];
+
+    for (const frame of existing) {
+      const frameHash = createHash('sha256').update(frame.content.trim()).digest('hex');
+      if (frameHash === hash) {
+        // Update access count instead of creating duplicate
+        this.touch(frame.id);
+        return frame;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * L2: Delete a frame by ID. Returns true if deleted, false if not found.
+   */
+  delete(id: number): boolean {
+    const raw = this.db.getDatabase();
+    // Delete from FTS index first
+    raw.prepare('DELETE FROM memory_frames_fts WHERE rowid = ?').run(id);
+    // Delete from main table
+    const result = raw.prepare('DELETE FROM memory_frames WHERE id = ?').run(id);
+    return result.changes > 0;
   }
 
   private nextT(gopId: string): number {

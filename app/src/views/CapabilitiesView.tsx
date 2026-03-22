@@ -605,7 +605,7 @@ export default function CapabilitiesView() {
   // ── Render ─────────────────────────────────────────────────────────────
 
   return (
-    <div className="p-6 max-w-[960px] mx-auto font-mono h-full overflow-y-auto">
+    <div className="p-6 max-w-[960px] mx-auto h-full overflow-y-auto">
       <h1 className="text-lg font-semibold text-foreground mb-1">Capabilities</h1>
       <div className="text-xs text-muted-foreground mb-6">Browse and install capability packs, marketplace packages, and individual skills.</div>
 

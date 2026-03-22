@@ -637,9 +637,11 @@ When approaching any task:
 
   // POST /api/chat — SSE streaming chat endpoint
   server.post<{
-    Body: { message: string; workspace?: string; model?: string; session?: string; workspacePath?: string };
+    Body: { message: string; workspace?: string; workspaceId?: string; model?: string; session?: string; workspacePath?: string };
   }>('/api/chat', async (request, reply) => {
-    const { message, workspace, model, session, workspacePath: explicitWorkspacePath } = request.body ?? {};
+    // P0-4: Accept both 'workspace' and 'workspaceId' for backwards compat
+    const { message, workspace: _ws, workspaceId: _wsId, model, session, workspacePath: explicitWorkspacePath } = request.body ?? {};
+    const workspace = _ws ?? _wsId;
 
     // A2: Resolve workspace directory — use explicit path, or look up from workspace config
     let workspacePath = explicitWorkspacePath;
@@ -796,6 +798,17 @@ When approaching any task:
           // We achieve this by NOT returning here — the code falls through to the agent loop
           // with the rerouted message replacing the original
           Object.assign(request, { _reroutedMessage: rerouted });
+        } else if (cmdResult.startsWith(AGENT_LOOP_REROUTE_PREFIX) && !litellmAvailable) {
+          const cmdName = message.trim().split(/\s+/)[0];
+          const friendlyError = `**${cmdName} requires AI** — This command needs a working LLM connection.\n\nConfigure an API key in Settings > API Keys, then try again.`;
+          const words = friendlyError.split(' ');
+          for (const word of words) {
+            sendEvent('token', { content: word + ' ' });
+            await new Promise((r) => setTimeout(r, 10));
+          }
+          history.push({ role: 'assistant', content: friendlyError });
+          persistMessage(server.localConfig.dataDir, effectiveWorkspace, sessionId, { role: 'assistant', content: friendlyError });
+          sendEvent('done', { content: friendlyError, usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }, toolsUsed: [] });
         } else {
           // Stream the command result as SSE tokens
           const cmdWords = cmdResult.split(' ');
@@ -886,8 +899,15 @@ When approaching any task:
 
         // Register a per-request pre:tool hook for confirmation gates
         // This fires during the agent loop and pauses until user approves/denies
+        const autoApprove = process.env.WAGGLE_AUTO_APPROVE === '1' || process.env.WAGGLE_AUTO_APPROVE === 'true';
         const unregisterHook = hasCustomRunner ? undefined : hookRegistry.on('pre:tool', async (ctx) => {
           if (!ctx.toolName || !needsConfirmation(ctx.toolName, (ctx.args ?? {}) as Record<string, unknown>)) return;
+
+          // H3: Auto-approve all tool requests when WAGGLE_AUTO_APPROVE=1 (testing only)
+          if (autoApprove) {
+            sendEvent('step', { content: `\u2714 ${ctx.toolName} auto-approved (test mode)` });
+            return;
+          }
 
           const requestId = crypto.randomUUID();
           const toolName = ctx.toolName;
@@ -994,7 +1014,10 @@ When approaching any task:
           // The original slash command is already persisted to disk at line 724.
           // For the agent loop, swap in the rerouted message so the LLM sees the
           // enhanced prompt (e.g., "Draft the following. Search memory first...")
-          const lastUserIdx = history.findLastIndex(m => m.role === 'user');
+          let lastUserIdx = -1;
+          for (let i = history.length - 1; i >= 0; i--) {
+            if ((history[i] as any).role === 'user') { lastUserIdx = i; break; }
+          }
           if (lastUserIdx >= 0) {
             history[lastUserIdx] = { role: 'user', content: reroutedMessage };
           }
@@ -1142,7 +1165,15 @@ When approaching any task:
       } else {
         errorMessage = 'Something went wrong. Try sending your message again.';
       }
-      sendEvent('error', { message: errorMessage });
+      // P1-4: When auto_recall succeeded but LLM failed, surface recalled memories
+      // Note: recalledContext is scoped inside shouldRunAgentLoop — use typeof to safely check
+      const recalled = typeof recalledContext !== 'undefined' ? recalledContext : '';
+      if (recalled && recalled.trim().length > 0) {
+        const memoryFallback = `${errorMessage}\n\n---\n\n**However, I found relevant context in memory:**\n${recalled}`;
+        sendEvent('error', { message: memoryFallback });
+      } else {
+        sendEvent('error', { message: errorMessage });
+      }
     }
 
     // End the SSE stream

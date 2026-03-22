@@ -61,7 +61,7 @@ export function AppSidebar({
             onClick={() => onViewChange(view)}
             title={`${label} (Ctrl+Shift+${shortcut})`}
             className={`
-              flex items-center gap-2 rounded-sm px-2.5 py-1.5 text-[11px] font-mono
+              flex items-center gap-2 rounded-sm px-2.5 py-1.5 text-[11px]
               border-l-2 transition-all duration-100 cursor-pointer
               ${collapsed ? 'justify-center px-0 py-2' : 'justify-start'}
               ${isActive
@@ -95,7 +95,7 @@ export function AppSidebar({
         title="Create Workspace"
         className={`
           w-full border border-dashed border-border text-muted-foreground
-          hover:border-primary hover:text-primary text-[10px] font-mono
+          hover:border-primary hover:text-primary text-[10px]
           ${collapsed ? 'justify-center px-0' : 'justify-start'}
         `}
         size="sm"
@@ -110,7 +110,7 @@ export function AppSidebar({
         onClick={toggleTheme}
         title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
         className={`
-          w-full text-muted-foreground hover:text-primary text-[11px] font-mono mt-0.5
+          w-full text-muted-foreground hover:text-primary text-[11px] mt-0.5
           ${collapsed ? 'justify-center px-0' : 'justify-start'}
         `}
         size="sm"
@@ -126,7 +126,7 @@ export function AppSidebar({
           onClick={onOpenHelp}
           title="Keyboard shortcuts (Ctrl+/)"
           className={`
-            w-full text-muted-foreground hover:text-primary text-[11px] font-mono
+            w-full text-muted-foreground hover:text-primary text-[11px]
             ${collapsed ? 'justify-center px-0' : 'justify-start'}
           `}
           size="sm"
@@ -168,7 +168,7 @@ export function AppSidebar({
           title="Search (Ctrl+K)"
           className={`
             text-muted-foreground hover:text-foreground hover:border-primary
-            text-[10px] font-mono transition-colors
+            text-[10px] transition-colors
             ${collapsed ? 'w-4/5 mx-auto justify-center' : 'w-[calc(100%-8px)] mx-1 justify-start'}
           `}
           size="sm"
@@ -198,7 +198,7 @@ export function AppSidebar({
         </ScrollArea>
       ) : (
         !collapsed && (
-          <div className="px-3 py-3 text-[10px] font-mono text-muted-foreground/40 leading-relaxed">
+          <div className="px-3 py-3 text-[10px] text-muted-foreground/40 leading-relaxed">
             <div className="mb-2 opacity-70">no workspaces</div>
             <div className="text-[9px] opacity-40 leading-relaxed">
               Create one to organize your conversations, memory, and files.

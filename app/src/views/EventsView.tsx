@@ -155,9 +155,10 @@ export default function EventsView({
           {/* Session picker */}
           <div className="px-3 py-2 border-b border-border/30 shrink-0">
             {loadingSessions ? (
-              <span className="text-[11px] text-muted-foreground/70">
-                Loading sessions...
-              </span>
+              <div className="flex gap-2">
+                <div className="animate-pulse h-6 bg-muted rounded w-48" />
+                <div className="animate-pulse h-6 bg-muted rounded w-20" />
+              </div>
             ) : sessionsError ? (
               <div className="flex items-center gap-2">
                 <span className="text-[11px] text-destructive">{sessionsError}</span>

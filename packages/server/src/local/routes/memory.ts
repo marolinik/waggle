@@ -3,6 +3,23 @@ import type { SearchScope, Importance } from '@waggle/core';
 import { FrameStore, SessionStore, KnowledgeGraph } from '@waggle/core';
 import { extractEntities } from '@waggle/agent';
 
+/**
+ * M4: Sanitize memory frame content to prevent stored XSS.
+ * Strips script tags, event handlers, and dangerous URI schemes.
+ * Preserves normal text and markdown formatting.
+ */
+function sanitizeFrameContent(content: string): string {
+  return content
+    // Remove <script> tags and their content
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    // Remove event handler attributes (onclick, onerror, onload, etc.)
+    .replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+    // Remove javascript: and data: URI schemes in href/src attributes
+    .replace(/(href|src)\s*=\s*["']?\s*(?:javascript|data|vbscript)\s*:/gi, '$1="')
+    // Remove standalone <iframe>, <object>, <embed> tags
+    .replace(/<\s*\/?\s*(?:iframe|object|embed|form|input|textarea|button)\b[^>]*>/gi, '');
+}
+
 /** Normalize SQLite snake_case MemoryFrame fields to camelCase UI Frame shape. */
 function normalizeFrame(raw: Record<string, unknown>): Record<string, unknown> {
   // F24: Determine source_mind. For search results from MultiMind, `_mind` is set
@@ -54,9 +71,11 @@ export const memoryRoutes: FastifyPluginAsync = async (server) => {
 
   // GET /api/memory/search?q=query&scope=all&workspace=wsId&since=ISO&until=ISO
   server.get<{
-    Querystring: { q?: string; scope?: string; limit?: string; workspace?: string; since?: string; until?: string };
+    Querystring: { q?: string; scope?: string; limit?: string; workspace?: string; workspaceId?: string; since?: string; until?: string };
   }>('/api/memory/search', async (request, reply) => {
-    const { q, scope, limit, workspace, since, until } = request.query;
+    // P0-4: Accept both 'workspace' and 'workspaceId'
+    const { q, scope, limit, workspace: ws, workspaceId: wsId, since, until } = request.query;
+    const workspace = ws ?? wsId;
     if (!q) {
       return reply.status(400).send({ error: 'q (query) parameter is required' });
     }
@@ -113,9 +132,11 @@ export const memoryRoutes: FastifyPluginAsync = async (server) => {
   // GET /api/memory/frames?workspace=wsId&limit=50&since=ISO&until=ISO
   // Returns recent frames without requiring a search query — used by Memory tab initial load.
   server.get<{
-    Querystring: { workspace?: string; limit?: string; since?: string; until?: string };
+    Querystring: { workspace?: string; workspaceId?: string; limit?: string; since?: string; until?: string };
   }>('/api/memory/frames', async (request, reply) => {
-    const { workspace, limit, since, until } = request.query;
+    // P0-4: Accept both 'workspace' and 'workspaceId'
+    const { workspace: ws, workspaceId: wsId, limit, since, until } = request.query;
+    const workspace = ws ?? wsId;
     const maxResults = limit ? parseInt(limit, 10) : 50;
 
     const raw: Array<Record<string, unknown>> = [];
@@ -165,6 +186,7 @@ export const memoryRoutes: FastifyPluginAsync = async (server) => {
     Body: {
       content: string;
       workspace?: string;
+      workspaceId?: string;
       importance?: string;
       source?: string;
     };
@@ -172,10 +194,14 @@ export const memoryRoutes: FastifyPluginAsync = async (server) => {
       extract?: string;
     };
   }>('/api/memory/frames', async (request, reply) => {
-    const { content, workspace, importance, source } = request.body ?? {};
-    if (!content) {
+    // P0-4: Accept both 'workspace' and 'workspaceId'
+    const { content: rawContent, workspace: ws, workspaceId: wsId, importance, source } = request.body ?? {};
+    const workspace = ws ?? wsId;
+    if (!rawContent) {
       return reply.status(400).send({ error: 'content is required' });
     }
+    // M4: Sanitize content to prevent stored XSS
+    const content = sanitizeFrameContent(rawContent);
 
     const imp = (importance ?? 'normal') as Importance;
     // D6: Validate source to prevent raw SQLite CHECK constraint errors
@@ -193,7 +219,7 @@ export const memoryRoutes: FastifyPluginAsync = async (server) => {
 
     // Determine target mind
     let targetDb;
-    let mindLabel: string;
+    let mindLabel: string = 'personal';
     if (workspace) {
       targetDb = server.agentState.getWorkspaceMindDb(workspace);
       mindLabel = 'workspace';
@@ -286,9 +312,10 @@ export const memoryRoutes: FastifyPluginAsync = async (server) => {
 
   // F1: GET /api/memory/stats — dedicated memory statistics endpoint
   server.get<{
-    Querystring: { workspace?: string };
+    Querystring: { workspace?: string; workspaceId?: string };
   }>('/api/memory/stats', async (request) => {
-    const workspaceId = request.query.workspace;
+    // P0-4: Accept both 'workspace' and 'workspaceId'
+    const workspaceId = request.query.workspace ?? request.query.workspaceId;
     const personalDb = server.multiMind.personal;
     const personalFrames = new FrameStore(personalDb);
     const personalCount = personalFrames.list({ limit: 100000 }).length;
@@ -336,5 +363,37 @@ export const memoryRoutes: FastifyPluginAsync = async (server) => {
         relationCount: personalRelations + workspaceRelations,
       },
     };
+  });
+
+  // L2: DELETE /api/memory/frames/:id — delete a memory frame by ID
+  server.delete<{
+    Params: { id: string };
+    Querystring: { workspace?: string };
+  }>('/api/memory/frames/:id', async (request, reply) => {
+    const frameId = parseInt(request.params.id, 10);
+    if (isNaN(frameId)) {
+      return reply.status(400).send({ error: 'Invalid frame ID' });
+    }
+
+    const workspace = request.query.workspace;
+
+    // Try workspace mind first, then personal
+    let deleted = false;
+    if (workspace) {
+      const wsDb = server.agentState.getWorkspaceMindDb(workspace);
+      if (wsDb) {
+        const wsFrames = new FrameStore(wsDb);
+        deleted = wsFrames.delete(frameId);
+      }
+    }
+    if (!deleted) {
+      const personalFrames = new FrameStore(server.multiMind.personal);
+      deleted = personalFrames.delete(frameId);
+    }
+
+    if (!deleted) {
+      return reply.status(404).send({ error: 'Frame not found' });
+    }
+    return reply.status(204).send();
   });
 };

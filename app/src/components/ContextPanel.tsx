@@ -103,7 +103,7 @@ function WorkspaceContextCard({ info }: { info?: WorkspaceInfo }) {
 
 function PanelHeader({ label, action }: { label: string; action?: { label: string; onClick: () => void } }) {
   return (
-    <div className="px-3 py-2.5 border-b border-border text-[9px] font-semibold text-muted-foreground/40 uppercase tracking-widest font-mono flex justify-between items-center">
+    <div className="px-3 py-2.5 border-b border-border text-[9px] font-semibold text-muted-foreground/40 uppercase tracking-widest flex justify-between items-center">
       {label}
       {action && (
         <button
@@ -355,7 +355,7 @@ function CapabilitiesContext() {
         {BUILT_IN_PACKS.map((pack) => (
           <div
             key={pack.id}
-            className="flex items-center gap-2 py-[5px] text-[11px] text-muted-foreground font-mono"
+            className="flex items-center gap-2 py-[5px] text-[11px] text-muted-foreground"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
             <span className="flex-1">{pack.name}</span>
@@ -366,8 +366,8 @@ function CapabilitiesContext() {
         ))}
       </div>
       <PanelHeader label="Suggested" />
-      <div className="p-3 text-[11px] text-muted-foreground/40 leading-relaxed font-mono">
-        Marketplace suggestions will appear here after Wave 8A.
+      <div className="p-3 text-[11px] text-muted-foreground/40 leading-relaxed">
+        Browse the marketplace to discover skill packs, connectors, and templates for your workspace.
       </div>
     </>
   );
@@ -392,7 +392,7 @@ function CockpitContext({ onRefreshHealth }: { onRefreshHealth?: () => void }) {
       <PanelHeader label="Quick Actions" />
       <div className="px-3 py-2 flex flex-col gap-1.5">
         <button
-          className={`w-full px-3 py-[7px] text-[11px] font-medium font-mono rounded border border-border text-left transition-colors duration-100 cursor-pointer ${
+          className={`w-full px-3 py-[7px] text-[11px] font-medium rounded border border-border text-left transition-colors duration-100 cursor-pointer ${
             refreshing ? 'bg-primary/20 text-primary' : 'bg-card text-muted-foreground'
           }`}
           onClick={handleRefresh}
@@ -401,9 +401,9 @@ function CockpitContext({ onRefreshHealth }: { onRefreshHealth?: () => void }) {
           {refreshing ? 'Refreshing...' : 'Refresh Health'}
         </button>
         <button
-          className="w-full px-3 py-[7px] text-[11px] font-medium font-mono rounded border border-border text-left bg-card text-muted-foreground/40 cursor-not-allowed opacity-50"
+          className="w-full px-3 py-[7px] text-[11px] font-medium rounded border border-border text-left bg-card text-muted-foreground/40 cursor-not-allowed opacity-50"
           disabled
-          title="Available after Wave 8A"
+          title="Coming soon"
         >
           Trigger Sync
         </button>
@@ -436,7 +436,7 @@ function EventsContext({
         {EVENT_TYPES.map((type) => (
           <label
             key={type}
-            className="flex items-center gap-2 py-1 text-[11px] text-muted-foreground font-mono cursor-pointer"
+            className="flex items-center gap-2 py-1 text-[11px] text-muted-foreground cursor-pointer"
           >
             <input
               type="checkbox"
@@ -449,7 +449,7 @@ function EventsContext({
         ))}
       </div>
       <PanelHeader label="Stats" />
-      <div className="p-3 text-[11px] text-muted-foreground/40 leading-loose font-mono">
+      <div className="p-3 text-[11px] text-muted-foreground/40 leading-loose">
         <div>Event statistics available during active agent sessions.</div>
       </div>
     </>
@@ -474,10 +474,10 @@ function SettingsContext({ activeTab }: { activeTab?: string }) {
     <>
       <PanelHeader label="Help" />
       <div className="p-3">
-        <div className="text-xs font-semibold text-foreground mb-1.5 font-mono">
+        <div className="text-xs font-semibold text-foreground mb-1.5">
           {tabName}
         </div>
-        <div className="text-[11px] text-muted-foreground leading-relaxed font-mono">
+        <div className="text-[11px] text-muted-foreground leading-relaxed">
           {help}
         </div>
       </div>
@@ -486,7 +486,7 @@ function SettingsContext({ activeTab }: { activeTab?: string }) {
         {Object.entries(SETTINGS_HELP).map(([key, desc]) => (
           <div
             key={key}
-            className={`py-[5px] text-[11px] font-mono pl-2 border-l-2 transition-all duration-100 ${
+            className={`py-[5px] text-[11px] pl-2 border-l-2 transition-all duration-100 ${
               key === tab ? 'text-primary border-l-primary' : 'text-muted-foreground/40 border-l-transparent'
             }`}
           >

@@ -109,6 +109,8 @@ describe('MemoryBrowser rendering', () => {
       />
     );
 
-    expect(screen.getByText('Loading memories...')).toBeTruthy();
+    // UX-2: Loading state now shows skeleton divs instead of text
+    const skeletons = document.querySelectorAll('.animate-pulse');
+    expect(skeletons.length).toBeGreaterThan(0);
   });
 });

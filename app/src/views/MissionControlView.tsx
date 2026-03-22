@@ -7,6 +7,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader,
+  AlertDialogTitle, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogAction, AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
 import { getServerBaseUrl } from '@/lib/ipc';
 
 const BASE_URL = getServerBaseUrl();
@@ -117,17 +122,31 @@ function AgentFleetCard({
                 Resume
               </button>
             )}
-            <button
-              onClick={() => {
-                if (window.confirm(`Kill agent session ${session.workspaceId.slice(0, 12)}? This cannot be undone.`)) {
-                  onKill(session.workspaceId);
-                }
-              }}
-              aria-label={`Kill agent session ${session.workspaceId.slice(0, 12)}`}
-              className="px-2 py-1 text-[11px] rounded border border-destructive bg-transparent cursor-pointer text-destructive hover:bg-destructive/10 transition-colors"
-            >
-              Kill
-            </button>
+            <AlertDialog>
+              <AlertDialogTrigger
+                aria-label={`Kill agent session ${session.workspaceId.slice(0, 12)}`}
+                className="px-2 py-1 text-[11px] rounded border border-destructive bg-transparent cursor-pointer text-destructive hover:bg-destructive/10 transition-colors"
+              >
+                Kill
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Kill agent session?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will terminate session {session.workspaceId.slice(0, 12)}. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => onKill(session.workspaceId)}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Kill Session
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       </CardContent>

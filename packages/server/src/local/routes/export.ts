@@ -25,10 +25,11 @@ function maskApiKey(key: string): string {
 export const exportRoutes: FastifyPluginAsync = async (server) => {
   // POST /api/export — generate and download a ZIP of user data
   // D1: Optional workspaceId body parameter for per-workspace export (agency/privacy use case)
-  server.post<{ Body: { workspaceId?: string } }>('/api/export', async (request, reply) => {
+  server.post<{ Body: { workspaceId?: string; workspace?: string } }>('/api/export', async (request, reply) => {
     const dataDir = server.localConfig.dataDir;
     const today = new Date().toISOString().slice(0, 10);
-    const scopedWorkspaceId = (request.body as any)?.workspaceId as string | undefined;
+    // P0-4: Accept both 'workspaceId' and 'workspace'
+    const scopedWorkspaceId = (request.body as any)?.workspaceId ?? (request.body as any)?.workspace as string | undefined;
 
     // Create ZIP archive
     const archive = archiver('zip', { zlib: { level: 6 } });

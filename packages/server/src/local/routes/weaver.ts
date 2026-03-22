@@ -35,9 +35,12 @@ export const weaverRoutes: FastifyPluginAsync = async (server) => {
   server.post<{
     Body?: {
       workspaceId?: string;
+      workspace?: string;
     };
   }>('/api/weaver/trigger', async (request, reply) => {
-    const workspaceId = (request.body as { workspaceId?: string } | undefined)?.workspaceId;
+    // P0-4: Accept both 'workspaceId' and 'workspace'
+    const body = request.body as { workspaceId?: string; workspace?: string } | undefined;
+    const workspaceId = body?.workspaceId ?? body?.workspace;
 
     const results: {
       target: string;

@@ -304,7 +304,7 @@ export default function CockpitView() {
   // ── Render ─────────────────────────────────────────────────────────────
 
   return (
-    <div className="px-6 py-6 max-w-[960px] mx-auto h-full overflow-y-auto font-mono">
+    <div className="px-6 py-6 max-w-[960px] mx-auto h-full overflow-y-auto">
       <h1 className="text-lg font-semibold mb-1">Cockpit</h1>
       <p className="text-xs text-muted-foreground mb-6">
         Health, costs, schedules, runtime status, memory, services, and audit trail.

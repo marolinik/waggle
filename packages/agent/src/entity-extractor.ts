@@ -29,12 +29,48 @@ const CONCEPT_INDICATORS = /\b(analysis|assessment|review|strategy|planning|fram
 const ORG_INDICATORS = /\b(inc|corp|ltd|llc|gmbh|group|company|foundation|institute|university|team|department|ministry|agency|council|board|association|partnership|venture|capital|labs?|studio|consulting)\b/i;
 const PROJECT_INDICATORS = /^(project|initiative|program|campaign|operation|mission|sprint|milestone|phase|version)\b/i;
 
-/** F3: Classify a proper noun phrase into an entity type */
+// L7: Person name heuristics — common first names help disambiguate from concepts
+const PERSON_FIRST_NAMES = new Set([
+  'james', 'john', 'robert', 'michael', 'david', 'william', 'richard', 'joseph', 'thomas', 'charles',
+  'mary', 'patricia', 'jennifer', 'linda', 'elizabeth', 'barbara', 'susan', 'jessica', 'sarah', 'karen',
+  'daniel', 'matthew', 'anthony', 'mark', 'donald', 'steven', 'paul', 'andrew', 'joshua', 'kenneth',
+  'maria', 'anna', 'lisa', 'nancy', 'betty', 'margaret', 'sandra', 'ashley', 'emily', 'donna',
+  'alex', 'sam', 'chris', 'jordan', 'taylor', 'casey', 'morgan', 'riley', 'jamie', 'drew',
+  'marko', 'ana', 'mia', 'stefan', 'nikola', 'elena', 'ivan', 'peter', 'georg', 'hans',
+]);
+
+/** L7: Classify a proper noun phrase with disambiguation scoring */
 function classifyProperNoun(name: string): ExtractedEntity['type'] {
-  if (CONCEPT_INDICATORS.test(name)) return 'concept';
-  if (ORG_INDICATORS.test(name)) return 'organization';
-  if (PROJECT_INDICATORS.test(name)) return 'project';
-  return 'person';
+  const words = name.split(/\s+/);
+  const firstName = words[0].toLowerCase();
+
+  // Score each category
+  const isOrg = ORG_INDICATORS.test(name);
+  const isConcept = CONCEPT_INDICATORS.test(name);
+  const isProject = PROJECT_INDICATORS.test(name);
+  const isPerson = PERSON_FIRST_NAMES.has(firstName);
+
+  // If only one category matches, use it
+  const matchCount = [isOrg, isConcept, isProject, isPerson].filter(Boolean).length;
+
+  if (matchCount === 0) {
+    // No indicators — if 2-3 words with no concept/org words, likely a person
+    if (words.length >= 2 && words.length <= 3) return 'person';
+    return 'concept'; // Default ambiguous multi-word phrases to concept, not person
+  }
+
+  if (matchCount === 1) {
+    if (isPerson) return 'person';
+    if (isOrg) return 'organization';
+    if (isProject) return 'project';
+    if (isConcept) return 'concept';
+  }
+
+  // Multiple matches — use priority: person name > organization > project > concept
+  if (isPerson) return 'person';
+  if (isOrg) return 'organization';
+  if (isProject) return 'project';
+  return 'concept';
 }
 
 export function extractEntities(text: string): ExtractedEntity[] {

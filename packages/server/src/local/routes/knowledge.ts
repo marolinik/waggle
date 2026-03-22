@@ -5,9 +5,10 @@ import { assertSafeSegment } from './validate.js';
 export const knowledgeRoutes: FastifyPluginAsync = async (server) => {
   // GET /api/memory/graph?workspace=:id — get knowledge graph entities and relations
   server.get<{
-    Querystring: { workspace?: string };
+    Querystring: { workspace?: string; workspaceId?: string };
   }>('/api/memory/graph', async (request, reply) => {
-    const workspaceId = request.query.workspace;
+    // P0-4: Accept both 'workspace' and 'workspaceId'
+    const workspaceId = request.query.workspace ?? request.query.workspaceId;
 
     // Determine which MindDB to use
     let mindDb: MindDB;

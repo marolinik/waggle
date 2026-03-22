@@ -1126,10 +1126,14 @@ export const sessionRoutes: FastifyPluginAsync = async (server) => {
       }
     }
 
-    // Sort by lastActive descending
-    sessions.sort((a, b) => b.lastActive.localeCompare(a.lastActive));
+    // L6: Filter out empty auto-sessions (0 messages) when ?hideEmpty=true
+    const hideEmpty = (request.query as Record<string, string>)?.hideEmpty === 'true';
+    const filtered = hideEmpty ? sessions.filter(s => s.messageCount > 0) : sessions;
 
-    return sessions;
+    // Sort by lastActive descending
+    filtered.sort((a, b) => b.lastActive.localeCompare(a.lastActive));
+
+    return filtered;
   });
 
   // GET /api/workspaces/:workspaceId/sessions/search — search across sessions

@@ -35,12 +35,13 @@ export async function offlineRoutes(fastify: FastifyInstance) {
       return reply.status(503).send({ error: 'Offline manager not available' });
     }
 
-    const body = request.body as { workspaceId?: string; message?: string } | undefined;
+    const body = request.body as { workspaceId?: string; workspace?: string; message?: string } | undefined;
     if (!body?.message) {
       return reply.status(400).send({ error: 'message is required' });
     }
 
-    const workspaceId = body.workspaceId ?? 'default';
+    // P0-4: Accept both 'workspaceId' and 'workspace'
+    const workspaceId = body.workspaceId ?? body.workspace ?? 'default';
     const queued = mgr.queueMessage(workspaceId, body.message);
     return { queued };
   });

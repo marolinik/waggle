@@ -98,8 +98,14 @@ export function MemoryBrowser({
         {/* Timeline */}
         <div className="memory-browser__timeline w-1/2 overflow-y-auto border-r border-border p-2">
           {loading ? (
-            <div className="flex items-center justify-center p-8 text-muted-foreground">
-              <p className="text-sm animate-pulse">Loading memories...</p>
+            <div className="flex flex-col gap-3 p-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="animate-pulse">
+                  <div className="h-3 bg-muted rounded w-3/4 mb-2" />
+                  <div className="h-3 bg-muted rounded w-1/2 mb-1" />
+                  <div className="h-2 bg-muted rounded w-1/4" />
+                </div>
+              ))}
             </div>
           ) : error ? (
             <div className="flex flex-col items-center justify-center h-full gap-3 text-center p-8">
