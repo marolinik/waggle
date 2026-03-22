@@ -500,7 +500,7 @@ Only use this after acquire_capability has identified a specific installable can
               initiator: 'system',
               detail: `SecurityGate blocked: ${scanResult.findings.length} CRITICAL finding(s)`,
             });
-            const findingsText = scanResult.findings.map(f => `- [${f.severity}] ${f.title}: ${f.description}`).join('\n');
+            const findingsText = scanResult.findings.map((f: any) => `- [${f.severity}] ${f.title}: ${f.description}`).join('\n');
             return (
               `## Installation Blocked — CRITICAL Security Finding\n\n` +
               `**${name}** cannot be installed due to critical security issues:\n\n` +
@@ -512,7 +512,7 @@ Only use this after acquire_capability has identified a specific installable can
 
           // HIGH: include warning note — the agent should inform the user
           if (scanResult.overall_severity === 'HIGH') {
-            const findingsText = scanResult.findings.map(f => `- [${f.severity}] ${f.title}`).join('\n');
+            const findingsText = scanResult.findings.map((f: any) => `- [${f.severity}] ${f.title}`).join('\n');
             securityNote = (
               `\n### Security Warning\n` +
               `SecurityGate found HIGH severity issues (score: ${scanResult.security_score}/100):\n` +

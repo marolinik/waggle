@@ -5,7 +5,7 @@ const connectionString = process.env.DATABASE_URL;
 if (!connectionString) throw new Error('DATABASE_URL environment variable is required');
 
 async function main() {
-  const db = createDb(connectionString);
+  const db = createDb(connectionString!);
   await migrate(db, { migrationsFolder: './drizzle' });
   console.log('Migrations complete');
   process.exit(0);

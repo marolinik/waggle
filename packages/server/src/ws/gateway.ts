@@ -84,7 +84,7 @@ export async function wsGateway(fastify: FastifyInstance) {
                 sub = result.sub;
               } else if (clerk) {
                 // Production path: full Clerk JWT verification
-                const payload = await clerk.verifyToken(token);
+                const payload = await (clerk as any).verifyToken(token);
                 sub = payload.sub;
               } else {
                 // Fallback: decode JWT payload and extract sub

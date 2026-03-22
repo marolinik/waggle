@@ -1,3 +1,4 @@
+/// <reference lib="dom" />
 /**
  * Browser Tools — browser automation via playwright-core.
  *
@@ -309,7 +310,7 @@ export function createBrowserTools(workspacePath: string): ToolDefinition[] {
               }
 
               // Recurse into children
-              for (const child of node.children) {
+              for (const child of Array.from(node.children)) {
                 walk(child, depth + 1);
               }
             };

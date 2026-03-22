@@ -76,6 +76,7 @@ export class PostgresConnector extends BaseConnector {
     // Try to dynamically import pg
     if (this.connectionString) {
       try {
+        // @ts-expect-error pg is an optional dependency
         this.pgModule = await import('pg');
       } catch {
         this.pgModule = null;

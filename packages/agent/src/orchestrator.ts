@@ -1,5 +1,6 @@
 import {
   type MindDB,
+  type Importance,
   IdentityLayer,
   AwarenessLayer,
   FrameStore,
@@ -386,7 +387,7 @@ export class Orchestrator {
     const targetCognify = this.workspaceLayers?.cognify ?? null;
 
     // Helper to save a memory entry
-    const save = async (content: string, importance: 'normal' | 'temporary', target: 'workspace' | 'personal' = 'workspace') => {
+    const save = async (content: string, importance: Importance, target: 'workspace' | 'personal' = 'workspace') => {
       const useWorkspace = target === 'workspace' && this.workspaceLayers;
       const frames = useWorkspace ? this.workspaceLayers!.frames : this.frames;
       const sessions = useWorkspace ? this.workspaceLayers!.sessions : this.sessions;

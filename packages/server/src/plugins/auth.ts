@@ -27,7 +27,7 @@ export default fp(async function authPlugin(fastify: FastifyInstance) {
     }
 
     try {
-      const payload = await clerk.verifyToken(token);
+      const payload = await (clerk as any).verifyToken(token);
       request.clerkId = payload.sub;
 
       // Look up internal user, auto-provision if not found

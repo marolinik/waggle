@@ -278,9 +278,13 @@ export const anthropicProxyRoutes: FastifyPluginAsync = async (server) => {
   });
 };
 
-/** Read Anthropic API key from vault, env, or config (legacy fallback) */
+/** Read Anthropic API key from env, vault, or config (legacy fallback) */
 function getAnthropicKey(server: any): string | null {
-  // Try vault first (encrypted)
+  // Env var takes priority — explicit runtime config always wins
+  // (matches hasAnthropicKey() in service.ts which also checks env first)
+  if (process.env.ANTHROPIC_API_KEY) return process.env.ANTHROPIC_API_KEY;
+
+  // Try vault (encrypted storage from Settings UI)
   if (server.vault) {
     try {
       const entry = server.vault.get('anthropic');
@@ -289,9 +293,6 @@ function getAnthropicKey(server: any): string | null {
       // Vault read failed — fall through
     }
   }
-
-  // Try env var
-  if (process.env.ANTHROPIC_API_KEY) return process.env.ANTHROPIC_API_KEY;
 
   // Try reading from ~/.waggle/config.json directly (legacy fallback)
   try {

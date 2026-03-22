@@ -12,14 +12,14 @@ import type { MindDB } from './mind/db.js';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
-export type AuditAction = 'proposed' | 'approved' | 'installed' | 'rejected' | 'failed';
-export type AuditRiskLevel = 'low' | 'medium' | 'high';
+export type AuditAction = 'proposed' | 'approved' | 'installed' | 'rejected' | 'failed' | 'blocked';
+export type AuditRiskLevel = 'low' | 'medium' | 'high' | 'critical';
 export type AuditTrustSource =
   | 'builtin' | 'starter_pack' | 'local_user'
-  | 'third_party_verified' | 'third_party_unverified' | 'unknown';
-export type AuditApprovalClass = 'standard' | 'elevated' | 'critical';
+  | 'third_party_verified' | 'third_party_unverified' | 'unknown' | 'security-gate';
+export type AuditApprovalClass = 'standard' | 'elevated' | 'critical' | 'blocked';
 export type AuditInitiator = 'agent' | 'user' | 'system';
-export type AuditCapabilityType = 'native' | 'skill' | 'plugin' | 'mcp';
+export type AuditCapabilityType = 'native' | 'skill' | 'plugin' | 'mcp' | 'connector' | 'marketplace';
 
 export interface InstallAuditEntry {
   id: number;

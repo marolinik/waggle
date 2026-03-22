@@ -262,7 +262,7 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
       };
     } else {
       // Non-streaming path (unchanged)
-      const data = await response.json();
+      const data: any = await response.json();
       if (!data.choices || data.choices.length === 0) {
         throw new Error(
           `LiteLLM returned no choices: ${JSON.stringify(data).slice(0, 200)}`

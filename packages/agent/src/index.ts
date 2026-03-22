@@ -66,7 +66,7 @@ export {
   type KvarkAskResponseLike, type KvarkStructuredResult, type KvarkFeedbackResponseLike, type KvarkActionResponseLike,
 } from './kvark-tools.js';
 export { PERSONAS, getPersona, listPersonas, composePersonaPrompt, type AgentPersona } from './personas.js';
-export { AgentMessageBus, type AgentMessage } from './agent-message-bus.js';
+export { AgentMessageBus, type AgentMessage as BusAgentMessage } from './agent-message-bus.js';
 export { createAgentCommsTools } from './agent-comms-tools.js';
 export { createCliTools, type CliToolsConfig } from './cli-tools.js';
 export { createSearchTools } from './search-tools.js';

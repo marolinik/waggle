@@ -265,7 +265,7 @@ export async function capabilityGovernanceRoutes(fastify: FastifyInstance) {
 
     // Send Waggle Dance notification (non-critical)
     try {
-      const messageService = new MessageService(fastify.db, fastify.redis);
+      const messageService = new MessageService(fastify.db);
       await messageService.send(ctx.team.id, request.userId, {
         type: 'response',
         subtype: 'capability_decision',

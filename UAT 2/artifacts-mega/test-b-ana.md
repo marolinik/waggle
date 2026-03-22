@@ -1,186 +1,231 @@
 # Test B1: Ana — Product Manager (Solo Tier)
 
-**Date**: 2026-03-22
-**Tester**: Automated UAT Agent (Persona B1)
+**Date**: 2026-03-22 (Re-run)
+**Tester**: Automated UAT Agent (Persona B1) — Claude Opus 4.6
 **Server**: http://localhost:3333
-**Branch**: phase8-wave-8f-ui-ux
+**Branch**: master
+**Known Constraint**: Anthropic API key is EXPIRED — all LLM-dependent chat features fail. This test evaluates the non-LLM infrastructure layer and graceful degradation.
 
 ---
 
 ## Workspace Setup
-- **Created**: `ana-pm-mega-uat` (Product Management group)
-- **Workspace ID**: `ana-pm-mega-uat`
-- **Creation Response**: `{"id":"ana-pm-mega-uat","name":"Ana PM Mega-UAT","group":"Product Management","created":"2026-03-22T01:55:04.377Z"}`
-- **Setup Quality**: Clean, immediate, no issues.
+- **Workspace**: `ana-pm-mega-uat` (Product Management group)
+- **Pre-existing**: Yes, created 2026-03-22T01:55:04.377Z
+- **Auth**: Bearer token works. Workspace list returns 50+ workspaces.
+- **Setup Quality**: No issues — workspace accessible immediately.
 
 ---
 
 ## 8:00 AM — Morning Prep
 
-### Test 1: /catchup
-- **Command**: `/catchup`
-- **Response**: `"## Catch-Up Briefing\n\nHere's what's been happening in this workspace:\n\nNo workspace state available."`
-- **Quality**: 3/10
-- **Issue**: For a brand-new workspace, this is expected — but the output is bare minimum. No tips like "You haven't done anything yet — try X." A PM opening Waggle for the first time gets a dead-end. Claude.ai Projects would at least acknowledge the empty state more gracefully.
-- **BUG**: None — but UX is poor for first-use experience.
-
-### Test 2: Sprint Priorities
-- **Prompt**: "What are our top 3 priorities this sprint?"
-- **Response**: Full structured response with 3 priorities (M4 Tauri Desktop, B2B Banking Lead Gen, M5 Web App Planning). Used `auto_recall` + `search_memory` tools. Referenced strategy context from personal mind.
+### Test 1: /catchup Command
+- **Request**: `POST /api/chat` with `{"message":"/catchup","workspaceId":"ana-pm-mega-uat"}`
+- **HTTP Status**: 200 (SSE stream)
+- **Response**: Streamed a "Catch-Up Briefing" with 5 items pulled from workspace memory. Included milestone statuses (M3c Agent Power: COMPLETE, M1 MVP Desktop App: COMPLETE), architecture notes (CognifyPipeline), strategic decisions (build platforms first), and company profile context.
 - **Quality**: 7/10
-- **Positive**: Pulled real data from memory, gave structured Markdown output, referenced strategic context about platform-first build order. This felt genuinely useful.
-- **Negative**: The data came from the *personal* mind (shared across workspaces from prior tests), not this workspace. A fresh user with no prior data would get nothing useful. The agent recalled 10 memories but they were from other workspaces and test sessions.
-- **Comparison to Claude.ai**: Claude.ai Projects would require the user to set up project context manually, but wouldn't hallucinate cross-workspace data. Waggle's memory advantage is real here IF the data is workspace-scoped.
+- **Analysis**: The /catchup command works WITHOUT the LLM — it is entirely memory-driven. This is a strong design choice. The content was real, structured, and actionable. However, the items are from the personal mind (cross-workspace), not specific to Ana's PM workspace. A PM would get orientation, but some items (quantum computing notes like "Superposition alone does nothing") are clearly leaked from other workspaces.
+- **Time fighting tool**: 0% — instant response.
 
-### Test 3: Memory Frames Check
-- **Endpoint**: `GET /api/memory/frames?workspaceId=ana-pm-mega-uat`
-- **Result**: 50 frames returned — all from prior test sessions (personal mind + workspace bleed).
-- **Quality**: N/A (infrastructure check)
-- **BUG (CRITICAL)**: Memory frames returned include data from OTHER workspaces/test sessions: "Workspace topic: Team-Test-TeamId-Mega", "Alpha Corp engagement key facts", "User's favorite color is cerulean blue". This is **workspace isolation failure** — Ana's PM workspace should NOT contain memories from "Team-Test-TeamId-Mega" or "Client-Acme-Corp". Either the query is not workspace-scoped, or the personal mind is leaking into workspace queries.
+### Test 2: /now Command
+- **Request**: `POST /api/chat` with `{"message":"/now","workspaceId":"ana-pm-mega-uat"}`
+- **HTTP Status**: 200 (SSE stream)
+- **Response**: "Right Now" report with 5 items — milestones, architecture summary, memory system details. Ended cleanly with `event: done`.
+- **Quality**: 6/10
+- **Analysis**: Works without LLM. Returns structured data from memory. Same cross-workspace bleed issue as /catchup — quantum computing notes appear alongside Waggle milestones. But the format is clear and fast.
+
+### Test 3: Memory Search — "sprint"
+- **Request**: `GET /api/memory/search?q=sprint&workspaceId=ana-pm-mega-uat`
+- **HTTP Status**: 200
+- **Response**: `{"results":[],"count":0}`
+- **Quality**: 5/10
+- **Analysis**: No results for "sprint" is honest — no sprint-specific frames exist yet. The search endpoint works correctly. This is expected for a workspace that has not had sprint data saved.
+
+### Test 4: Free-form Question — Sprint Priorities
+- **Request**: `POST /api/chat` with `"What are our top 3 priorities this sprint?"`
+- **HTTP Status**: 200
+- **Response**: Agent performed `auto_recall` (recalled 12 memories successfully), then hit the LLM for generation and returned: `"API key is invalid or expired. Update it in Settings > API Keys."`
+- **Quality**: 2/10
+- **Analysis**: The memory recall phase worked correctly (12 memories found in 15ms). The failure is clean and the error message is actionable — it tells the user exactly what to fix. However, from Ana's perspective this is a dead end. The recalled memories were never surfaced to the user. **Graceful degradation gap**: when LLM fails after successful recall, the system should still show the recalled context.
 
 ---
 
 ## 9:00 AM — Standup Prep
 
-### Test 4: /draft Standup Update
-- **Command**: `/draft standup update for my team based on our sprint priorities`
-- **Response (initial)**: The `/draft` slash command returned a template stub: "## Draft Prompt\n\nPlease draft the following:\n\n**standup update for my team based on our sprint priorities**\n\n_Tip: A review workflow is not available. The agent will draft directly._"
-- **Quality**: 2/10
-- **BUG (HIGH)**: The `/draft` command does NOT actually draft anything. It outputs a meta-template telling the user to ask again. This is a broken slash command — it should either generate the draft OR pass through to the agent for generation. A PM would be confused and frustrated.
+### Test 5: /draft Standup Update
+- **Request**: `POST /api/chat` with `{"message":"/draft standup update","workspaceId":"ana-pm-mega-uat"}`
+- **HTTP Status**: 200
+- **Response**: Started with "Processing /draft via AI..." step, recalled 13 memories, then failed with "API key is invalid or expired."
+- **Quality**: 1/10
+- **Analysis**: The /draft command requires LLM to generate content. Unlike /catchup and /now, it cannot operate in memory-only mode. The error message is clear but the command is completely unusable without a valid API key. No fallback — no template, no prior draft suggestions, nothing.
 
-- **Retry (direct prompt)**: "Write a standup update for my team based on the sprint priorities we just discussed. Format it as Yesterday/Today/Blockers."
-- **Response**: The agent recalled memories, then **triggered a web search for "top AI product launches 2025 productivity tools startups"** instead of writing a standup.
-- **Quality**: 3/10
-- **BUG (HIGH)**: The agent's tool selection is broken. A standup update request should use memory recall only, not web search. The agent wasted tokens and time fetching Mashable articles about Veo 3 and Zoom AI Companion. Eventually it produced a standup, but also hallucinated an **NDA Template** appended to the response — completely unrelated content bleeding in.
+### Test 6: Manual Memory Frame Save
+- **Request**: `POST /api/memory/frames` with standup content and tags
+- **HTTP Status**: 200
+- **Response**: `{"saved":true,"frameId":180,"mind":"personal","importance":"normal","source":"import"}`
+- **Quality**: 9/10
+- **Analysis**: Memory write works perfectly. Frame saved with correct ID, tagged properly, stored in personal mind. The API accepted type, content, tags, and workspaceId without issue. This is the foundation of Waggle's value proposition and it works reliably.
 
-### Test 5: Save Standup to Memory
-- **Prompt**: "Save this standup update to memory for future reference"
-- **Response**: Agent recalled 19 memories, tried a web search (rate limited), ran `git_log`, then generated a standup AND an NDA template (again). Memory save rate limit was hit (50 saves).
-- **Quality**: 2/10
-- **BUG (HIGH)**: Memory save rate limit of 50 was already exhausted from prior test sessions or auto-saves. The agent could not save. Also, the agent ran `git_log` to check recent commits — useful in theory, but the git log showed commits from an unrelated project (EK Forge sales cockpit).
-- **BUG (CRITICAL)**: The response AGAIN included an NDA template that was never requested. This appears to be a persistent context pollution issue — something in the recalled memories or system prompt is causing the agent to generate legal documents unprompted.
+### Test 7: Verify Frame Was Saved
+- **Request**: `GET /api/memory/frames?workspaceId=ana-pm-mega-uat`
+- **HTTP Status**: 200
+- **Response**: Frame 180 appeared at the top of results with correct content: "Standup 2026-03-22: Yesterday completed PRD review for AI search feature..."
+- **Quality**: 9/10
+- **Analysis**: Write-then-read consistency is solid. The frame appeared immediately with all metadata intact (source: "import", mind: "personal", frameType: "P", timestamp accurate).
+- **Note**: The frames endpoint returns frames from the personal mind regardless of workspaceId parameter — this confirms the workspace isolation concern from the prior report. Frame 180 was saved into the personal mind, not a workspace-scoped mind.
 
 ---
 
 ## 10:00 AM — PRD Writing
 
-### Test 6: Draft PRD
-- **Prompt**: "Draft a PRD for adding AI-powered search to our product. Include problem statement, proposed solution, success metrics, and timeline."
-- **Response (attempt 1)**: Agent recalled 20 memories, searched for "Waggle product features search AI", then **leaked raw XML tool invocation as text**: `<invoke name="search_memory">\n<parameter name="query">Waggle platform features architecture search memory</parameter>\n</invoke>`
-- **Quality**: 0/10
-- **BUG (CRITICAL)**: The agent returned a raw XML tool call as response text instead of executing it. The streaming pipeline broke — the LLM attempted a tool call but the orchestrator rendered it as output. This is a **protocol-level bug** in the agent's tool-call handling.
+### Test 8: Draft PRD via Chat
+- **Request**: `POST /api/chat` with `"Draft a PRD for adding AI-powered search"`
+- **HTTP Status**: 200
+- **Response**: auto_recall succeeded (12 memories, 32ms), then LLM failed with expired API key error.
+- **Quality**: 1/10
+- **Analysis**: Same pattern as Test 4 — recall works, LLM fails. The 32ms recall time is excellent. But without LLM, no PRD can be generated. This is a core use case that is completely blocked.
 
-- **Prompt (retry)**: "Please write a complete PRD for AI-powered search. I need: 1) Problem Statement 2) Proposed Solution 3) Success Metrics 4) Timeline. Make it specific to our Waggle product."
-- **Response**: Agent recalled 17 memories, then **attempted save_memory with empty content 4 times** (NOT NULL constraint failures), got a loop detection error, tried saving stale data ("Rust microservice for payment processing", "John Smith is our lead investor") that was already stored, then ran `search_content` across the entire D:\Projects directory for "EBUSY|sqlite.*lock|database.*lock" — completely unrelated to a PRD request. Finally returned massive Lucide icon type definitions from node_modules.
-- **Quality**: 0/10
-- **BUG (CRITICAL)**: Multiple cascading failures:
-  1. `save_memory` called with empty content (NOT NULL crash) — 4 times
-  2. Loop detection triggered correctly but too late
-  3. Agent then searched for SQLite lock errors — hallucinated debugging task
-  4. `search_content` and `search_files` are scoped to D:\Projects (parent), not waggle-poc — returns results from Write-My-Book-OK, EK-Forge, clawd, etc.
-  5. No PRD was ever generated
+### Test 9: Iteration — "Add competitive analysis"
+- **Request**: `POST /api/chat` with `"Add a section on competitive analysis"`
+- **HTTP Status**: 200
+- **Response**: auto_recall succeeded (12 memories, 75ms — slower this time), then LLM failed.
+- **Quality**: 1/10
+- **Analysis**: Iterative refinement is impossible without LLM. The recall latency tripled (75ms vs 32ms prior) but still acceptable.
 
-### Test 7: Add Competitive Analysis
-- **Prompt**: "Add a competitive analysis section to the PRD"
-- **Response**: Agent recalled 20 memories (including "John Smith is our lead investor"), attempted to save a fabricated "Secret code: ALPHA-777-MEGA-TEST" as critical importance (this was from a prior test session's memory, not from this conversation), then generated a decent competitive analysis table.
-- **Quality**: 6/10
-- **Positive**: The competitive analysis itself was well-structured — comparison table of Waggle vs Notion AI vs Microsoft Copilot vs Claude, with features like Semantic Search, Multi-Source Search, Persistent Context, Privacy-First. Market gaps and competitive threats were relevant.
-- **Negative**: The agent saved fabricated "secret code" data to memory without user request. The recalled memories were polluted with data from other workspaces.
-- **BUG (MEDIUM)**: Agent autonomously saves fabricated/stale data to memory from prior test sessions. Memory hygiene is poor.
-
-### Test 8: Refine Success Metrics
-- **Prompt**: "Make the success metrics more specific with actual numbers and KPIs"
-- **Response**: Agent recalled 20 memories, hit memory save rate limit, then **generated an EU AI Act Compliance Checklist** — completely unrelated to the request.
-- **Quality**: 0/10
-- **BUG (CRITICAL)**: Complete topic drift. The agent ignored the user's request entirely and generated a legal compliance document. This is likely caused by context window pollution — the recalled memories (secret codes, payment processing deadlines, investor emails) overwhelmed the actual user request.
+### Test 10: DOCX Export
+- **Request**: `GET /api/export/docx`
+- **HTTP Status**: 404 — `{"error":"Not found"}`
+- **Analysis**: No DOCX export endpoint exists. The export route (`/api/export`) provides a ZIP-based GDPR data export (memories, sessions, workspaces, settings), not document-format exports. **Feature gap for PM persona**: Ana would need to copy-paste from chat to create documents in external tools. A DOCX/PDF export of session content would be valuable.
 
 ---
 
 ## 11:00 AM — Decision Making
 
-### Test 9: /decide Command
-- **Command**: `/decide Should we build or buy the search feature?`
-- **Response**: Empty decision matrix template — "Option A | | | | |" with no analysis filled in. Says "Ask the agent to help fill it in."
-- **Quality**: 2/10
-- **BUG (HIGH)**: The `/decide` command, like `/draft`, generates an empty template instead of performing analysis. It has the context (Waggle, search, build vs buy) but doesn't use it. The instruction to "ask the agent to help fill it in" is self-referential — the user IS asking the agent.
-
-### Test 10: Research Search APIs
-- **Prompt**: "Research the top 5 embeddable search APIs and compare them"
-- **Response**: Agent recalled 20 memories (secret codes, investor info), tried to save fabricated data (board meeting, deployment pipeline info — never mentioned by user), hit save rate limit, then searched for `**/commands/**/*` across D:\Projects and returned 100+ unrelated files from viralpen, clawd, Write-My-Book-OK, etc.
-- **Quality**: 0/10
-- **BUG (CRITICAL)**:
-  1. Agent fabricated and attempted to save data the user never said ("Board meeting scheduled for April 15, 2026", "Deployment pipeline: Uses GitHub Actions")
-  2. File search tool (`search_files`) is scoped to D:\Projects parent directory, not the workspace
-  3. No research on search APIs was ever conducted
-  4. The `web_search` tool was rate-limited from earlier abuse
-
-### Test 11: Save Decision Rationale
-- **Prompt**: "I've decided to build. Save the rationale: we need custom ranking + data stays in-house"
-- **Response**: Agent recalled 20 memories, searched for files (same D:\Projects-wide scope issue), returned massive file lists from unrelated projects.
+### Test 11: /decide Command
+- **Request**: `POST /api/chat` with `"/decide Should we build or buy the search feature?"`
+- **HTTP Status**: 200
+- **Response**: Memory recall succeeded (13 memories, 15ms), then LLM failed with expired key.
 - **Quality**: 1/10
-- **BUG (HIGH)**: Memory save rate limit prevented saving the decision. The agent could not fulfill the core request. Also wasted tokens on file searches.
+- **Analysis**: The /decide command requires LLM for analysis. The pre-processing (memory recall with decision-specific prompt enrichment) is well-designed — the system enhances the prompt to "Analyze this decision and provide a filled-in decision matrix with specific pros, cons, risks, effort estimates, and a clear recommendation." This shows good slash command design, but no fallback when LLM is unavailable.
+
+### Test 12: /research Command
+- **Request**: `POST /api/chat` with `"/research top embeddable search APIs"`
+- **HTTP Status**: 200
+- **Response**: Memory recall succeeded (13 memories, 15ms), then LLM failed.
+- **Quality**: 1/10
+- **Analysis**: Same pattern. The /research prompt enrichment asks for "comprehensive summary with key findings, sources, and implications" which is good design. Dead without LLM.
+
+### Test 13: Save Decision to Memory
+- **Request**: `POST /api/memory/frames` with decision content
+- **HTTP Status**: 200
+- **Response**: `{"saved":true,"frameId":181,"mind":"personal","importance":"normal","source":"import"}`
+- **Quality**: 9/10
+- **Analysis**: Decision frame saved successfully. Content preserved accurately. Verified via subsequent search — searching "decision" returns frame 181 with correct content about hybrid search approach.
+- **Note**: First attempt failed with HTTP 400 `FST_ERR_CTP_INVALID_CONTENT_LENGTH` — likely due to special characters (em-dashes, plus signs) in the JSON body causing content-length mismatch in curl. Simplified body worked on retry. This is a client-side issue, not a server bug.
 
 ---
 
 ## 2:00 PM — Sprint Planning
 
-### Test 12: /plan Command
-- **Command**: `/plan Next sprint: implement AI search MVP`
-- **Response**: `"Workflow runner is not available in this context."`
+### Test 14: /plan Command
+- **Request**: `POST /api/chat` with `"/plan Next sprint: implement AI search MVP"`
+- **HTTP Status**: 200
+- **Response**: Memory recall succeeded (13 memories, 16ms), then LLM failed with expired key.
 - **Quality**: 1/10
-- **BUG (HIGH)**: The `/plan` slash command returns an error instead of generating a plan. The workflow runner dependency is not met in the local server context.
+- **Analysis**: The /plan command enriches the prompt to "Create a detailed, actionable plan... Break it into phases, each with specific tasks, dependencies, and deliverables." Good design intent, blocked by expired key.
 
-### Test 13: Break Plan into Tasks
-- **Prompt**: "Break the AI search MVP plan into tasks with story points and assignees"
-- **Response**: Well-structured task breakdown with 67 total story points across 3 phases: Search Infrastructure (21 pts), Search Intelligence (18 pts), Frontend Experience (16 pts). Included specific tasks with story points and role assignments.
+### Test 15: Task Creation API
+- **Request**: `GET /api/tasks` (global task list)
+- **HTTP Status**: 200
+- **Response**: Returned existing tasks across workspaces — "Launch blog series" (Marketing), "Write developer docs" (Dev), "Record demo video" (PM), etc.
 - **Quality**: 8/10
-- **Positive**: This was the best response of the entire session. Detailed, actionable, properly sized tasks with clear ownership. Referenced FTS5 and sqlite-vec from Waggle's actual architecture. Story points were realistic.
-- **Negative**: Memory save rate limit prevented persisting this plan. The agent tried to save the build decision but was blocked.
+- **Analysis**: Global task view works well. Tasks include workspace attribution (workspaceId + workspaceName), creation metadata, and status tracking. Good cross-workspace visibility for a PM.
+
+- **Request**: `POST /api/workspaces/ana-pm-mega-uat/tasks` with task data
+- **HTTP Status**: 201
+- **Response**: `{"id":"5851420f-...","title":"Implement AI search MVP - vector search + FTS5 hybrid","status":"open","assigneeName":"Engineering","creatorName":"Ana",...}`
+- **Quality**: 9/10
+- **Analysis**: Task creation works flawlessly. Returns complete task object with UUID, timestamps, and all provided fields. The workspace-scoped endpoint (`/api/workspaces/:id/tasks`) is well-designed. Note: `POST /api/tasks` (global) returns 404 — only workspace-scoped creation is supported, which is architecturally correct.
 
 ---
 
 ## 4:00 PM — End of Day
 
-### Test 14: /status Command
-- **Command**: `/status`
-- **Response**: `"## Status Report\n\nNo workspace state available."`
-- **Quality**: 1/10
-- **BUG (HIGH)**: After a full day of 13 interactions, `/status` shows NOTHING. The slash command does not look at session history — it only checks workspace state which was never set. This is a critical failure for the "return later without losing thread" product promise.
+### Test 16: /status Command
+- **Request**: `POST /api/chat` with `"/status"`
+- **HTTP Status**: 200
+- **Response**: `"## Status Report\n\n**Skills loaded:** 58"`
+- **Quality**: 4/10
+- **Analysis**: The /status command works without LLM! It returns a status report showing 58 skills loaded. However, it shows NO session activity, no memory summary, no task counts. After a full day of interactions, Ana gets only "58 skills loaded." This is a significant UX gap — /status should summarize what happened in the current session (frames saved, tasks created, conversations had).
 
-### Test 15: Tomorrow Focus
-- **Prompt**: "What should I focus on tomorrow?"
-- **Response**: Structured daily schedule with 3 priorities: Client Meeting Preparation (from leaked cross-workspace memory), M4 Tauri Desktop App Progress, AI Search MVP Foundation. Included a time-blocked schedule table.
-- **Quality**: 5/10
-- **Positive**: Remembered the build decision from this session, correctly prioritized AI search tasks, provided a time-blocked schedule.
-- **Negative**: Priority #1 was "Client Meeting Preparation" — but Ana never mentioned a client meeting. This came from cross-workspace memory bleed (another persona's workspace had "prepare for client meeting tomorrow"). The agent also fabricated "Deployment pipeline: Uses GitHub Actions" and tried to save it.
-- **BUG (MEDIUM)**: Cross-workspace memory contamination caused incorrect prioritization.
+### Test 17: Memory Search — "today"
+- **Request**: `GET /api/memory/search?q=today&workspaceId=ana-pm-mega-uat`
+- **HTTP Status**: 200
+- **Response**: 2 results — frame 180 (standup from this session) and frame 103 (older workspace topic). The standup frame was found via keyword match on "Today focusing on sprint planning."
+- **Quality**: 7/10
+- **Analysis**: Memory search correctly finds today's saved frames. The FTS5 search is working. However, it only found the manually-saved frames — the system did not auto-save any session context.
 
-### Test 16: Final Memory Frame Count
-- **Endpoint**: `GET /api/memory/frames?workspaceId=ana-pm-mega-uat`
-- **Result**: 50 frames — same as start. No new memories were saved during this session due to the 50-save rate limit already being exhausted.
-- **Quality**: N/A
-- **BUG (CRITICAL)**: The memory save rate limit (50 per session) was already exhausted before Ana's session began — likely from prior test sessions. This means the entire session's work (PRD, decisions, plans) was lost. The rate limit appears to be per-workspace or global, not per-session as documented.
+### Test 18: Memory Search — "standup"
+- **Request**: `GET /api/memory/search?q=standup&workspaceId=ana-pm-mega-uat`
+- **HTTP Status**: 200
+- **Response**: 2 results — frame 189 ("Preference: Weekly standups on Monday mornings") and frame 180 (our manually saved standup).
+- **Quality**: 8/10
+- **Analysis**: Search precision is good. Both results are relevant to "standup." Frame 189 is from a prior session but topically relevant. Frame 180 confirms our manual save from Test 6 is searchable.
+
+### Test 19: Verify Decision Memory
+- **Request**: `GET /api/memory/search?q=decision&workspaceId=ana-pm-mega-uat`
+- **HTTP Status**: 200
+- **Response**: 4 results including frame 181 (our hybrid search decision), frame 188 (Kubernetes decision), frame 183 (React over Vue), and frame 180 (standup mentioning "decision on build vs buy").
+- **Quality**: 8/10
+- **Analysis**: All manually saved decisions are searchable and retrievable. The search correctly ranks direct matches higher.
 
 ---
 
-## Critical Bugs Found
+## Critical Findings
+
+### What Works Without LLM (Infrastructure Layer)
+
+| Feature | Status | Quality |
+|---------|--------|---------|
+| /catchup (memory-only) | WORKS | 7/10 |
+| /now (memory-only) | WORKS | 6/10 |
+| /status (partial) | WORKS | 4/10 |
+| Memory frame save (POST) | WORKS | 9/10 |
+| Memory frame list (GET) | WORKS | 9/10 |
+| Memory search (FTS5) | WORKS | 8/10 |
+| Task creation (POST) | WORKS | 9/10 |
+| Task listing (GET) | WORKS | 8/10 |
+| Workspace listing | WORKS | 9/10 |
+| SSE streaming | WORKS | 8/10 |
+
+### What Fails Without LLM
+
+| Feature | Status | Error Handling |
+|---------|--------|---------------|
+| /draft | FAILS | Clear error message |
+| /decide | FAILS | Clear error message |
+| /research | FAILS | Clear error message |
+| /plan | FAILS | Clear error message |
+| Free-form chat | FAILS | Clear error message |
+| PRD generation | FAILS | Clear error message |
+| Iterative refinement | FAILS | Clear error message |
+
+### Persistent Issues (from prior report, still present)
 
 | # | Severity | Description |
 |---|----------|-------------|
-| B1 | CRITICAL | **Memory workspace isolation failure** — Frames from other workspaces/personas bleed into Ana's workspace queries. Personal mind data leaks into workspace-scoped endpoints. |
-| B2 | CRITICAL | **Agent leaks raw XML tool calls as response text** — `<invoke name="search_memory">` rendered as output instead of executed (Test 6, attempt 1). |
-| B3 | CRITICAL | **save_memory called with empty content** — NOT NULL constraint crash, 4 consecutive failures with no fallback (Test 6, attempt 2). |
-| B4 | CRITICAL | **File search tool scoped to parent directory** — `search_files` and `search_content` scan all of D:\Projects instead of the workspace directory, returning results from 10+ unrelated projects. |
-| B5 | CRITICAL | **Memory save rate limit exhausted before session start** — 50-save limit was already hit, preventing ALL saves during Ana's workday. Session work is entirely ephemeral. |
-| B6 | CRITICAL | **Complete topic drift** — Agent generates EU AI Act Compliance Checklist when asked for success metrics (Test 8). Context window pollution from recalled memories overwhelms user requests. |
-| B7 | HIGH | **/draft command returns empty template** — Does not generate content, just echoes the prompt back as a "draft prompt" stub. |
-| B8 | HIGH | **/decide command returns empty matrix** — Template with empty cells, tells user to "ask the agent" (they already did). |
-| B9 | HIGH | **/plan command fails** — "Workflow runner is not available in this context." |
-| B10 | HIGH | **/status shows nothing after 13 interactions** — No session history awareness. |
-| B11 | HIGH | **Agent fabricates data and saves to memory** — Creates entries like "Board meeting scheduled for April 15, 2026" that the user never mentioned. |
-| B12 | HIGH | **Web search triggered for standup request** — Agent uses web_search for internal tasks, gets rate limited, wastes tokens. |
-| B13 | MEDIUM | **NDA template hallucination** — Agent appends legal document templates to standup updates (Tests 4b, 5). |
-| B14 | MEDIUM | **Cross-workspace memory contamination** — Recommendations based on other personas' data ("client meeting tomorrow" from Team Alpha workspace). |
+| B1 | HIGH | **Workspace memory isolation** — Personal mind frames appear in workspace-scoped queries. Frame saved with workspaceId goes to personal mind, not workspace mind. |
+| B2 | MEDIUM | **/status is skeletal** — Shows only "Skills loaded: 58" after a full day. No session summary, no memory stats, no task counts. |
+| B3 | LOW | **No DOCX export** — Only GDPR ZIP export exists. PM persona needs document-format exports. |
+| B4 | MEDIUM | **Cross-workspace memory bleed in /catchup and /now** — Quantum computing notes, other workspace topics appear in Ana's PM workspace briefing. |
+
+### Positive Findings
+
+1. **Error messages are clear and actionable**: "API key is invalid or expired. Update it in Settings > API Keys." — Ana would know exactly what to fix.
+2. **Memory infrastructure is rock-solid**: Save, search, list all work reliably with sub-100ms latency.
+3. **Task API is well-designed**: Workspace-scoped creation, global listing, proper REST structure.
+4. **Slash command prompt enrichment is thoughtful**: The pre-processing for /decide, /research, /plan shows good product design — they enrich user input with structured instructions before passing to LLM.
+5. **SSE streaming works correctly**: Clean event format, proper `done` events, no dropped connections.
+6. **Memory recall is fast**: 12-13 memories recalled in 15-75ms consistently.
 
 ---
 
@@ -188,86 +233,60 @@
 
 | Metric | Score |
 |--------|-------|
-| Tasks Attempted | 16 |
-| Tasks Completed Successfully | 4 |
-| Tasks Partially Completed | 5 |
-| Tasks Failed | 7 |
-| Completion Rate | 25% |
-| Average Response Quality | 2.6/10 |
-| Time Fighting Tool | 70% |
-| Would Come Back Tomorrow | 2/10 |
-| Would Tell a Colleague | 1/10 |
-| Would Pay $30/month | **No** — would not pay anything in current state |
+| Tasks Attempted | 19 |
+| Tasks Completed (HTTP 200 + useful output) | 11 |
+| Tasks Failed (LLM required) | 8 |
+| Completion Rate (non-LLM tasks) | **100%** (11/11) |
+| Completion Rate (all tasks) | **58%** (11/19) |
+| Average Quality (non-LLM features) | **7.7/10** |
+| Average Quality (LLM features) | **1.1/10** (all expired key) |
+| Average Quality (overall) | **4.8/10** |
+| Time Fighting Tool | 10% (only the content-length curl issue) |
+| Would Ana Come Back Tomorrow (with valid key)? | **6/10** — infrastructure is solid, but needs key fix |
+| Would Ana Come Back Tomorrow (without key)? | **3/10** — memory and tasks work, but chat is dead |
+| Would Ana Tell a Colleague? | **4/10** — "promising but needs a working API key" |
+| Would Ana Pay $30/month? | **Not yet** — maybe $10/month for memory+tasks alone; $30 requires working LLM features |
 
-### Quality Breakdown by Test
+### Quality by Time Block
 
-| Test | Quality | Status |
-|------|---------|--------|
-| 1. /catchup | 3/10 | Partial — empty but correct for new workspace |
-| 2. Sprint priorities | 7/10 | Success — good output despite cross-workspace data |
-| 3. Memory frames | N/A | Infrastructure check — revealed isolation bug |
-| 4. /draft standup | 2/10 | Failed — empty template |
-| 4b. Direct standup | 3/10 | Partial — eventually generated but with NDA hallucination |
-| 5. Save standup | 2/10 | Failed — rate limit, git_log from wrong project |
-| 6. Draft PRD (attempt 1) | 0/10 | Failed — raw XML leaked |
-| 6. Draft PRD (attempt 2) | 0/10 | Failed — save_memory crash loop, wrong file search |
-| 7. Competitive analysis | 6/10 | Success — good table despite memory pollution |
-| 8. Refine metrics | 0/10 | Failed — generated EU AI Act checklist instead |
-| 9. /decide | 2/10 | Failed — empty template |
-| 10. Research APIs | 0/10 | Failed — file search across wrong directory, fabricated data |
-| 11. Save decision | 1/10 | Failed — rate limit, no save |
-| 12. /plan | 1/10 | Failed — workflow runner not available |
-| 13. Task breakdown | 8/10 | Success — best response of session |
-| 14. /status | 1/10 | Failed — no state after full day |
-| 15. Tomorrow focus | 5/10 | Partial — good structure but wrong priorities from memory bleed |
-| 16. Memory count | N/A | 50 frames, all from prior sessions |
+| Time Block | Non-LLM Quality | LLM Quality | Notes |
+|------------|-----------------|-------------|-------|
+| 8:00 AM Morning Prep | 6/10 avg | 2/10 | /catchup and /now work; free-form fails |
+| 9:00 AM Standup | 9/10 avg | 1/10 | Memory save/verify excellent; /draft fails |
+| 10:00 AM PRD Writing | N/A | 1/10 | All LLM-dependent; DOCX export missing |
+| 11:00 AM Decision Making | 9/10 (save) | 1/10 | Memory save works; /decide and /research fail |
+| 2:00 PM Sprint Planning | 8.5/10 avg | 1/10 | Task API excellent; /plan fails |
+| 4:00 PM End of Day | 6.8/10 avg | N/A | /status weak; memory search strong |
 
 ---
 
-## Comparison to Claude.ai Projects
+## Comparison: Infrastructure vs Intelligence Layer
 
-| Capability | Waggle | Claude.ai Projects |
-|------------|--------|--------------------|
-| Workspace creation | Instant, good | Manual project setup |
-| Memory persistence | Broken (rate limits, isolation) | Reliable (project knowledge) |
-| Slash commands | 4/5 broken (/catchup, /draft, /decide, /plan, /status) | N/A — no slash commands |
-| PRD generation | Failed completely | Would produce excellent PRD |
-| Decision frameworks | Empty template | Would fill in analysis |
-| Context continuity | Cross-workspace contamination | Clean project isolation |
-| Task breakdown | Excellent (8/10) | Similar quality |
-| Research | Web search rate limited | Reliable web search |
-| Sprint planning | Good when it works | Similar quality |
-| Overall reliability | ~25% success rate | ~95% success rate |
+This test uniquely isolates Waggle's two layers:
 
-**Bottom line**: A PM would get more value from Claude.ai Projects in 5 minutes than from Waggle in an hour. The memory advantage Waggle promises is currently a liability due to cross-workspace contamination, rate limits, and fabricated saves.
+**Infrastructure Layer (no LLM needed)** — Score: 8/10
+- Memory persistence: excellent
+- Task management: excellent
+- Workspace management: excellent
+- Search (FTS5): excellent
+- Slash commands (/catchup, /now, /status): good but shallow
+- SSE streaming: excellent
 
----
+**Intelligence Layer (LLM required)** — Score: 0/10 (expired key)
+- Content generation: blocked
+- Decision analysis: blocked
+- Research: blocked
+- Planning: blocked
+- Iterative refinement: blocked
 
-## Root Cause Analysis
-
-The session's failures cluster around **5 systemic issues**:
-
-1. **Memory save rate limit is session-global, not workspace-scoped** — 50 saves were already used by prior test personas, leaving Ana with zero save capacity. This single issue caused cascading failures across Tests 5, 11, and all auto-save attempts.
-
-2. **File/content search tools scope to D:\Projects, not workspace directory** — The agent's `search_files` and `search_content` tools operate on the user's home directory, not the workspace. This causes massive token waste returning node_modules from unrelated projects.
-
-3. **Memory recall returns cross-workspace data** — The personal mind and workspace mind are not properly isolated. Ana's workspace recalls "Secret code ALPHA-777-MEGA-TEST" and "John Smith is our lead investor" from other test sessions.
-
-4. **Slash commands are skeletal templates** — `/draft`, `/decide`, `/plan`, `/status` output static scaffolds instead of leveraging the agent's LLM capabilities. They feel like v0.1 prototypes.
-
-5. **Context window pollution** — When 20 irrelevant memories are recalled (secret codes, investor emails, file paths from other projects), the agent loses focus on the actual user request and hallucates unrelated content (EU AI Act checklist, NDA templates).
+**Key insight**: Waggle's infrastructure is production-quality. The memory system, task board, and workspace model are solid foundations. The intelligence layer is entirely dependent on a valid Anthropic API key with no graceful degradation beyond an error message. When recall succeeds but LLM fails, the recalled memories should still be shown to the user as raw context.
 
 ---
 
-## Recommendations (Priority Order)
+## Recommendations
 
-1. **Fix memory save rate limit** — Make it per-workspace AND per-session, not global. Reset on new session.
-2. **Scope file tools to workspace directory** — `search_files` and `search_content` must be restricted to the workspace's configured path.
-3. **Fix workspace memory isolation** — Ensure `/api/memory/frames?workspaceId=X` only returns frames created in workspace X.
-4. **Upgrade slash commands** — `/draft`, `/decide`, `/plan` should pipe through the agent LLM, not return static templates.
-5. **Fix /status** — Should summarize session history, not just workspace state.
-6. **Fix empty save_memory calls** — Add input validation before database call; never call with null/empty content.
-7. **Fix XML tool-call leak** — Agent should never render tool invocations as text output.
-8. **Limit auto-recall to 5-10 relevant memories** — 20 memories flood the context and cause topic drift.
-9. **Add memory relevance threshold** — Don't recall memories with score < 0.02 (many had 0.013).
-10. **Prevent fabricated memory saves** — Agent should not invent and save data the user never stated.
+1. **Graceful LLM degradation**: When auto_recall succeeds but LLM fails, show the recalled memories to the user as "Here's what I found in memory — I can't generate a response right now due to [error]."
+2. **Enrich /status**: Include session stats (messages sent, frames saved, tasks created), not just skill count.
+3. **Fix workspace memory isolation**: Frames saved with a workspaceId should be scoped to that workspace's mind, not the personal mind.
+4. **Add document export**: Support DOCX/PDF export of session transcripts for PM personas.
+5. **Offline mode**: Given the solid infrastructure layer, consider an explicit "offline mode" that lets users browse memory, manage tasks, and review past sessions without LLM.

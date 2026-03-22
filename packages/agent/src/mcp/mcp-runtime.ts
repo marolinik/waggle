@@ -108,7 +108,7 @@ export class McpServerInstance extends EventEmitter {
         this.config.command,
         this.config.args ?? [],
         {
-          env: this.config.env ? { ...process.env, ...this.config.env } : undefined,
+          env: this.config.env ? { ...process.env, ...this.config.env } as Record<string, string> : undefined,
           stdio: ['pipe', 'pipe', 'pipe'],
         },
       );

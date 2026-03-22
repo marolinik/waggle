@@ -709,6 +709,9 @@ When approaching any task:
       abortController.abort();
     });
 
+    // Declare at handler scope so error handler can surface recalled memories (P1-4)
+    let recalledContext = '';
+
     try {
       const hasCustomRunner = !!server.agentRunner;
 
@@ -877,9 +880,6 @@ When approaching any task:
         }
 
         // ── Activate workspace mind (A2: guard against silent fallback) ──
-        // Open workspace.mind so search/save routes to the right mind.
-        // W2.7: If user explicitly provided a workspace (even "default"), try to activate it.
-        // Only skip activation when NO workspace was provided (personal-only mode).
         if (!hasCustomRunner && workspace) {
           const activated = server.agentState.activateWorkspaceMind(effectiveWorkspace);
           if (!activated) {
@@ -888,9 +888,6 @@ When approaching any task:
         }
 
         // ── Automatic memory recall ─────────────────────────────
-        // Search memory for content relevant to the user's message BEFORE
-        // the agent runs, so recalled context is available from the first turn.
-        let recalledContext = '';
         if (!hasCustomRunner) {
           try {
             sendEvent('step', { content: 'Recalling relevant memories...' });
@@ -1215,8 +1212,8 @@ When approaching any task:
         errorMessage = 'Something went wrong. Try sending your message again.';
       }
       // P1-4: When auto_recall succeeded but LLM failed, surface recalled memories
-      // Note: recalledContext is scoped inside shouldRunAgentLoop — use typeof to safely check
-      const recalled = typeof recalledContext !== 'undefined' ? recalledContext : '';
+      // P1-4: recalledContext is now declared at outer scope
+      const recalled = recalledContext;
       if (recalled && recalled.trim().length > 0) {
         const memoryFallback = `${errorMessage}\n\n---\n\n**However, I found relevant context in memory:**\n${recalled}`;
         sendEvent('error', { message: memoryFallback });

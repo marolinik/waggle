@@ -267,7 +267,8 @@ export function createSystemTools(workspace: string): ToolDefinition[] {
             try {
               const pdfParse = await import('pdf-parse');
               const buffer = fs.readFileSync(resolved);
-              const data = await (pdfParse.default ?? pdfParse)(buffer);
+              const parseFn = (pdfParse as any).default ?? pdfParse;
+              const data = await parseFn(buffer);
               const text = data.text as string;
               return text || `[PDF file: ${filePath}, ${stat.size} bytes, no text content extracted]`;
             } catch {
