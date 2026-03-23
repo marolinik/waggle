@@ -1206,13 +1206,31 @@ When approaching any task:
           }
         }
 
+        // Post-processing: enforce professional disclaimer for regulated personas
+        let finalContent = result.content;
+        const REGULATED_DISCLAIMER_MAP: Record<string, string> = {
+          'hr-manager': '\n\n---\n*This is general HR guidance, not legal advice. Consult your legal team for binding decisions.*',
+          'legal-professional': '\n\n---\n*This is AI-assisted legal analysis, not legal advice. This does not create an attorney-client relationship. Consult a licensed attorney for binding legal guidance.*',
+          'finance-owner': '\n\n---\n*Financial figures are estimates based on available data. Verify with your accountant or financial advisor before making decisions.*',
+        };
+        if (activePersonaId && REGULATED_DISCLAIMER_MAP[activePersonaId] && finalContent) {
+          const hasDisclaimer = finalContent.toLowerCase().includes('not legal advice') ||
+            finalContent.toLowerCase().includes('attorney-client') ||
+            finalContent.toLowerCase().includes('verify with your accountant') ||
+            finalContent.toLowerCase().includes('financial advisor') ||
+            finalContent.toLowerCase().includes('legal team');
+          if (!hasDisclaimer) {
+            finalContent += REGULATED_DISCLAIMER_MAP[activePersonaId];
+          }
+        }
+
         // Add assistant response to history (maintains context for next turn) and persist
-        history.push({ role: 'assistant', content: result.content });
-        persistMessage(server.localConfig.dataDir, effectiveWorkspace, sessionId, { role: 'assistant', content: result.content });
+        history.push({ role: 'assistant', content: finalContent });
+        persistMessage(server.localConfig.dataDir, effectiveWorkspace, sessionId, { role: 'assistant', content: finalContent });
 
         // Send the done event with full response + model info
         sendEvent('done', {
-          content: result.content,
+          content: finalContent,
           usage: result.usage,
           toolsUsed: result.toolsUsed,
           model: resolvedModel,

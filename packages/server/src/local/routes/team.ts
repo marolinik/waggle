@@ -660,7 +660,7 @@ export async function teamRoutes(fastify: FastifyInstance) {
     }
 
     db.prepare('DELETE FROM team_members WHERE team_id = ? AND user_id = ?').run(team.id, targetUserId);
-    return reply.code(204).send();
+    return { deleted: true, userId: targetUserId, teamId: team.id };
   });
 
   // GET /api/teams/:id/activity — aggregated events from team workspaces (uses F2 audit trail)

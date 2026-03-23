@@ -44,9 +44,12 @@ export class ConnectorRegistry {
     return this.connectors.get(id);
   }
 
-  /** Get connectors that have valid (non-expired) credentials in vault */
+  /** Get connectors that have valid (non-expired) credentials in vault OR are mock channel connectors */
   getConnected(): WaggleConnector[] {
+    // Mock channel connector IDs that are always available without credentials
+    const ALWAYS_CONNECTED = new Set(['slack-mock', 'teams-mock', 'discord-mock']);
     return [...this.connectors.values()].filter(c => {
+      if (ALWAYS_CONNECTED.has(c.id)) return true;
       const cred = this.vault.getConnectorCredential(c.id);
       return cred && !cred.isExpired;
     });
