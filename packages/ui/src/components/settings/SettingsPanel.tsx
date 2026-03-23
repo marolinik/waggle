@@ -15,6 +15,7 @@ import { AdvancedSection } from './AdvancedSection.js';
 import { TeamSection } from './TeamSection.js';
 import { VaultSection } from './VaultSection.js';
 import { BackupSection } from './BackupSection.js';
+import { KvarkSection } from './KvarkSection.js';
 
 export interface SettingsPanelProps {
   activeTab?: string;
@@ -152,6 +153,9 @@ export function SettingsPanel({
         )}
         {activeTab === 'backup' && (
           <BackupSection />
+        )}
+        {activeTab === 'kvark' && (
+          <KvarkSection serverUrl={baseUrl} />
         )}
         {activeTab === 'advanced' && (
           <AdvancedSection

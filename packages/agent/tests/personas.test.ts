@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { PERSONAS, getPersona, listPersonas, composePersonaPrompt } from '../src/personas.js';
 
 describe('Agent Personas', () => {
-  it('PERSONAS catalog has 8 entries', () => {
-    expect(PERSONAS).toHaveLength(8);
+  it('PERSONAS catalog has 13 entries', () => {
+    expect(PERSONAS).toHaveLength(13);
   });
 
   it('each persona has required fields', () => {
@@ -38,9 +38,9 @@ describe('Agent Personas', () => {
     expect(getPersona('')).toBeNull();
   });
 
-  it('listPersonas() returns all 8 personas', () => {
+  it('listPersonas() returns all 13 personas', () => {
     const list = listPersonas();
-    expect(list).toHaveLength(8);
+    expect(list).toHaveLength(13);
     expect(list).not.toBe(PERSONAS); // Returns a copy
   });
 

@@ -52,14 +52,15 @@ import { CapabilityRouter } from '../../packages/agent/src/capability-router.js'
 // Persona System
 // ═════════════════════════════════════════════════════════════════════════════
 
-describe('Persona system — all 8 personas', () => {
+describe('Persona system — all 13 personas', () => {
   const EXPECTED_PERSONAS = [
     'researcher', 'writer', 'analyst', 'coder',
     'project-manager', 'executive-assistant', 'sales-rep', 'marketer',
+    'product-manager-senior', 'hr-manager', 'legal-professional', 'finance-owner', 'consultant',
   ] as const;
 
-  it('exports exactly 8 personas', () => {
-    expect(listPersonas()).toHaveLength(8);
+  it('exports exactly 13 personas', () => {
+    expect(listPersonas()).toHaveLength(13);
     const ids = listPersonas().map(p => p.id);
     for (const id of EXPECTED_PERSONAS) {
       expect(ids).toContain(id);
@@ -543,8 +544,8 @@ describe('Command registry — all 13 slash commands', () => {
     registerWorkflowCommands(registry);
   });
 
-  it('registers exactly 13 commands', () => {
-    expect(registry.list()).toHaveLength(13);
+  it('registers exactly 17 commands', () => {
+    expect(registry.list()).toHaveLength(17);
   });
 
   it('/help lists all commands', async () => {

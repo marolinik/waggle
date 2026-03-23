@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type { FastifyPluginAsync } from 'fastify';
-import { runAgentLoop, needsConfirmation, CapabilityRouter, analyzeAndRecordCorrection, recordCapabilityGap, assessTrust, formatTrustSummary, scanForInjection, AGENT_LOOP_REROUTE_PREFIX } from '@waggle/agent';
+import { runAgentLoop, needsConfirmation, CapabilityRouter, analyzeAndRecordCorrection, recordCapabilityGap, assessTrust, formatTrustSummary, scanForInjection, AGENT_LOOP_REROUTE_PREFIX, extractEntities } from '@waggle/agent';
 import type { AgentLoopConfig, AgentResponse } from '@waggle/agent';
 import { buildWorkspaceNowBlock, formatWorkspaceNowPrompt } from './workspace-context.js';
 import { formatWorkspaceStatePrompt } from '../workspace-state.js';
@@ -634,6 +634,14 @@ When approaching any task:
       prompt = composePersonaPrompt(prompt, persona);
     }
 
+    // Item 3: Regulated-persona disclaimer enforcement
+    // Personas in regulated domains (HR, Legal, Finance) must include a professional
+    // disclaimer on every response. This reinforces the persona's own instructions.
+    const REGULATED_PERSONAS = ['hr-manager', 'legal-professional', 'finance-owner'];
+    if (activePersonaId && REGULATED_PERSONAS.includes(activePersonaId)) {
+      prompt += '\n\n## Professional Disclaimer Requirement\nYou MUST include an appropriate professional disclaimer at the end of EVERY response. This is non-negotiable. The disclaimer must match your role (HR: not legal advice, Legal: not attorney-client relationship, Finance: verify with accountant).';
+    }
+
     // C3: Cache the built prompt
     systemPromptCache.set(cacheKey, { prompt, workspace: workspacePath, workspaceId, skillCount: skills.length, personaId: activePersonaId });
 
@@ -1150,6 +1158,30 @@ When approaching any task:
             } catch {
               // Non-blocking
             }
+          }
+        }
+
+        // ── KG auto-extraction (Item 4) ────────────────────────────
+        // Extract named entities from the agent response and add them to the
+        // knowledge graph of the active workspace mind.
+        // Non-blocking — KG enrichment never fails the response.
+        if (!hasCustomRunner && result.content && result.content.length > 100) {
+          try {
+            const knowledge = orchestrator.getKnowledge();
+            const entities = extractEntities(result.content);
+            if (entities.length > 0) {
+              const now = new Date().toISOString();
+              // Cap at 10 entities per turn to avoid KG bloat
+              for (const entity of entities.slice(0, 10)) {
+                try {
+                  knowledge.createEntity(entity.type, entity.name, { confidence: entity.confidence, source: `session:${sessionId}` }, { valid_from: now });
+                } catch {
+                  // Duplicate or schema error — skip silently
+                }
+              }
+            }
+          } catch (e) {
+            console.log('[waggle] KG extraction error:', e instanceof Error ? e.message : String(e));
           }
         }
 

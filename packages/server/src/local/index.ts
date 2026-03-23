@@ -64,6 +64,10 @@ import {
   OutlookConnector,
   OneDriveConnector,
   ComposioConnector,
+  // MOCK: Remove when real OAuth integrations are ready
+  MockSlackConnector,
+  MockTeamsConnector,
+  MockDiscordConnector,
   isWithinBudget,
   getRecentLogs,
   type ToolDefinition,
@@ -368,6 +372,10 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   connectorRegistry.register(new OutlookConnector());
   connectorRegistry.register(new OneDriveConnector());
   connectorRegistry.register(new ComposioConnector());
+  // MOCK: Remove when real OAuth integrations are ready
+  connectorRegistry.register(new MockSlackConnector());
+  connectorRegistry.register(new MockTeamsConnector());
+  connectorRegistry.register(new MockDiscordConnector());
   server.decorate('connectorRegistry', connectorRegistry);
 
   // Seed marketplace.db if not present, then open it for production routes
@@ -1460,7 +1468,8 @@ Return ONLY the improved system prompt text. No commentary, no markdown fences, 
   server.get('/api/docs', async () => {
     const routes: Array<{ method: string; url: string; prefix: string }> = [];
     // Fastify exposes registered routes via the internal routing tree
-    const allRoutes = server.routes ?? [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const allRoutes: any[] = (server as any).routes ?? [];
     // Iterate printRoutes() style — Fastify 4.x stores routes differently
     // Use server.printRoutes() as a fallback reference
     try {

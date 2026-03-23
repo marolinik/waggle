@@ -314,9 +314,72 @@ function helpCommand(): CommandDefinition {
         `| \`/memory [query]\` | Search or browse workspace memory |`,
         `| \`/plan <goal>\` | Break a goal into an actionable plan |`,
         `| \`/focus <topic>\` | Narrow agent focus to a specific topic |`,
+        `| \`/plugins\` | List installed plugins and capabilities |`,
+        `| \`/export [type]\` | Export workspace data (memories, sessions, all) |`,
+        `| \`/import <source>\` | Import data into workspace memory |`,
+        `| \`/settings\` | Show workspace and agent settings |`,
         `| \`/help\` | List all available commands |`,
       ];
       return lines.join('\n');
+    },
+  };
+}
+
+// ── Additional Commands ─────────────────────────────────────────────────
+
+function pluginsCommand(): CommandDefinition {
+  return {
+    name: 'plugins',
+    aliases: [],
+    description: 'List installed plugins and capabilities',
+    usage: '/plugins',
+    handler: async (_args, context) => {
+      const skills = context.listSkills?.() ?? [];
+      return [
+        '## Installed Plugins & Capabilities',
+        '',
+        `**${skills.length} skills active** in this workspace.`,
+        '',
+        'Use `/marketplace` to browse and install capability packs.',
+        'Use `/skills` for a detailed list of loaded skills.',
+      ].join('\n');
+    },
+  };
+}
+
+function exportCommand(): CommandDefinition {
+  return {
+    name: 'export',
+    aliases: [],
+    description: 'Export workspace data (memories, sessions, settings)',
+    usage: '/export [memories|sessions|all]',
+    handler: async (_args, context) => {
+      const what = _args.trim() || 'all';
+      return `${AGENT_LOOP_REROUTE_PREFIX}Export the workspace ${what} data. List what's available (memory count, session count) and explain the export format options (JSON, Markdown). Workspace: ${context.workspaceId}`;
+    },
+  };
+}
+
+function importCommand(): CommandDefinition {
+  return {
+    name: 'import',
+    aliases: [],
+    description: 'Import data into workspace memory',
+    usage: '/import <source>',
+    handler: async (_args, context) => {
+      return `${AGENT_LOOP_REROUTE_PREFIX}Help the user import data into workspace "${context.workspaceId}". Explain supported formats: paste text directly, upload files, or provide URLs. Ask what they want to import.`;
+    },
+  };
+}
+
+function settingsCommand(): CommandDefinition {
+  return {
+    name: 'settings',
+    aliases: ['/config', '/preferences'],
+    description: 'Show current workspace and agent settings',
+    usage: '/settings',
+    handler: async (_args, context) => {
+      return `${AGENT_LOOP_REROUTE_PREFIX}Show the current settings for workspace "${context.workspaceId}": model, persona, linked directory, budget, and suggest what can be changed. Check memory for any stored preferences.`;
     },
   };
 }
@@ -338,6 +401,10 @@ export function registerWorkflowCommands(registry: CommandRegistry): void {
     planCommand(),
     focusCommand(),
     helpCommand(),
+    pluginsCommand(),
+    exportCommand(),
+    importCommand(),
+    settingsCommand(),
   ];
 
   for (const cmd of commands) {

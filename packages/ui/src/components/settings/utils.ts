@@ -149,6 +149,7 @@ export const SETTINGS_TABS: SettingsTab[] = [
   { id: 'permissions', label: 'Permissions' },
   { id: 'team', label: 'Team' },
   { id: 'backup', label: 'Backup' },
+  { id: 'kvark', label: 'Enterprise' },
   { id: 'advanced', label: 'Advanced' },
 ];
 

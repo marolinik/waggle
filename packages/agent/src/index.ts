@@ -88,6 +88,8 @@ export {
   PipedriveConnector, AirtableConnector, GitLabConnector, BitbucketConnector, DropboxConnector,
   PostgresConnector, GmailConnector, GoogleDocsConnector, GoogleDriveConnector, GoogleSheetsConnector,
   ComposioConnector, MSTeamsConnector, OutlookConnector, OneDriveConnector,
+  // MOCK: Remove when real OAuth integrations are ready
+  MockSlackConnector, MockTeamsConnector, MockDiscordConnector,
 } from './connectors/index.js';
 export { captureInteraction, getRecentLogs, isWithinBudget, type CaptureInteractionInput } from './optimization-capture.js';
 export { detectCorrection, detectCorrectionsInHistory, type DetectedCorrection, type CorrectionDurability } from './correction-detector.js';

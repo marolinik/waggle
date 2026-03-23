@@ -210,6 +210,73 @@ export const settingsRoutes: FastifyPluginAsync = async (server) => {
     writePermissions(updated);
     return updated;
   });
+
+  // ── Tier detection (MOCK) ────────────────────────────────────────────
+  // MOCK: Remove when real tier/billing system is integrated.
+  // Tier is read from config.json → tier field (defaults to 'solo').
+  // Supported values: 'solo' | 'teams' | 'business' | 'enterprise'
+
+  type Tier = 'solo' | 'teams' | 'business' | 'enterprise';
+
+  function getTierLimits(tier: Tier) {
+    return {
+      maxWorkspaces: tier === 'solo' ? 5 : tier === 'teams' ? 25 : tier === 'business' ? 100 : -1,
+      maxSessions: tier === 'solo' ? 3 : tier === 'teams' ? 10 : tier === 'business' ? 25 : -1,
+      maxMembers: tier === 'solo' ? 1 : tier === 'teams' ? 10 : tier === 'business' ? 50 : -1,
+      features: {
+        teams: tier !== 'solo',
+        marketplace: tier !== 'solo',
+        budgetControls: tier === 'business' || tier === 'enterprise',
+        kvark: tier === 'enterprise',
+        governance: tier === 'enterprise',
+        customModels: tier !== 'solo',
+      },
+    };
+  }
+
+  function readTier(dataDir: string): Tier {
+    try {
+      const configPath = path.join(dataDir, 'config.json');
+      if (fs.existsSync(configPath)) {
+        const raw = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+        const t = raw.tier as string;
+        if (t === 'solo' || t === 'teams' || t === 'business' || t === 'enterprise') return t;
+      }
+    } catch { /* ignore */ }
+    return 'solo';
+  }
+
+  // GET /api/tier — return current tier and feature limits
+  server.get('/api/tier', async () => {
+    const tier = readTier(server.localConfig.dataDir);
+    return { tier, limits: getTierLimits(tier) };
+  });
+
+  // PATCH /api/tier — change tier for testing
+  // MOCK: In production, tier changes are managed by the billing system.
+  server.patch<{
+    Body: { tier: string };
+  }>('/api/tier', async (request, reply) => {
+    const { tier } = request.body ?? {};
+    const valid: Tier[] = ['solo', 'teams', 'business', 'enterprise'];
+    if (!valid.includes(tier as Tier)) {
+      return reply.status(400).send({ error: `Invalid tier. Must be one of: ${valid.join(', ')}` });
+    }
+
+    const configPath = path.join(server.localConfig.dataDir, 'config.json');
+    let raw: Record<string, unknown> = {};
+    try {
+      if (fs.existsSync(configPath)) {
+        raw = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      }
+    } catch { /* fresh */ }
+
+    raw.tier = tier;
+    fs.writeFileSync(configPath, JSON.stringify(raw, null, 2), 'utf-8');
+
+    const newTier = tier as Tier;
+    return { tier: newTier, limits: getTierLimits(newTier), updated: true };
+  });
 };
 
 interface PermissionsData {

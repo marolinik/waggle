@@ -120,6 +120,26 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
     if (!name || !group) {
       return reply.status(400).send({ error: 'name and group are required' });
     }
+
+    // Tier limit enforcement: check maxWorkspaces
+    try {
+      const configPath = path.join(server.localConfig.dataDir, 'config.json');
+      const tierRaw = fs.existsSync(configPath) ? JSON.parse(fs.readFileSync(configPath, 'utf-8')).tier : 'solo';
+      const tier = ['solo', 'teams', 'business', 'enterprise'].includes(tierRaw) ? tierRaw : 'solo';
+      const maxWs = tier === 'solo' ? 5 : tier === 'teams' ? 25 : tier === 'business' ? 100 : -1;
+      if (maxWs > 0) {
+        const currentCount = server.workspaceManager.list().length;
+        if (currentCount >= maxWs) {
+          return reply.status(403).send({
+            error: `Workspace limit reached for ${tier} tier (${maxWs} max). Upgrade to create more.`,
+            tier,
+            limit: maxWs,
+            current: currentCount,
+          });
+        }
+      }
+    } catch { /* tier check failed — allow creation */ }
+
     // BUG-R3-03: Validate model ID if provided
     if (model && !isValidModelId(model)) {
       return reply.status(400).send({

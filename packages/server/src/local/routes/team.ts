@@ -614,6 +614,29 @@ export async function teamRoutes(fastify: FastifyInstance) {
     return normalizeMember(updated);
   });
 
+  // PATCH /api/teams/:id/members/:userId — alias for PUT (common API convention)
+  fastify.patch<{
+    Params: { id: string; userId: string };
+    Body: { role: TeamRole };
+  }>('/api/teams/:id/members/:userId', async (request, reply) => {
+    const team = db.prepare('SELECT * FROM teams WHERE id = ?').get(request.params.id) as TeamRow | undefined;
+    if (!team) return reply.code(404).send({ error: 'Team not found' });
+    const uid = getLocalUserId(dataDir);
+    const self = db.prepare('SELECT * FROM team_members WHERE team_id = ? AND user_id = ?').get(team.id, uid) as MemberRow | undefined;
+    if (!self || (self.role !== 'owner' && self.role !== 'admin')) {
+      return reply.code(403).send({ error: 'Only owner or admin can change roles' });
+    }
+    const { role } = request.body ?? {};
+    if (!role || !['owner', 'admin', 'member', 'viewer'].includes(role)) {
+      return reply.code(400).send({ error: 'Invalid role. Must be: owner, admin, member, or viewer' });
+    }
+    const target = db.prepare('SELECT * FROM team_members WHERE team_id = ? AND user_id = ?').get(team.id, request.params.userId) as MemberRow | undefined;
+    if (!target) return reply.code(404).send({ error: 'Member not found' });
+    db.prepare('UPDATE team_members SET role = ? WHERE team_id = ? AND user_id = ?').run(role, team.id, request.params.userId);
+    const updated = db.prepare('SELECT * FROM team_members WHERE team_id = ? AND user_id = ?').get(team.id, request.params.userId) as MemberRow;
+    return normalizeMember(updated);
+  });
+
   // DELETE /api/teams/:id/members/:userId — remove member
   fastify.delete<{
     Params: { id: string; userId: string };

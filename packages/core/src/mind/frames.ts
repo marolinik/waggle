@@ -212,8 +212,14 @@ export class FrameStore {
    */
   delete(id: number): boolean {
     const raw = this.db.getDatabase();
-    // Delete from FTS index first
+    // Clear self-referential FK: nullify base_frame_id on any frames that reference this one
+    raw.prepare('UPDATE memory_frames SET base_frame_id = NULL WHERE base_frame_id = ?').run(id);
+    // Delete from vector index if exists
+    try { raw.prepare('DELETE FROM memory_frames_vec WHERE rowid = ?').run(id); } catch { /* vec table may not exist */ }
+    // Delete from FTS index
     raw.prepare('DELETE FROM memory_frames_fts WHERE rowid = ?').run(id);
+    // Delete from KG entity-frame links if KG tables exist
+    try { raw.prepare('DELETE FROM kg_entity_frames WHERE frame_id = ?').run(id); } catch { /* KG tables may not exist */ }
     // Delete from main table
     const result = raw.prepare('DELETE FROM memory_frames WHERE id = ?').run(id);
     return result.changes > 0;
