@@ -175,7 +175,7 @@ describe('runAgentLoop', () => {
       makeConfig({ fetch, tools: [tool], maxTurns: 3 })
     );
 
-    expect(result.content).toBe('Max tool turns reached.');
+    expect(result.content).toContain('Max tool turns reached');
     expect(fetch).toHaveBeenCalledTimes(3);
   });
 

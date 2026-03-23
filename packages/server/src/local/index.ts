@@ -780,26 +780,9 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   const activateWorkspaceMindWithWeaver = (workspaceId: string): boolean => {
     const result = baseActivateWorkspaceMind(workspaceId);
 
-    // E4: Track workspace topic in personal mind (runs on every activation, deduped by content)
-    if (result) {
-      try {
-        const wsConfig = wsManager.get(workspaceId);
-        if (wsConfig) {
-          const topicContent = `Workspace topic: ${wsConfig.name} (${wsConfig.group || 'General'})`;
-          const personalRaw = multiMind.personal.getDatabase();
-          const existing = personalRaw.prepare(
-            `SELECT id FROM memory_frames WHERE content = ? LIMIT 1`
-          ).get(topicContent) as { id: number } | undefined;
-          if (!existing) {
-            personalFrames.createIFrame(
-              personalSessions.getActive()[0]?.gop_id ?? personalSessions.create('personal').gop_id,
-              topicContent,
-              'normal'
-            );
-          }
-        }
-      } catch { /* non-blocking */ }
-    }
+    // E4: Workspace topic tracking REMOVED — was saving to personal mind, causing
+    // cross-workspace leakage. Workspace names are available from workspace config
+    // and don't need to be duplicated into memory frames.
 
     if (result && !workspaceWeavers.has(workspaceId)) {
       const wsDb = workspaceMindCache.get(workspaceId);

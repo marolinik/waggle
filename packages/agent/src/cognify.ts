@@ -7,7 +7,7 @@ import type {
   Importance,
   Embedder,
 } from '@waggle/core';
-import { extractEntities, type ExtractedEntity } from './entity-extractor.js';
+import { extractEntities, extractRelations, type ExtractedEntity } from './entity-extractor.js';
 import { MemoryLinker, type MemoryLink } from './memory-linker.js';
 
 export interface CognifyConfig {
@@ -68,7 +68,23 @@ export class CognifyPipeline {
     const entityIds = this.upsertEntities(extracted);
 
     // 5. Create co-occurrence relations between entities found in same text
-    const relationsCreated = this.createCoOccurrenceRelations(entityIds);
+    let relationsCreated = this.createCoOccurrenceRelations(entityIds);
+
+    // 5b. Extract semantic relations (led_by, reports_to, depends_on, etc.)
+    const semanticRelations = extractRelations(content, extracted);
+    for (const rel of semanticRelations) {
+      try {
+        const srcEntity = this.knowledge.getEntitiesByType('').find(e => e.name.toLowerCase() === rel.source.toLowerCase());
+        const tgtEntity = this.knowledge.getEntitiesByType('').find(e => e.name.toLowerCase() === rel.target.toLowerCase());
+        if (srcEntity && tgtEntity) {
+          const existing = this.knowledge.getRelationsFrom(srcEntity.id, rel.relationType);
+          if (!existing.some(r => r.target_id === tgtEntity.id)) {
+            this.knowledge.createRelation(srcEntity.id, tgtEntity.id, rel.relationType, rel.confidence, { source: 'semantic' });
+            relationsCreated++;
+          }
+        }
+      } catch { /* non-blocking */ }
+    }
 
     // 6. Index the frame for vector search
     await this.search.indexFrame(frame.id, content);

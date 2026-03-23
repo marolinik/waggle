@@ -101,6 +101,7 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
   const toolsUsed: string[] = [];
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
+  let allStreamedContent = ''; // Accumulate ALL streamed content across all turns
   const guard = new LoopGuard();
   let retryCount = 0;
   const MAX_RETRIES = 3;
@@ -218,9 +219,10 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
             const delta = chunk.choices?.[0]?.delta;
             if (!delta) continue;
 
-            // Accumulate content tokens
+            // Accumulate content tokens (both per-turn and across all turns)
             if (delta.content) {
               accumulatedContent += delta.content;
+              allStreamedContent += delta.content;
               if (onToken) {
                 onToken(delta.content);
               }
@@ -290,7 +292,8 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
 
     // No tool calls — return the final response
     if (!assistantMessage.tool_calls || assistantMessage.tool_calls.length === 0) {
-      const content = assistantMessage.content ?? '';
+      // Use this turn's content, or fall back to all accumulated streamed content
+      const content = (assistantMessage.content ?? '') || allStreamedContent;
       // In non-streaming mode, emit the full content as a single token
       if (!stream && onToken && content) {
         onToken(content);
@@ -418,9 +421,9 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
     }
   }
 
-  // maxTurns reached
+  // maxTurns reached — return any accumulated content rather than generic message
   return {
-    content: 'Max tool turns reached.',
+    content: allStreamedContent || `Max tool turns reached (${maxTurns} turns, ${toolsUsed.length} tools used).`,
     toolsUsed,
     usage: { inputTokens: totalInputTokens, outputTokens: totalOutputTokens },
   };

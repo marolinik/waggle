@@ -735,6 +735,17 @@ When approaching any task:
       const sessionId = session ?? workspace ?? 'default';
       const effectiveWorkspace = workspace ?? 'default';
 
+      // Viewer permission enforcement: viewers in team workspaces cannot chat
+      if (workspace && workspace !== 'default') {
+        const wsConfig = server.workspaceManager?.get(workspace);
+        if (wsConfig?.teamId && wsConfig?.teamRole === 'viewer') {
+          return reply.status(403).send({
+            error: 'Viewers cannot send messages in team workspaces. Ask a team admin to upgrade your role.',
+            code: 'VIEWER_READ_ONLY',
+          });
+        }
+      }
+
       // Get or create session history — load from disk if not in RAM
       if (!sessionHistories.has(sessionId)) {
         const saved = loadSessionMessages(

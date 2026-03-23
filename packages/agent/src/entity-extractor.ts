@@ -106,3 +106,41 @@ export function extractEntities(text: string): ExtractedEntity[] {
 
   return entities;
 }
+
+/** Extracted semantic relation between two entities. */
+export interface ExtractedRelation {
+  source: string;
+  target: string;
+  relationType: string;
+  confidence: number;
+}
+
+const RELATION_PATTERNS: Array<{ re: RegExp; type: string; conf: number }> = [
+  { re: /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s+(?:is led by|leads?|managed by|manages?)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/g, type: 'led_by', conf: 0.9 },
+  { re: /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s+(?:reports? to|works? (?:for|under))\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/g, type: 'reports_to', conf: 0.9 },
+  { re: /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s+(?:depends? on|requires?|relies? on)\s+(?:the\s+)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/g, type: 'depends_on', conf: 0.85 },
+  { re: /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s+(?:is maintained by|built by|created by|owned by)\s+(?:the\s+)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/g, type: 'maintained_by', conf: 0.85 },
+  { re: /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s+(?:from|at|works? at)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/g, type: 'affiliated_with', conf: 0.75 },
+  { re: /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s+(?:approved|signed|confirmed)\s+/g, type: 'approved', conf: 0.8 },
+];
+
+/** Extract semantic relations between entities from text. */
+export function extractRelations(text: string, entities: ExtractedEntity[]): ExtractedRelation[] {
+  if (entities.length < 2 || text.length < 20) return [];
+  const relations: ExtractedRelation[] = [];
+  const names = new Set(entities.map(e => e.name.toLowerCase()));
+
+  for (const { re, type, conf } of RELATION_PATTERNS) {
+    re.lastIndex = 0;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      const src = m[1]?.trim();
+      const tgt = m[2]?.trim();
+      if (!src || !tgt || src.length < 3 || tgt.length < 3) continue;
+      if (names.has(src.toLowerCase()) || names.has(tgt.toLowerCase())) {
+        relations.push({ source: src, target: tgt, relationType: type, confidence: conf });
+      }
+    }
+  }
+  return relations;
+}
