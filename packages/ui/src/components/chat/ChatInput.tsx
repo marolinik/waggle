@@ -188,7 +188,7 @@ export function ChatInput({
   const isDisabledOrEmpty = disabled || !text.trim();
 
   return (
-    <div className="chat-input relative border-t border-border bg-card p-3">
+    <div className="chat-input relative p-3" style={{ borderTop: '1px solid var(--hive-700)', backgroundColor: 'var(--hive-850)' }}>
       {/* Slash command autocomplete popup */}
       {showCommands && (
         <div
@@ -290,18 +290,33 @@ export function ChatInput({
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={disabled}
-          placeholder={placeholder}
+          placeholder={placeholder || 'Message Waggle... (/ for commands)'}
           rows={1}
-          className="flex-1 resize-none rounded-lg border border-border bg-muted py-2.5 px-3.5 text-foreground text-sm font-mono outline-none leading-normal"
+          className="flex-1 resize-none rounded-xl py-2.5 px-3.5 text-foreground text-sm outline-none leading-normal transition-all duration-150"
+          style={{
+            backgroundColor: 'var(--hive-800)',
+            border: '1px solid var(--hive-700)',
+            fontFamily: 'var(--font-sans)',
+          }}
+          onFocus={(e) => {
+            e.target.style.borderColor = 'var(--honey-500)';
+            e.target.style.boxShadow = 'var(--shadow-honey)';
+          }}
+          onBlur={(e) => {
+            e.target.style.borderColor = 'var(--hive-700)';
+            e.target.style.boxShadow = 'none';
+          }}
         />
         <button
           onClick={handleSubmit}
           disabled={isDisabledOrEmpty}
-          className={`rounded-lg border-none font-semibold text-[13px] font-mono py-2.5 px-5 ${
-            isDisabledOrEmpty
-              ? 'bg-muted text-muted-foreground/30 cursor-not-allowed'
-              : 'bg-primary text-primary-foreground cursor-pointer'
-          }`}
+          className="rounded-xl border-none font-semibold text-[13px] py-2.5 px-5 transition-all duration-150"
+          style={{
+            fontFamily: 'var(--font-sans)',
+            ...(isDisabledOrEmpty
+              ? { backgroundColor: 'var(--hive-700)', color: 'var(--hive-500)', cursor: 'not-allowed' }
+              : { backgroundColor: 'var(--honey-500)', color: 'var(--hive-950)', cursor: 'pointer' }),
+          }}
         >
           Send
         </button>

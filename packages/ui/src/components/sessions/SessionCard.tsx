@@ -83,13 +83,13 @@ export function SessionCard({
           onClick={(e) => e.stopPropagation()}
         />
       ) : (
-        <span className="session-card__title block truncate">
+        <span className="session-card__title block truncate" style={{ wordBreak: 'break-word' }}>
           {workspaceIcon && <span className="session-card__workspace-icon mr-1">{workspaceIcon}</span>}
           {session.title || 'Untitled Session'}
         </span>
       )}
       {session.summary && (
-        <span className="session-card__summary block text-xs text-muted-foreground truncate mt-0.5">
+        <span className="session-card__summary block text-xs truncate mt-0.5" style={{ color: 'var(--hive-400)', wordBreak: 'break-word' }}>
           {session.summary}
         </span>
       )}

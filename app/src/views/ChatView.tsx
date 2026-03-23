@@ -87,7 +87,12 @@ export function ChatView({
           <button
             type="button"
             onClick={onPersonaClick}
-            className="flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors cursor-pointer shrink-0 mr-2"
+            className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition-colors cursor-pointer shrink-0 mr-2"
+            style={{
+              border: '1px solid var(--hive-700)',
+              backgroundColor: 'var(--hive-850)',
+              color: 'var(--hive-200)',
+            }}
             title={`Persona: ${currentPersona.name} (Ctrl+Shift+P to switch)`}
           >
             <span>{currentPersona.icon}</span>
@@ -99,10 +104,11 @@ export function ChatView({
           <button
             type="button"
             onClick={onPersonaClick}
-            className="flex items-center gap-1.5 rounded-full border border-transparent px-2.5 py-1 text-xs text-muted-foreground/50 hover:text-muted-foreground hover:border-border transition-colors cursor-pointer shrink-0 mr-2"
+            className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] transition-colors cursor-pointer shrink-0 mr-2"
+            style={{ backgroundColor: 'var(--hive-800)', color: 'var(--hive-400)', borderRadius: '6px' }}
             title="Switch persona (Ctrl+Shift+P)"
           >
-            <span className="text-[10px]">--</span>
+            <span className="text-[10px]">⬡</span>
             <span>Persona</span>
           </button>
         )}

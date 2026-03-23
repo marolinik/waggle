@@ -7,7 +7,7 @@
  *   - Settings tabs (General, Models, Vault, Permissions, Team, Advanced)
  */
 
-import { useCallback, Suspense } from 'react';
+import { useCallback } from 'react';
 import type { Workspace } from '@waggle/ui';
 import {
   CommandDialog,
@@ -85,7 +85,7 @@ export function GlobalSearch({
       title="Search"
       description="Search workspaces, commands, and settings"
     >
-      <CommandInput placeholder="Type to search..." />
+      <CommandInput placeholder="⬡ Search everything..." />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
 
@@ -98,10 +98,7 @@ export function GlobalSearch({
                 value={`workspace ${ws.name}`}
                 onSelect={() => handleSelect('workspace', ws.id)}
               >
-                <span
-                  className="w-2 h-2 rounded-full shrink-0"
-                  style={{ background: `hsl(${workspaceHue(ws.name)}, 60%, 55%)` }}
-                />
+                <span className="text-[10px] shrink-0" style={{ color: 'var(--honey-500)' }}>⬡</span>
                 <span>{ws.name}</span>
                 {ws.group && (
                   <span className="ml-auto text-xs text-muted-foreground">
@@ -151,13 +148,4 @@ export function GlobalSearch({
   );
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────
-
-/** Derive a stable hue (0-360) from a workspace name for visual identity */
-function workspaceHue(name: string): number {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return ((hash % 360) + 360) % 360;
-}
+/* Workspace hue removed — using hex bullets (⬡) instead of colored dots */

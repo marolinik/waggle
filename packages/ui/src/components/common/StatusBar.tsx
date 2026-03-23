@@ -86,7 +86,8 @@ export const StatusBar = memo(function StatusBar({
 
   return (
     <footer
-      className="waggle-statusbar flex items-center justify-between h-7 px-3 text-xs bg-card text-muted-foreground border-t border-border"
+      className="waggle-statusbar flex items-center justify-between h-7 px-3 text-xs font-mono"
+      style={{ backgroundColor: 'var(--hive-950)', borderTop: '1px solid var(--hive-700)', color: 'var(--hive-400)', fontSize: '11px' }}
     >
       <div className="flex gap-4 items-center">
         <span>{workspace}</span>

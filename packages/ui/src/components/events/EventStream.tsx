@@ -112,11 +112,11 @@ export function EventStream({
       {/* Steps list */}
       <div className="event-stream__list flex-1 overflow-y-auto p-2">
         {filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
-            <div className="text-4xl">📋</div>
-            <h3 className="text-base font-medium text-foreground">No events recorded</h3>
-            <p className="text-sm text-muted-foreground max-w-xs">
-              Tool calls, agent actions, and system events will appear here.
+          <div className="flex flex-col items-center justify-center h-full gap-3 text-center p-8">
+            <img src="/brand/bee-analyst-dark.png" alt="Events" className="w-[110px] h-[110px] float opacity-80 bee-image-analyst" />
+            <h3 className="text-base font-medium" style={{ color: 'var(--hive-100)' }}>No events recorded</h3>
+            <p className="text-sm max-w-xs" style={{ color: 'var(--hive-400)' }}>
+              Events appear as you use Waggle — chat, tools, memory saves.
             </p>
           </div>
         ) : (

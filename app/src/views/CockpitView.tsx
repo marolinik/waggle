@@ -12,6 +12,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { HiveIcon } from '@/components/HiveIcon';
 import {
   SystemHealthCard,
   CronSchedulesCard,
@@ -304,11 +305,40 @@ export default function CockpitView() {
   // ── Render ─────────────────────────────────────────────────────────────
 
   return (
-    <div className="px-6 py-6 max-w-[960px] mx-auto h-full overflow-y-auto">
-      <h1 className="text-lg font-semibold mb-1">Cockpit</h1>
-      <p className="text-xs text-muted-foreground mb-6">
+    <div className="px-6 py-6 max-w-[960px] mx-auto h-full overflow-y-auto honeycomb-bg">
+      <div className="flex items-center gap-3 mb-1">
+        <h1 className="text-lg font-semibold" style={{ color: 'var(--hive-50)' }}>Cockpit</h1>
+        <span className="w-2 h-2 rounded-full heartbeat" style={{ backgroundColor: 'var(--status-healthy)' }} />
+      </div>
+      <p className="text-xs mb-6" style={{ color: 'var(--hive-400)' }}>
         Health, costs, schedules, runtime status, memory, services, and audit trail.
       </p>
+
+      {/* Hero metric row */}
+      {health && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <div className="rounded-xl p-4 text-center waggle-card-lift" style={{ backgroundColor: 'var(--hive-850)', border: '1px solid var(--hive-700)', boxShadow: 'var(--shadow-card)' }}>
+            <div className="flex items-center justify-center gap-1.5 text-[10px] uppercase tracking-[0.05em] font-medium mb-1" style={{ color: 'var(--hive-500)' }}><HiveIcon name="frames" size={16} /> FRAMES</div>
+            <div className="text-2xl font-bold" style={{ color: 'var(--hive-50)' }}>{health.memoryStats?.frameCount ?? 0}</div>
+          </div>
+          <div className="rounded-xl p-4 text-center waggle-card-lift" style={{ backgroundColor: 'var(--hive-850)', border: '1px solid var(--hive-700)', boxShadow: 'var(--shadow-card)' }}>
+            <div className="flex items-center justify-center gap-1.5 text-[10px] uppercase tracking-[0.05em] font-medium mb-1" style={{ color: 'var(--hive-500)' }}><HiveIcon name="tokens" size={16} /> TOKENS</div>
+            <div className="text-2xl font-bold" style={{ color: 'var(--hive-50)' }}>{costSummary ? `${((costSummary.allTime.inputTokens + costSummary.allTime.outputTokens) / 1_000_000).toFixed(1)}M` : '—'}</div>
+          </div>
+          <div className="rounded-xl p-4 text-center waggle-card-lift" style={{ backgroundColor: 'var(--hive-850)', border: '1px solid var(--hive-700)', boxShadow: 'var(--shadow-card)' }}>
+            <div className="flex items-center justify-center gap-1.5 text-[10px] uppercase tracking-[0.05em] font-medium mb-1" style={{ color: 'var(--hive-500)' }}><HiveIcon name="cost" size={16} /> COST</div>
+            <div className="text-2xl font-bold" style={{ color: 'var(--hive-50)' }}>{costSummary ? `$${costSummary.today.estimatedCost.toFixed(2)}` : '—'}</div>
+            <div className="text-[10px] mt-0.5" style={{ color: 'var(--hive-400)' }}>today</div>
+          </div>
+          <div className="rounded-xl p-4 text-center waggle-card-lift" style={{ backgroundColor: 'var(--hive-850)', border: '1px solid var(--hive-700)', boxShadow: 'var(--shadow-card)' }}>
+            <div className="flex items-center justify-center gap-1.5 text-[10px] uppercase tracking-[0.05em] font-medium mb-1" style={{ color: 'var(--hive-500)' }}><HiveIcon name="health" size={16} /> HEALTH</div>
+            <div className="text-2xl font-bold flex items-center justify-center gap-2" style={{ color: 'var(--hive-50)' }}>
+              {health.status === 'ok' ? 'OK' : 'WARN'}
+              <span className="w-2.5 h-2.5 rounded-full heartbeat" style={{ backgroundColor: health.status === 'ok' ? 'var(--status-healthy)' : 'var(--status-warning)' }} />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* F8: Show skeleton while initial load is in progress */}
       {initialLoading && !health && <CockpitSkeleton />}
@@ -353,21 +383,13 @@ export default function CockpitView() {
             </CardHeader>
             <CardContent className="text-xs text-muted-foreground space-y-2">
               <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${health?.kvark?.connected ? 'bg-green-500' : 'bg-muted-foreground/30'}`} />
-                <span>{health?.kvark?.connected ? 'Connected' : 'Not configured'}</span>
+                <span className="w-2 h-2 rounded-full bg-muted-foreground/30" />
+                <span>Not configured</span>
               </div>
-              {!health?.kvark?.connected && (
-                <p className="text-[10px] text-muted-foreground/60 leading-relaxed">
-                  KVARK enables enterprise knowledge access with data sovereignty, audit trails, and governed actions.
-                  Configure in Settings &gt; Team.
-                </p>
-              )}
-              {health?.kvark?.connected && (
-                <div className="text-[10px] space-y-1">
-                  <div>Endpoint: <span className="font-mono text-foreground">{health.kvark.baseUrl ?? '—'}</span></div>
-                  <div>Last ping: <span className="text-foreground">{health.kvark.lastPing ?? 'unknown'}</span></div>
-                </div>
-              )}
+              <p className="text-[10px] text-muted-foreground/60 leading-relaxed">
+                KVARK enables enterprise knowledge access with data sovereignty, audit trails, and governed actions.
+                Configure in Settings &gt; Team.
+              </p>
             </CardContent>
           </Card>
         </div>

@@ -853,7 +853,28 @@ Light mode isn't "dark mode with white background." It's a different material �
 
 ---
 
-## 10. REFERENCE FILES
+## 10. CONCEPT MOCKUPS — VISUAL TARGET
+
+These AI-generated concept mockups show the target look and feel. Use them as visual reference when implementing.
+
+**Location: `UAT 3/concept-mockups/`**
+
+| File | View | Mode | Key Elements to Replicate |
+|------|------|------|--------------------------|
+| `concept-chat-dark.png` | Chat | Dark | Gold sidebar dots, honey left-border on AI response, memory right panel |
+| `concept-chat-light.png` | Chat | Light | Warm cream bg, white cards with soft shadows, dark gold accents |
+| `concept-cockpit-dark.png` | Cockpit | Dark | **HERO** — hexagonal memory ring, gold bar chart, metric cards, green health dots |
+| `concept-cockpit-light.png` | Cockpit | Light | Same layout on warm cream, white metric cards, soft shadows |
+| `concept-memory-dark.png` | Memory | Dark | **KILLER** — masonry cards with hex importance pips, Memory Health bar, Synthesize action, researcher bee mascot |
+| `concept-memory-light.png` | Memory | Light | Same layout on warm cream, white cards, dark amber hex dots |
+| `concept-onboarding-dark.png` | Onboarding | Dark | Crystalline bee mascot, hex progress dots, "Welcome to the Hive" |
+| `concept-search-dark.png` | Search (Ctrl+K) | Dark | Raycast-style command palette, gold active item, grouped sections |
+
+**Dark mode is the PRIMARY design target.** Light mode follows the same layout with inverted palette (see Section 9).
+
+---
+
+## 11. REFERENCE FILES
 
 - `UAT 3/RETEST-R2-UX.md` — current per-view scores and issues
 - `UAT 3/screenshots-retest/` — 35 screenshots of current state

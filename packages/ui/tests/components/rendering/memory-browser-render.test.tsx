@@ -42,7 +42,7 @@ describe('MemoryBrowser rendering', () => {
     );
 
     expect(screen.getByText('No memories yet')).toBeTruthy();
-    expect(screen.getByText(/As you work with Waggle, it learns and remembers/)).toBeTruthy();
+    expect(screen.getByText(/Start a conversation and I'll remember what matters/)).toBeTruthy();
   });
 
   it('shows error state with retry button when error prop is set', () => {

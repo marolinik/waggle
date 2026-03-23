@@ -1,19 +1,20 @@
 /**
- * Waggle Light Theme — Direction D palette (warm beige)
+ * Waggle Light Theme — Hive Design System
+ * "The hive in sunlight — warm paper, golden accents, natural warmth"
  */
 [data-theme='light'] {
-  --waggle-bg: #f5f4f0;
-  --waggle-surface: #ffffff;
-  --waggle-sidebar-bg: #f0efeb;
-  --waggle-tabs-bg: #f0efeb;
-  --waggle-statusbar-bg: #e6e5e0;
-  --waggle-text: #1a1a1e;
-  --waggle-text-muted: rgba(26, 26, 30, 0.6);
-  --waggle-border: rgba(0, 0, 0, 0.08);
-  --waggle-accent: #b8872a;
-  --waggle-accent-hover: #a67920;
+  --waggle-bg: #f8f6f0;
+  --waggle-surface: #f0ede4;
+  --waggle-sidebar-bg: #e8e4d9;
+  --waggle-tabs-bg: #f0ede4;
+  --waggle-statusbar-bg: #e8e4d9;
+  --waggle-text: #1f1c18;
+  --waggle-text-muted: #736d60;
+  --waggle-border: #d9d4c5;
+  --waggle-accent: #c78500;
+  --waggle-accent-hover: #a06800;
   --waggle-input-bg: #ffffff;
-  --waggle-input-border: rgba(0, 0, 0, 0.1);
+  --waggle-input-border: #d9d4c5;
   --waggle-success: #16a34a;
   --waggle-warning: #d97706;
   --waggle-error: #dc2626;

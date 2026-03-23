@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
- * Waggle Theme — Direction D aliases
+ * Waggle Theme — Hive Design System aliases
  *
  * SOURCE OF TRUTH: globals.css @layer base (shadcn CSS variables)
  *   --background, --foreground, --card, --primary, --border, etc. (HSL values)
@@ -19,47 +19,47 @@
     --surface: hsl(var(--card));
     --surface-2: hsl(var(--secondary));
     --surface-3: hsl(var(--muted));
-    --surface-hover: hsl(var(--muted));
+    --surface-hover: var(--surface-hover);
 
     /* ── Text aliases ─────────────────────────────────────────────── */
     --text: hsl(var(--foreground));
-    --text-bright: hsl(var(--foreground));
+    --text-bright: var(--hive-50);
     --text-muted: hsl(var(--muted-foreground));
-    --text-dim: hsl(var(--muted-foreground) / 0.4);
+    --text-dim: var(--hive-500);
 
     /* ── Brand extensions (shadcn owns --primary, we add variants) ── */
-    --primary-hover: hsl(var(--primary) / 0.85);
-    --primary-muted: hsl(var(--primary) / 0.08);
-    --primary-glow: hsl(var(--primary) / 0.15);
+    --primary-hover: var(--honey-400);
+    --primary-muted: var(--honey-pulse);
+    --primary-glow: var(--honey-glow);
     --accent-color: hsl(var(--accent));
     --accent-muted: hsl(var(--accent) / 0.1);
-    --brand: hsl(var(--primary));
-    --brand-muted: hsl(var(--primary) / 0.12);
+    --brand: var(--honey-500);
+    --brand-muted: var(--honey-glow);
 
     /* ── Border extensions ────────────────────────────────────────── */
     --border-subtle: hsl(var(--border) / 0.5);
-    --border-active: hsl(var(--primary));
+    --border-active: var(--honey-500);
 
     /* ── Semantic colors ──────────────────────────────────────────── */
-    --error: hsl(var(--destructive));
-    --warning: hsl(45 93% 56%);
-    --success: hsl(152 56% 52%);
+    --error: var(--status-error);
+    --warning: var(--status-warning);
+    --success: var(--status-healthy);
 
     /* ── Chat bubbles ─────────────────────────────────────────────── */
-    --user-bubble: hsl(var(--primary) / 0.06);
-    --assistant-bubble: hsl(var(--card));
+    --user-bubble: var(--hive-800);
+    --assistant-bubble: var(--hive-850);
 
     /* ── Step / event stream colors ─────────────────────────────── */
-    --step-running: #3b82f6;
-    --step-success: #22c55e;
-    --step-pending: #eab308;
-    --step-error: #ef4444;
-    --step-skipped: #6b7280;
-    --step-thinking: #3b82f6;
-    --step-search: #8b5cf6;
+    --step-running: var(--status-info);
+    --step-success: var(--status-healthy);
+    --step-pending: var(--honey-500);
+    --step-error: var(--status-error);
+    --step-skipped: var(--hive-500);
+    --step-thinking: var(--status-info);
+    --step-search: var(--status-ai);
     --step-web: #06b6d4;
-    --step-tool: #22c55e;
-    --step-writing: #f59e0b;
+    --step-tool: var(--status-healthy);
+    --step-writing: var(--honey-500);
 
     /* ── Knowledge graph node colors ──────────────────────────────── */
     --kg-person: #4A90D9;
@@ -71,9 +71,9 @@
     /* ── Legacy component tokens ──────────────────────────────────── */
     --waggle-bg: var(--bg);
     --waggle-surface: var(--surface);
-    --waggle-sidebar-bg: var(--surface);
+    --waggle-sidebar-bg: var(--hive-800);
     --waggle-tabs-bg: var(--surface);
-    --waggle-statusbar-bg: hsl(var(--background));
+    --waggle-statusbar-bg: var(--hive-950);
     --waggle-text: var(--text);
     --waggle-text-muted: var(--text-muted);
     --waggle-border: hsl(var(--border));
@@ -84,34 +84,16 @@
   }
 }
 
-/* ── Scrollbar — thin, minimal ────────────────────────────────────────── */
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.15);
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.25);
-}
-:root[data-theme="light"] ::-webkit-scrollbar-thumb {
-  background: hsl(var(--primary) / 0.2);
-}
-
-/* ── Selection ────────────────────────────────────────────────────────── */
-::selection {
-  background: hsl(var(--primary) / 0.3);
-  color: hsl(var(--foreground));
-}
-
 /* ── Direction D utility classes ──────────────────────────────────────── */
 .direction-d-card {
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
+  background: var(--surface-card);
+  border: 1px solid var(--hive-700);
   border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
 }
 .direction-d-card:hover {
-  border-color: hsl(var(--primary) / 0.3);
+  border-color: var(--honey-500);
+  box-shadow: var(--shadow-honey);
 }
 
 /* E3: Micro-interaction utilities for interactive elements */
@@ -120,7 +102,7 @@
 }
 .waggle-interactive:hover {
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px hsl(var(--foreground) / 0.05);
+  box-shadow: var(--shadow-card);
 }
 .waggle-interactive:active {
   transform: translateY(0);
@@ -132,16 +114,16 @@
 }
 .waggle-card-lift:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px hsl(var(--foreground) / 0.08);
-  border-color: hsl(var(--primary) / 0.3);
+  box-shadow: var(--shadow-elevated);
+  border-color: var(--honey-500);
 }
 
 /* Nav item hover for sidebar */
 .waggle-nav-hover {
-  transition: background-color 0.12s ease, color 0.12s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 .waggle-nav-hover:hover {
-  background-color: hsl(var(--muted));
+  background-color: var(--honey-pulse);
 }
 
 /* Button press feedback */

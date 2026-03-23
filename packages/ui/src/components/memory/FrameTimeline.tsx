@@ -7,8 +7,6 @@
 
 import type { Frame } from '../../services/types.js';
 import {
-  getFrameTypeIcon,
-  getFrameTypeLabel,
   getImportanceBadge,
   getSourceLabel,
   truncateContent,
@@ -39,62 +37,66 @@ export function FrameTimeline({ frames, selectedId, onSelect }: FrameTimelinePro
     <div className="frame-timeline flex flex-col gap-1 overflow-y-auto">
       {dateGroups.map((group) => (
         <div key={group.label}>
-          <div className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider px-3 pt-3 pb-1">
+          <div className="text-[10px] font-semibold uppercase tracking-wider px-3 pt-3 pb-1" style={{ color: 'var(--hive-500)' }}>
             {group.label}
           </div>
           {group.frames.map((frame) => {
         const isSelected = frame.id === selectedId;
         const badge = getImportanceBadge(frame.importance);
-        const icon = getFrameTypeIcon(frame.frameType);
         const preview = truncateContent(frame.content, 2);
+
+        // Source-type dot color: personal = honey, workspace = blue
+        const dotColor = frame.source === 'personal' ? 'var(--honey-500)' : 'var(--status-info)';
 
         return (
           <button
             key={`${frame.source ?? 'default'}-${frame.id}`}
-            className={`frame-timeline__card flex flex-col gap-1 rounded px-3 py-2 text-left transition-colors ${
-              isSelected
-                ? 'bg-primary/15 border border-primary/50'
-                : 'bg-card/50 hover:bg-card border border-transparent'
-            }`}
+            className="frame-timeline__card flex flex-col gap-1.5 rounded-lg px-3 py-2.5 text-left transition-all duration-150"
+            style={{
+              backgroundColor: isSelected ? 'var(--honey-glow)' : 'transparent',
+              border: isSelected ? '1px solid var(--honey-500)' : '1px solid transparent',
+            }}
             onClick={() => onSelect(frame)}
+            onMouseEnter={(e) => { if (!isSelected) (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--honey-pulse)'; }}
+            onMouseLeave={(e) => { if (!isSelected) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'; }}
           >
-            {/* Top row: icon + timestamp + importance */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground" title={getFrameTypeLabel(frame.frameType)}>
-                  {icon === 'keyframe' ? '◆' : icon === 'prediction' ? '▶' : icon === 'bidirectional' ? '◀▶' : '■'}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {formatTimestamp(frame.timestamp)}
-                </span>
-              </div>
+            {/* Top row: source dot + content preview */}
+            <div className="flex items-start gap-2">
               <span
-                className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                  badge.color === 'red' ? 'text-red-400' : badge.color === 'yellow' ? 'text-amber-400' : badge.color === 'gray' ? 'text-muted-foreground' : 'text-primary'
-                }`}
-              >
-                {badge.label}
-              </span>
-            </div>
-
-            {/* Preview */}
-            <div className="text-xs text-muted-foreground line-clamp-2">
-              {preview}
-            </div>
-
-            {/* Source badge + attribution */}
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-muted-foreground/60">
-                {getSourceLabel(frame.source)}
-              </span>
-              {frame.authorName && (
-                <span
-                  className="frame-timeline__author text-[10px] text-primary"
-                  title={`Added by ${frame.authorName}`}
-                >
-                  by {frame.authorName}
-                </span>
-              )}
+                className="w-2 h-2 rounded-full mt-1.5 shrink-0"
+                style={{ backgroundColor: dotColor }}
+                title={getSourceLabel(frame.source)}
+              />
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-semibold line-clamp-1" style={{ color: 'var(--hive-100)' }}>
+                  {preview}
+                </div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-[11px]" style={{ color: 'var(--hive-500)' }}>
+                    {formatTimestamp(frame.timestamp)}
+                  </span>
+                  <span className="text-[11px]" style={{ color: 'var(--hive-500)' }}>
+                    {getSourceLabel(frame.source)}
+                  </span>
+                  {badge.label !== 'normal' && (
+                    <span
+                      className="text-[10px] font-medium"
+                      style={{
+                        color: badge.color === 'red' ? 'var(--status-error)'
+                          : badge.color === 'yellow' ? 'var(--status-warning)'
+                          : 'var(--honey-500)',
+                      }}
+                    >
+                      {badge.label}
+                    </span>
+                  )}
+                  {frame.authorName && (
+                    <span className="text-[10px]" style={{ color: 'var(--honey-500)' }}>
+                      by {frame.authorName}
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
           </button>
         );

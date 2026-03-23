@@ -1,8 +1,8 @@
 /**
- * Sidebar — collapsible left panel.
+ * Sidebar — Hive Design System collapsible left panel.
  *
- * 48px icons when collapsed, 200px expanded.
- * Optional bottom section for utility icons (Memory, Events, Settings).
+ * 48px icons when collapsed, 220px expanded.
+ * Hive-800 background with subtle border.
  */
 
 import React from 'react';
@@ -17,28 +17,37 @@ export interface SidebarProps {
 export function Sidebar({ collapsed, onToggle, children, bottomItems }: SidebarProps) {
   return (
     <aside
-      className={`waggle-sidebar flex flex-col h-full border-r border-border bg-card transition-[width,min-width] duration-200 ease-in-out overflow-hidden ${
-        collapsed ? 'w-12 min-w-12' : 'w-[200px] min-w-[200px]'
+      className={`waggle-sidebar flex flex-col h-full border-r transition-[width,min-width] duration-200 ease-in-out overflow-hidden ${
+        collapsed ? 'w-12 min-w-12' : 'w-[220px] min-w-[220px]'
       }`}
+      style={{
+        backgroundColor: 'var(--hive-800)',
+        borderColor: 'var(--hive-700)',
+      }}
       role="navigation"
       aria-label="Main navigation"
     >
+      {/* Collapse/expand toggle */}
       <button
-        className="waggle-sidebar-toggle bg-transparent border-none text-foreground cursor-pointer p-3 text-left text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+        className="bg-transparent border-none cursor-pointer p-2.5 text-center text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded transition-colors"
+        style={{ color: 'var(--hive-500)' }}
         onClick={onToggle}
         aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         aria-expanded={!collapsed}
       >
-        {collapsed ? '\u25B6' : '\u25C0'}
+        {collapsed ? '▸' : '◂'}
       </button>
 
-      <div className="flex-1 overflow-auto">
+      {/* Main content (brand, search, workspaces) */}
+      <div className="flex-1 overflow-auto flex flex-col gap-2">
         {children}
       </div>
 
+      {/* Bottom navigation */}
       {bottomItems && (
         <div
-          className="waggle-sidebar-bottom border-t border-border py-2"
+          className="waggle-sidebar-bottom py-2"
+          style={{ borderTop: '1px solid var(--hive-700)' }}
         >
           {bottomItems}
         </div>

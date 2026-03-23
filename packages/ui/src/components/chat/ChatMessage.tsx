@@ -200,33 +200,22 @@ export const ChatMessage = memo(function ChatMessage({ message, messageIndex, se
       aria-label={isUser ? 'Your message' : 'Agent message'}
     >
       <div
-        className={`max-w-[85%] rounded-xl px-5 py-3.5 ${
-          isUser
-            ? 'bg-primary text-primary-foreground'
-            : 'bg-card border border-border text-foreground'
-        }`}
+        className="max-w-[70%] rounded-xl px-5 py-3.5"
+        style={isUser
+          ? { backgroundColor: 'var(--hive-800)', color: 'var(--hive-100)' }
+          : { backgroundColor: 'var(--hive-850)', borderLeft: '3px solid var(--honey-500)', color: 'var(--hive-100)' }
+        }
       >
         {/* Message content */}
         {isUser ? (
-          <div className="chat-message__content whitespace-pre-wrap text-[14px] leading-relaxed">
+          <div className="chat-message__content whitespace-pre-wrap" style={{ fontSize: '14px', lineHeight: '1.7', color: 'var(--hive-100)' }}>
             {message.content}
           </div>
         ) : (
-          /* Content sanitized with DOMPurify (line 145) — full markdown rendering */
+          /* Content sanitized with DOMPurify (line ~160) — full markdown rendering */
           <div
-            className={[
-              'chat-message__content prose dark:prose-invert max-w-none',
-              'prose-headings:text-foreground prose-headings:font-semibold prose-headings:mt-4 prose-headings:mb-2',
-              'prose-h1:text-lg prose-h2:text-base prose-h3:text-sm',
-              'prose-p:text-[14px] prose-p:leading-relaxed prose-p:mb-3',
-              'prose-li:text-[14px] prose-li:leading-relaxed',
-              'prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5',
-              'prose-code:text-primary prose-code:bg-primary/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-[13px] prose-code:font-mono',
-              'prose-pre:bg-background prose-pre:border prose-pre:border-border prose-pre:rounded-lg prose-pre:p-4 prose-pre:my-3 prose-pre:overflow-x-auto',
-              'prose-strong:text-foreground prose-strong:font-semibold',
-              'prose-a:text-primary prose-a:underline prose-a:underline-offset-2',
-              'prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground',
-            ].join(' ')}
+            className="chat-message__content prose dark:prose-invert max-w-none"
+            style={{ color: 'var(--hive-100)', fontSize: '14px', lineHeight: '1.7' }}
             dangerouslySetInnerHTML={{ __html: renderedContent ?? '' }}
           />
         )}

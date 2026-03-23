@@ -21,39 +21,41 @@ export function MemoryStatsCard({ health }: MemoryStatsCardProps) {
         ) : !stats ? (
           <p className="text-xs text-muted-foreground py-2">Memory stats unavailable.</p>
         ) : (
-          <div className="grid grid-cols-3 gap-2">
-            <div className="rounded-md border border-border bg-muted/10 px-3 py-2.5 text-center">
-              <div className="text-xl font-bold text-primary leading-none">{stats.frameCount}</div>
-              <div className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">Frames</div>
-            </div>
-            <div className="rounded-md border border-border bg-muted/10 px-3 py-2.5 text-center">
-              <div className="text-xl font-bold text-primary leading-none">{formatBytes(stats.mindSizeBytes)}</div>
-              <div className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">Mind Size</div>
-            </div>
-            <div className="rounded-md border border-border bg-muted/10 px-3 py-2.5 text-center">
-              <div className={cn(
-                'text-xl font-bold leading-none',
-                stats.embeddingCoverage >= 80 ? 'text-green-500' :
-                stats.embeddingCoverage >= 40 ? 'text-yellow-500' :
-                'text-red-500'
-              )}>
-                {stats.embeddingCoverage}%
+          <>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-md border border-border bg-muted/10 px-3 py-2.5 text-center">
+                <div className="text-xl font-bold text-primary leading-none">{stats.frameCount}</div>
+                <div className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">Frames</div>
               </div>
-              <div className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">Embedded</div>
+              <div className="rounded-md border border-border bg-muted/10 px-3 py-2.5 text-center">
+                <div className="text-xl font-bold text-primary leading-none">{formatBytes(stats.mindSizeBytes)}</div>
+                <div className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">Mind Size</div>
+              </div>
+              <div className="rounded-md border border-border bg-muted/10 px-3 py-2.5 text-center">
+                <div className={cn(
+                  'text-xl font-bold leading-none',
+                  stats.embeddingCoverage >= 80 ? 'text-green-500' :
+                  stats.embeddingCoverage >= 40 ? 'text-yellow-500' :
+                  'text-red-500'
+                )}>
+                  {stats.embeddingCoverage}%
+                </div>
+                <div className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">Embedded</div>
+              </div>
             </div>
-          </div>
-          {/* IMP-9: Warning when embedding coverage is low */}
-          {stats.embeddingCoverage < 80 && stats.frameCount > 0 && (
-            <div className={cn(
-              'mt-3 rounded-md px-3 py-2 text-[11px] border',
-              stats.embeddingCoverage < 40
-                ? 'bg-red-500/10 border-red-500/20 text-red-400'
-                : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
-            )}>
-              <strong>{100 - stats.embeddingCoverage}% of frames</strong> lack vector embeddings and won't appear in semantic search.
-              {stats.embeddingCoverage < 40 && ' Send more messages to build memory coverage.'}
-            </div>
-          )}
+            {/* IMP-9: Warning when embedding coverage is low */}
+            {stats.embeddingCoverage < 80 && stats.frameCount > 0 && (
+              <div className={cn(
+                'mt-3 rounded-md px-3 py-2 text-[11px] border',
+                stats.embeddingCoverage < 40
+                  ? 'bg-red-500/10 border-red-500/20 text-red-400'
+                  : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
+              )}>
+                <strong>{100 - stats.embeddingCoverage}% of frames</strong> lack vector embeddings and won't appear in semantic search.
+                {stats.embeddingCoverage < 40 && ' Send more messages to build memory coverage.'}
+              </div>
+            )}
+          </>
         )}
       </CardContent>
     </Card>

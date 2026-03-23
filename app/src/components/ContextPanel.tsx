@@ -96,9 +96,10 @@ function WorkspaceContextCard({ info }: { info?: WorkspaceInfo }) {
   };
 
   return (
-    <div className="px-3 py-2.5 border-b border-border bg-card/30">
+    <div className="px-3 py-2.5" style={{ borderBottom: '1px solid var(--hive-700)', backgroundColor: 'var(--hive-800)' }}>
       <div className="flex items-center gap-2 mb-1">
-        <span className="text-xs font-medium text-foreground truncate">{info.name}</span>
+        <span className="text-[10px] shrink-0" style={{ color: 'var(--honey-500)' }}>⬡</span>
+        <span className="text-xs font-medium truncate" style={{ color: 'var(--hive-100)' }}>{info.name}</span>
         {info.group && (
           <span className="text-[9px] text-muted-foreground/60 bg-secondary px-1.5 py-0.5 rounded shrink-0">{info.group}</span>
         )}
@@ -147,7 +148,7 @@ function WorkspaceContextCard({ info }: { info?: WorkspaceInfo }) {
 
 function PanelHeader({ label, action }: { label: string; action?: { label: string; onClick: () => void } }) {
   return (
-    <div className="px-3 py-2.5 border-b border-border text-[9px] font-semibold text-muted-foreground/40 uppercase tracking-widest flex justify-between items-center">
+    <div className="px-3 py-2.5 text-[9px] font-semibold uppercase tracking-widest flex justify-between items-center" style={{ borderBottom: '1px solid var(--hive-700)', color: 'var(--hive-500)' }}>
       {label}
       {action && (
         <button

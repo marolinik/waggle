@@ -5,9 +5,9 @@
  * Full-screen overlay with smooth transitions. Goal: "wow" within 60 seconds.
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { HiveIcon, BeeImage } from '@/components/HiveIcon';
 import type { OnboardingState } from '@/hooks/useOnboarding';
 
 // ── Constants ───────────────────────────────────────────────────────
@@ -34,11 +34,11 @@ const PERSONAS = [
 ];
 
 const CAPABILITY_ICONS = [
-  { label: 'Research', icon: '🔍' },
-  { label: 'Draft', icon: '📝' },
-  { label: 'Plan', icon: '📋' },
-  { label: 'Code', icon: '💻' },
-  { label: 'Remember', icon: '🧠' },
+  { label: 'Research', iconName: 'research' },
+  { label: 'Draft', iconName: 'draft' },
+  { label: 'Plan', iconName: 'plan' },
+  { label: 'Code', iconName: 'code' },
+  { label: 'Remember', iconName: 'remember' },
 ];
 
 const TEMPLATE_PERSONA: Record<string, string> = {
@@ -70,7 +70,7 @@ export function OnboardingWizard({
   serverBaseUrl,
   state,
   onUpdate,
-  onNext,
+  onNext: _onNext,
   onComplete,
   onDismiss,
   onFinish,
@@ -177,30 +177,37 @@ export function OnboardingWizard({
   const progress = Math.min((step / totalSteps) * 100, 100);
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-background flex flex-col items-center justify-center overflow-auto">
-      {/* Progress bar */}
+    <div
+      className="fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-auto honeycomb-bg"
+      style={{ backgroundColor: 'var(--hive-950)' }}
+    >
+      {/* Progress bar — honey fill */}
       {step > 0 && (
-        <div className="absolute top-0 left-0 right-0 h-1 bg-muted">
+        <div className="absolute top-0 left-0 right-0 h-1" style={{ backgroundColor: 'var(--hive-800)' }}>
           <div
-            className="h-full bg-primary transition-all duration-500 ease-out"
-            style={{ width: `${progress}%` }}
+            className="h-full transition-all duration-500 ease-out"
+            style={{ width: `${progress}%`, backgroundColor: 'var(--honey-500)' }}
           />
         </div>
       )}
 
-      {/* IMP-1: Step indicator dots */}
+      {/* Hex step indicator dots */}
       {step > 0 && step < 5 && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2">
+        <div className="absolute top-5 left-1/2 -translate-x-1/2 flex items-center gap-2.5">
           {[1, 2, 3, 4].map(s => (
-            <div
+            <span
               key={s}
-              className={`w-2 h-2 rounded-full transition-all ${
-                s === step ? 'bg-primary scale-125' : s < step ? 'bg-primary/40' : 'bg-muted-foreground/20'
-              }`}
-            />
+              className="text-[10px] transition-all"
+              style={{
+                color: s === step ? 'var(--honey-500)' : s < step ? 'var(--honey-600)' : 'var(--hive-600)',
+                transform: s === step ? 'scale(1.3)' : 'scale(1)',
+              }}
+            >
+              ⬡
+            </span>
           ))}
-          <span className="text-[10px] text-muted-foreground/40 ml-1">
-            {step} of {totalSteps - 1}
+          <span className="text-[10px] ml-1" style={{ color: 'var(--hive-500)' }}>
+            Step {step} of {totalSteps - 1}
           </span>
         </div>
       )}
@@ -220,61 +227,52 @@ export function OnboardingWizard({
 
         {/* ── Step 0: Welcome ────────────────────────────────── */}
         {step === 0 && (
-          <div className="flex flex-col items-center gap-6 text-center animate-in fade-in duration-700" onClick={() => goToStep(1)}>
+          <div className="flex flex-col items-center gap-6 text-center animate-in fade-in duration-700 cursor-pointer" onClick={() => goToStep(1)}>
+            {/* Architect bee with glow */}
             <div className="relative">
-              <img src="/waggle-logo.svg" alt="Waggle" className="w-20 h-20 mb-2" />
-              <div className="absolute -inset-4 bg-primary/5 rounded-full blur-xl animate-pulse" />
+              <BeeImage role="orchestrator" className="w-[180px] h-[180px] float" />
+              <div className="absolute -inset-8 rounded-full blur-2xl animate-pulse" style={{ backgroundColor: 'rgba(229, 160, 0, 0.08)' }} />
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">
-              Welcome to Waggle
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-md">
-              Your AI team that remembers everything
+            <p className="text-[11px] uppercase tracking-[0.12em] font-medium" style={{ color: 'var(--honey-500)' }}>
+              YOUR AI OPERATING SYSTEM
             </p>
-            <div className="flex gap-3 mt-4">
-              {['🔍', '📝', '📋', '💻', '🧠', '🔗', '📊', '⚡'].map((icon, i) => (
-                <span
-                  key={i}
-                  className="text-2xl opacity-0 animate-in fade-in slide-in-from-bottom-2"
-                  style={{ animationDelay: `${300 + i * 100}ms`, animationFillMode: 'forwards' }}
-                >
-                  {icon}
-                </span>
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground/30 mt-8">Click anywhere to continue</p>
+            <h1 className="text-4xl font-bold tracking-tight" style={{ color: 'var(--hive-50)' }}>
+              Welcome to the Hive
+            </h1>
+            <p className="text-base max-w-md" style={{ color: 'var(--hive-300)' }}>
+              Persistent memory. Workspace-native. Built for knowledge work.
+            </p>
+            <p className="text-xs mt-6" style={{ color: 'var(--hive-600)' }}>Click anywhere to continue</p>
           </div>
         )}
 
         {/* ── Step 1: Meet Your Agent ────────────────────────── */}
         {step === 1 && (
           <div className="flex flex-col items-center gap-6 text-center">
-            <div className="text-5xl mb-2">🤖</div>
-            <h2 className="text-2xl font-bold text-foreground">
+            <BeeImage role="connector" className="w-16 h-16" />
+            <h2 className="text-2xl font-bold" style={{ color: 'var(--hive-50)' }}>
               Meet your AI agent
             </h2>
-            <p className="text-muted-foreground max-w-md">
-              I can research, draft, plan, code, and <strong className="text-foreground">remember everything</strong> across sessions.
+            <p className="max-w-md" style={{ color: 'var(--hive-300)' }}>
+              I can research, draft, plan, code, and <strong style={{ color: 'var(--hive-50)' }}>remember everything</strong> across sessions.
             </p>
             <div className="flex gap-6 mt-4">
               {CAPABILITY_ICONS.map(cap => (
                 <div key={cap.label} className="flex flex-col items-center gap-1.5">
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-2xl">
-                    {cap.icon}
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center"
+                    style={{ backgroundColor: 'var(--honey-glow)', border: '1px solid var(--hive-700)' }}
+                  >
+                    <HiveIcon name={cap.iconName} size={28} />
                   </div>
-                  <span className="text-xs text-muted-foreground">{cap.label}</span>
+                  <span className="text-xs" style={{ color: 'var(--hive-400)' }}>{cap.label}</span>
                 </div>
               ))}
             </div>
-            <div className="flex items-center gap-2 mt-4 text-sm text-muted-foreground/60">
-              <span className="font-mono text-primary font-bold">268</span> capabilities
-              <span className="text-muted-foreground/20">|</span>
-              <span className="font-mono text-primary font-bold">29</span> integrations
-              <span className="text-muted-foreground/20">|</span>
-              <span className="font-mono text-primary font-bold">persistent</span> memory
-            </div>
-            <Button className="mt-6 px-8" size="lg" onClick={() => goToStep(2)}>
-              Let's set up
+            <Button className="mt-6 px-8" size="lg" onClick={() => goToStep(2)}
+              style={{ backgroundColor: 'var(--honey-500)', color: 'var(--hive-950)' }}
+            >
+              Let's set up →
             </Button>
           </div>
         )}
@@ -433,9 +431,9 @@ export function OnboardingWizard({
         {/* ── Step 5: Ready ──────────────────────────────────── */}
         {step === 5 && (
           <div className="flex flex-col items-center gap-4 text-center">
-            <div className="text-5xl">🐝</div>
-            <h2 className="text-2xl font-bold text-foreground">You're all set!</h2>
-            <p className="text-muted-foreground">Your workspace is ready. Let's get to work.</p>
+            <BeeImage role="celebrating" className="w-[160px] h-[160px] float" />
+            <h2 className="text-2xl font-bold" style={{ color: 'var(--hive-50)' }}>Your hive is ready ⬡</h2>
+            <p style={{ color: 'var(--hive-300)' }}>Your workspace is ready. Let's get to work.</p>
           </div>
         )}
       </div>

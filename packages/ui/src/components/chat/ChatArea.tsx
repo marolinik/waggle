@@ -31,29 +31,7 @@ function formatRelativeTime(isoDate: string): string {
   return new Date(isoDate).toLocaleDateString();
 }
 
-/** F7: Derive contextual suggestion chips based on workspace name */
-function getContextualSuggestions(workspaceName?: string): string[] {
-  if (!workspaceName) {
-    return ['/help to see commands', 'Start by telling me about your project', '/research [topic]'];
-  }
-  const lower = workspaceName.toLowerCase();
-  if (lower.includes('research')) {
-    return ['/research [topic]', 'Find recent papers on...', 'Compare approaches to...'];
-  }
-  if (lower.includes('project') || lower.includes('dev') || lower.includes('build')) {
-    return ['/catchup', 'Review project status', 'Plan next sprint'];
-  }
-  if (lower.includes('write') || lower.includes('draft') || lower.includes('blog') || lower.includes('content')) {
-    return ['/draft [type]', 'Help me outline...', 'Review and improve my draft'];
-  }
-  if (lower.includes('plan') || lower.includes('strategy')) {
-    return ['/plan [goal]', 'Break down this goal...', 'What should I prioritize?'];
-  }
-  if (lower.includes('code') || lower.includes('eng')) {
-    return ['/review [file]', 'Help me debug...', 'Explain this code'];
-  }
-  return ['/help to see commands', 'Start by telling me about your project', '/research [topic]'];
-}
+/* Contextual suggestions removed — replaced by Hive starter cards in empty state */
 
 export interface ChatAreaProps {
   messages: Message[];
@@ -156,7 +134,7 @@ export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, o
       {/* Messages list — scrollable */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto px-6 py-4 space-y-4"
+        className="flex-1 overflow-y-auto px-6 py-4 space-y-4 honeycomb-bg"
         role="log"
         aria-label="Chat messages"
         aria-live="polite"
@@ -321,34 +299,60 @@ export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, o
           </div>
         )}
 
-        {/* F7: Smart empty state — contextual suggestions based on workspace name */}
+        {/* Hive empty state — bee mascot + starter honeycomb cards */}
         {messages.length === 0 && !workspaceContext && (
-          <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
-            <div className="text-muted-foreground/30">
-              <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-                <path d="M24 4L6 14v20l18 10 18-10V14L24 4z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" opacity="0.3"/>
-                <path d="M24 14l-10 6v12l10 6 10-6V20l-10-6z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" opacity="0.6"/>
-                <circle cx="24" cy="26" r="3" fill="currentColor" opacity="0.4"/>
-              </svg>
+          <div className="flex flex-col items-center justify-center h-full text-center space-y-6">
+            {/* Architect bee mascot with float animation — uses dark variant, theme switching handled at app level */}
+            <img
+              src="/brand/bee-orchestrator-dark.png"
+              alt="Waggle"
+              className="w-[140px] h-[140px] float opacity-90 bee-image-orchestrator"
+            />
+
+            <div className="space-y-2">
+              <h2 className="text-2xl font-semibold" style={{ color: 'var(--hive-100)' }}>
+                {workspaceName || 'What are you working on?'}
+              </h2>
+              <p className="text-sm" style={{ color: 'var(--hive-400)' }}>
+                Type a message or pick a starting point below
+              </p>
             </div>
-            <div className="text-lg font-semibold text-foreground">
-              {workspaceName || 'What can I help you with?'}
-            </div>
-            <div className="text-sm text-muted-foreground">
-              Type a message or use <span className="text-primary font-mono">/help</span> for commands
-            </div>
-            <div className="flex flex-wrap justify-center gap-2 pt-2 max-w-lg">
-              {getContextualSuggestions(workspaceName).map((suggestion, i) => (
+
+            {/* Starter honeycomb cards */}
+            <div className="flex flex-wrap justify-center gap-3 pt-2 max-w-xl">
+              {[
+                { icon: '🔄', title: 'Catch up', desc: 'on this workspace', cmd: '/catchup' },
+                { icon: '🔍', title: 'Research', desc: 'a topic', cmd: '/research ' },
+                { icon: '📝', title: 'Draft', desc: 'a document', cmd: '/draft ' },
+              ].map((card) => (
                 <button
-                  key={i}
-                  className="px-3 py-1.5 text-sm bg-card border border-border rounded-lg text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors cursor-pointer disabled:opacity-50"
-                  onClick={() => onSendMessage(suggestion)}
+                  key={card.cmd}
+                  className="flex flex-col items-center gap-1.5 px-5 py-4 rounded-xl text-sm cursor-pointer disabled:opacity-50 transition-all duration-200 waggle-card-lift min-w-[140px]"
+                  style={{
+                    backgroundColor: 'var(--hive-850)',
+                    border: '1px solid var(--hive-700)',
+                  }}
+                  onClick={() => onSendMessage(card.cmd.trim())}
                   disabled={isLoading}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLElement).style.borderColor = 'var(--honey-500)';
+                    (e.currentTarget as HTMLElement).style.boxShadow = 'var(--shadow-honey)';
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLElement).style.borderColor = 'var(--hive-700)';
+                    (e.currentTarget as HTMLElement).style.boxShadow = 'none';
+                  }}
                 >
-                  {suggestion}
+                  <span className="text-2xl">{card.icon}</span>
+                  <span className="font-medium" style={{ color: 'var(--hive-100)' }}>{card.title}</span>
+                  <span className="text-[12px]" style={{ color: 'var(--hive-500)' }}>{card.desc}</span>
                 </button>
               ))}
             </div>
+
+            <p className="text-[12px]" style={{ color: 'var(--hive-500)' }}>
+              or type anything to start
+            </p>
           </div>
         )}
         {messages.map((msg, index) => (
@@ -363,10 +367,10 @@ export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, o
           />
         ))}
         {isLoading && (
-          <div className="flex items-center gap-1.5 px-4 py-3" role="status" aria-label="Agent is thinking">
-            <span className="w-2 h-2 rounded-full bg-primary animate-bounce" />
-            <span className="w-2 h-2 rounded-full bg-primary animate-bounce [animation-delay:150ms]" />
-            <span className="w-2 h-2 rounded-full bg-primary animate-bounce [animation-delay:300ms]" />
+          <div className="flex items-center gap-2 px-4 py-3" role="status" aria-label="Agent is thinking">
+            <span className="text-[10px] animate-bounce" style={{ color: 'var(--honey-500)' }}>⬡</span>
+            <span className="text-[10px] animate-bounce [animation-delay:150ms]" style={{ color: 'var(--honey-400)' }}>⬡</span>
+            <span className="text-[10px] animate-bounce [animation-delay:300ms]" style={{ color: 'var(--honey-300)' }}>⬡</span>
           </div>
         )}
       </div>
@@ -374,8 +378,8 @@ export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, o
       {/* IMP-14: Subtle follow-up hint when conversation has messages but agent is idle */}
       {messages.length > 0 && !isLoading && !showWorkspaceHome && (
         <div className="px-4 py-2 text-center">
-          <p className="text-[11px] text-muted-foreground/25 italic">
-            Ask a follow-up, try <span className="text-muted-foreground/35">/help</span> for commands, or start a new topic
+          <p className="text-[11px] italic" style={{ color: 'var(--hive-400)' }}>
+            Ask a follow-up, try <span style={{ color: 'var(--honey-500)' }}>/help</span> for commands, or start a new topic
           </p>
         </div>
       )}

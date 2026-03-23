@@ -44,14 +44,14 @@ export function MemoryBrowser({
   onRetry,
 }: MemoryBrowserProps) {
   return (
-    <div className="memory-browser flex h-full flex-col bg-background">
+    <div className="memory-browser flex h-full flex-col honeycomb-bg" style={{ backgroundColor: 'var(--hive-900)' }}>
       {/* Search */}
-      <div className="memory-browser__search border-b border-border p-3">
+      <div className="memory-browser__search p-3" style={{ borderBottom: '1px solid var(--hive-700)' }}>
         <MemorySearch onSearch={onSearch} disabled={loading} />
       </div>
 
       {/* Filters */}
-      <div className="memory-browser__filters flex flex-wrap gap-2 border-b border-border px-3 py-2">
+      <div className="memory-browser__filters flex flex-wrap gap-2 px-3 py-2" style={{ borderBottom: '1px solid var(--hive-700)' }}>
         {/* Type filter chips */}
         {FRAME_TYPES.map((ft) => {
           const active = filters.types?.includes(ft.value);
@@ -96,7 +96,7 @@ export function MemoryBrowser({
       {/* Main content area */}
       <div className="memory-browser__content flex flex-1 overflow-hidden">
         {/* Timeline */}
-        <div className="memory-browser__timeline w-1/2 overflow-y-auto border-r border-border p-2">
+        <div className="memory-browser__timeline w-1/2 overflow-y-auto p-2" style={{ borderRight: '1px solid var(--hive-700)' }}>
           {loading ? (
             <div className="flex flex-col gap-3 p-4">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -122,10 +122,10 @@ export function MemoryBrowser({
             </div>
           ) : frames.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full gap-3 text-center p-8">
-              <div className="text-4xl">🧠</div>
-              <h3 className="text-base font-medium text-foreground">No memories yet</h3>
-              <p className="text-sm text-muted-foreground max-w-xs">
-                As you work with Waggle, it learns and remembers — decisions, research findings, and key insights are stored here automatically.
+              <img src="/brand/bee-researcher-dark.png" alt="Memory" className="w-[120px] h-[120px] float opacity-80 bee-image-researcher" />
+              <h3 className="text-base font-medium" style={{ color: 'var(--hive-100)' }}>No memories yet</h3>
+              <p className="text-sm max-w-xs" style={{ color: 'var(--hive-400)' }}>
+                Start a conversation and I'll remember what matters.
               </p>
             </div>
           ) : (
@@ -142,8 +142,22 @@ export function MemoryBrowser({
           {selectedFrame ? (
             <FrameDetail frame={selectedFrame} />
           ) : (
-            <div className="flex h-full items-center justify-center text-muted-foreground">
-              Select a frame to view details
+            <div className="flex flex-col items-center justify-center h-full gap-4 text-center p-8">
+              <img src="/brand/bee-researcher-dark.png" alt="" className="w-20 h-20 opacity-40 bee-image-researcher" />
+              {stats ? (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium" style={{ color: 'var(--hive-300)' }}>
+                    {stats.totalFrames} frames · {stats.entities} entities
+                  </p>
+                  <p className="text-xs" style={{ color: 'var(--hive-500)' }}>
+                    Select a frame to view details
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm" style={{ color: 'var(--hive-500)' }}>
+                  Select a frame to view details
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -151,7 +165,7 @@ export function MemoryBrowser({
 
       {/* Stats footer */}
       {stats && (
-        <div className="memory-browser__stats flex items-center gap-4 border-t border-border px-3 py-1.5 text-xs text-muted-foreground">
+        <div className="memory-browser__stats flex items-center gap-4 px-3 py-1.5 text-xs" style={{ borderTop: '1px solid var(--hive-700)', color: 'var(--hive-400)', backgroundColor: 'var(--hive-850)' }}>
           <span>{stats.totalFrames} frames</span>
           <span>{stats.entities} entities</span>
           <span>{stats.relations} relations</span>
