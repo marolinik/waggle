@@ -6,7 +6,7 @@ export function formatTime(iso: string | null): string {
   if (!iso) return '--';
   try {
     const d = new Date(iso);
-    return d.toLocaleString(undefined, {
+    return d.toLocaleString('en-US', {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',

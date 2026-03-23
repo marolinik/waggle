@@ -76,7 +76,10 @@ export function SessionList({
         <div className="session-list__search px-2 py-1">
           <div className="relative">
             <input
-              className="session-list__search-input w-full bg-card text-foreground rounded px-3 py-1.5 text-sm placeholder:text-muted-foreground border border-border focus:border-primary focus:outline-none"
+              className="session-list__search-input w-full rounded px-3 py-1.5 text-sm focus:outline-none transition-colors"
+              style={{ backgroundColor: 'var(--hive-850)', border: '1px solid var(--hive-700)', color: 'var(--hive-200)' }}
+              onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = 'var(--honey-500)'; }}
+              onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = 'var(--hive-700)'; }}
               type="text"
               placeholder="Search sessions..."
               value={searchValue}

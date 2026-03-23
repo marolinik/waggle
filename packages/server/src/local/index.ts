@@ -1431,7 +1431,7 @@ Return ONLY the improved system prompt text. No commentary, no markdown fences, 
 
   // P0-3: Cached API key validation — verify key actually works, not just exists
   let keyValidationCache: { valid: boolean; checkedAt: number } | null = null;
-  const KEY_VALIDATION_TTL = 5 * 60 * 1000; // 5 minutes
+  const KEY_VALIDATION_TTL = 30 * 1000; // 30 seconds — short so vault updates are picked up quickly
 
   async function validateAnthropicKey(): Promise<boolean> {
     // Return cached result if fresh

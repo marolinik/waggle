@@ -22,7 +22,7 @@ export function VaultSummaryCard({ connectors }: VaultSummaryCardProps) {
             <div className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">Connectors</div>
           </div>
           <div className="rounded-md border border-border bg-muted/10 px-3 py-2.5 text-center">
-            <div className="text-xl font-bold text-green-500 leading-none">{connectedCount}</div>
+            <div className={`text-xl font-bold leading-none ${connectedCount > 0 ? 'text-green-500' : 'text-muted-foreground'}`}>{connectedCount}</div>
             <div className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">Active</div>
           </div>
           <div className="rounded-md border border-border bg-muted/10 px-3 py-2.5 text-center">

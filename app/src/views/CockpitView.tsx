@@ -323,11 +323,11 @@ export default function CockpitView() {
           </div>
           <div className="rounded-xl p-4 text-center waggle-card-lift" style={{ backgroundColor: 'var(--hive-850)', border: '1px solid var(--hive-700)', boxShadow: 'var(--shadow-card)' }}>
             <div className="flex items-center justify-center gap-1.5 text-[10px] uppercase tracking-[0.05em] font-medium mb-1" style={{ color: 'var(--hive-500)' }}><HiveIcon name="tokens" size={16} /> TOKENS</div>
-            <div className="text-2xl font-bold" style={{ color: 'var(--hive-50)' }}>{costSummary ? `${((costSummary.allTime.inputTokens + costSummary.allTime.outputTokens) / 1_000_000).toFixed(1)}M` : '—'}</div>
+            <div className="text-2xl font-bold" style={{ color: 'var(--hive-50)' }}>{costSummary ? `${((costSummary.allTime.inputTokens + costSummary.allTime.outputTokens) / 1_000_000).toFixed(1)}M` : '0'}</div>
           </div>
           <div className="rounded-xl p-4 text-center waggle-card-lift" style={{ backgroundColor: 'var(--hive-850)', border: '1px solid var(--hive-700)', boxShadow: 'var(--shadow-card)' }}>
             <div className="flex items-center justify-center gap-1.5 text-[10px] uppercase tracking-[0.05em] font-medium mb-1" style={{ color: 'var(--hive-500)' }}><HiveIcon name="cost" size={16} /> COST</div>
-            <div className="text-2xl font-bold" style={{ color: 'var(--hive-50)' }}>{costSummary ? `$${costSummary.today.estimatedCost.toFixed(2)}` : '—'}</div>
+            <div className="text-2xl font-bold" style={{ color: 'var(--hive-50)' }}>{costSummary ? `$${costSummary.today.estimatedCost.toFixed(2)}` : '$0'}</div>
             <div className="text-[10px] mt-0.5" style={{ color: 'var(--hive-400)' }}>today</div>
           </div>
           <div className="rounded-xl p-4 text-center waggle-card-lift" style={{ backgroundColor: 'var(--hive-850)', border: '1px solid var(--hive-700)', boxShadow: 'var(--shadow-card)' }}>
