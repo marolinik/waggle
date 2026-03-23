@@ -567,12 +567,21 @@ export function createDocumentTools(workspace: string): ToolDefinition[] {
           const stats = fs.statSync(resolved);
           const sizeKB = (stats.size / 1024).toFixed(1);
 
+          // Include a content excerpt so the LLM can summarize what was generated
+          const headings = blocks.filter((b) => b.type === 'heading').map(b => b.text ?? '').slice(0, 8);
+          const firstParagraph = blocks.find(b => b.type === 'paragraph')?.text?.slice(0, 200) ?? '';
+          const excerpt = headings.length > 0
+            ? `Key sections: ${headings.join(', ')}. ${firstParagraph ? `Opening: "${firstParagraph}..."` : ''}`
+            : firstParagraph ? `Content preview: "${firstParagraph}..."` : '';
+
           return (
             `Successfully generated ${filePath} (${sizeKB} KB)\n` +
-            `Content: ${blocks.filter((b) => b.type === 'heading').length} headings, ` +
+            `Structure: ${blocks.filter((b) => b.type === 'heading').length} headings, ` +
             `${blocks.filter((b) => b.type === 'paragraph').length} paragraphs, ` +
             `${blocks.filter((b) => b.type === 'table').length} tables, ` +
-            `${blocks.filter((b) => b.type === 'bullet' || b.type === 'numbered').length} list items`
+            `${blocks.filter((b) => b.type === 'bullet' || b.type === 'numbered').length} list items.\n` +
+            `${excerpt}\n` +
+            `IMPORTANT: Provide a 2-3 sentence summary of the document content in your response to the user. Do NOT just say "Generating document..." — describe what was generated.`
           );
         } catch (err: any) {
           return `Error generating document: ${err.message}`;
