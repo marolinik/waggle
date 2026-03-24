@@ -177,6 +177,11 @@ describe('LocalAdapter', () => {
       workspaceId = ws.id;
     });
 
+    afterEach(async () => {
+      // Clean up workspace to stay within solo tier limit (5 max)
+      try { await adapter.deleteWorkspace(workspaceId); } catch { /* ignore if already deleted */ }
+    });
+
     it('listSessions returns empty array for new workspace', async () => {
       const sessions = await adapter.listSessions(workspaceId);
       expect(sessions).toEqual([]);
