@@ -24,12 +24,13 @@ export interface AppSidebarProps {
   onOpenSearch?: () => void;
   onOpenHelp?: () => void;
   microStatus?: Record<string, WorkspaceMicroStatus>;
+  memoryBadge?: number;
 }
 
 // Nav items with brand icon names — order matches Ctrl+Shift+N shortcuts
 const NAV_ITEMS: { view: AppView; label: string; shortcut: string; iconName: string }[] = [
   { view: 'chat', label: 'Chat', shortcut: '1', iconName: 'chat' },
-  { view: 'capabilities', label: 'Capabilities', shortcut: '2', iconName: 'capabilities' },
+  { view: 'capabilities', label: 'Skills & Apps', shortcut: '2', iconName: 'capabilities' },
   { view: 'cockpit', label: 'Cockpit', shortcut: '3', iconName: 'cockpit' },
   { view: 'mission-control', label: 'Mission Control', shortcut: '4', iconName: 'mission' },
   { view: 'memory', label: 'Memory', shortcut: '5', iconName: 'memory' },
@@ -49,12 +50,14 @@ export function AppSidebar({
   onOpenSearch,
   onOpenHelp,
   microStatus,
+  memoryBadge,
 }: AppSidebarProps) {
   const { theme, toggleTheme } = useTheme();
 
   const bottomItems = (
     <div className="flex flex-col gap-0.5 px-1.5">
-      {NAV_ITEMS.map(({ view, label, shortcut, iconName }) => {
+      {/* Work section: Chat, Skills & Apps */}
+      {NAV_ITEMS.slice(0, 2).map(({ view, label, shortcut, iconName }) => {
         const isActive = currentView === view;
         return (
           <button
@@ -76,6 +79,50 @@ export function AppSidebar({
             {!collapsed && (
               <>
                 <span className="flex-1 text-left font-medium">{label}</span>
+                <span className="text-[9px] opacity-40 text-[var(--hive-500)]">
+                  ⇧{shortcut}
+                </span>
+              </>
+            )}
+          </button>
+        );
+      })}
+
+      {/* UX-027: Visual divider between Work and System sections */}
+      <div className="my-2 mx-3 border-t" style={{ borderColor: 'var(--hive-700)' }} />
+
+      {/* System section: Cockpit, Mission Control, Memory, Events, Settings */}
+      {NAV_ITEMS.slice(2).map(({ view, label, shortcut, iconName }) => {
+        const isActive = currentView === view;
+        const showMemoryBadge = view === 'memory' && !!memoryBadge && memoryBadge > 0;
+        return (
+          <button
+            key={view}
+            onClick={() => onViewChange(view)}
+            title={`${label} (Ctrl+Shift+${shortcut})`}
+            className={`
+              flex items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-[13px]
+              border-l-2 transition-all duration-150 cursor-pointer
+              ${collapsed ? 'justify-center px-0 py-2 border-l-0' : 'justify-start'}
+              ${isActive
+                ? 'border-l-[var(--honey-500)] text-[var(--hive-50)]'
+                : 'border-l-transparent text-[var(--hive-400)] hover:text-[var(--hive-100)] hover:bg-[var(--honey-pulse)]'
+              }
+            `}
+            style={isActive ? { backgroundColor: 'var(--honey-glow)' } : undefined}
+          >
+            <HiveIcon name={iconName} size={20} />
+            {!collapsed && (
+              <>
+                <span className="flex-1 text-left font-medium">{label}</span>
+                {showMemoryBadge && (
+                  <span
+                    className="ml-auto text-[9px] font-semibold rounded-full px-1.5 py-px"
+                    style={{ backgroundColor: 'rgba(229, 160, 0, 0.15)', color: 'var(--honey-500)' }}
+                  >
+                    {memoryBadge}
+                  </span>
+                )}
                 <span className="text-[9px] opacity-40 text-[var(--hive-500)]">
                   ⇧{shortcut}
                 </span>
@@ -134,6 +181,12 @@ export function AppSidebar({
           <span className="text-[13px] leading-none">⌨</span>
           {!collapsed && <span>Shortcuts</span>}
         </Button>
+      )}
+      {/* Trust footer */}
+      {!collapsed && (
+        <div className="px-3 py-2 text-[9px] text-muted-foreground/30 text-center">
+          Your data stays on your device · Encrypted with AES-256
+        </div>
       )}
     </div>
   );

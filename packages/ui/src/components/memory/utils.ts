@@ -29,9 +29,9 @@ export interface FrameTypeOption {
 // ── Constants ───────────────────────────────────────────────────────
 
 export const FRAME_TYPES: FrameTypeOption[] = [
-  { value: 'I', label: 'Fact' },
-  { value: 'P', label: 'Prediction' },
-  { value: 'B', label: 'Background' },
+  { value: 'I', label: 'Known Fact' },
+  { value: 'P', label: 'Expectation' },
+  { value: 'B', label: 'Context' },
 ];
 
 const ICON_MAP: Record<string, string> = {

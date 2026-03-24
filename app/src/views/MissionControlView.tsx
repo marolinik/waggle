@@ -1,7 +1,7 @@
 /**
  * MissionControlView — Agent fleet command center.
  *
- * Shows active workspace sessions with status, controls (pause/resume/kill),
+ * Shows active workspace sessions with status, controls (pause/resume/stop),
  * and resource usage. Complements Cockpit (system health) with agent-focused ops.
  */
 
@@ -124,14 +124,14 @@ function AgentFleetCard({
             )}
             <AlertDialog>
               <AlertDialogTrigger
-                aria-label={`Kill agent session ${session.workspaceId.slice(0, 12)}`}
+                aria-label={`Stop agent session ${session.workspaceId.slice(0, 12)}`}
                 className="px-2 py-1 text-[11px] rounded border border-destructive bg-transparent cursor-pointer text-destructive hover:bg-destructive/10 transition-colors"
               >
-                Kill
+                Stop
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Kill agent session?</AlertDialogTitle>
+                  <AlertDialogTitle>Stop agent session?</AlertDialogTitle>
                   <AlertDialogDescription>
                     This will terminate session {session.workspaceId.slice(0, 12)}. This action cannot be undone.
                   </AlertDialogDescription>
@@ -142,7 +142,7 @@ function AgentFleetCard({
                     onClick={() => onKill(session.workspaceId)}
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >
-                    Kill Session
+                    Stop Session
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -196,7 +196,7 @@ export default function MissionControlView() {
           Mission Control
         </h1>
         <p className="text-[13px] opacity-60">
-          Agent fleet overview · {fleet.count}/{fleet.maxSessions} sessions active
+          Active agents · {fleet.count}/{fleet.maxSessions} sessions active
         </p>
       </div>
 
@@ -216,7 +216,7 @@ export default function MissionControlView() {
       {/* Loading state */}
       {initialLoading && !error && (
         <div className="flex items-center justify-center h-64">
-          <p className="text-sm text-muted-foreground animate-pulse">Loading fleet data...</p>
+          <p className="text-sm text-muted-foreground animate-pulse">Loading agent data...</p>
         </div>
       )}
 
@@ -231,8 +231,7 @@ export default function MissionControlView() {
             <div className="text-4xl">🐝</div>
             <h3 className="text-base font-medium text-foreground">No active agents yet</h3>
             <p className="text-sm text-muted-foreground max-w-xs">
-              Multi-agent workflows let you run research, analysis, and drafting in parallel.
-              Try <code className="text-xs bg-secondary px-1 rounded">/spawn researcher [topic]</code> in chat to get started.
+              Run multiple agents in parallel. Use <code className="text-xs bg-secondary px-1 rounded">/spawn</code> in chat to create specialist agents for research, analysis, and drafting.
             </p>
           </div>
         ) : (

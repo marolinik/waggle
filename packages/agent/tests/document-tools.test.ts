@@ -125,4 +125,24 @@ describe('createDocumentTools', () => {
     expect(result).toContain('Successfully');
     expect(result).toContain('2 headings');
   });
+
+  it('includes a Summary in the chat result with meaningful content', async () => {
+    const [tool] = createDocumentTools(tmpDir);
+    const content =
+      '# Market Analysis Report\n\n' +
+      'The global liquid cooling market is projected to reach $8.5 billion by 2028, ' +
+      'driven by increasing demand for high-performance computing and AI workloads.\n\n' +
+      '## Key Findings\n\n' +
+      '- Data center cooling accounts for 40% of energy costs\n' +
+      '- Immersion cooling adoption grew 65% year-over-year\n\n' +
+      '## Recommendations\n\n' +
+      'Organizations should evaluate hybrid cooling strategies that combine air and liquid approaches.';
+
+    const result = await tool.execute({ path: 'summary-test.docx', content });
+
+    expect(result).toContain('Summary:');
+    expect(result.length).toBeGreaterThan(100);
+    // Summary should contain stripped plain text from content, not markdown symbols
+    expect(result).toContain('liquid cooling market');
+  });
 });

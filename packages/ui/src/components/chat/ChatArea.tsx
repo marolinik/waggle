@@ -127,7 +127,8 @@ export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, o
     prevMessageCount.current = messages.length;
   }, [messages]);
 
-  const showWorkspaceHome = messages.length === 0 && workspaceContext;
+  const [showOverview, setShowOverview] = useState(false);
+  const showWorkspaceHome = (messages.length === 0 || showOverview) && workspaceContext;
 
   return (
     <div className="flex flex-col h-full">
@@ -165,7 +166,7 @@ export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, o
                   : 'Ready for your first conversation'}
                 {workspaceContext.workspace.model && ` · ${workspaceContext.workspace.model}`}
               </div>
-              {workspaceContext.lastActive && (
+              {workspaceContext.stats.sessionCount > 1 && workspaceContext.lastActive && (
                 <div className="text-xs text-muted-foreground/60">
                   Last active: {formatRelativeTime(workspaceContext.lastActive)}
                 </div>
@@ -283,6 +284,37 @@ export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, o
               </div>
             )}
 
+            {/* Agent capabilities — shown for all workspaces */}
+            <details className="bg-card border border-border rounded-lg overflow-hidden">
+              <summary className="px-4 py-3 text-sm font-medium text-foreground cursor-pointer hover:bg-secondary/50 flex items-center gap-2">
+                <span className="text-primary/60">{'\u2B21'}</span>
+                What your agent can do
+              </summary>
+              <div className="px-4 pb-3 space-y-1.5">
+                {[
+                  'Search the web (works immediately, no setup needed)',
+                  'Create Word documents (.docx) with professional formatting',
+                  'Read, write, and edit files in your workspace',
+                  'Run shell commands (sandboxed)',
+                  '15 workflow commands \u2014 type / to discover them',
+                  'Remember everything across sessions automatically',
+                  'Schedule recurring tasks',
+                  'Install new skills from the marketplace',
+                  'Learn new skills from your workflow patterns (the agent teaches itself)',
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="text-primary/30">{'\u2022'}</span>
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </details>
+
+            {/* Slash command & search tip */}
+            <div className="text-xs text-muted-foreground/60 text-center pt-2">
+              Type <kbd className="px-1.5 py-0.5 rounded bg-secondary text-foreground text-[10px]">/</kbd> for workflows · <kbd className="px-1.5 py-0.5 rounded bg-secondary text-foreground text-[10px]">Ctrl+K</kbd> to search
+            </div>
+
             {/* Suggested prompts — clickable chips */}
             <div className="flex flex-wrap gap-2 pt-2">
               {workspaceContext.suggestedPrompts.map((prompt, i) => (
@@ -295,8 +327,45 @@ export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, o
                   {prompt}
                 </button>
               ))}
+              {(!workspaceContext.suggestedPrompts || workspaceContext.suggestedPrompts.length === 0) && (
+                <>{['What do you remember about this project?', 'Research a topic for me', 'Help me create a plan', 'Draft a document'].map((prompt, i) => (
+                  <button
+                    key={`fb-${i}`}
+                    type="button"
+                    className="text-xs px-3 py-1.5 rounded-full border border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
+                    onClick={() => onSendMessage(prompt)}
+                    disabled={isLoading}
+                  >
+                    {prompt}
+                  </button>
+                ))}</>
+              )}
             </div>
           </div>
+        )}
+
+        {/* Offline / echo-mode indicator — shown when last assistant message indicates no LLM */}
+        {messages.length > 0 &&
+          messages[messages.length - 1]?.role === 'assistant' &&
+          messages[messages.length - 1]?.content?.includes('running in local mode') && (
+          <div className="px-4 py-2 bg-amber-950/30 border-b border-amber-600/20 text-xs text-amber-400 text-center">
+            Agent is in offline mode — LLM unavailable. Check your API key in Settings &gt; Keys &amp; Connections.
+          </div>
+        )}
+
+        {/* Workspace Overview toggle — shown when messages exist and context available */}
+        {messages.length > 0 && workspaceContext && (
+          <button
+            type="button"
+            onClick={() => setShowOverview(prev => !prev)}
+            className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground px-3 py-1.5 transition-colors"
+          >
+            <span>{showOverview ? '\u25BC' : '\u25B6'}</span>
+            <span>Workspace Overview</span>
+            {workspaceContext.stats.memoryCount > 0 && (
+              <span className="text-primary/40">({workspaceContext.stats.memoryCount} memories)</span>
+            )}
+          </button>
         )}
 
         {/* Hive empty state — bee mascot + starter honeycomb cards */}

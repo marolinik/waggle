@@ -9,7 +9,7 @@
 
 export interface AgentStep {
   id: string;
-  type: 'thinking' | 'tool' | 'search' | 'web' | 'writing' | 'error';
+  type: 'thinking' | 'tool' | 'search' | 'web' | 'writing' | 'error' | 'approval_requested' | 'approval_granted' | 'approval_denied';
   name: string;
   description?: string;
   timestamp: string;
@@ -37,6 +37,9 @@ export const STEP_ICONS: Record<string, string> = {
   web: 'globe',
   writing: 'pen',
   error: 'alert',
+  approval_requested: 'shield',
+  approval_granted: 'check',
+  approval_denied: 'block',
 };
 
 /** Maps statuses to CSS color values (using CSS custom properties with fallbacks). */
@@ -56,6 +59,9 @@ export const STEP_TYPE_COLORS: Record<string, string> = {
   tool: 'var(--step-tool, #22c55e)',          // green
   writing: 'var(--step-writing, #f59e0b)',    // amber
   error: 'var(--step-error, #ef4444)',        // red
+  approval_requested: 'var(--step-approval-requested, #f59e0b)', // amber — pending approval
+  approval_granted: 'var(--step-approval-granted, #22c55e)',     // green — approved
+  approval_denied: 'var(--step-approval-denied, #ef4444)',       // red — denied
 };
 
 // ── Functions ─────────────────────────────────────────────────────────
@@ -121,6 +127,9 @@ export function categorizeStep(step: AgentStep): string {
     web: 'Web',
     writing: 'Writing',
     error: 'Error',
+    approval_requested: 'Approval Requested',
+    approval_granted: 'Approved',
+    approval_denied: 'Denied',
   };
   return categories[step.type] ?? 'Other';
 }

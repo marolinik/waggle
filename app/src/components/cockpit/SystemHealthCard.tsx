@@ -12,7 +12,7 @@ export function SystemHealthCard({ health, healthError }: SystemHealthCardProps)
   return (
     <Card size="sm">
       <CardHeader>
-        <CardTitle className="text-sm font-semibold tracking-wide">System Health</CardTitle>
+        <CardTitle className="text-sm font-semibold tracking-wide">Agent Status</CardTitle>
       </CardHeader>
       <CardContent>
         {healthError && !health ? (

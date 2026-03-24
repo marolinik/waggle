@@ -63,12 +63,13 @@ export class MockSlackConnector extends BaseConnector {
       return {
         success: true,
         data: {
+          demo: true,
           mock: true,
           sent: true,
           channel: params.channel ?? '#general',
-          message: params.message ?? '',
+          message: `[DEMO] ${params.message ?? ''}`,
           ts: String(Date.now() / 1000),
-          note: 'MOCK response — configure real Slack credentials to send actual messages',
+          note: 'Demo mode — configure real credentials in Settings > Keys & Connections to use real integrations',
         },
       };
     }
@@ -76,13 +77,14 @@ export class MockSlackConnector extends BaseConnector {
       return {
         success: true,
         data: {
+          demo: true,
           mock: true,
           channels: [
             { id: 'C001', name: 'general', memberCount: 42 },
             { id: 'C002', name: 'engineering', memberCount: 18 },
             { id: 'C003', name: 'product', memberCount: 12 },
           ],
-          note: 'MOCK response — configure real Slack credentials for live data',
+          note: 'Demo mode — configure real credentials in Settings > Keys & Connections to use real integrations',
         },
       };
     }
@@ -141,12 +143,13 @@ export class MockTeamsConnector extends BaseConnector {
       return {
         success: true,
         data: {
+          demo: true,
           mock: true,
           sent: true,
           channel: params.channel ?? 'General',
-          message: params.message ?? '',
+          message: `[DEMO] ${params.message ?? ''}`,
           messageId: `mock-${Date.now()}`,
-          note: 'MOCK response — configure real Teams credentials to send actual messages',
+          note: 'Demo mode — configure real credentials in Settings > Keys & Connections to use real integrations',
         },
       };
     }
@@ -154,13 +157,14 @@ export class MockTeamsConnector extends BaseConnector {
       return {
         success: true,
         data: {
+          demo: true,
           mock: true,
           channels: [
             { id: 'T001', name: 'General', teamName: 'Engineering' },
             { id: 'T002', name: 'Announcements', teamName: 'Company' },
             { id: 'T003', name: 'Stand-ups', teamName: 'Engineering' },
           ],
-          note: 'MOCK response — configure real Teams credentials for live data',
+          note: 'Demo mode — configure real credentials in Settings > Keys & Connections to use real integrations',
         },
       };
     }
@@ -219,12 +223,13 @@ export class MockDiscordConnector extends BaseConnector {
       return {
         success: true,
         data: {
+          demo: true,
           mock: true,
           sent: true,
           channel: params.channel ?? 'general',
-          message: params.message ?? '',
+          message: `[DEMO] ${params.message ?? ''}`,
           messageId: `mock-${Date.now()}`,
-          note: 'MOCK response — configure real Discord bot token to send actual messages',
+          note: 'Demo mode — configure real credentials in Settings > Keys & Connections to use real integrations',
         },
       };
     }
@@ -232,13 +237,14 @@ export class MockDiscordConnector extends BaseConnector {
       return {
         success: true,
         data: {
+          demo: true,
           mock: true,
           channels: [
             { id: 'D001', name: 'general', type: 'text' },
             { id: 'D002', name: 'announcements', type: 'text' },
             { id: 'D003', name: 'dev-talk', type: 'text' },
           ],
-          note: 'MOCK response — configure real Discord bot token for live data',
+          note: 'Demo mode — configure real credentials in Settings > Keys & Connections to use real integrations',
         },
       };
     }

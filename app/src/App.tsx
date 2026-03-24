@@ -20,7 +20,7 @@
  * - useApprovalGates: pending approval recovery + approve/deny handlers
  */
 
-import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import type { Message, WaggleConfig, WorkspaceContext, Frame, OnboardingData, FileEntry, DroppedFile, WorkspaceMicroStatus } from '@waggle/ui';
 import {
   ThemeProvider,
@@ -113,6 +113,8 @@ function WaggleApp() {
   useAutoUpdate();
 
   // ── View state ────────────────────────────────────────────────────
+  const [newMemoryCount, setNewMemoryCount] = useState(0);
+  const prevSaveMemoryCountRef = useRef(0);
   const [currentView, setCurrentView] = useState<AppView>('chat');
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showCreateWorkspace, setShowCreateWorkspace] = useState(false);
@@ -144,6 +146,12 @@ function WaggleApp() {
   const [showHelp, setShowHelp] = useState(false);
   // Persona switcher dialog state
   const [showPersonaSwitcher, setShowPersonaSwitcher] = useState(false);
+
+  // IMP-007: Reset memory badge when switching to Memory view
+  const handleViewChange = useCallback((view: AppView) => {
+    if (view === 'memory') setNewMemoryCount(0);
+    setCurrentView(view);
+  }, []);
 
   // ── Workspaces ────────────────────────────────────────────────────
   const {
@@ -393,6 +401,23 @@ function WaggleApp() {
     serverBaseUrl: SERVER_BASE,
     setMessages,
   });
+
+  // ── IMP-007: Track new memory saves for nav badge ───────────────
+  useEffect(() => {
+    let count = 0;
+    for (const msg of messages) {
+      if (msg.toolUse) {
+        for (const t of msg.toolUse) {
+          if (t.name === 'save_memory' && t.status === 'done') count++;
+        }
+      }
+    }
+    const delta = count - prevSaveMemoryCountRef.current;
+    if (delta > 0) {
+      setNewMemoryCount(prev => prev + delta);
+    }
+    prevSaveMemoryCountRef.current = count;
+  }, [messages]);
 
   // ── Agent status (extracted) ──────────────────────────────────────
   const {
@@ -685,10 +710,10 @@ function WaggleApp() {
     onToggleGlobalSearch: useCallback(() => setGlobalSearchOpen(prev => !prev), []),
     onSelectWorkspace: setActiveWorkspace,
     onShowCreateWorkspace: useCallback(() => setShowCreateWorkspace(true), []),
-    onOpenSettings: useCallback(() => setCurrentView('settings'), []),
+    onOpenSettings: useCallback(() => handleViewChange('settings'), [handleViewChange]),
     onToggleHelp: useCallback(() => setShowHelp(prev => !prev), []),
     onTogglePersonaSwitcher: useCallback(() => setShowPersonaSwitcher(prev => !prev), []),
-    onViewChange: setCurrentView,
+    onViewChange: handleViewChange,
   });
 
   // ── File drop — read, upload to ingest API, send context to agent ──
@@ -852,7 +877,11 @@ function WaggleApp() {
       const personaName = personaId
         ? personas.find(p => p.id === personaId)?.name ?? personaId
         : 'Default';
-      addSystemMessage(`Switched persona to **${personaName}**. Messages preserved — the next response will use the new persona.`);
+      const personaHintKey = 'waggle:hint:persona-shortcut';
+      const hint = !localStorage.getItem(personaHintKey)
+        ? (localStorage.setItem(personaHintKey, 'shown'), ' · Pro tip: Use Ctrl+Shift+P to switch personas anytime')
+        : '';
+      addSystemMessage(`Switched persona to **${personaName}**. Messages preserved — the next response will use the new persona.${hint}`);
     } catch {
       addSystemMessage('Failed to switch persona.');
     }
@@ -867,22 +896,22 @@ function WaggleApp() {
       case 'workspace': {
         const ws = workspaces.find(w => w.id === id);
         if (ws) setActiveWorkspace(ws.id);
-        setCurrentView('chat');
+        handleViewChange('chat');
         break;
       }
       case 'command': {
         // Send the command as if typed in chat
         handleSlashCommand(id, '');
-        setCurrentView('chat');
+        handleViewChange('chat');
         break;
       }
       case 'settings': {
         setSettingsTab(id);
-        setCurrentView('settings');
+        handleViewChange('settings');
         break;
       }
     }
-  }, [workspaces, setActiveWorkspace, handleSlashCommand, setSettingsTab]);
+  }, [workspaces, setActiveWorkspace, handleSlashCommand, setSettingsTab, handleViewChange]);
 
   // ── F5: Event filter state for context panel ──────────────────────
   const [eventFilters, setEventFilters] = useState<Record<string, boolean>>({
@@ -949,11 +978,12 @@ function WaggleApp() {
             activeWorkspaceId={activeWorkspace?.id}
             onSelectWorkspace={setActiveWorkspace}
             currentView={currentView}
-            onViewChange={setCurrentView}
+            onViewChange={handleViewChange}
             onCreateWorkspace={() => setShowCreateWorkspace(true)}
             onOpenSearch={() => setGlobalSearchOpen(true)}
             onOpenHelp={() => setShowHelp(true)}
             microStatus={workspaceMicroStatus}
+            memoryBadge={newMemoryCount}
           />
         }
         content={

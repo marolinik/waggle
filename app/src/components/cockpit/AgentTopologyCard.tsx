@@ -16,7 +16,7 @@ export function AgentTopologyCard({ health, capabilities }: AgentTopologyCardPro
   return (
     <Card size="sm">
       <CardHeader>
-        <CardTitle className="text-sm font-semibold tracking-wide">Agent Topology</CardTitle>
+        <CardTitle className="text-sm font-semibold tracking-wide">AI Configuration</CardTitle>
       </CardHeader>
       <CardContent>
         {!health ? (

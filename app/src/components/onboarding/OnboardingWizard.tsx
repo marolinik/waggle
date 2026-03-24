@@ -256,6 +256,9 @@ export function OnboardingWizard({
             <p className="max-w-md" style={{ color: 'var(--hive-300)' }}>
               I can research, draft, plan, code, and <strong style={{ color: 'var(--hive-50)' }}>remember everything</strong> across sessions.
             </p>
+            <p className="text-xs" style={{ color: 'var(--hive-500)' }}>
+              Built for people who really work with AI every day
+            </p>
             <div className="flex gap-6 mt-4">
               {CAPABILITY_ICONS.map(cap => (
                 <div key={cap.label} className="flex flex-col items-center gap-1.5">
@@ -449,6 +452,10 @@ export function OnboardingTooltips({ onDismiss }: { onDismiss: () => void }) {
     { text: 'Type / for 14 powerful commands — research, draft, plan, and more', position: 'bottom' as const },
     { text: 'I remember everything — ask about past work anytime', position: 'top' as const },
     { text: 'Create workspaces to organize different projects', position: 'top' as const },
+    { text: 'Your AI remembers everything — across every session, every workspace. No other AI does this.', position: 'top' as const },
+    { text: 'Check your Memory tab (Ctrl+Shift+5) to see what your agent has learned', position: 'top' as const },
+    { text: 'Type /help in chat for a list of all agent workflows', position: 'bottom' as const },
+    { text: 'Try /research [any topic] in chat — watch your agent search the web and synthesize findings', position: 'bottom' as const },
   ];
 
   const handleNext = () => {

@@ -81,15 +81,15 @@ export function Members({ token, teamSlug }: MembersProps) {
 
   return (
     <div>
-      <h1 style={{ marginTop: 0 }}>Team Members</h1>
+      <h1 style={{ marginTop: 0, color: '#f0f2f7' }}>Team Members</h1>
 
       {error && (
         <div style={{
           padding: '8px 12px',
-          background: '#fef2f2',
-          border: '1px solid #fca5a5',
+          background: 'rgba(239, 68, 68, 0.1)',
+          border: '1px solid rgba(239, 68, 68, 0.3)',
           borderRadius: 4,
-          color: '#991b1b',
+          color: '#f87171',
           marginBottom: 16,
           fontSize: 13,
         }}>
@@ -103,9 +103,10 @@ export function Members({ token, teamSlug }: MembersProps) {
         gap: 8,
         marginBottom: 24,
         padding: 16,
-        background: '#fff',
+        background: '#12141a',
+        border: '1px solid #2a2d36',
         borderRadius: 8,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)',
       }}>
         <input
           type="email"
@@ -115,9 +116,11 @@ export function Members({ token, teamSlug }: MembersProps) {
           style={{
             flex: 1,
             padding: '8px 12px',
-            border: '1px solid #d1d5db',
+            background: '#1a1d25',
+            border: '1px solid #2a2d36',
             borderRadius: 4,
             fontSize: 14,
+            color: '#f0f2f7',
           }}
           onKeyDown={(e) => e.key === 'Enter' && handleInvite()}
         />
@@ -126,9 +129,11 @@ export function Members({ token, teamSlug }: MembersProps) {
           onChange={(e) => setInviteRole(e.target.value)}
           style={{
             padding: '8px 12px',
-            border: '1px solid #d1d5db',
+            background: '#1a1d25',
+            border: '1px solid #2a2d36',
             borderRadius: 4,
             fontSize: 14,
+            color: '#f0f2f7',
           }}
         >
           <option value="admin">Admin</option>
@@ -140,12 +145,13 @@ export function Members({ token, teamSlug }: MembersProps) {
           disabled={inviting || !inviteEmail.trim()}
           style={{
             padding: '8px 16px',
-            background: '#1a1a2e',
-            color: '#fff',
+            background: '#e5a000',
+            color: '#08090c',
             border: 'none',
             borderRadius: 4,
             cursor: inviting ? 'wait' : 'pointer',
             fontSize: 14,
+            fontWeight: 600,
             opacity: inviting || !inviteEmail.trim() ? 0.6 : 1,
           }}
         >
@@ -155,20 +161,21 @@ export function Members({ token, teamSlug }: MembersProps) {
 
       {/* Member list */}
       {loading ? (
-        <p style={{ color: '#999' }}>Loading members...</p>
+        <p style={{ color: '#9ca3af' }}>Loading members...</p>
       ) : members.length === 0 ? (
-        <p style={{ color: '#999' }}>No members found. Invite someone to get started.</p>
+        <p style={{ color: '#9ca3af' }}>No members found. Invite someone to get started.</p>
       ) : (
         <table style={{
           width: '100%',
           borderCollapse: 'collapse',
-          background: '#fff',
+          background: '#12141a',
+          border: '1px solid #2a2d36',
           borderRadius: 8,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)',
           overflow: 'hidden',
         }}>
           <thead>
-            <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+            <tr style={{ borderBottom: '1px solid #2a2d36' }}>
               <th style={thStyle}>Name</th>
               <th style={thStyle}>Email</th>
               <th style={thStyle}>Role</th>
@@ -178,14 +185,15 @@ export function Members({ token, teamSlug }: MembersProps) {
           </thead>
           <tbody>
             {members.map((m) => (
-              <tr key={m.userId} style={{ borderBottom: '1px solid #f3f4f6' }}>
+              <tr key={m.userId} style={{ borderBottom: '1px solid #1a1d25' }}>
                 <td style={tdStyle}>{m.displayName ?? m.userId}</td>
                 <td style={tdStyle}>{m.email ?? '—'}</td>
                 <td style={tdStyle}>
                   {m.role === 'owner' ? (
                     <span style={{
                       padding: '2px 8px',
-                      background: '#fef3c7',
+                      background: 'rgba(229, 160, 0, 0.15)',
+                      color: '#e5a000',
                       borderRadius: 4,
                       fontSize: 12,
                       fontWeight: 600,
@@ -198,9 +206,11 @@ export function Members({ token, teamSlug }: MembersProps) {
                       onChange={(e) => handleRoleChange(m.userId, e.target.value)}
                       style={{
                         padding: '4px 8px',
-                        border: '1px solid #d1d5db',
+                        background: '#1a1d25',
+                        border: '1px solid #2a2d36',
                         borderRadius: 4,
                         fontSize: 13,
+                        color: m.role === 'admin' ? '#f0b429' : m.role === 'member' ? '#cbd5e1' : '#9ca3af',
                       }}
                     >
                       {ROLES.filter((r) => r !== 'owner').map((r) => (
@@ -219,7 +229,7 @@ export function Members({ token, teamSlug }: MembersProps) {
                       style={{
                         background: 'none',
                         border: 'none',
-                        color: '#dc2626',
+                        color: '#f87171',
                         cursor: 'pointer',
                         fontSize: 13,
                         padding: '4px 8px',
@@ -242,11 +252,12 @@ const thStyle: React.CSSProperties = {
   textAlign: 'left',
   padding: '10px 12px',
   fontSize: 13,
-  color: '#6b7280',
+  color: '#9ca3af',
   fontWeight: 600,
 };
 
 const tdStyle: React.CSSProperties = {
   padding: '10px 12px',
   fontSize: 14,
+  color: '#cbd5e1',
 };

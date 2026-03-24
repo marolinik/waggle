@@ -50,6 +50,7 @@ export {
 export { McpServerInstance, McpRuntime, type McpServerConfig, type McpServerState, type McpToolInfo, type McpProcess, type SpawnFn } from './mcp/mcp-runtime.js';
 export { SubagentOrchestrator, type WorkerState, type WorkerStatus, type WorkflowStep, type WorkflowTemplate, type OrchestratorConfig as SubagentOrchestratorConfig } from './subagent-orchestrator.js';
 export { WORKFLOW_TEMPLATES, listWorkflowTemplates, createResearchTeamTemplate, createReviewPairTemplate, createPlanExecuteTemplate } from './workflow-templates.js';
+export { loadCustomWorkflows, saveCustomWorkflow, deleteCustomWorkflow, listAllWorkflows } from './custom-workflows.js';
 export { createWorkflowTools, type WorkflowToolsConfig } from './workflow-tools.js';
 export { detectTaskShape, type TaskShape, type TaskShapeType, type TaskShapeSignal, type ComponentPhase } from './task-shape.js';
 export {
@@ -65,7 +66,8 @@ export {
   type KvarkClientLike, type KvarkToolsDeps, type KvarkSearchResponseLike,
   type KvarkAskResponseLike, type KvarkStructuredResult, type KvarkFeedbackResponseLike, type KvarkActionResponseLike,
 } from './kvark-tools.js';
-export { PERSONAS, getPersona, listPersonas, composePersonaPrompt, type AgentPersona } from './personas.js';
+export { PERSONAS, getPersona, listPersonas, composePersonaPrompt, setPersonaDataDir, type AgentPersona } from './personas.js';
+export { loadCustomPersonas, saveCustomPersona, deleteCustomPersona } from './custom-personas.js';
 export { AgentMessageBus, type AgentMessage as BusAgentMessage } from './agent-message-bus.js';
 export { createAgentCommsTools } from './agent-comms-tools.js';
 export { createCliTools, type CliToolsConfig } from './cli-tools.js';

@@ -37,9 +37,9 @@ function nextId(): string {
  */
 export function processStreamEvent(
   event: StreamEvent,
-  current: { content: string; tools: ToolUseEvent[]; steps: string[] },
-): { content: string; tools: ToolUseEvent[]; steps: string[] } {
-  const result = { content: current.content, tools: [...current.tools], steps: [...current.steps] };
+  current: { content: string; tools: ToolUseEvent[]; steps: string[]; cost?: number; tokens?: { input: number; output: number } },
+): { content: string; tools: ToolUseEvent[]; steps: string[]; cost?: number; tokens?: { input: number; output: number } } {
+  const result = { content: current.content, tools: [...current.tools], steps: [...current.steps], cost: current.cost, tokens: current.tokens };
 
   switch (event.type) {
     case 'token':
@@ -134,6 +134,11 @@ export function processStreamEvent(
     case 'file_created':
       // Handled externally via onFileCreated callback — nothing to accumulate
       break;
+    case 'done':
+      // Capture per-message cost/token data from the done event
+      if (event.cost !== undefined) result.cost = event.cost;
+      if (event.tokens) result.tokens = event.tokens;
+      break;
     case 'error':
       result.content += `\n[Error: ${event.content ?? 'Unknown error'}]`;
       break;
@@ -193,7 +198,7 @@ export function useChat({ service, workspace, session, workspacePath, onFileCrea
 
     // Create placeholder assistant message
     const assistantId = nextId();
-    let accumulated = { content: '', tools: [] as ToolUseEvent[], steps: [] as string[] };
+    let accumulated = { content: '', tools: [] as ToolUseEvent[], steps: [] as string[], cost: undefined as number | undefined, tokens: undefined as { input: number; output: number } | undefined };
 
     try {
       const stream = service.sendMessage(workspace, text, session, undefined, workspacePath);
@@ -216,6 +221,8 @@ export function useChat({ service, workspace, session, workspacePath, onFileCrea
           timestamp: new Date().toISOString(),
           toolUse: accumulated.tools.length > 0 ? accumulated.tools : undefined,
           steps: accumulated.steps.length > 0 ? accumulated.steps : undefined,
+          cost: accumulated.cost,
+          tokens: accumulated.tokens,
         };
 
         setMessages((prev) => {

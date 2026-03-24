@@ -40,7 +40,7 @@ async function ensureBrowser(workspacePath: string): Promise<{ browser: any; pag
   const pw = await getPlaywright();
   if (!pw) {
     throw new Error(
-      'Browser automation requires playwright-core. Install with: npm install playwright-core',
+      'Browser automation requires playwright-core. Install the "Browser Automation" plugin from Skills & Apps, or run: npm install playwright-core',
     );
   }
 

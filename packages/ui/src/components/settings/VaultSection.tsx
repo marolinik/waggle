@@ -44,6 +44,8 @@ const SECRET_TYPES = ['api_key', 'bearer', 'oauth2', 'basic'] as const;
 
 interface ConnectorSetupGuide {
   id: string;
+  /** What connecting this service unlocks for the agent */
+  unlocks: string;
   /** Human-readable setup steps */
   steps: string[];
   /** URL where user creates the token */
@@ -54,11 +56,14 @@ interface ConnectorSetupGuide {
   requiredScopes?: string[];
   /** Token placeholder text */
   tokenPlaceholder: string;
+  /** Whether this connector should be displayed as a featured card */
+  featured?: boolean;
 }
 
 const CONNECTOR_GUIDES: Record<string, ConnectorSetupGuide> = {
   github: {
     id: 'github',
+    unlocks: 'Your agent can search code, read files, create issues, and submit pull requests in your repos',
     steps: [
       'Go to GitHub Settings > Developer Settings > Personal Access Tokens > Tokens (classic)',
       'Click "Generate new token (classic)"',
@@ -72,6 +77,7 @@ const CONNECTOR_GUIDES: Record<string, ConnectorSetupGuide> = {
   },
   slack: {
     id: 'slack',
+    unlocks: 'Your agent can send messages, search channels, and respond to conversations',
     steps: [
       'Go to api.slack.com/apps and create a new app (or select existing)',
       'Under OAuth & Permissions, add Bot Token Scopes: chat:write, channels:read, users:read',
@@ -85,6 +91,7 @@ const CONNECTOR_GUIDES: Record<string, ConnectorSetupGuide> = {
   },
   jira: {
     id: 'jira',
+    unlocks: 'Your agent can create issues, search tasks, and update project status',
     steps: [
       'Go to id.atlassian.com/manage/api-tokens',
       'Click "Create API token" and give it a label',
@@ -96,6 +103,7 @@ const CONNECTOR_GUIDES: Record<string, ConnectorSetupGuide> = {
   },
   email: {
     id: 'email',
+    unlocks: 'Your agent can send emails and manage templates',
     steps: [
       'Go to app.sendgrid.com > Settings > API Keys',
       'Click "Create API Key"',
@@ -108,6 +116,7 @@ const CONNECTOR_GUIDES: Record<string, ConnectorSetupGuide> = {
   },
   gcal: {
     id: 'gcal',
+    unlocks: 'Your agent can check schedules and create events',
     steps: [
       'This connector uses OAuth2 for Google Calendar access',
       'Click Connect below to start the OAuth flow',
@@ -116,6 +125,20 @@ const CONNECTOR_GUIDES: Record<string, ConnectorSetupGuide> = {
     setupUrl: 'https://console.cloud.google.com/apis/credentials',
     setupUrlLabel: 'Google Cloud Console',
     tokenPlaceholder: 'OAuth token (auto-obtained)',
+  },
+  composio: {
+    id: 'composio',
+    unlocks: 'Connect 250+ apps \u2014 Gmail, Notion, Linear, Calendar, Salesforce, and more. One API key, hundreds of integrations.',
+    featured: true,
+    steps: [
+      'Go to app.composio.dev and sign up or log in',
+      'Navigate to Settings > API Keys',
+      'Generate a new API key and copy it',
+      'Paste the key below to unlock 250+ integrations',
+    ],
+    setupUrl: 'https://app.composio.dev/settings',
+    setupUrlLabel: 'Get Composio API Key',
+    tokenPlaceholder: 'Your Composio API key',
   },
 };
 
@@ -129,7 +152,17 @@ function ConnectorGuidePanel({ guide }: ConnectorGuidePanelProps) {
   const [expanded, setExpanded] = useState(true);
 
   return (
-    <div className="rounded-md border border-border bg-muted/30">
+    <div className={`rounded-md border bg-muted/30 ${guide.featured ? 'border-primary/40' : 'border-border'}`}>
+      {/* "What this unlocks" description */}
+      {guide.unlocks && (
+        <div className={`px-3 py-2 text-[11px] leading-relaxed ${guide.featured ? 'text-primary' : 'text-muted-foreground'}`}>
+          {guide.featured && (
+            <span className="inline-block text-[9px] font-semibold uppercase tracking-widest bg-primary/15 text-primary px-1.5 py-0.5 rounded mr-1.5 mb-0.5">Featured</span>
+          )}
+          {guide.unlocks}
+        </div>
+      )}
+
       <button
         type="button"
         onClick={() => setExpanded((prev) => !prev)}
@@ -696,7 +729,7 @@ export function VaultSection({ baseUrl = 'http://127.0.0.1:3333' }: VaultSection
   return (
     <div className="vault-section space-y-6">
       <div>
-        <h2 className="text-lg font-semibold">Vault & Credentials</h2>
+        <h2 className="text-lg font-semibold">Vault & Credentials<span className="text-[10px] text-green-500/60 ml-2">🔒 AES-256-GCM encrypted</span></h2>
         <p className="text-sm text-muted-foreground mt-1">
           Manage secrets and external service connections. All credentials are encrypted with AES-256-GCM in the local vault.
         </p>
@@ -748,6 +781,49 @@ export function VaultSection({ baseUrl = 'http://127.0.0.1:3333' }: VaultSection
           </div>
         )}
 
+        {/* Composio featured card — always shown at top of connectors */}
+        {(() => {
+          const composioGuide = CONNECTOR_GUIDES['composio'];
+          const composioConnector = connectors.find(c => c.id === 'composio');
+          const isComposioConnected = composioConnector?.status === 'connected';
+          if (!isComposioConnected) {
+            return (
+              <div className="rounded-lg border-2 border-primary/30 bg-primary/[0.03] p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] font-semibold uppercase tracking-widest bg-primary/15 text-primary px-1.5 py-0.5 rounded">Featured</span>
+                  <span className="text-sm font-semibold text-foreground">Composio</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  {composioGuide.unlocks}
+                </p>
+                <ConnectorGuidePanel guide={composioGuide} />
+                {/* Token input + connect button for Composio */}
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="password"
+                    placeholder={composioGuide.tokenPlaceholder}
+                    value={tokenInputs['composio'] ?? ''}
+                    onChange={(e) =>
+                      setTokenInputs((prev) => ({ ...prev, composio: e.target.value }))
+                    }
+                    autoComplete="off"
+                    aria-label="Composio API key"
+                    className="flex-1 rounded bg-input px-3 py-2 text-sm text-foreground border border-border focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                  <button
+                    onClick={() => handleConnect('composio')}
+                    disabled={!tokenInputs['composio'] || connectingId === 'composio'}
+                    className="rounded bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {connectingId === 'composio' ? 'Connecting...' : 'Connect'}
+                  </button>
+                </div>
+              </div>
+            );
+          }
+          return null;
+        })()}
+
         {/* Connector list */}
         {!loading && connectors.length === 0 ? (
           <div className="rounded-lg border border-border p-4 text-center text-sm text-muted-foreground">
@@ -755,7 +831,9 @@ export function VaultSection({ baseUrl = 'http://127.0.0.1:3333' }: VaultSection
           </div>
         ) : (
           <div className="space-y-3">
-            {connectors.map((c) => (
+            {connectors.map((c) => {
+              const guide = CONNECTOR_GUIDES[c.id];
+              return (
               <div key={c.id} className="rounded-lg border border-border p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -783,6 +861,13 @@ export function VaultSection({ baseUrl = 'http://127.0.0.1:3333' }: VaultSection
                   )}
                 </div>
 
+                {/* What this unlocks */}
+                {guide?.unlocks && (
+                  <p className="mt-1.5 text-[11px] text-muted-foreground leading-relaxed">
+                    {guide.unlocks}
+                  </p>
+                )}
+
                 <div className="mt-2 flex gap-4 text-xs text-muted-foreground">
                   <span>service: {c.service}</span>
                   <span>auth: {c.authType}</span>
@@ -793,8 +878,8 @@ export function VaultSection({ baseUrl = 'http://127.0.0.1:3333' }: VaultSection
                 {c.status === 'disconnected' && (
                   <div className="mt-3 pt-3 border-t border-border space-y-3">
                     {/* Setup guide (if available for this connector) */}
-                    {CONNECTOR_GUIDES[c.id] && (
-                      <ConnectorGuidePanel guide={CONNECTOR_GUIDES[c.id]} />
+                    {guide && (
+                      <ConnectorGuidePanel guide={guide} />
                     )}
 
                     {/* Token input + connect button */}
@@ -802,7 +887,7 @@ export function VaultSection({ baseUrl = 'http://127.0.0.1:3333' }: VaultSection
                       <input
                         type="password"
                         placeholder={
-                          CONNECTOR_GUIDES[c.id]?.tokenPlaceholder
+                          guide?.tokenPlaceholder
                             ?? (c.authType === 'bearer' ? 'Paste personal access token...' : 'Enter API key...')
                         }
                         value={tokenInputs[c.id] ?? ''}
@@ -824,7 +909,8 @@ export function VaultSection({ baseUrl = 'http://127.0.0.1:3333' }: VaultSection
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

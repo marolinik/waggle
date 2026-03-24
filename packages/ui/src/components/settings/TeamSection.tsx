@@ -98,6 +98,19 @@ export function TeamSection({ teamConnection, onConnect, onDisconnect }: TeamSec
         </p>
       </div>
 
+      <div className="rounded-lg border border-amber-600/30 bg-amber-950/20 p-3 text-sm text-amber-200/80 mb-3">
+        <div className="flex items-start gap-2">
+          <span className="text-amber-500 shrink-0">{'\u26A0'}</span>
+          <div>
+            <p className="font-medium text-amber-200">Data sharing notice</p>
+            <p className="mt-1 text-xs text-amber-200/60">
+              Connecting to a team server will share your workspace activity and memories with the team.
+              Personal workspace data stays on your device.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="space-y-4">
         <div>
           <label htmlFor="team-server-url" className="block text-sm font-medium text-muted-foreground">

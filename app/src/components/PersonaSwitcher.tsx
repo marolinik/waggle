@@ -89,6 +89,18 @@ export function PersonaSwitcher({
               <p className="mt-1 text-xs text-muted-foreground line-clamp-1">{persona.description}</p>
             </button>
           ))}
+
+          {/* Create New Persona */}
+          <button
+            type="button"
+            onClick={() => { /* TODO: Full persona creation form is P2 — link to Settings */ }}
+            className="rounded-lg border border-dashed border-border p-3 text-left transition-colors cursor-pointer hover:border-primary/50 col-span-2"
+          >
+            <div className="flex items-center justify-center gap-2 text-muted-foreground">
+              <span className="text-lg">+</span>
+              <span className="text-sm">Create Custom Persona</span>
+            </div>
+          </button>
         </div>
       </DialogContent>
     </Dialog>

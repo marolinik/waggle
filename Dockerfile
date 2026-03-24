@@ -111,4 +111,4 @@ VOLUME ["/data"]
 USER waggle
 
 # Start the server
-CMD ["npx", "tsx", "packages/server/src/local/start.ts", "--skip-litellm"]
+CMD ["npx", "tsx", "packages/server/src/index.ts"]

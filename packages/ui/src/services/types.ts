@@ -21,6 +21,10 @@ export interface StreamEvent {
   duration?: number;
   /** For tool_result events: whether the result is an error */
   isError?: boolean;
+  /** For done events: estimated cost in USD for this agent turn */
+  cost?: number;
+  /** For done events: token counts for this agent turn */
+  tokens?: { input: number; output: number };
 }
 
 // ── Messages ───────────────────────────────────────────────────────────
@@ -32,6 +36,10 @@ export interface Message {
   timestamp: string;
   toolUse?: ToolUseEvent[];
   steps?: string[];
+  /** Estimated cost in USD for this message (agent responses only) */
+  cost?: number;
+  /** Token usage for this message */
+  tokens?: { input: number; output: number };
 }
 
 export type ToolStatus = 'running' | 'done' | 'error' | 'denied' | 'pending_approval';

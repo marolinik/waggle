@@ -42,7 +42,7 @@ describe('MemoryBrowser rendering', () => {
     );
 
     expect(screen.getByText('No memories yet')).toBeTruthy();
-    expect(screen.getByText(/Start a conversation and I'll remember what matters/)).toBeTruthy();
+    expect(screen.getByText(/memories build automatically/)).toBeTruthy();
   });
 
   it('shows error state with retry button when error prop is set', () => {

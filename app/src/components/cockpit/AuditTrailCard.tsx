@@ -11,7 +11,7 @@ export function AuditTrailCard({ auditEntries }: AuditTrailCardProps) {
   return (
     <Card size="sm">
       <CardHeader>
-        <CardTitle className="text-sm font-semibold tracking-wide">Install Audit Trail</CardTitle>
+        <CardTitle className="text-sm font-semibold tracking-wide">Recent Activity</CardTitle>
       </CardHeader>
       <CardContent>
         {auditEntries.length === 0 ? (

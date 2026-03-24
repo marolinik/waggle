@@ -207,6 +207,79 @@ describe('WaggleDanceDispatcher', () => {
     });
   });
 
+  describe('skill_share', () => {
+    it('returns parsed install data when name and content provided', async () => {
+      const deps = makeDeps();
+      const dispatcher = new WaggleDanceDispatcher(deps);
+      const result = await dispatcher.dispatch(makeMessage({
+        type: 'broadcast',
+        subtype: 'skill_share',
+        content: { name: 'code_review', content: '#!/bin/bash\necho review', sharedBy: 'agent-2' },
+      }));
+
+      expect(result.handled).toBe(true);
+      const parsed = JSON.parse(result.response!);
+      expect(parsed.action).toBe('install_shared_skill');
+      expect(parsed.skillName).toBe('code_review');
+      expect(parsed.skillContent).toBe('#!/bin/bash\necho review');
+      expect(parsed.sharedBy).toBe('agent-2');
+    });
+
+    it('defaults sharedBy to unknown when not provided', async () => {
+      const deps = makeDeps();
+      const dispatcher = new WaggleDanceDispatcher(deps);
+      const result = await dispatcher.dispatch(makeMessage({
+        type: 'broadcast',
+        subtype: 'skill_share',
+        content: { name: 'deploy', content: 'deploy script body' },
+      }));
+
+      expect(result.handled).toBe(true);
+      const parsed = JSON.parse(result.response!);
+      expect(parsed.sharedBy).toBe('unknown');
+    });
+
+    it('accepts skill field as fallback for name', async () => {
+      const deps = makeDeps();
+      const dispatcher = new WaggleDanceDispatcher(deps);
+      const result = await dispatcher.dispatch(makeMessage({
+        type: 'broadcast',
+        subtype: 'skill_share',
+        content: { skill: 'lint_fix', content: 'lint script' },
+      }));
+
+      expect(result.handled).toBe(true);
+      const parsed = JSON.parse(result.response!);
+      expect(parsed.skillName).toBe('lint_fix');
+    });
+
+    it('fails when name is missing', async () => {
+      const deps = makeDeps();
+      const dispatcher = new WaggleDanceDispatcher(deps);
+      const result = await dispatcher.dispatch(makeMessage({
+        type: 'broadcast',
+        subtype: 'skill_share',
+        content: { content: 'some content' },
+      }));
+
+      expect(result.handled).toBe(false);
+      expect(result.error).toBe('skill_share requires content.name and content.content');
+    });
+
+    it('fails when content is missing', async () => {
+      const deps = makeDeps();
+      const dispatcher = new WaggleDanceDispatcher(deps);
+      const result = await dispatcher.dispatch(makeMessage({
+        type: 'broadcast',
+        subtype: 'skill_share',
+        content: { name: 'some_skill' },
+      }));
+
+      expect(result.handled).toBe(false);
+      expect(result.error).toBe('skill_share requires content.name and content.content');
+    });
+  });
+
   describe('validation', () => {
     it('rejects invalid message type-subtype combo', async () => {
       const deps = makeDeps();

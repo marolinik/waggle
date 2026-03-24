@@ -75,6 +75,49 @@ function ToolGroup({ tools }: { tools: ToolUseEvent[] }) {
   );
 }
 
+/** Categorized tool count summary — shows breakdown when ≥ 3 tools. */
+function ToolCountSummary({ tools, steps }: { tools: ToolUseEvent[]; steps?: string[] }) {
+  const count = tools.length;
+  const hasSteps = steps && steps.length > 0;
+  const stepSuffix = hasSteps ? ` \u00B7 ${steps!.length} step${steps!.length !== 1 ? 's' : ''}` : '';
+  const spawnEvents = tools.filter(t => t.name === 'spawn_agent');
+
+  if (count < 3) {
+    return (
+      <span>
+        {count} tool{count !== 1 ? 's' : ''}{stepSuffix}
+        {spawnEvents.length > 0 && (
+          <span className="ml-2 text-primary/60">
+            · {spawnEvents.length} specialist{spawnEvents.length > 1 ? 's' : ''} deployed
+          </span>
+        )}
+      </span>
+    );
+  }
+
+  const searches = tools.filter(t => ['web_search', 'web_fetch', 'tavily_search', 'brave_search'].includes(t.name)).length;
+  const recalls = tools.filter(t => ['search_memory', 'auto_recall', 'query_knowledge'].includes(t.name)).length;
+  const files = tools.filter(t => ['read_file', 'write_file', 'edit_file', 'generate_docx'].includes(t.name)).length;
+  const other = count - searches - recalls - files;
+
+  const parts: string[] = [];
+  if (searches > 0) parts.push(`${searches}\u00D7 search`);
+  if (recalls > 0) parts.push(`${recalls}\u00D7 memory`);
+  if (files > 0) parts.push(`${files}\u00D7 file`);
+  if (other > 0) parts.push(`${other}\u00D7 other`);
+
+  return (
+    <span>
+      {count} tools: {parts.join(', ')}{stepSuffix}
+      {spawnEvents.length > 0 && (
+        <span className="ml-2 text-primary/60">
+          · {spawnEvents.length} specialist{spawnEvents.length > 1 ? 's' : ''} deployed
+        </span>
+      )}
+    </span>
+  );
+}
+
 /**
  * Walk through tools array and group adjacent completed auto-hide tools (runs of 2+).
  * Returns mixed array of ToolCard and ToolGroup elements.
@@ -231,10 +274,7 @@ export const ChatMessage = memo(function ChatMessage({ message, messageIndex, se
               aria-label={`${message.toolUse?.length ?? 0} tools used. ${showTrail ? 'Collapse' : 'Expand'} details`}
             >
               <span className="text-[8px]">{showTrail ? '\u25BC' : '\u25B6'}</span>
-              <span>
-                {message.toolUse?.length ?? 0} tool{(message.toolUse?.length ?? 0) !== 1 ? 's' : ''}
-                {hasSteps ? ` \u00B7 ${message.steps!.length} step${message.steps!.length !== 1 ? 's' : ''}` : ''}
-              </span>
+              <ToolCountSummary tools={message.toolUse ?? []} steps={message.steps} />
               {hasActiveTools && (
                 <span className="text-primary animate-pulse">{'\u25CF'}</span>
               )}
@@ -288,6 +328,12 @@ export const ChatMessage = memo(function ChatMessage({ message, messageIndex, se
               messageIndex={messageIndex}
               onFeedback={onFeedback}
             />
+          )}
+          {!isUser && message.cost != null && message.cost > 0 && (
+            <span className="text-[10px] opacity-60" title={`Input: ${message.tokens?.input ?? '?'} · Output: ${message.tokens?.output ?? '?'}`}>
+              {message.cost < 0.01 ? '<$0.01' : `$${message.cost.toFixed(3)}`}
+              {message.tokens && ` \u00B7 ${Math.round((message.tokens.input + message.tokens.output) / 100) / 10}k`}
+            </span>
           )}
         </div>
       </div>

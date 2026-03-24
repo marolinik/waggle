@@ -5,7 +5,7 @@
  * Permissions, Team, and Advanced tabs.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { WaggleConfig, TeamConnection } from '../../services/types.js';
 import { SETTINGS_TABS } from './utils.js';
 import { ModelsSection } from './ModelsSection.js';
@@ -102,11 +102,20 @@ export function SettingsPanel({
     onTabChange?.(tab);
   };
 
+  // Filter tabs based on available connections/config
+  const visibleTabs = useMemo(() => {
+    return SETTINGS_TABS.filter((tab) => {
+      // Hide 'team' tab when no team handlers are provided (solo mode)
+      if (tab.id === 'team' && !onTeamConnect) return false;
+      return true;
+    });
+  }, [onTeamConnect]);
+
   return (
     <div className="settings-panel flex h-full flex-col bg-background text-foreground">
       {/* Tab bar */}
       <div className="settings-panel__tabs flex border-b border-border px-4">
-        {SETTINGS_TABS.map((tab) => (
+        {visibleTabs.map((tab) => (
           <button
             key={tab.id}
             className={`settings-panel__tab px-4 py-2 text-sm font-medium transition-colors ${

@@ -17,15 +17,16 @@ interface AnalyticsProps {
 
 const cardStyle: React.CSSProperties = {
   padding: 20,
-  background: '#fff',
+  background: '#12141a',
+  border: '1px solid #2a2d36',
   borderRadius: 8,
-  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+  boxShadow: '0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)',
 };
 
 const sectionTitle: React.CSSProperties = {
   fontSize: 14,
   fontWeight: 600,
-  color: '#6b7280',
+  color: '#9ca3af',
   textTransform: 'uppercase',
   letterSpacing: '0.05em',
   margin: '0 0 12px',
@@ -35,24 +36,26 @@ const thStyle: React.CSSProperties = {
   textAlign: 'left',
   padding: '10px 12px',
   fontSize: 13,
-  color: '#6b7280',
+  color: '#9ca3af',
   fontWeight: 600,
-  borderBottom: '2px solid #e5e7eb',
+  borderBottom: '1px solid #2a2d36',
 };
 
 const tdStyle: React.CSSProperties = {
   padding: '10px 12px',
   fontSize: 14,
-  borderBottom: '1px solid #f3f4f6',
+  color: '#cbd5e1',
+  borderBottom: '1px solid #1a1d25',
 };
 
 const tableStyle: React.CSSProperties = {
   width: '100%',
   borderCollapse: 'collapse',
-  background: '#fff',
+  background: '#12141a',
+  border: '1px solid #2a2d36',
   borderRadius: 8,
   overflow: 'hidden',
-  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+  boxShadow: '0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)',
 };
 
 /* ─── Sub-components ─── */
@@ -63,15 +66,15 @@ function ActiveUsersCard({ data }: { data: AnalyticsResponse['activeUsers'] }) {
       <h3 style={sectionTitle}>Active Users</h3>
       <div style={{ display: 'flex', gap: 24 }}>
         <div>
-          <div style={{ fontSize: 28, fontWeight: 'bold', color: '#1a1a2e' }}>{data.daily}</div>
+          <div style={{ fontSize: 28, fontWeight: 'bold', color: '#e5a000' }}>{data.daily}</div>
           <div style={{ fontSize: 12, color: '#9ca3af' }}>Last 24h</div>
         </div>
         <div>
-          <div style={{ fontSize: 28, fontWeight: 'bold', color: '#1a1a2e' }}>{data.weekly}</div>
+          <div style={{ fontSize: 28, fontWeight: 'bold', color: '#e5a000' }}>{data.weekly}</div>
           <div style={{ fontSize: 12, color: '#9ca3af' }}>Last 7d</div>
         </div>
         <div>
-          <div style={{ fontSize: 28, fontWeight: 'bold', color: '#1a1a2e' }}>{data.monthly}</div>
+          <div style={{ fontSize: 28, fontWeight: 'bold', color: '#e5a000' }}>{data.monthly}</div>
           <div style={{ fontSize: 12, color: '#9ca3af' }}>Last 30d</div>
         </div>
       </div>
@@ -89,7 +92,7 @@ function TokenUsageCard({ data }: { data: AnalyticsResponse['tokenUsage'] }) {
   return (
     <div style={cardStyle}>
       <h3 style={sectionTitle}>Token Usage</h3>
-      <div style={{ fontSize: 28, fontWeight: 'bold', color: '#1a1a2e', marginBottom: 16 }}>
+      <div style={{ fontSize: 28, fontWeight: 'bold', color: '#e5a000', marginBottom: 16 }}>
         {formattedTotal} tokens
       </div>
       {data.byUser.length === 0 ? (
@@ -137,21 +140,21 @@ function TopToolsCard({ data }: { data: AnalyticsResponse['topTools'] }) {
             return (
               <div key={tool.name}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
-                  <span style={{ fontWeight: 500, color: '#374151' }}>{tool.name}</span>
-                  <span style={{ color: '#6b7280', fontVariantNumeric: 'tabular-nums' }}>
+                  <span style={{ fontWeight: 500, color: '#f0f2f7' }}>{tool.name}</span>
+                  <span style={{ color: '#9ca3af', fontVariantNumeric: 'tabular-nums' }}>
                     {tool.invocations}
                   </span>
                 </div>
                 <div style={{
                   height: 8,
-                  background: '#f3f4f6',
+                  background: '#1a1d25',
                   borderRadius: 4,
                   overflow: 'hidden',
                 }}>
                   <div style={{
                     width: `${widthPercent}%`,
                     height: '100%',
-                    background: '#3b82f6',
+                    background: '#e5a000',
                     borderRadius: 4,
                     transition: 'width 0.3s ease',
                   }} />
@@ -180,19 +183,19 @@ function TopCommandsCard({ data }: { data: AnalyticsResponse['topCommands'] }) {
             return (
               <div key={cmd.name}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
-                  <span style={{ fontWeight: 500, color: '#374151', fontFamily: 'monospace' }}>{cmd.name}</span>
-                  <span style={{ color: '#6b7280', fontVariantNumeric: 'tabular-nums' }}>{cmd.count}</span>
+                  <span style={{ fontWeight: 500, color: '#f0f2f7', fontFamily: 'monospace' }}>{cmd.name}</span>
+                  <span style={{ color: '#9ca3af', fontVariantNumeric: 'tabular-nums' }}>{cmd.count}</span>
                 </div>
                 <div style={{
                   height: 8,
-                  background: '#f3f4f6',
+                  background: '#1a1d25',
                   borderRadius: 4,
                   overflow: 'hidden',
                 }}>
                   <div style={{
                     width: `${widthPercent}%`,
                     height: '100%',
-                    background: '#8b5cf6',
+                    background: '#a78bfa',
                     borderRadius: 4,
                     transition: 'width 0.3s ease',
                   }} />
@@ -227,11 +230,11 @@ function CapabilityGapsCard({ data }: { data: AnalyticsResponse['capabilityGaps'
                 <td style={tdStyle}>
                   <span style={{
                     padding: '2px 8px',
-                    background: '#fef3c7',
+                    background: 'rgba(229, 160, 0, 0.15)',
                     borderRadius: 4,
                     fontSize: 12,
                     fontWeight: 600,
-                    color: '#92400e',
+                    color: '#e5a000',
                   }}>
                     {gap.tool}
                   </span>
@@ -239,7 +242,7 @@ function CapabilityGapsCard({ data }: { data: AnalyticsResponse['capabilityGaps'
                 <td style={{ ...tdStyle, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                   {gap.requestCount}
                 </td>
-                <td style={{ ...tdStyle, fontSize: 13, color: '#6b7280' }}>{gap.suggestion}</td>
+                <td style={{ ...tdStyle, fontSize: 13, color: '#9ca3af' }}>{gap.suggestion}</td>
               </tr>
             ))}
           </tbody>
@@ -260,7 +263,7 @@ function PerformanceTrendsCard({ data }: { data: AnalyticsResponse['performanceT
       <div style={{ display: 'flex', gap: 32 }}>
         <div>
           <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 4 }}>Correction Rate</div>
-          <div style={{ fontSize: 24, fontWeight: 'bold', color: '#1a1a2e' }}>
+          <div style={{ fontSize: 24, fontWeight: 'bold', color: '#e5a000' }}>
             {(data.correctionRate * 100).toFixed(1)}%
           </div>
           <div style={{ fontSize: 12, color: trendColor, fontWeight: 500 }}>
@@ -269,7 +272,7 @@ function PerformanceTrendsCard({ data }: { data: AnalyticsResponse['performanceT
         </div>
         <div>
           <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 4 }}>Avg Response Time</div>
-          <div style={{ fontSize: 24, fontWeight: 'bold', color: '#1a1a2e' }}>
+          <div style={{ fontSize: 24, fontWeight: 'bold', color: '#e5a000' }}>
             {data.avgResponseTime.toFixed(1)}s
           </div>
           <div style={{ fontSize: 12, color: '#9ca3af' }}>per completed job</div>
@@ -309,23 +312,23 @@ export function Analytics({ token, teamSlug }: AnalyticsProps) {
   if (loading) {
     return (
       <div>
-        <h1 style={{ marginTop: 0 }}>Analytics</h1>
-        <p style={{ color: '#999' }}>Loading analytics...</p>
+        <h1 style={{ marginTop: 0, color: '#f0f2f7' }}>Analytics</h1>
+        <p style={{ color: '#9ca3af' }}>Loading analytics...</p>
       </div>
     );
   }
 
   return (
     <div>
-      <h1 style={{ marginTop: 0 }}>Usage Analytics</h1>
+      <h1 style={{ marginTop: 0, color: '#f0f2f7' }}>Usage Analytics</h1>
 
       {error && (
         <div style={{
           padding: '8px 12px',
-          background: '#fef2f2',
-          border: '1px solid #fca5a5',
+          background: 'rgba(239, 68, 68, 0.1)',
+          border: '1px solid rgba(239, 68, 68, 0.3)',
           borderRadius: 4,
-          color: '#991b1b',
+          color: '#f87171',
           marginBottom: 16,
           fontSize: 13,
         }}>

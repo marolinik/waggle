@@ -1368,4 +1368,89 @@ export const sessionRoutes: FastifyPluginAsync = async (server) => {
 
     return reply.status(404).send({ error: 'Session not found' });
   });
+
+  // IMP-005: GET /api/sessions/:sessionId/summary — structured post-session summary
+  server.get<{
+    Params: { sessionId: string };
+    Querystring: { workspace?: string };
+  }>('/api/sessions/:sessionId/summary', async (request, reply) => {
+    const { sessionId } = request.params;
+    assertSafeSegment(sessionId, 'sessionId');
+    const workspaceId = request.query.workspace;
+    if (workspaceId) assertSafeSegment(workspaceId, 'workspace');
+
+    // Find session file — search across workspaces if workspace not provided
+    let filePath: string | null = null;
+
+    if (workspaceId) {
+      const candidate = path.join(
+        server.localConfig.dataDir, 'workspaces', workspaceId, 'sessions', `${sessionId}.jsonl`
+      );
+      if (fs.existsSync(candidate)) filePath = candidate;
+    } else {
+      const workspacesDir = path.join(server.localConfig.dataDir, 'workspaces');
+      if (fs.existsSync(workspacesDir)) {
+        const entries = fs.readdirSync(workspacesDir, { withFileTypes: true });
+        for (const entry of entries) {
+          if (!entry.isDirectory()) continue;
+          const candidate = path.join(workspacesDir, entry.name, 'sessions', `${sessionId}.jsonl`);
+          if (fs.existsSync(candidate)) {
+            filePath = candidate;
+            break;
+          }
+        }
+      }
+    }
+
+    if (!filePath) {
+      return reply.status(404).send({ error: 'Session not found' });
+    }
+
+    // Read session metadata using existing readSessionMeta helper
+    const meta = readSessionMeta(filePath, sessionId);
+
+    // Count tool references and activity types from message content
+    const content = fs.readFileSync(filePath, 'utf-8').trim();
+    const lines = content ? content.split('\n').filter(l => l.trim()) : [];
+
+    let toolCalls = 0;
+    let memorySaves = 0;
+    let documentsCreated = 0;
+    let userMessages = 0;
+    let assistantMessages = 0;
+
+    for (const line of lines) {
+      try {
+        const parsed = JSON.parse(line);
+        if (parsed.type === 'meta') continue;
+        if (parsed.role === 'user') userMessages++;
+        if (parsed.role === 'assistant') {
+          assistantMessages++;
+          // Detect tool usage heuristically from assistant content
+          const text = parsed.content ?? '';
+          for (const tp of TOOL_CONTENT_PATTERNS) {
+            if (tp.pattern.test(text)) toolCalls++;
+          }
+          if (/Saving to memory/i.test(text)) memorySaves++;
+          if (/Generating document/i.test(text)) documentsCreated++;
+        }
+      } catch {
+        // skip malformed lines
+      }
+    }
+
+    return {
+      sessionId,
+      title: meta.title,
+      messageCount: meta.messageCount,
+      userMessages,
+      assistantMessages,
+      toolsUsed: toolCalls,
+      memoriesSaved: memorySaves,
+      documentsCreated,
+      summary: meta.summary ?? 'No summary available',
+      lastActive: meta.lastActive,
+      created: meta.created,
+    };
+  });
 };

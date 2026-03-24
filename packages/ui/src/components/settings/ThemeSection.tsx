@@ -16,6 +16,18 @@ export function ThemeSection({ config, onConfigUpdate }: ThemeSectionProps) {
     <div className="theme-section space-y-6">
       <h2 className="text-lg font-semibold">General</h2>
 
+      {/* Agent resume card */}
+      <div className="rounded-lg border border-border bg-card p-4">
+        <h3 className="text-sm font-medium text-foreground mb-2">Your Agent</h3>
+        <div className="space-y-1 text-xs text-muted-foreground">
+          <div>Model: {config?.defaultModel ?? 'Not set'}</div>
+          <div>Personas: 9+ available (Ctrl+Shift+P to switch)</div>
+          <div>Commands: 18 workflow commands (type / in chat)</div>
+          <div>Tools: 64+ built-in agent tools</div>
+          <div>Data: Encrypted locally with AES-256-GCM</div>
+        </div>
+      </div>
+
       {/* Theme toggle */}
       <div className="rounded-lg border border-border p-4">
         <div className="flex items-center justify-between">

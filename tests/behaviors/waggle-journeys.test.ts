@@ -544,8 +544,8 @@ describe('Command registry — all 13 slash commands', () => {
     registerWorkflowCommands(registry);
   });
 
-  it('registers exactly 17 commands', () => {
-    expect(registry.list()).toHaveLength(17);
+  it('registers exactly 18 commands', () => {
+    expect(registry.list()).toHaveLength(18);
   });
 
   it('/help lists all commands', async () => {

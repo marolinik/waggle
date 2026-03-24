@@ -54,19 +54,19 @@ export function TeamSettings({ token, teamSlug, onTeamUpdated }: TeamSettingsPro
     }
   };
 
-  if (loading) return <p style={{ color: '#999' }}>Loading team settings...</p>;
+  if (loading) return <p style={{ color: '#9ca3af' }}>Loading team settings...</p>;
 
   return (
     <div>
-      <h1 style={{ marginTop: 0 }}>Team Settings</h1>
+      <h1 style={{ marginTop: 0, color: '#f0f2f7' }}>Team Settings</h1>
 
       {error && (
         <div style={{
           padding: '8px 12px',
-          background: '#fef2f2',
-          border: '1px solid #fca5a5',
+          background: 'rgba(239, 68, 68, 0.1)',
+          border: '1px solid rgba(239, 68, 68, 0.3)',
           borderRadius: 4,
-          color: '#991b1b',
+          color: '#f87171',
           marginBottom: 16,
           fontSize: 13,
         }}>
@@ -76,9 +76,10 @@ export function TeamSettings({ token, teamSlug, onTeamUpdated }: TeamSettingsPro
 
       <div style={{
         padding: 24,
-        background: '#fff',
+        background: '#12141a',
+        border: '1px solid #2a2d36',
         borderRadius: 8,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)',
         maxWidth: 480,
       }}>
         <div style={{ marginBottom: 16 }}>
@@ -91,9 +92,11 @@ export function TeamSettings({ token, teamSlug, onTeamUpdated }: TeamSettingsPro
               style={{
                 flex: 1,
                 padding: '8px 12px',
-                border: '1px solid #d1d5db',
+                background: '#1a1d25',
+                border: '1px solid #2a2d36',
                 borderRadius: 4,
                 fontSize: 14,
+                color: '#f0f2f7',
               }}
               onKeyDown={(e) => e.key === 'Enter' && handleSave()}
             />
@@ -102,12 +105,13 @@ export function TeamSettings({ token, teamSlug, onTeamUpdated }: TeamSettingsPro
               disabled={saving || !name.trim() || name === team?.name}
               style={{
                 padding: '8px 16px',
-                background: '#1a1a2e',
-                color: '#fff',
+                background: '#e5a000',
+                color: '#08090c',
                 border: 'none',
                 borderRadius: 4,
                 cursor: saving ? 'wait' : 'pointer',
                 fontSize: 14,
+                fontWeight: 600,
                 opacity: saving || !name.trim() || name === team?.name ? 0.6 : 1,
               }}
             >
@@ -118,7 +122,7 @@ export function TeamSettings({ token, teamSlug, onTeamUpdated }: TeamSettingsPro
 
         <div style={{ marginBottom: 12 }}>
           <label style={labelStyle}>Slug</label>
-          <p style={{ margin: 0, fontSize: 14, color: '#6b7280' }}>{team?.slug ?? '—'}</p>
+          <p style={{ margin: 0, fontSize: 14, color: '#cbd5e1' }}>{team?.slug ?? '—'}</p>
         </div>
 
         <div style={{ marginBottom: 12 }}>
@@ -128,7 +132,7 @@ export function TeamSettings({ token, teamSlug, onTeamUpdated }: TeamSettingsPro
 
         <div>
           <label style={labelStyle}>Created</label>
-          <p style={{ margin: 0, fontSize: 14, color: '#6b7280' }}>
+          <p style={{ margin: 0, fontSize: 14, color: '#cbd5e1' }}>
             {team?.createdAt ? new Date(team.createdAt).toLocaleDateString() : '—'}
           </p>
         </div>
@@ -141,7 +145,7 @@ const labelStyle: React.CSSProperties = {
   display: 'block',
   fontSize: 12,
   fontWeight: 600,
-  color: '#6b7280',
+  color: '#9ca3af',
   marginBottom: 4,
   textTransform: 'uppercase',
   letterSpacing: '0.05em',

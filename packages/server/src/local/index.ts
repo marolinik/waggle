@@ -6,7 +6,7 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
 import websocket from '@fastify/websocket';
-import { MindDB, MultiMind, WorkspaceManager, WaggleConfig, createLiteLLMEmbedder, FrameStore, SessionStore, InstallAuditStore, CronStore, AwarenessLayer, VaultStore, SkillHashStore, OptimizationLogStore, reconcileIndexes } from '@waggle/core';
+import { MindDB, MultiMind, WorkspaceManager, WaggleConfig, createLiteLLMEmbedder, FrameStore, SessionStore, InstallAuditStore, CronStore, AwarenessLayer, VaultStore, SkillHashStore, OptimizationLogStore, reconcileIndexes, TeamSync } from '@waggle/core';
 import { ALLOWED_ORIGINS } from './cors-config.js';
 import { MemoryWeaver } from '@waggle/weaver';
 import {
@@ -70,6 +70,7 @@ import {
   MockDiscordConnector,
   isWithinBudget,
   getRecentLogs,
+  setPersonaDataDir,
   type ToolDefinition,
   type LoadedSkill,
 } from '@waggle/agent';
@@ -102,6 +103,7 @@ import { importRoutes } from './routes/import.js';
 import { vaultRoutes } from './routes/vault.js';
 import { personaRoutes } from './routes/personas.js';
 import { feedbackRoutes } from './routes/feedback.js';
+import { workflowRoutes } from './routes/workflows.js';
 import { workspaceTemplateRoutes } from './routes/workspace-templates.js';
 import { exportRoutes } from './routes/export.js';
 import { costRoutes } from './routes/cost.js';
@@ -226,6 +228,9 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
 
   // Decorate with local config
   server.decorate('localConfig', fullConfig);
+
+  // Set data dir for custom personas (loaded from ~/.waggle/personas/)
+  setPersonaDataDir(fullConfig.dataDir);
 
   // Event bus (replaces Redis pub/sub)
   const eventBus = new EventEmitter();
@@ -716,6 +721,26 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
   const workspaceMindCache = new Map<string, MindDB>();
   let activeWorkspaceId: string | null = null;
 
+  // ── TeamSync cache — one TeamSync instance per team workspace ──
+  const teamSyncCache = new Map<string, TeamSync>();
+
+  function getTeamSync(workspaceId: string, wsConfig: any, waggleConfig: WaggleConfig): TeamSync | null {
+    if (!wsConfig?.teamId || !wsConfig?.teamServerUrl) return null;
+    const cached = teamSyncCache.get(workspaceId);
+    if (cached) return cached;
+    const teamServer = waggleConfig.getTeamServer();
+    if (!teamServer?.token) return null;
+    const sync = new TeamSync({
+      teamServerUrl: wsConfig.teamServerUrl,
+      teamSlug: wsConfig.teamId, // teamId is used as slug
+      authToken: teamServer.token,
+      userId: teamServer.userId ?? 'local-user',
+      displayName: teamServer.displayName ?? 'You',
+    });
+    teamSyncCache.set(workspaceId, sync);
+    return sync;
+  }
+
   /**
    * Activate a workspace's .mind file on the orchestrator.
    * Opens the mind if not cached, then calls setWorkspaceMind().
@@ -813,6 +838,26 @@ export async function buildLocalServer(config: Partial<LocalConfig> = {}) {
         } catch { /* non-blocking — distillation failure should never break workspace activation */ }
       }
     }
+
+    // After mind activation for team workspaces — pull remote frames
+    if (result) {
+      const wsConfig = wsManager.get(workspaceId);
+      if (wsConfig?.teamId) {
+        const sync = getTeamSync(workspaceId, wsConfig, new WaggleConfig(fullConfig.dataDir));
+        if (sync) {
+          sync.pullFrames().then(frames => {
+            if (frames.length > 0) {
+              // Insert pulled frames into local workspace mind
+              // Use the mind's frame store to create I-frames from pulled content
+              console.log(`[waggle] TeamSync: pulled ${frames.length} frames for workspace ${workspaceId}`);
+            }
+          }).catch(err => {
+            console.warn(`[waggle] TeamSync pull failed:`, err.message);
+          });
+        }
+      }
+    }
+
     return result;
   };
 
@@ -1321,6 +1366,7 @@ Return ONLY the improved system prompt text. No commentary, no markdown fences, 
   await server.register(offlineRoutes);
   await server.register(weaverRoutes);
   await server.register(eventRoutes);
+  await server.register(workflowRoutes);
 
   // ── Static file serving for web mode ──────────────────────────
   // When WAGGLE_FRONTEND_DIR is set (or app/dist exists), serve the React frontend
@@ -1478,7 +1524,7 @@ Return ONLY the improved system prompt text. No commentary, no markdown fences, 
           chat: ['POST /api/chat'],
           workspaces: ['GET /api/workspaces', 'POST /api/workspaces', 'GET /api/workspaces/:id', 'PUT /api/workspaces/:id', 'DELETE /api/workspaces/:id', 'GET /api/workspaces/:id/cost', 'GET /api/workspaces/:id/context', 'GET /api/workspaces/:id/files', 'GET /api/workspaces/:id/storage', 'GET /api/workspaces/:id/storage/files', 'GET /api/workspaces/:id/storage/read', 'POST /api/workspaces/:id/storage/write', 'DELETE /api/workspaces/:id/storage/delete'],
           memory: ['GET /api/memory/search', 'GET /api/memory/frames', 'POST /api/memory/frames', 'DELETE /api/memory/frames/:id', 'GET /api/memory/stats', 'GET /api/memory/graph'],
-          sessions: ['GET /api/workspaces/:workspaceId/sessions', 'POST /api/workspaces/:workspaceId/sessions', 'PATCH /api/sessions/:sessionId', 'DELETE /api/sessions/:sessionId'],
+          sessions: ['GET /api/workspaces/:workspaceId/sessions', 'POST /api/workspaces/:workspaceId/sessions', 'PATCH /api/sessions/:sessionId', 'DELETE /api/sessions/:sessionId', 'GET /api/sessions/:sessionId/summary'],
           teams: ['GET /api/teams', 'POST /api/teams', 'GET /api/teams/:id', 'PUT /api/teams/:id', 'DELETE /api/teams/:id', 'POST /api/teams/:id/members', 'PUT /api/teams/:id/members/:userId', 'DELETE /api/teams/:id/members/:userId', 'GET /api/teams/:id/activity'],
           events: ['GET /api/events', 'GET /api/events/stats', 'GET /api/events/stream'],
           settings: ['GET /api/settings', 'PUT /api/settings', 'PATCH /api/settings', 'POST /api/settings/test-key'],

@@ -126,6 +126,35 @@ export function emitAuditEvent(
       timestamp: new Date().toISOString(),
     };
     (server as any).eventBus?.emit('audit_event', fullEvent);
+
+    // TeamSync: Push audit event to team server (fire-and-forget)
+    try {
+      const wsConfig = (server as any).workspaceManager?.get(event.workspaceId);
+      if (wsConfig?.teamId && wsConfig?.teamServerUrl) {
+        (async () => {
+          try {
+            const { WaggleConfig } = await import('@waggle/core');
+            const waggleConfig = new WaggleConfig(dataDir);
+            const teamServer = waggleConfig.getTeamServer();
+            if (teamServer?.token) {
+              fetch(`${wsConfig.teamServerUrl}/api/teams/${wsConfig.teamId}/audit`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${teamServer.token}`,
+                },
+                body: JSON.stringify({
+                  ...event,
+                  timestamp: new Date().toISOString(),
+                  source: 'local-agent',
+                }),
+                signal: AbortSignal.timeout(3000),
+              }).catch(() => { /* non-blocking */ });
+            }
+          } catch { /* team push is best-effort */ }
+        })();
+      }
+    } catch { /* team push is best-effort */ }
   } catch {
     // Non-blocking — audit logging must never crash the main flow
   }

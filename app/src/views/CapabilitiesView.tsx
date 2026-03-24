@@ -191,7 +191,7 @@ function skillLabelClasses(state: string): string {
 // ── Component ────────────────────────────────────────────────────────────
 
 export default function CapabilitiesView() {
-  const [activeTab, setActiveTab] = useState<'packs' | 'marketplace' | 'skills'>('packs');
+  const [activeTab, setActiveTab] = useState<'recommended' | 'browse'>('recommended');
 
   // ── Create Skill panel state ──
   const [showCreateSkill, setShowCreateSkill] = useState(false);
@@ -229,6 +229,10 @@ export default function CapabilitiesView() {
   const [sortOption, setSortOption] = useState<SortOption>('popular');
   const [installingPackageId, setInstallingPackageId] = useState<number | null>(null);
   const [uninstallingPackageId, setUninstallingPackageId] = useState<number | null>(null);
+
+  // ── Post-install toast ──
+  const [installToast, setInstallToast] = useState<string | null>(null);
+  const installToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const baseUrl = getServerBaseUrl();
 
@@ -314,7 +318,7 @@ export default function CapabilitiesView() {
 
   // Fetch marketplace when tab is active or filters change
   useEffect(() => {
-    if (activeTab === 'marketplace') {
+    if (activeTab === 'browse') {
       // Debounce search queries
       if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
       searchTimeoutRef.current = setTimeout(() => {
@@ -401,6 +405,12 @@ export default function CapabilitiesView() {
           setMarketplacePackages(prev =>
             prev.map(p => p.id === packageId ? { ...p, installed: true } : p),
           );
+          // Show post-install toast
+          const pkg = marketplacePackages.find(p => p.id === packageId);
+          const name = pkg?.display_name || pkg?.name || 'Package';
+          if (installToastTimerRef.current) clearTimeout(installToastTimerRef.current);
+          setInstallToast(`${name} installed! Your agent now has new capabilities.`);
+          installToastTimerRef.current = setTimeout(() => setInstallToast(null), 3000);
         }
       }
     } catch {
@@ -408,7 +418,7 @@ export default function CapabilitiesView() {
     } finally {
       setInstallingPackageId(null);
     }
-  }, []);
+  }, [marketplacePackages]);
 
   // ── Uninstall a marketplace package ──
   const handleUninstallPackage = useCallback(async (packageId: number) => {
@@ -606,50 +616,48 @@ export default function CapabilitiesView() {
 
   return (
     <div className="p-6 max-w-[960px] mx-auto h-full overflow-y-auto">
-      <h1 className="text-lg font-semibold text-foreground mb-1">Capabilities</h1>
-      <div className="text-xs text-muted-foreground mb-6">Browse and install capability packs, marketplace packages, and individual skills.</div>
+      <h1 className="text-lg font-semibold text-foreground mb-1">Skills &amp; Apps</h1>
+      <div className="text-xs text-muted-foreground mb-6">Browse and install capability packs, marketplace packages, and custom skills.</div>
 
       {/* Tab bar */}
       <div className="flex gap-0.5 mb-6 border-b border-border" role="tablist" aria-label="Capability sections">
         <button
           className={`px-4 py-2 text-xs font-medium bg-transparent border-none cursor-pointer font-[inherit] transition-colors ${
-            activeTab === 'packs'
+            activeTab === 'recommended'
               ? 'text-primary border-b-2 border-b-primary'
               : 'text-muted-foreground border-b-2 border-b-transparent hover:text-foreground'
           }`}
-          onClick={() => setActiveTab('packs')}
+          onClick={() => setActiveTab('recommended')}
           role="tab"
-          aria-selected={activeTab === 'packs'}
-          aria-controls="panel-packs"
+          aria-selected={activeTab === 'recommended'}
+          aria-controls="panel-recommended"
         >
-          Packs ({totalPackCount})
+          Recommended ({totalPackCount})
         </button>
         <button
           className={`px-4 py-2 text-xs font-medium bg-transparent border-none cursor-pointer font-[inherit] transition-colors ${
-            activeTab === 'marketplace'
+            activeTab === 'browse'
               ? 'text-primary border-b-2 border-b-primary'
               : 'text-muted-foreground border-b-2 border-b-transparent hover:text-foreground'
           }`}
-          onClick={() => setActiveTab('marketplace')}
+          onClick={() => setActiveTab('browse')}
           role="tab"
-          aria-selected={activeTab === 'marketplace'}
-          aria-controls="panel-marketplace"
+          aria-selected={activeTab === 'browse'}
+          aria-controls="panel-browse"
         >
-          Marketplace {marketplaceTotal > 0 ? `(${marketplaceTotal})` : ''}
+          Browse All {marketplaceTotal > 0 ? `(${marketplaceTotal})` : ''}
         </button>
-        <button
-          className={`px-4 py-2 text-xs font-medium bg-transparent border-none cursor-pointer font-[inherit] transition-colors ${
-            activeTab === 'skills'
-              ? 'text-primary border-b-2 border-b-primary'
-              : 'text-muted-foreground border-b-2 border-b-transparent hover:text-foreground'
-          }`}
-          onClick={() => setActiveTab('skills')}
-          role="tab"
-          aria-selected={activeTab === 'skills'}
-          aria-controls="panel-skills"
-        >
-          Individual Skills
-        </button>
+      </div>
+
+      {/* Connector cross-link */}
+      <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 mb-4 flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-medium text-foreground">Connect Your Tools</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Link GitHub, Slack, and 250+ apps to your agent</p>
+        </div>
+        <span className="text-xs px-3 py-1.5 rounded border border-primary/30 text-primary">
+          Settings &rarr; Keys &amp; Connections
+        </span>
       </div>
 
       {/* Pack error */}
@@ -662,8 +670,8 @@ export default function CapabilitiesView() {
       {/* ════════════════════════════════════════════════════════════════════
           Packs tab
           ════════════════════════════════════════════════════════════════════ */}
-      {activeTab === 'packs' && (
-        <div id="panel-packs" role="tabpanel" aria-label="Packs">
+      {activeTab === 'recommended' && (
+        <div id="panel-recommended" role="tabpanel" aria-label="Recommended">
           {/* ── Recommended Section ─────────────────────────────────── */}
           <div className="flex items-center gap-2 mb-4 mt-2">
             <span className="text-[13px] font-semibold text-foreground tracking-wide">Recommended</span>
@@ -864,8 +872,8 @@ export default function CapabilitiesView() {
       {/* ════════════════════════════════════════════════════════════════════
           Marketplace tab — search, filter, sort, install/uninstall
           ════════════════════════════════════════════════════════════════════ */}
-      {activeTab === 'marketplace' && (
-        <div id="panel-marketplace" role="tabpanel" aria-label="Marketplace">
+      {activeTab === 'browse' && (
+        <div id="panel-browse" role="tabpanel" aria-label="Browse All">
           {/* ── Filter bar ────────────────────────────────────────── */}
           <div className="flex flex-col gap-3 mb-5">
             {/* Search input */}
@@ -1101,27 +1109,25 @@ export default function CapabilitiesView() {
               </div>
             </>
           )}
-        </div>
-      )}
 
-      {/* ════════════════════════════════════════════════════════════════════
-          Individual Skills tab — reuses existing InstallCenter
-          ════════════════════════════════════════════════════════════════════ */}
-      {activeTab === 'skills' && (
-        <div id="panel-skills" role="tabpanel" aria-label="Individual Skills">
-          {/* ── Create Skill panel ── */}
-          <div className="mb-4">
+          {/* ════════════════════════════════════════════════════════════════════
+              Advanced: Individual Skills — collapsible section at bottom
+              ════════════════════════════════════════════════════════════════════ */}
+          <div className="mt-8 border-t border-border pt-6">
             <button
               onClick={() => { setShowCreateSkill(v => !v); setCreateError(null); setCreateSuccess(null); }}
-              className={`border border-border rounded-md px-4 py-2 text-[13px] font-medium cursor-pointer flex items-center gap-1.5 transition-colors ${
+              className={`flex w-full items-center justify-between rounded-md border border-border px-4 py-2.5 text-[13px] font-medium cursor-pointer transition-colors ${
                 showCreateSkill
                   ? 'bg-muted text-foreground'
                   : 'bg-card text-foreground hover:bg-muted'
               }`}
               data-testid="create-skill-toggle"
             >
-              <span className="text-base leading-none">{showCreateSkill ? '\u2212' : '+'}</span>
-              Create Skill
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Advanced</span>
+                <span className="text-xs text-muted-foreground">Create Custom Skill</span>
+              </div>
+              <span className="text-xs text-muted-foreground">{showCreateSkill ? '\u25B2' : '\u25BC'}</span>
             </button>
 
             {showCreateSkill && (
@@ -1235,9 +1241,26 @@ export default function CapabilitiesView() {
                 </button>
               </div>
             )}
-          </div>
 
-          <InstallCenter />
+            {/* InstallCenter for individual skill browsing */}
+            <div className="mt-4">
+              <InstallCenter />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Post-install toast */}
+      {installToast && (
+        <div className="fixed bottom-6 right-6 z-[10000] bg-card border border-green-500/30 border-l-[3px] border-l-green-500 rounded-lg px-4 py-3 shadow-[0_4px_12px_rgba(0,0,0,0.3)] max-w-[360px] animate-in fade-in slide-in-from-bottom-2">
+          <div className="flex items-center gap-2">
+            <span className="text-green-500 text-sm">&#10003;</span>
+            <span className="text-xs text-foreground">{installToast}</span>
+            <button
+              onClick={() => { if (installToastTimerRef.current) clearTimeout(installToastTimerRef.current); setInstallToast(null); }}
+              className="ml-auto bg-transparent border-none text-muted-foreground cursor-pointer text-sm px-1 hover:text-foreground"
+            >&times;</button>
+          </div>
         </div>
       )}
     </div>

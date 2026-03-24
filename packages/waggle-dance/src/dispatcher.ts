@@ -41,6 +41,8 @@ export class WaggleDanceDispatcher {
         return this.handleKnowledgeCheck(message);
       case 'skill_request':
         return this.handleSkillRequest(message);
+      case 'skill_share':
+        return this.handleSkillShare(message);
       default:
         return { handled: false, error: `Unhandled subtype: ${message.subtype}` };
     }
@@ -75,6 +77,26 @@ export class WaggleDanceDispatcher {
     } catch (err) {
       return { handled: false, error: `Memory search failed: ${err instanceof Error ? err.message : String(err)}` };
     }
+  }
+
+  private async handleSkillShare(message: WaggleMessage): Promise<DispatchResult> {
+    const skillName = (message.content.name as string) ?? (message.content.skill as string) ?? '';
+    const skillContent = (message.content.content as string) ?? '';
+
+    if (!skillName || !skillContent) {
+      return { handled: false, error: 'skill_share requires content.name and content.content' };
+    }
+
+    // Return parsed skill data — the caller (local server / WS handler) handles persistence.
+    return {
+      handled: true,
+      response: JSON.stringify({
+        action: 'install_shared_skill',
+        skillName,
+        skillContent,
+        sharedBy: (message.content.sharedBy as string) ?? 'unknown',
+      }),
+    };
   }
 
   private async handleSkillRequest(message: WaggleMessage): Promise<DispatchResult> {

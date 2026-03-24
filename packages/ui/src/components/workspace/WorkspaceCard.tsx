@@ -28,6 +28,23 @@ function formatRelativeTime(isoDate: string): string {
   }
 }
 
+/** Compute a 0–100 health score from available workspace data */
+function computeHealthScore(ws: { model?: string; personaId?: string }, memoryCount?: number, lastActive?: string): number {
+  let score = 0;
+  // Memory depth (0-30)
+  score += Math.min(30, (memoryCount ?? 0) * 3);
+  // Recency (0-30) — based on lastActive
+  if (lastActive) {
+    const hoursAgo = (Date.now() - new Date(lastActive).getTime()) / 3600000;
+    score += hoursAgo < 1 ? 30 : hoursAgo < 24 ? 20 : hoursAgo < 168 ? 10 : 0;
+  }
+  // Has persona (20)
+  if (ws.personaId) score += 20;
+  // Has model (20)
+  if (ws.model) score += 20;
+  return score;
+}
+
 export interface WorkspaceCardProps {
   workspace: Workspace;
   isActive: boolean;
@@ -43,6 +60,8 @@ export interface WorkspaceCardProps {
 
 export function WorkspaceCard({ workspace, isActive, onClick, onContextMenu, isAgentActive, memoryCount, lastActive }: WorkspaceCardProps) {
   const isTeam = Boolean(workspace.teamId);
+  const health = computeHealthScore(workspace, memoryCount, lastActive);
+  const healthColor = health > 70 ? '#34d399' : health > 40 ? '#fbbf24' : '#6b7280';
 
   return (
     <button
@@ -56,6 +75,9 @@ export function WorkspaceCard({ workspace, isActive, onClick, onContextMenu, isA
       onContextMenu={onContextMenu}
       title={workspace.name + (isTeam ? ' (Team)' : '')}
     >
+      {/* Health score dot */}
+      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: healthColor }} title={`Health: ${health}/100`} />
+
       {/* Hex dot + agent active indicator */}
       <span className="workspace-card__icon text-[10px] relative shrink-0" style={{ color: isActive ? 'var(--honey-500)' : 'var(--hive-500)' }}>
         ⬡
@@ -78,6 +100,15 @@ export function WorkspaceCard({ workspace, isActive, onClick, onContextMenu, isA
         )}
       </span>
 
+      {/* UX-019: Model badge — subtle truncated model name */}
+      {workspace.model && (
+        <span className="workspace-card__model-badge text-[9px] truncate max-w-[80px] shrink-0"
+          style={{ color: 'var(--hive-500)', opacity: 0.6 }}
+          title={workspace.model}>
+          {workspace.model.replace('claude-', '').replace('-4-6', '').slice(0, 12)}
+        </span>
+      )}
+
       {/* M1: Memory count badge — pill container */}
       {memoryCount != null && memoryCount > 0 && (
         <span
@@ -89,14 +120,20 @@ export function WorkspaceCard({ workspace, isActive, onClick, onContextMenu, isA
         </span>
       )}
 
-      {/* Team badge */}
+      {/* Team badge + role indicator */}
       {isTeam && (
         <span
-          className="workspace-card__team-badge rounded px-1.5 py-0.5 text-[9px] font-medium"
+          className="workspace-card__team-badge rounded px-1.5 py-0.5 text-[9px] font-medium inline-flex items-center"
           style={{ backgroundColor: 'var(--honey-glow)', color: 'var(--honey-500)' }}
           title={`Team workspace (${workspace.teamRole ?? 'member'})`}
         >
           Team
+          {workspace.teamRole && (
+            <span className="text-[9px] font-semibold uppercase tracking-wider ml-0.5"
+              style={{ color: workspace.teamRole === 'owner' ? 'var(--honey-500)' : workspace.teamRole === 'admin' ? 'var(--honey-400)' : 'var(--hive-400)' }}>
+              {workspace.teamRole === 'owner' ? 'O' : workspace.teamRole === 'admin' ? 'A' : workspace.teamRole === 'member' ? 'M' : 'V'}
+            </span>
+          )}
         </span>
       )}
     </button>

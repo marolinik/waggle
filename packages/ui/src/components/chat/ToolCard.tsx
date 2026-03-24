@@ -67,7 +67,7 @@ function describeToolAction(name: string, input: Record<string, unknown>): strin
     case 'search_memory':
       return `Recalling: "${String(input.query ?? '').slice(0, 50)}"`;
     case 'save_memory':
-      return 'Saving to memory';
+      return 'Remembered \u2713';
     case 'get_identity':
       return 'Checking identity';
     case 'get_awareness':
@@ -116,6 +116,10 @@ function describeToolAction(name: string, input: Record<string, unknown>): strin
       return 'Listing agents';
     case 'get_agent_result':
       return `Getting agent result: ${input.name ?? input.id ?? ''}`;
+    case 'compose_workflow':
+      return `Analyzing task complexity: "${String(input.task ?? '').slice(0, 50)}"`;
+    case 'run_workflow':
+      return `Running workflow: ${String(input.template ?? input.name ?? '')}`;
     default:
       return name.replace(/_/g, ' ');
   }
@@ -141,6 +145,7 @@ function summarizeResult(result: string | undefined, name: string): string | nul
   }
   // B5: auto_recall shows a content snippet for trust signal
   if (name === 'auto_recall') {
+    const breadcrumb = ' \u00B7 Browse all (Ctrl+Shift+5)';
     if (text.includes('No relevant memories')) return 'No memories found';
     // Extract first memory snippet from the result
     const snippetMatch = text.match(/^\s+-\s+(.+)$/m);
@@ -149,9 +154,10 @@ function summarizeResult(result: string | undefined, name: string): string | nul
       const truncated = snippet.length > 60 ? snippet.slice(0, 57) + '...' : snippet;
       const countMatch = text.match(/^(\d+) memories/);
       const count = countMatch ? countMatch[1] : '';
-      return count ? `${count} recalled: "${truncated}"` : `Recalled: "${truncated}"`;
+      const relevanceLabel = count ? (parseInt(count) >= 3 ? ' \u00B7 high relevance' : parseInt(count) >= 1 ? ' \u00B7 relevant' : '') : '';
+      return count ? `${count} recalled${relevanceLabel}: "${truncated}"${breadcrumb}` : `Recalled: "${truncated}"${breadcrumb}`;
     }
-    return 'Recalled relevant memories';
+    return 'Recalled relevant memories' + breadcrumb;
   }
   if (name === 'generate_docx' && text.startsWith('Successfully')) {
     return text.split('\n')[0];

@@ -18,7 +18,7 @@ export function CapabilityOverviewCard({ capabilities }: CapabilityOverviewCardP
   return (
     <Card size="sm">
       <CardHeader>
-        <CardTitle className="text-sm font-semibold tracking-wide">Runtime Overview</CardTitle>
+        <CardTitle className="text-sm font-semibold tracking-wide">Installed Tools</CardTitle>
       </CardHeader>
       <CardContent>
         {!capabilities ? (
@@ -40,6 +40,13 @@ export function CapabilityOverviewCard({ capabilities }: CapabilityOverviewCardP
               <span>Native: {capabilities.tools.native}</span>
               <span>Plugin: {capabilities.tools.plugin}</span>
               <span>MCP: {capabilities.tools.mcp}</span>
+            </div>
+            {/* UX-028: Improvement signals visibility placeholder */}
+            <div className="mt-2 pt-2 text-xs text-muted-foreground/60" style={{ borderTop: '1px solid var(--hive-700)' }}>
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400/60 animate-pulse" />
+                <span>Agent learning active — patterns tracked automatically</span>
+              </div>
             </div>
           </>
         )}

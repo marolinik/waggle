@@ -55,6 +55,11 @@ export function ConnectorsCard({
                     >
                       {c.status}
                     </span>
+                    {c.status === 'connected' && c.capabilities && c.capabilities.length > 0 && (
+                      <span className="text-[10px] text-muted-foreground ml-1">
+                        · {c.capabilities.length} {c.capabilities.length === 1 ? 'action' : 'actions'}
+                      </span>
+                    )}
                   </div>
 
                   {(c.status === 'connected' || c.status === 'error') && (

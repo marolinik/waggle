@@ -6,6 +6,8 @@
  * is appended after the core prompt via composePersonaPrompt().
  */
 
+import { loadCustomPersonas } from './custom-personas.js';
+
 export interface AgentPersona {
   id: string;
   name: string;
@@ -284,14 +286,22 @@ You think like a top-tier management consultant. Structure everything. Depth ove
   },
 ];
 
-/** Get a persona by ID */
+/** Get a persona by ID (built-in only — use listPersonas() for full catalog) */
 export function getPersona(id: string): AgentPersona | null {
   return PERSONAS.find(p => p.id === id) ?? null;
 }
 
-/** List all available personas (for UI catalog) */
+let _customDataDir: string | null = null;
+
+/** Set the data directory for custom personas (called once at startup) */
+export function setPersonaDataDir(dataDir: string): void {
+  _customDataDir = dataDir;
+}
+
+/** List all available personas — built-in + custom from disk */
 export function listPersonas(): AgentPersona[] {
-  return [...PERSONAS];
+  const custom = _customDataDir ? loadCustomPersonas(_customDataDir) : [];
+  return [...PERSONAS, ...custom];
 }
 
 const MAX_COMBINED_CHARS = 32000; // ~8000 tokens

@@ -10,18 +10,19 @@ const TABLE_STYLE: React.CSSProperties = {
   width: '100%',
   borderCollapse: 'collapse',
   marginTop: 16,
-  background: '#fff',
+  background: '#12141a',
+  border: '1px solid #2a2d36',
   borderRadius: 8,
   overflow: 'hidden',
-  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+  boxShadow: '0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)',
 };
 
 const TH_STYLE: React.CSSProperties = {
   textAlign: 'left',
   padding: '12px 16px',
-  borderBottom: '2px solid #eee',
+  borderBottom: '1px solid #2a2d36',
   fontSize: 13,
-  color: '#666',
+  color: '#9ca3af',
   textTransform: 'uppercase',
   letterSpacing: 0.5,
 };
@@ -29,6 +30,7 @@ const TH_STYLE: React.CSSProperties = {
 const TD_STYLE: React.CSSProperties = {
   padding: '10px 16px',
   fontSize: 14,
+  color: '#cbd5e1',
 };
 
 function approvalLabel(entry: AuditEntryResponse): string {
@@ -75,15 +77,15 @@ export function Audit({ token, teamSlug }: AuditProps) {
 
   return (
     <div>
-      <h1 style={{ marginTop: 0 }}>Audit Log</h1>
+      <h1 style={{ marginTop: 0, color: '#f0f2f7' }}>Audit Log</h1>
 
       {error && (
         <div style={{
           padding: '12px 16px',
-          background: '#fffbeb',
-          border: '1px solid #fbbf24',
+          background: 'rgba(251, 191, 36, 0.1)',
+          border: '1px solid rgba(251, 191, 36, 0.3)',
           borderRadius: 4,
-          color: '#92400e',
+          color: '#fbbf24',
           marginBottom: 16,
           fontSize: 13,
         }}>
@@ -92,15 +94,16 @@ export function Audit({ token, teamSlug }: AuditProps) {
       )}
 
       {loading ? (
-        <p style={{ color: '#999' }}>Loading audit log...</p>
+        <p style={{ color: '#9ca3af' }}>Loading audit log...</p>
       ) : entries.length === 0 && !error ? (
         <div style={{
           padding: 32,
-          background: '#fff',
+          background: '#12141a',
+          border: '1px solid #2a2d36',
           borderRadius: 8,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)',
           textAlign: 'center',
-          color: '#999',
+          color: '#9ca3af',
         }}>
           <p style={{ fontSize: 16, marginBottom: 4 }}>No audit entries</p>
           <p style={{ fontSize: 13 }}>Agent actions will appear here as they are logged.</p>
@@ -118,17 +121,17 @@ export function Audit({ token, teamSlug }: AuditProps) {
           </thead>
           <tbody>
             {entries.map((entry) => (
-              <tr key={entry.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+              <tr key={entry.id} style={{ borderBottom: '1px solid #1a1d25' }}>
                 <td style={TD_STYLE}>
-                  <span style={{ fontWeight: 600 }}>{entry.agentName}</span>
+                  <span style={{ fontWeight: 600, color: '#f0f2f7' }}>{entry.agentName}</span>
                 </td>
                 <td style={TD_STYLE}>
                   <span style={{
                     padding: '2px 8px',
                     borderRadius: 4,
                     fontSize: 12,
-                    background: '#e5e7eb',
-                    color: '#374151',
+                    background: 'rgba(229, 160, 0, 0.12)',
+                    color: '#f0b429',
                   }}>
                     {entry.actionType}
                   </span>

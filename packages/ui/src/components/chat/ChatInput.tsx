@@ -71,6 +71,36 @@ function formatModelName(model: string): string {
     .replace(/\b\w/g, c => c.toUpperCase());
 }
 
+function getCommandIcon(name: string): string {
+  const icons: Record<string, string> = {
+    '/catchup': '\uD83D\uDCE1',
+    '/research': '\uD83D\uDD0D',
+    '/draft': '\uD83D\uDCDD',
+    '/plan': '\uD83D\uDCCB',
+    '/decide': '\u2696\uFE0F',
+    '/review': '\uD83D\uDC41',
+    '/spawn': '\uD83E\uDD16',
+    '/status': '\uD83D\uDCCA',
+    '/memory': '\uD83E\uDDE0',
+    '/help': '\u2753',
+    '/focus': '\uD83C\uDFAF',
+    '/skills': '\uD83D\uDEE0',
+    '/plugins': '\uD83E\uDDE9',
+    '/export': '\uD83D\uDCE4',
+    '/import': '\uD83D\uDCE5',
+    '/settings': '\u2699\uFE0F',
+    '/now': '\uD83D\uDCCD',
+    '/model': '\uD83E\uDD16',
+    '/models': '\uD83D\uDCCB',
+    '/cost': '\uD83D\uDCB0',
+    '/clear': '\uD83E\uDDF9',
+    '/identity': '\uD83C\uDFAD',
+    '/awareness': '\uD83D\uDCA1',
+    '/git': '\uD83D\uDD00',
+  };
+  return icons[name] ?? '\u25C8';
+}
+
 export function ChatInput({
   onSubmit,
   onSlashCommand,
@@ -200,18 +230,17 @@ export function ChatInput({
               key={cmd.name}
               onClick={() => selectCommand(cmd)}
               onMouseEnter={() => setSelectedIndex(i)}
-              className={`flex items-center gap-3 w-full py-2 px-3 border-none rounded-md text-foreground cursor-pointer text-left text-[13px] font-mono ${
+              className={`flex items-center gap-2 w-full px-3 py-2 border-none rounded-md text-foreground cursor-pointer text-left ${
                 i === selectedIndex ? 'bg-primary/15' : 'bg-transparent'
               }`}
             >
-              <span className="text-primary font-semibold min-w-[90px]">
-                {cmd.name}
-              </span>
-              <span className="text-muted-foreground text-xs font-[inherit]">
-                {cmd.description}
-              </span>
+              <span className="text-sm w-5 text-center">{getCommandIcon(cmd.name)}</span>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-foreground font-mono">{cmd.name}</div>
+                <div className="text-xs text-muted-foreground truncate">{cmd.description}</div>
+              </div>
               {cmd.args && (
-                <span className="text-muted-foreground/30 text-[11px] ml-auto">
+                <span className="text-muted-foreground/30 text-[11px] shrink-0">
                   {cmd.args}
                 </span>
               )}

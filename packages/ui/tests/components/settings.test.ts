@@ -192,11 +192,11 @@ describe('SETTINGS_TABS', () => {
     expect(SETTINGS_TABS.length).toBeGreaterThan(0);
   });
 
-  it('has General, Models, Vault, Permissions, Team, Backup, Advanced tabs', () => {
+  it('has General, Models, Keys & Connections, Permissions, Team, Backup, Advanced tabs', () => {
     const labels = SETTINGS_TABS.map((t) => t.label);
     expect(labels).toContain('General');
     expect(labels).toContain('Models');
-    expect(labels).toContain('Vault');
+    expect(labels).toContain('Keys & Connections');
     expect(labels).toContain('Permissions');
     expect(labels).toContain('Team');
     expect(labels).toContain('Backup');

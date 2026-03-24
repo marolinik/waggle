@@ -574,6 +574,20 @@ export function createDocumentTools(workspace: string): ToolDefinition[] {
             ? `Key sections: ${headings.join(', ')}. ${firstParagraph ? `Opening: "${firstParagraph}..."` : ''}`
             : firstParagraph ? `Content preview: "${firstParagraph}..."` : '';
 
+          // Strip markdown formatting for a plain-text chat summary
+          const strippedContent = content
+            .replace(/^#{1,6}\s+/gm, '')
+            .replace(/\*{1,3}([^*]+)\*{1,3}/g, '$1')
+            .replace(/`([^`]+)`/g, '$1')
+            .replace(/^\s*[-*]\s+/gm, '')
+            .replace(/^\s*\d+\.\s+/gm, '')
+            .replace(/\|/g, '')
+            .replace(/^[-:]+$/gm, '')
+            .replace(/\n{2,}/g, ' ')
+            .replace(/\n/g, ' ')
+            .trim();
+          const summary = strippedContent.slice(0, 250);
+
           return (
             `Successfully generated ${filePath} (${sizeKB} KB)\n` +
             `Structure: ${blocks.filter((b) => b.type === 'heading').length} headings, ` +
@@ -581,6 +595,7 @@ export function createDocumentTools(workspace: string): ToolDefinition[] {
             `${blocks.filter((b) => b.type === 'table').length} tables, ` +
             `${blocks.filter((b) => b.type === 'bullet' || b.type === 'numbered').length} list items.\n` +
             `${excerpt}\n` +
+            `Summary: ${summary}...\n` +
             `IMPORTANT: Provide a 2-3 sentence summary of the document content in your response to the user. Do NOT just say "Generating document..." — describe what was generated.`
           );
         } catch (err: any) {

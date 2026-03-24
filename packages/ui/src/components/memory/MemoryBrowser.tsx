@@ -125,7 +125,7 @@ export function MemoryBrowser({
               <img src="/brand/bee-researcher-dark.png" alt="Memory" className="w-[120px] h-[120px] float opacity-80 bee-image-researcher" />
               <h3 className="text-base font-medium" style={{ color: 'var(--hive-100)' }}>No memories yet</h3>
               <p className="text-sm max-w-xs" style={{ color: 'var(--hive-400)' }}>
-                Start a conversation and I'll remember what matters.
+                Start a conversation — memories build automatically. Your agent gets smarter every session.
               </p>
             </div>
           ) : (
@@ -147,15 +147,15 @@ export function MemoryBrowser({
               {stats ? (
                 <div className="space-y-2">
                   <p className="text-sm font-medium" style={{ color: 'var(--hive-300)' }}>
-                    {stats.totalFrames} frames · {stats.entities} entities
+                    {stats.totalFrames} memories · {stats.entities} entities
                   </p>
                   <p className="text-xs" style={{ color: 'var(--hive-500)' }}>
-                    Select a frame to view details
+                    Select a memory to view details
                   </p>
                 </div>
               ) : (
                 <p className="text-sm" style={{ color: 'var(--hive-500)' }}>
-                  Select a frame to view details
+                  Select a memory to view details
                 </p>
               )}
             </div>
@@ -166,7 +166,7 @@ export function MemoryBrowser({
       {/* Stats footer */}
       {stats && (
         <div className="memory-browser__stats flex items-center gap-4 px-3 py-1.5 text-xs" style={{ borderTop: '1px solid var(--hive-700)', color: 'var(--hive-400)', backgroundColor: 'var(--hive-850)' }}>
-          <span>{stats.totalFrames} frames</span>
+          <span>{stats.totalFrames} memories</span>
           <span>{stats.entities} entities</span>
           <span>{stats.relations} relations</span>
           {stats.mindFileSize !== undefined && (

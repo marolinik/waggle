@@ -83,6 +83,17 @@ function composeWorkspaceSummary(
   return parts.join(' ');
 }
 
+// IMP-012: Template-to-capability-pack mapping for workspace templates
+const TEMPLATE_PACK_MAP: Record<string, string> = {
+  'sales': 'collaboration_hub',
+  'research': 'research_analyst',
+  'legal': 'document_master',
+  'marketing': 'document_master',
+  'code-review': 'developer_workspace',
+  'product-launch': 'workflow_automator',
+  'agency': 'collaboration_hub',
+};
+
 export const workspaceRoutes: FastifyPluginAsync = async (server) => {
   // GET /api/workspaces — list all workspaces (F6: optional ?group and ?teamId filters)
   server.get<{
@@ -110,6 +121,7 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
       model?: string;
       personaId?: string;
       directory?: string;
+      template?: string;
       teamId?: string;
       teamServerUrl?: string;
       teamRole?: 'owner' | 'admin' | 'member' | 'viewer';
@@ -168,6 +180,50 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
     }
 
     emitAuditEvent(server, { workspaceId: ws.id, eventType: 'workspace_create', input: JSON.stringify({ name: ws.name, group: ws.group }) });
+
+    // IMP-012: Fire-and-forget template skill pack installation
+    const template = request.body?.template as string;
+    if (template && TEMPLATE_PACK_MAP[template]) {
+      const packId = TEMPLATE_PACK_MAP[template];
+      const port = (server.server.address() as any)?.port ?? 3333;
+      fetch(`http://127.0.0.1:${port}/api/skills/capability-packs/${packId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      }).catch(() => { /* pack install is best-effort */ });
+    }
+
+    // Register workspace on team server (fire-and-forget)
+    if (teamId && teamServerUrl) {
+      try {
+        const { WaggleConfig } = await import('@waggle/core');
+        const waggleConfig = new WaggleConfig(server.localConfig.dataDir);
+        const teamServer = waggleConfig.getTeamServer();
+        if (teamServer?.token) {
+          fetch(`${teamServerUrl}/api/teams/${teamId}/entities`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${teamServer.token}`,
+            },
+            body: JSON.stringify({
+              entityType: 'workspace',
+              name: ws.id,
+              properties: {
+                displayName: ws.name,
+                group: ws.group,
+                model: ws.model,
+                personaId: ws.personaId,
+                createdBy: teamUserId ?? 'local-user',
+              },
+            }),
+            signal: AbortSignal.timeout(5000),
+          }).catch(err => {
+            console.warn(`[waggle] Team workspace registration failed:`, err.message);
+          });
+        }
+      } catch { /* team registration is best-effort */ }
+    }
+
     return reply.status(201).send(ws);
   });
 

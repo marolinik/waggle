@@ -43,6 +43,11 @@ export interface AgentLoopConfig {
   maxTokenBudget?: number;
   /** Optional abort signal — when aborted, the agent loop exits between turns */
   signal?: AbortSignal;
+  /** Team governance policies — blocked tools and allowed sources */
+  governancePolicies?: {
+    blockedTools?: string[];
+    allowedSources?: string[];
+  };
 }
 
 export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentResponse> {
@@ -328,6 +333,18 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentRespon
 
       if (onToolUse) {
         onToolUse(fnName, fnArgs);
+      }
+
+      // Governance enforcement — check team policies before tool execution
+      if (config.governancePolicies?.blockedTools?.includes(fnName)) {
+        const policyMsg = `Tool "${fnName}" is blocked by your team's governance policy. Contact your team admin to request access, or use the request_team_capability tool to submit a request.`;
+        messages.push({
+          role: 'tool',
+          content: policyMsg,
+          tool_call_id: toolCall.id,
+        });
+        if (onToolResult) onToolResult(fnName, fnArgs, policyMsg);
+        continue; // Skip execution, process next tool call
       }
 
       // Fire pre:tool hook — may cancel execution

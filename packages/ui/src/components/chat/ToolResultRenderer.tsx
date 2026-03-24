@@ -154,6 +154,22 @@ function SearchFilesResult({ input, result }: { input: Record<string, unknown>; 
   );
 }
 
+function DocxResult({ input }: { input: Record<string, unknown>; result?: string }) {
+  const filePath = String(input.path ?? input.file_path ?? '');
+  const title = String(input.title ?? '');
+  return (
+    <div className="tool-result tool-result--docx">
+      <div className="flex items-center gap-2 rounded border border-border bg-card px-3 py-2">
+        <span className="text-lg">{'\uD83D\uDCC4'}</span>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium text-foreground truncate">{filePath || 'document.docx'}</div>
+          {title && <div className="text-xs text-muted-foreground truncate">{title}</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DefaultResult({ toolName, input, result }: ToolResultRendererProps) {
   return (
     <div className="tool-result tool-result--default">
@@ -181,6 +197,25 @@ function DefaultResult({ toolName, input, result }: ToolResultRendererProps) {
  * This renderer focuses on displaying results, not gating execution.
  */
 export function ToolResultRenderer({ toolName, input, result }: ToolResultRendererProps) {
+  const isDemo = result != null && (
+    result.includes('[DEMO]') ||
+    result.includes('"demo":true') ||
+    result.includes('"demo": true')
+  );
+
+  return (
+    <div>
+      {isDemo && (
+        <span className="inline-flex items-center gap-1 text-[10px] bg-yellow-900/30 text-yellow-400 px-1.5 py-0.5 rounded mb-1">
+          DEMO
+        </span>
+      )}
+      <ToolResultInner toolName={toolName} input={input} result={result} />
+    </div>
+  );
+}
+
+function ToolResultInner({ toolName, input, result }: ToolResultRendererProps) {
   switch (toolName) {
     case 'read_file':
       return <ReadFileResult input={input} result={result} />;
@@ -197,6 +232,15 @@ export function ToolResultRenderer({ toolName, input, result }: ToolResultRender
     case 'search_files':
     case 'search_content':
       return <SearchFilesResult input={input} result={result} />;
+    case 'generate_docx':
+      return (
+        <>
+          <DocxResult input={input} result={result} />
+          <div className="text-[10px] text-muted-foreground/50 mt-1">
+            Your agent can also create plans (/plan) and research reports (/research)
+          </div>
+        </>
+      );
     default:
       return <DefaultResult toolName={toolName} input={input} result={result} />;
   }

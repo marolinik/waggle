@@ -318,6 +318,7 @@ function helpCommand(): CommandDefinition {
         `| \`/export [type]\` | Export workspace data (memories, sessions, all) |`,
         `| \`/import <source>\` | Import data into workspace memory |`,
         `| \`/settings\` | Show workspace and agent settings |`,
+        `| \`/cli [action]\` | Manage CLI tool access — view, allow, or deny programs |`,
         `| \`/help\` | List all available commands |`,
       ];
       return lines.join('\n');
@@ -384,6 +385,44 @@ function settingsCommand(): CommandDefinition {
   };
 }
 
+function cliCommand(): CommandDefinition {
+  return {
+    name: 'cli',
+    aliases: ['cli-tools'],
+    description: 'Manage CLI tool access — view, allow, or deny CLI programs',
+    usage: '/cli [allow|deny|discover] [name]',
+    handler: async (args, _ctx) => {
+      const trimmed = args.trim();
+
+      // /cli (no args) — show current allowlist info
+      if (!trimmed) {
+        return 'No CLI tools explicitly allowed. The agent auto-discovers common CLIs (git, node, docker, etc.) on your PATH.\n\nUse `/cli allow <name>` to add a CLI to the allowlist.';
+      }
+
+      // /cli allow <name>
+      if (trimmed.startsWith('allow ')) {
+        const name = trimmed.slice(6).trim();
+        if (!name) return 'Usage: `/cli allow <program-name>`';
+        return `To allow "${name}", add it to your CLI allowlist in ~/.waggle/config.json under "cliAllowlist": ["${name}"].\n\nAutomatic config update coming soon.`;
+      }
+
+      // /cli deny <name>
+      if (trimmed.startsWith('deny ')) {
+        const name = trimmed.slice(5).trim();
+        if (!name) return 'Usage: `/cli deny <program-name>`';
+        return `To deny "${name}", remove it from "cliAllowlist" in ~/.waggle/config.json.\n\nAutomatic config update coming soon.`;
+      }
+
+      // /cli discover
+      if (trimmed === 'discover') {
+        return `${AGENT_LOOP_REROUTE_PREFIX}Run cli_discover to find all available CLI tools on the system PATH. List each found program with its version.`;
+      }
+
+      return 'Usage: `/cli` (show allowlist), `/cli allow <name>`, `/cli deny <name>`, `/cli discover`';
+    },
+  };
+}
+
 // ── Registration ────────────────────────────────────────────────────────
 
 export function registerWorkflowCommands(registry: CommandRegistry): void {
@@ -405,6 +444,7 @@ export function registerWorkflowCommands(registry: CommandRegistry): void {
     exportCommand(),
     importCommand(),
     settingsCommand(),
+    cliCommand(),
   ];
 
   for (const cmd of commands) {

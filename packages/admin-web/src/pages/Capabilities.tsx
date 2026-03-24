@@ -24,18 +24,19 @@ const TABLE_STYLE: React.CSSProperties = {
   width: '100%',
   borderCollapse: 'collapse' as const,
   marginTop: 16,
-  background: '#fff',
+  background: '#12141a',
+  border: '1px solid #2a2d36',
   borderRadius: 8,
   overflow: 'hidden',
-  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+  boxShadow: '0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)',
 };
 
 const TH_STYLE: React.CSSProperties = {
   textAlign: 'left' as const,
   padding: '12px 16px',
-  borderBottom: '2px solid #eee',
+  borderBottom: '1px solid #2a2d36',
   fontSize: 13,
-  color: '#666',
+  color: '#9ca3af',
   textTransform: 'uppercase' as const,
   letterSpacing: 0.5,
 };
@@ -43,14 +44,15 @@ const TH_STYLE: React.CSSProperties = {
 const TD_STYLE: React.CSSProperties = {
   padding: '10px 16px',
   fontSize: 14,
+  color: '#cbd5e1',
 };
 
 const WARNING_STYLE: React.CSSProperties = {
   padding: '12px 16px',
-  background: '#fffbeb',
-  border: '1px solid #fbbf24',
+  background: 'rgba(251, 191, 36, 0.1)',
+  border: '1px solid rgba(251, 191, 36, 0.3)',
   borderRadius: 4,
-  color: '#92400e',
+  color: '#fbbf24',
   marginBottom: 16,
   fontSize: 13,
 };
@@ -167,7 +169,7 @@ function PoliciesTab({ token, teamSlug }: CapabilitiesProps) {
     );
   };
 
-  if (loading) return <p style={{ color: '#999' }}>Loading...</p>;
+  if (loading) return <p style={{ color: '#9ca3af' }}>Loading...</p>;
 
   return (
     <div>
@@ -184,7 +186,7 @@ function PoliciesTab({ token, teamSlug }: CapabilitiesProps) {
         </thead>
         <tbody>
           {policies.map((p) => (
-            <tr key={p.role} style={{ borderBottom: '1px solid #f3f4f6' }}>
+            <tr key={p.role} style={{ borderBottom: '1px solid #1a1d25' }}>
               <td style={TD_STYLE}>
                 {badge(p.role, (ROLE_COLORS[p.role] ?? '#6b7280') + '20', ROLE_COLORS[p.role] ?? '#6b7280')}
               </td>
@@ -194,7 +196,7 @@ function PoliciesTab({ token, teamSlug }: CapabilitiesProps) {
               <td style={TD_STYLE}>
                 {p.blockedTools.length > 0
                   ? p.blockedTools.map((t) => badge(t, '#ef444420', '#ef4444'))
-                  : <span style={{ color: '#999', fontSize: 13 }}>None</span>}
+                  : <span style={{ color: '#9ca3af', fontSize: 13 }}>None</span>}
               </td>
               <td style={TD_STYLE}>
                 {badge(
@@ -209,7 +211,7 @@ function PoliciesTab({ token, teamSlug }: CapabilitiesProps) {
                   style={{
                     background: 'none',
                     border: 'none',
-                    color: '#3b82f6',
+                    color: '#e5a000',
                     cursor: 'pointer',
                     fontSize: 13,
                     padding: '4px 8px',
@@ -228,17 +230,18 @@ function PoliciesTab({ token, teamSlug }: CapabilitiesProps) {
           style={{
             marginTop: 16,
             padding: 16,
-            background: '#fff',
+            background: '#12141a',
+            border: '1px solid #2a2d36',
             borderRadius: 8,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)',
           }}
         >
-          <h3 style={{ marginTop: 0, fontSize: 15 }}>
+          <h3 style={{ marginTop: 0, fontSize: 15, color: '#f0f2f7' }}>
             Edit Policy: {editingRole}
           </h3>
 
           <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 13, color: '#666', display: 'block', marginBottom: 4 }}>
+            <label style={{ fontSize: 13, color: '#9ca3af', display: 'block', marginBottom: 4 }}>
               Allowed Sources
             </label>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
@@ -257,7 +260,7 @@ function PoliciesTab({ token, teamSlug }: CapabilitiesProps) {
           </div>
 
           <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 13, color: '#666', display: 'block', marginBottom: 4 }}>
+            <label style={{ fontSize: 13, color: '#9ca3af', display: 'block', marginBottom: 4 }}>
               Blocked Tools (comma-separated)
             </label>
             <input
@@ -268,16 +271,18 @@ function PoliciesTab({ token, teamSlug }: CapabilitiesProps) {
               style={{
                 width: '100%',
                 padding: '8px 12px',
-                border: '1px solid #d1d5db',
+                background: '#1a1d25',
+                border: '1px solid #2a2d36',
                 borderRadius: 4,
                 fontSize: 14,
+                color: '#f0f2f7',
                 boxSizing: 'border-box',
               }}
             />
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 13, color: '#666', display: 'block', marginBottom: 4 }}>
+            <label style={{ fontSize: 13, color: '#9ca3af', display: 'block', marginBottom: 4 }}>
               Approval Threshold
             </label>
             <select
@@ -285,9 +290,11 @@ function PoliciesTab({ token, teamSlug }: CapabilitiesProps) {
               onChange={(e) => setEditThreshold(e.target.value)}
               style={{
                 padding: '8px 12px',
-                border: '1px solid #d1d5db',
+                background: '#1a1d25',
+                border: '1px solid #2a2d36',
                 borderRadius: 4,
                 fontSize: 14,
+                color: '#f0f2f7',
               }}
             >
               <option value="none">None</option>
@@ -302,8 +309,8 @@ function PoliciesTab({ token, teamSlug }: CapabilitiesProps) {
               onClick={saveEdit}
               style={{
                 padding: '8px 16px',
-                background: '#1a1a2e',
-                color: '#fff',
+                background: '#e5a000',
+                color: '#08090c',
                 border: 'none',
                 borderRadius: 4,
                 cursor: 'pointer',
@@ -316,8 +323,8 @@ function PoliciesTab({ token, teamSlug }: CapabilitiesProps) {
               onClick={cancelEdit}
               style={{
                 padding: '8px 16px',
-                background: '#e5e7eb',
-                color: '#374151',
+                background: '#1a1d25',
+                color: '#cbd5e1',
                 border: 'none',
                 borderRadius: 4,
                 cursor: 'pointer',
@@ -393,7 +400,7 @@ function OverridesTab({ token, teamSlug }: CapabilitiesProps) {
     }
   };
 
-  if (loading) return <p style={{ color: '#999' }}>Loading...</p>;
+  if (loading) return <p style={{ color: '#9ca3af' }}>Loading...</p>;
 
   return (
     <div>
@@ -404,12 +411,13 @@ function OverridesTab({ token, teamSlug }: CapabilitiesProps) {
           onClick={() => setShowForm(!showForm)}
           style={{
             padding: '8px 16px',
-            background: '#1a1a2e',
-            color: '#fff',
+            background: '#e5a000',
+            color: '#08090c',
             border: 'none',
             borderRadius: 4,
             cursor: 'pointer',
             fontSize: 14,
+            fontWeight: 600,
           }}
         >
           + Add Override
@@ -420,15 +428,16 @@ function OverridesTab({ token, teamSlug }: CapabilitiesProps) {
         <div
           style={{
             padding: 16,
-            background: '#fff',
+            background: '#12141a',
+            border: '1px solid #2a2d36',
             borderRadius: 8,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)',
             marginBottom: 16,
           }}
         >
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div>
-              <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 4 }}>
+              <label style={{ fontSize: 12, color: '#9ca3af', display: 'block', marginBottom: 4 }}>
                 Capability Name
               </label>
               <input
@@ -438,14 +447,16 @@ function OverridesTab({ token, teamSlug }: CapabilitiesProps) {
                 placeholder="e.g. shell_exec"
                 style={{
                   padding: '8px 12px',
-                  border: '1px solid #d1d5db',
+                  background: '#1a1d25',
+                  border: '1px solid #2a2d36',
                   borderRadius: 4,
                   fontSize: 14,
+                  color: '#f0f2f7',
                 }}
               />
             </div>
             <div>
-              <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 4 }}>
+              <label style={{ fontSize: 12, color: '#9ca3af', display: 'block', marginBottom: 4 }}>
                 Type
               </label>
               <select
@@ -453,9 +464,11 @@ function OverridesTab({ token, teamSlug }: CapabilitiesProps) {
                 onChange={(e) => setFormType(e.target.value)}
                 style={{
                   padding: '8px 12px',
-                  border: '1px solid #d1d5db',
+                  background: '#1a1d25',
+                  border: '1px solid #2a2d36',
                   borderRadius: 4,
                   fontSize: 14,
+                  color: '#f0f2f7',
                 }}
               >
                 {CAP_TYPES.map((t) => (
@@ -464,7 +477,7 @@ function OverridesTab({ token, teamSlug }: CapabilitiesProps) {
               </select>
             </div>
             <div>
-              <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 4 }}>
+              <label style={{ fontSize: 12, color: '#9ca3af', display: 'block', marginBottom: 4 }}>
                 Decision
               </label>
               <select
@@ -472,9 +485,11 @@ function OverridesTab({ token, teamSlug }: CapabilitiesProps) {
                 onChange={(e) => setFormDecision(e.target.value)}
                 style={{
                   padding: '8px 12px',
-                  border: '1px solid #d1d5db',
+                  background: '#1a1d25',
+                  border: '1px solid #2a2d36',
                   borderRadius: 4,
                   fontSize: 14,
+                  color: '#f0f2f7',
                 }}
               >
                 <option value="approved">Approved</option>
@@ -482,7 +497,7 @@ function OverridesTab({ token, teamSlug }: CapabilitiesProps) {
               </select>
             </div>
             <div>
-              <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 4 }}>
+              <label style={{ fontSize: 12, color: '#9ca3af', display: 'block', marginBottom: 4 }}>
                 Reason
               </label>
               <input
@@ -492,9 +507,11 @@ function OverridesTab({ token, teamSlug }: CapabilitiesProps) {
                 placeholder="Optional reason"
                 style={{
                   padding: '8px 12px',
-                  border: '1px solid #d1d5db',
+                  background: '#1a1d25',
+                  border: '1px solid #2a2d36',
                   borderRadius: 4,
                   fontSize: 14,
+                  color: '#f0f2f7',
                 }}
               />
             </div>
@@ -503,8 +520,8 @@ function OverridesTab({ token, teamSlug }: CapabilitiesProps) {
               disabled={!formName.trim()}
               style={{
                 padding: '8px 16px',
-                background: '#1a1a2e',
-                color: '#fff',
+                background: '#e5a000',
+                color: '#08090c',
                 border: 'none',
                 borderRadius: 4,
                 cursor: 'pointer',
@@ -531,13 +548,13 @@ function OverridesTab({ token, teamSlug }: CapabilitiesProps) {
         <tbody>
           {overrides.length === 0 ? (
             <tr>
-              <td colSpan={5} style={{ ...TD_STYLE, color: '#999', textAlign: 'center' }}>
+              <td colSpan={5} style={{ ...TD_STYLE, color: '#9ca3af', textAlign: 'center' }}>
                 No overrides configured.
               </td>
             </tr>
           ) : (
             overrides.map((o) => (
-              <tr key={o.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+              <tr key={o.id} style={{ borderBottom: '1px solid #1a1d25' }}>
                 <td style={TD_STYLE}>{o.capabilityName}</td>
                 <td style={TD_STYLE}>
                   {badge(o.capabilityType, '#4f46e520', '#4f46e5')}
@@ -547,7 +564,7 @@ function OverridesTab({ token, teamSlug }: CapabilitiesProps) {
                     ? badge('approved', '#10b98120', '#10b981')
                     : badge('blocked', '#ef444420', '#ef4444')}
                 </td>
-                <td style={{ ...TD_STYLE, color: '#666', fontSize: 13 }}>
+                <td style={{ ...TD_STYLE, color: '#9ca3af', fontSize: 13 }}>
                   {o.reason || '--'}
                 </td>
                 <td style={TD_STYLE}>
@@ -620,7 +637,7 @@ function RequestsTab({
     }
   };
 
-  if (loading) return <p style={{ color: '#999' }}>Loading...</p>;
+  if (loading) return <p style={{ color: '#9ca3af' }}>Loading...</p>;
 
   const pending = requests.filter((r) => r.status === 'pending');
   const decided = requests.filter((r) => r.status !== 'pending');
@@ -630,12 +647,12 @@ function RequestsTab({
       {error && <div style={WARNING_STYLE}>{error}</div>}
 
       {pending.length === 0 && decided.length === 0 && (
-        <p style={{ color: '#999' }}>No capability requests.</p>
+        <p style={{ color: '#9ca3af' }}>No capability requests.</p>
       )}
 
       {pending.length > 0 && (
         <>
-          <h3 style={{ fontSize: 15, color: '#374151', marginBottom: 12 }}>
+          <h3 style={{ fontSize: 15, color: '#cbd5e1', marginBottom: 12 }}>
             Pending Requests ({pending.length})
           </h3>
           {pending.map((r) => (
@@ -643,20 +660,21 @@ function RequestsTab({
               key={r.id}
               style={{
                 padding: 16,
-                background: '#fff',
+                background: '#12141a',
+                border: '1px solid #2a2d36',
                 borderRadius: 8,
-                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)',
                 marginBottom: 12,
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <span style={{ fontWeight: 600, fontSize: 14 }}>{r.capabilityName}</span>
+                <span style={{ fontWeight: 600, fontSize: 14, color: '#f0f2f7' }}>{r.capabilityName}</span>
                 {badge(r.capabilityType, '#4f46e520', '#4f46e5')}
               </div>
-              <div style={{ fontSize: 13, color: '#666', marginBottom: 4 }}>
+              <div style={{ fontSize: 13, color: '#9ca3af', marginBottom: 4 }}>
                 Requested by {r.requestedBy} {r.createdAt ? relativeTime(r.createdAt) : ''}
               </div>
-              <div style={{ fontSize: 13, color: '#374151', marginBottom: 12 }}>
+              <div style={{ fontSize: 13, color: '#cbd5e1', marginBottom: 12 }}>
                 {r.justification}
               </div>
 
@@ -669,8 +687,10 @@ function RequestsTab({
                     placeholder="Reason (optional)"
                     style={{
                       padding: '6px 10px',
-                      border: '1px solid #d1d5db',
+                      background: '#1a1d25',
+                      border: '1px solid #2a2d36',
                       borderRadius: 4,
+                      color: '#f0f2f7',
                       fontSize: 13,
                       flex: 1,
                       minWidth: 200,
@@ -708,8 +728,8 @@ function RequestsTab({
                     onClick={() => { setDecidingId(null); setDecisionReason(''); }}
                     style={{
                       padding: '6px 14px',
-                      background: '#e5e7eb',
-                      color: '#374151',
+                      background: '#1a1d25',
+                      color: '#cbd5e1',
                       border: 'none',
                       borderRadius: 4,
                       cursor: 'pointer',
@@ -758,7 +778,7 @@ function RequestsTab({
 
       {decided.length > 0 && (
         <>
-          <h3 style={{ fontSize: 15, color: '#374151', marginTop: 24, marginBottom: 12 }}>
+          <h3 style={{ fontSize: 15, color: '#cbd5e1', marginTop: 24, marginBottom: 12 }}>
             Decided Requests ({decided.length})
           </h3>
           {decided.map((r) => (
@@ -766,28 +786,29 @@ function RequestsTab({
               key={r.id}
               style={{
                 padding: 16,
-                background: '#fff',
+                background: '#12141a',
+                border: '1px solid #2a2d36',
                 borderRadius: 8,
-                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)',
                 marginBottom: 12,
-                opacity: 0.8,
+                opacity: 0.7,
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <span style={{ fontWeight: 600, fontSize: 14 }}>{r.capabilityName}</span>
+                <span style={{ fontWeight: 600, fontSize: 14, color: '#f0f2f7' }}>{r.capabilityName}</span>
                 {badge(r.capabilityType, '#4f46e520', '#4f46e5')}
                 {r.status === 'approved'
                   ? badge('approved', '#10b98120', '#10b981')
                   : badge('rejected', '#ef444420', '#ef4444')}
               </div>
-              <div style={{ fontSize: 13, color: '#666', marginBottom: 4 }}>
+              <div style={{ fontSize: 13, color: '#9ca3af', marginBottom: 4 }}>
                 Requested by {r.requestedBy} {r.createdAt ? relativeTime(r.createdAt) : ''}
               </div>
-              <div style={{ fontSize: 13, color: '#374151', marginBottom: 4 }}>
+              <div style={{ fontSize: 13, color: '#cbd5e1', marginBottom: 4 }}>
                 {r.justification}
               </div>
               {r.decisionReason && (
-                <div style={{ fontSize: 13, color: '#666', fontStyle: 'italic' }}>
+                <div style={{ fontSize: 13, color: '#9ca3af', fontStyle: 'italic' }}>
                   Decision reason: {r.decisionReason}
                 </div>
               )}
@@ -813,10 +834,10 @@ export function Capabilities({ token, teamSlug }: CapabilitiesProps) {
 
   return (
     <div>
-      <h1 style={{ marginTop: 0 }}>Capabilities</h1>
+      <h1 style={{ marginTop: 0, color: '#f0f2f7' }}>Capabilities</h1>
 
       {/* Tab bar */}
-      <div style={{ display: 'flex', gap: 0, borderBottom: '2px solid #e5e7eb', marginBottom: 16 }}>
+      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #2a2d36', marginBottom: 16 }}>
         {tabs.map((t) => (
           <button
             key={t.key}
@@ -825,12 +846,12 @@ export function Capabilities({ token, teamSlug }: CapabilitiesProps) {
               padding: '8px 16px',
               background: 'transparent',
               border: 'none',
-              borderBottom: tab === t.key ? '2px solid #1a1a2e' : '2px solid transparent',
+              borderBottom: tab === t.key ? '2px solid #e5a000' : '2px solid transparent',
               cursor: 'pointer',
               fontSize: 14,
               fontWeight: tab === t.key ? 600 : 400,
-              color: tab === t.key ? '#1a1a2e' : '#6b7280',
-              marginBottom: -2,
+              color: tab === t.key ? '#f0f2f7' : '#9ca3af',
+              marginBottom: -1,
             }}
           >
             {t.label}

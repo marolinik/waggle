@@ -2,11 +2,14 @@
  * CockpitView — Control Cockpit dashboard.
  *
  * Composes 10 card sub-components in a responsive 2-column grid:
- *   1. System Health        2. Service Health
- *   3. Cost Estimates       4. Memory Stats
- *   5. Vault Summary        6. Cron Schedules
- *   7. Capability Overview  8. Agent Topology
- *   9. Connectors          10. Audit Trail
+ *   1. Agent Status (SystemHealth)  2. Service Health
+ *   3. Cost Estimates               4. Memory Stats
+ *   5. Vault Summary                6. Scheduled Tasks (Cron)
+ *   7. Installed Tools (Capability) 8. AI Configuration (Topology)
+ *   9. Connectors                  10. Recent Activity (Audit)
+ *
+ * Progressive disclosure: first 5 cards always visible, remaining 5 behind toggle.
+ * KVARK card shown only when enterprise config is present.
  *
  * F8: Skeleton loading state while data is fetching, error recovery with retry.
  */
@@ -104,6 +107,7 @@ export default function CockpitView() {
   const [connectToken, setConnectToken] = useState('');
   const [costSummary, setCostSummary] = useState<CostSummaryData | null>(null);
   const [workspaceCosts, setWorkspaceCosts] = useState<WorkspaceCostData | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   // ── Fetchers ───────────────────────────────────────────────────────────
 
@@ -302,6 +306,9 @@ export default function CockpitView() {
     [fetchConnectors],
   );
 
+  // ── Enterprise check for KVARK card ────────────────────────────────────
+  const hasEnterpriseConfig = health && typeof (health as Record<string, unknown>).kvark === 'object' && (health as Record<string, unknown>).kvark !== null;
+
   // ── Render ─────────────────────────────────────────────────────────────
 
   return (
@@ -350,49 +357,86 @@ export default function CockpitView() {
 
       {/* Main content — shown once data starts arriving */}
       {(!initialLoading || health) && !(fetchError && healthError && !health) && (
-        <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fit,minmax(420px,1fr))] gap-4">
-          <SystemHealthCard health={health} healthError={healthError} />
-          <ServiceHealthCard health={health} />
-          <CostDashboardCard costSummary={costSummary} workspaceCosts={workspaceCosts} />
-          <MemoryStatsCard health={health} />
-          <VaultSummaryCard connectors={connectors} />
-          <CronSchedulesCard
-            schedules={schedules}
-            schedulesLoading={schedulesLoading}
-            togglingId={togglingId}
-            triggeringId={triggeringId}
-            onToggle={toggleSchedule}
-            onTrigger={triggerSchedule}
-          />
-          <CapabilityOverviewCard capabilities={capabilities} />
-          <AgentTopologyCard health={health} capabilities={capabilities} />
-          <ConnectorsCard
-            connectors={connectors}
-            connectingId={connectingId}
-            connectToken={connectToken}
-            onConnectTokenChange={setConnectToken}
-            onConnect={connectConnector}
-            onDisconnect={disconnectConnector}
-          />
-          <AuditTrailCard auditEntries={auditEntries} />
+        <>
+          {/* Always-visible cards (primary group) */}
+          <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fit,minmax(420px,1fr))] gap-4">
+            <SystemHealthCard health={health} healthError={healthError} />
+            <ServiceHealthCard health={health} />
+            <CostDashboardCard costSummary={costSummary} workspaceCosts={workspaceCosts} />
+            <MemoryStatsCard health={health} />
+            <VaultSummaryCard connectors={connectors} />
+          </div>
 
-          {/* W5.2: KVARK Enterprise health indicator */}
-          <Card>
-            <CardHeader className="pb-2">
-              <h3 className="text-sm font-semibold text-foreground">KVARK Enterprise</h3>
-            </CardHeader>
-            <CardContent className="text-xs text-muted-foreground space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-muted-foreground/30" />
-                <span>Not configured</span>
-              </div>
-              <p className="text-[10px] text-muted-foreground/60 leading-relaxed">
-                KVARK enables enterprise knowledge access with data sovereignty, audit trails, and governed actions.
-                Configure in Settings &gt; Team.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+          {/* Show more / Show less toggle */}
+          <div className="flex justify-center my-4">
+            <button
+              onClick={() => setExpanded((prev) => !prev)}
+              className="flex items-center gap-1.5 text-xs font-medium px-4 py-1.5 rounded-md border border-border text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              aria-expanded={expanded}
+            >
+              {expanded ? (
+                <>
+                  Show less
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 7.5L6 4.5L9 7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </>
+              ) : (
+                <>
+                  Show more
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Collapsible cards (secondary group) */}
+          {expanded && (
+            <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fit,minmax(420px,1fr))] gap-4">
+              <CronSchedulesCard
+                schedules={schedules}
+                schedulesLoading={schedulesLoading}
+                togglingId={togglingId}
+                triggeringId={triggeringId}
+                onToggle={toggleSchedule}
+                onTrigger={triggerSchedule}
+                onCreated={fetchSchedules}
+              />
+              <CapabilityOverviewCard capabilities={capabilities} />
+              <AgentTopologyCard health={health} capabilities={capabilities} />
+              <ConnectorsCard
+                connectors={connectors}
+                connectingId={connectingId}
+                connectToken={connectToken}
+                onConnectTokenChange={setConnectToken}
+                onConnect={connectConnector}
+                onDisconnect={disconnectConnector}
+              />
+              <AuditTrailCard auditEntries={auditEntries} />
+
+              {/* W5.2: KVARK Enterprise health indicator — only shown when enterprise config present */}
+              {hasEnterpriseConfig && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <h3 className="text-sm font-semibold text-foreground">KVARK Enterprise</h3>
+                  </CardHeader>
+                  <CardContent className="text-xs text-muted-foreground space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-muted-foreground/30" />
+                      <span>Not configured</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground/60 leading-relaxed">
+                      KVARK enables enterprise knowledge access with data sovereignty, audit trails, and governed actions.
+                      Configure in Settings &gt; Team.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -11,6 +11,72 @@ import { emitNotification } from './notifications.js';
 import { emitAuditEvent } from './events.js';
 import { validateOrigin } from '../cors-config.js';
 import { getPersona, composePersonaPrompt } from '@waggle/agent';
+import { TeamSync, WaggleConfig } from '@waggle/core';
+
+// ── Ambiguity Detection (GAP-006) ──────────────────────────────────────
+
+/** Action verbs that indicate clear user intent (case-insensitive start of message) */
+const ACTION_VERBS = [
+  'search', 'find', 'create', 'write', 'read', 'edit', 'delete',
+  'show', 'list', 'run', 'execute', 'generate', 'draft', 'plan',
+  'research', 'review', 'analyze', 'help',
+];
+const ACTION_VERB_PATTERN = new RegExp(`^(${ACTION_VERBS.join('|')})\\b`, 'i');
+
+/**
+ * Detect whether a user message is too brief/vague to act on confidently.
+ * Returns true when the message is short and lacks clear intent signals.
+ *
+ * Exported for testing.
+ */
+export function isAmbiguousMessage(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return true;
+
+  // Must have fewer than 10 words
+  const words = trimmed.split(/\s+/);
+  if (words.length >= 10) return false;
+
+  // Slash commands are never ambiguous
+  if (trimmed.startsWith('/')) return false;
+
+  // Questions are never ambiguous
+  if (trimmed.includes('?')) return false;
+
+  // File path patterns (contains "/" or "\" or ".ext")
+  if (/[/\\]/.test(trimmed) || /\.\w{1,5}$/.test(trimmed) || /\.\w{1,5}\s/.test(trimmed)) return false;
+
+  // URLs
+  if (/https?:\/\//.test(trimmed) || /www\./.test(trimmed)) return false;
+
+  // Starts with a common action verb
+  if (ACTION_VERB_PATTERN.test(trimmed)) return false;
+
+  return true;
+}
+
+// ── Contextual Cron Suggestion (IMP-004) ──────────────────────────────
+
+/** Patterns indicating the user or agent discussed recurring/scheduled work */
+const RECURRING_PATTERNS = /\b(every\s+day|daily|weekly|every\s+week|each\s+morning|every\s+morning|regularly|recurring|scheduled?|every\s+month|monthly)\b/i;
+
+/**
+ * Check whether the agent response should get a scheduling suggestion appended.
+ * Returns true when the response mentions recurring work AND no cron/schedule
+ * tool was already invoked this turn.
+ *
+ * Exported for testing.
+ */
+export function shouldSuggestSchedule(responseText: string, toolsUsed: string[]): boolean {
+  if (!responseText) return false;
+  if (toolsUsed.some(t => t.includes('schedule') || t.includes('cron'))) return false;
+  return RECURRING_PATTERNS.test(responseText);
+}
+
+const SCHEDULE_SUGGESTION = '\n\n💡 *Want this to run automatically? Use /schedule or ask me to set up a recurring task.*';
+
+/** System prompt prefix injected for ambiguous messages */
+const AMBIGUITY_PROMPT = `IMPORTANT: The user's message is very brief and may be vague. Ask ONE specific clarifying question before taking any action. Do not generate documents, run tools, or take action without first understanding what the user wants. Start your response with a question.\n\n`;
 
 /**
  * Persist a chat message to the session's .jsonl file on disk.
@@ -931,9 +997,11 @@ When approaching any task:
         }
 
         // Build system prompt (with workspace path awareness + recalled memories)
+        // GAP-006: Prepend ambiguity guard when user message is too brief/vague
+        const ambiguityPrefix = (!hasCustomRunner && isAmbiguousMessage(agentMessage)) ? AMBIGUITY_PROMPT : '';
         const systemPrompt = hasCustomRunner
           ? 'You are a helpful AI assistant.'
-          : buildSystemPrompt(workspacePath, sessionId, history.length, effectiveWorkspace) + recalledContext;
+          : ambiguityPrefix + buildSystemPrompt(workspacePath, sessionId, history.length, effectiveWorkspace) + recalledContext;
 
         // Register a per-request pre:tool hook for confirmation gates
         // This fires during the agent loop and pauses until user approves/denies
@@ -1075,6 +1143,27 @@ When approaching any task:
         // for persistence but only send recent messages to the agent loop
         const windowedMessages = applyContextWindow(history);
 
+        // Governance policies for team workspaces
+        let governancePolicies: { blockedTools?: string[]; allowedSources?: string[] } | undefined;
+        if (wsConfig?.teamId) {
+          try {
+            const port = (server.server.address() as any)?.port ?? 3333;
+            const govRes = await fetch(`http://127.0.0.1:${port}/api/team/governance/permissions?workspaceId=${effectiveWorkspace}`, {
+              signal: AbortSignal.timeout(2000),
+            });
+            if (govRes.ok) {
+              const gov = await govRes.json() as any;
+              if (gov.permissions) {
+                // Extract blocked tools from the user's role policy
+                const rolePolicy = gov.permissions.find?.((p: any) => p.role === wsConfig.teamRole);
+                if (rolePolicy?.blockedTools) {
+                  governancePolicies = { blockedTools: rolePolicy.blockedTools };
+                }
+              }
+            }
+          } catch { /* governance not available — allow all */ }
+        }
+
         // Build agent loop config — with windowed conversation history + hooks
         const agentConfig: AgentLoopConfig = {
           litellmUrl: getLitellmUrl(),
@@ -1087,6 +1176,7 @@ When approaching any task:
           maxTurns: 200, // Persistent agents need many turns for complex research + document generation
           hooks: hasCustomRunner ? undefined : hookRegistry,
           capabilityRouter,
+          governancePolicies,
           signal: abortController.signal,
           onToken: (token: string) => {
             sendEvent('token', { content: token });
@@ -1142,6 +1232,40 @@ When approaching any task:
             if (fileAction && input.path && !result.startsWith('Error')) {
               const filePath = String(input.path);
               sendEvent('file_created', { filePath, fileAction });
+            }
+
+            // TeamSync push — after save_memory in team workspace (fire-and-forget)
+            if (name === 'save_memory' && workspace && !result.startsWith('Error')) {
+              const pushWsConfig = server.workspaceManager?.get(effectiveWorkspace);
+              if (pushWsConfig?.teamId) {
+                try {
+                  const waggleConfig = new WaggleConfig(server.localConfig.dataDir);
+                  const teamServer = waggleConfig.getTeamServer();
+                  if (teamServer?.token && pushWsConfig.teamServerUrl) {
+                    const sync = new TeamSync({
+                      teamServerUrl: pushWsConfig.teamServerUrl,
+                      teamSlug: pushWsConfig.teamId,
+                      authToken: teamServer.token,
+                      userId: teamServer.userId ?? 'local-user',
+                      displayName: teamServer.displayName ?? 'You',
+                    });
+                    // Fire-and-forget push — non-blocking
+                    sync.pushFrame({
+                      id: Date.now(),
+                      gop_id: sessionId ?? 'unknown',
+                      t: 0,
+                      frame_type: 'I',
+                      base_frame_id: null,
+                      content: typeof result === 'string' ? result.slice(0, 500) : '',
+                      importance: 'normal',
+                      source: 'agent_inferred',
+                      access_count: 0,
+                      created_at: new Date().toISOString(),
+                      last_accessed: new Date().toISOString(),
+                    }).catch(err => console.warn('[waggle] TeamSync push failed:', err.message));
+                  }
+                } catch { /* TeamSync not available */ }
+              }
             }
           },
         };
@@ -1235,16 +1359,28 @@ When approaching any task:
           }
         }
 
+        // IMP-004: Contextual cron suggestion — nudge user about /schedule when response discusses recurring work
+        if (!hasCustomRunner && finalContent && shouldSuggestSchedule(finalContent, result.toolsUsed ?? [])) {
+          finalContent += SCHEDULE_SUGGESTION;
+        }
+
         // Add assistant response to history (maintains context for next turn) and persist
         history.push({ role: 'assistant', content: finalContent });
         persistMessage(server.localConfig.dataDir, effectiveWorkspace, sessionId, { role: 'assistant', content: finalContent });
 
-        // Send the done event with full response + model info
+        // Send the done event with full response + model info + per-message cost
+        const messageCost = result.usage
+          ? costTracker.calculateCost(result.usage.inputTokens, result.usage.outputTokens, resolvedModel)
+          : undefined;
         sendEvent('done', {
           content: finalContent,
           usage: result.usage,
           toolsUsed: result.toolsUsed,
           model: resolvedModel,
+          ...(messageCost !== undefined && {
+            cost: Math.round(messageCost * 1_000_000) / 1_000_000,
+            tokens: { input: result.usage.inputTokens, output: result.usage.outputTokens },
+          }),
         });
 
         emitNotification(server, {

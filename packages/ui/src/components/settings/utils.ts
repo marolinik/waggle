@@ -145,7 +145,7 @@ export interface SettingsTab {
 export const SETTINGS_TABS: SettingsTab[] = [
   { id: 'general', label: 'General' },
   { id: 'models', label: 'Models' },
-  { id: 'vault', label: 'Vault' },
+  { id: 'vault', label: 'Keys & Connections' },
   { id: 'permissions', label: 'Permissions' },
   { id: 'team', label: 'Team' },
   { id: 'backup', label: 'Backup' },

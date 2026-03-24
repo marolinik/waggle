@@ -116,7 +116,7 @@ export function EventStream({
             <img src="/brand/bee-analyst-dark.png" alt="Events" className="w-[110px] h-[110px] float opacity-80 bee-image-analyst" />
             <h3 className="text-base font-medium" style={{ color: 'var(--hive-100)' }}>No events recorded</h3>
             <p className="text-sm max-w-xs" style={{ color: 'var(--hive-400)' }}>
-              Events appear as you use Waggle — chat, tools, memory saves.
+              Every action your agent takes is logged here for full transparency.
             </p>
           </div>
         ) : (
