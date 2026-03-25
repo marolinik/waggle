@@ -1,11 +1,11 @@
 /**
  * OnboardingWizard — premium first-run experience for new Waggle users.
  *
- * 7 steps: Welcome → Meet Agent → API Key → Template → Persona → First Message → Tips
+ * 7 steps: Welcome → Why Waggle → Memory Import → Template → Persona → API Key → Hive Ready
  * Full-screen overlay with smooth transitions. Goal: "wow" within 60 seconds.
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { HiveIcon, BeeImage } from '@/components/HiveIcon';
 import type { OnboardingState } from '@/hooks/useOnboarding';
@@ -13,13 +13,13 @@ import type { OnboardingState } from '@/hooks/useOnboarding';
 // ── Constants ───────────────────────────────────────────────────────
 
 const TEMPLATES = [
-  { id: 'sales-pipeline', name: 'Sales Pipeline', icon: '🎯', hint: 'Research the top 5 competitors in my industry' },
-  { id: 'research-project', name: 'Research Project', icon: '🔬', hint: 'Help me design a literature review on my topic' },
-  { id: 'code-review', name: 'Code Review', icon: '💻', hint: 'Read my project and tell me what you see' },
-  { id: 'marketing-campaign', name: 'Marketing Campaign', icon: '📣', hint: 'Draft a campaign brief for my product launch' },
-  { id: 'product-launch', name: 'Product Launch', icon: '🚀', hint: 'Help me write a PRD for my next feature' },
-  { id: 'legal-review', name: 'Legal Review', icon: '⚖️', hint: 'Draft a standard NDA template' },
-  { id: 'agency-consulting', name: 'Agency Consulting', icon: '🏢', hint: 'Set up client workspaces for my biggest accounts' },
+  { id: 'sales-pipeline', name: 'Sales Pipeline', icon: '🎯', hint: 'Research the top 5 competitors in my industry', desc: 'Track leads, draft outreach, prep for calls' },
+  { id: 'research-project', name: 'Research Project', icon: '🔬', hint: 'Help me design a literature review on my topic', desc: 'Deep research with multi-source synthesis' },
+  { id: 'code-review', name: 'Code Review', icon: '💻', hint: 'Read my project and tell me what you see', desc: 'Review PRs, debug, architecture decisions' },
+  { id: 'marketing-campaign', name: 'Marketing Campaign', icon: '📣', hint: 'Draft a campaign brief for my product launch', desc: 'Content calendar, copy, competitive analysis' },
+  { id: 'product-launch', name: 'Product Launch', icon: '🚀', hint: 'Help me write a PRD for my next feature', desc: 'PRDs, roadmaps, stakeholder updates' },
+  { id: 'legal-review', name: 'Legal Review', icon: '⚖️', hint: 'Draft a standard NDA template', desc: 'Contract review, compliance, legal research' },
+  { id: 'agency-consulting', name: 'Agency Consulting', icon: '🏢', hint: 'Set up client workspaces for my biggest accounts', desc: 'Client research, deliverables, presentations' },
 ];
 
 const PERSONAS = [
@@ -33,14 +33,6 @@ const PERSONAS = [
   { id: 'marketer', name: 'Marketer', icon: '📢', desc: 'Campaigns & copy' },
 ];
 
-const CAPABILITY_ICONS = [
-  { label: 'Research', iconName: 'research' },
-  { label: 'Draft', iconName: 'draft' },
-  { label: 'Plan', iconName: 'plan' },
-  { label: 'Code', iconName: 'code' },
-  { label: 'Remember', iconName: 'remember' },
-];
-
 const TEMPLATE_PERSONA: Record<string, string> = {
   'sales-pipeline': 'sales-rep',
   'research-project': 'researcher',
@@ -50,6 +42,33 @@ const TEMPLATE_PERSONA: Record<string, string> = {
   'legal-review': 'analyst',
   'agency-consulting': 'executive-assistant',
 };
+
+const VALUE_PROPS = [
+  { label: 'Remembers everything across sessions', iconName: 'remember' },
+  { label: 'Workspace-native — one brain per project', iconName: 'frames' },
+  { label: 'Real tools — search, draft, code, plan', iconName: 'capabilities' },
+];
+
+// ── Provider Definitions (onboarding-specific) ──────────────────────
+
+interface OnboardingProvider {
+  id: string;
+  name: string;
+  keyPrefix: string;
+  keyPlaceholder: string;
+  keyUrl: string;
+  badge?: string;
+}
+
+const ONBOARDING_PROVIDERS: OnboardingProvider[] = [
+  { id: 'anthropic', name: 'Anthropic', keyPrefix: 'sk-ant-', keyPlaceholder: 'sk-ant-api03-...', keyUrl: 'https://console.anthropic.com/settings/keys' },
+  { id: 'openai', name: 'OpenAI', keyPrefix: 'sk-', keyPlaceholder: 'sk-proj-...', keyUrl: 'https://platform.openai.com/api-keys' },
+  { id: 'google', name: 'Google', keyPrefix: 'AI', keyPlaceholder: 'AIza...', keyUrl: 'https://aistudio.google.com/apikey' },
+  { id: 'mistral', name: 'Mistral', keyPrefix: '', keyPlaceholder: 'your-mistral-key...', keyUrl: 'https://console.mistral.ai/api-keys' },
+  { id: 'deepseek', name: 'DeepSeek', keyPrefix: '', keyPlaceholder: 'sk-...', keyUrl: 'https://platform.deepseek.com/api_keys' },
+  { id: 'openrouter', name: 'OpenRouter', keyPrefix: 'sk-or-', keyPlaceholder: 'sk-or-v1-...', keyUrl: 'https://openrouter.ai/keys', badge: 'Free models available!' },
+  { id: 'ollama', name: 'Local / Ollama', keyPrefix: '', keyPlaceholder: '', keyUrl: 'https://ollama.com/download', badge: 'No key needed' },
+];
 
 // ── Props ───────────────────────────────────────────────────────────
 
@@ -85,11 +104,20 @@ export function OnboardingWizard({
   const [workspaceName, setWorkspaceName] = useState('');
   const [selectedPersona, setSelectedPersona] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState('anthropic');
 
   // Auto-advance step 0 (Welcome) after 3 seconds
   useEffect(() => {
     if (step === 0) {
       const timer = setTimeout(() => goToStep(1), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [step]);
+
+  // Auto-advance step 1 (Why Waggle) after 8 seconds
+  useEffect(() => {
+    if (step === 1) {
+      const timer = setTimeout(() => goToStep(2), 8000);
       return () => clearTimeout(timer);
     }
   }, [step]);
@@ -109,11 +137,11 @@ export function OnboardingWizard({
     setKeyChecking(true);
     setKeyError('');
     try {
-      // Store key in vault
+      // Store key in vault with provider name as key
       await fetch(`${serverBaseUrl}/api/vault`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'anthropic', value: key }),
+        body: JSON.stringify({ name: selectedProvider, value: key }),
       });
       // Check health
       const healthRes = await fetch(`${serverBaseUrl}/health`);
@@ -132,7 +160,7 @@ export function OnboardingWizard({
     } finally {
       setKeyChecking(false);
     }
-  }, [serverBaseUrl, onUpdate]);
+  }, [serverBaseUrl, onUpdate, selectedProvider]);
 
   // ── Workspace Creation ──────────────────────────────────────────
   const createWorkspace = useCallback(async () => {
@@ -161,20 +189,55 @@ export function OnboardingWizard({
   }, [selectedTemplate, workspaceName, selectedPersona, serverBaseUrl, onUpdate]);
 
   // ── Final Step: Finish ──────────────────────────────────────────
+  const finishTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleFinish = useCallback(async () => {
     setCreating(true);
     const wsId = await createWorkspace();
+    if (wsId) {
+      // Show the "Hive is Ready" celebration step first
+      goToStep(6);
+      const hint = TEMPLATES.find(t => t.id === selectedTemplate)?.hint || 'Hello! What can you help me with?';
+      // Then finish after 2s delay so the user sees the celebration
+      finishTimerRef.current = setTimeout(() => {
+        onComplete(serverBaseUrl);
+        onFinish(wsId, hint);
+      }, 2000);
+    }
+    setCreating(false);
+  }, [createWorkspace, selectedTemplate, onComplete, onFinish, serverBaseUrl, goToStep]);
+
+  // Also allow immediate finish from the celebration step
+  const handleLetsGo = useCallback(() => {
+    // Clear the auto-finish timer if it exists
+    if (finishTimerRef.current) {
+      clearTimeout(finishTimerRef.current);
+      finishTimerRef.current = null;
+    }
+    // The workspace was already created in handleFinish, so we just need to trigger callbacks
+    const wsId = state.workspaceId;
     if (wsId) {
       const hint = TEMPLATES.find(t => t.id === selectedTemplate)?.hint || 'Hello! What can you help me with?';
       onComplete(serverBaseUrl);
       onFinish(wsId, hint);
     }
-    setCreating(false);
-  }, [createWorkspace, selectedTemplate, onComplete, onFinish, serverBaseUrl]);
+  }, [state.workspaceId, selectedTemplate, onComplete, onFinish, serverBaseUrl]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (finishTimerRef.current) {
+        clearTimeout(finishTimerRef.current);
+      }
+    };
+  }, []);
 
   // ── Step rendering ──────────────────────────────────────────────
-  const totalSteps = 6;
-  const progress = Math.min((step / totalSteps) * 100, 100);
+  const totalSteps = 7;
+  const progress = Math.min((step / (totalSteps - 1)) * 100, 100);
+
+  // Current provider object for the API key step
+  const currentProvider = ONBOARDING_PROVIDERS.find(p => p.id === selectedProvider) ?? ONBOARDING_PROVIDERS[0];
 
   return (
     <div
@@ -192,9 +255,9 @@ export function OnboardingWizard({
       )}
 
       {/* Hex step indicator dots */}
-      {step > 0 && step < 5 && (
+      {step > 0 && step < 6 && (
         <div className="absolute top-5 left-1/2 -translate-x-1/2 flex items-center gap-2.5">
-          {[1, 2, 3, 4].map(s => (
+          {[1, 2, 3, 4, 5].map(s => (
             <span
               key={s}
               className="text-[10px] transition-all"
@@ -207,13 +270,13 @@ export function OnboardingWizard({
             </span>
           ))}
           <span className="text-[10px] ml-1" style={{ color: 'var(--hive-500)' }}>
-            Step {step} of {totalSteps - 1}
+            Step {step} of {totalSteps - 2}
           </span>
         </div>
       )}
 
       {/* Skip link */}
-      {step > 0 && step < 5 && (
+      {step > 0 && step < 6 && (
         <button
           onClick={onDismiss}
           className="absolute top-4 right-6 text-xs text-muted-foreground/40 hover:text-muted-foreground transition-colors"
@@ -246,92 +309,96 @@ export function OnboardingWizard({
           </div>
         )}
 
-        {/* ── Step 1: Meet Your Agent ────────────────────────── */}
+        {/* ── Step 1: Why Waggle? ─────────────────────────────── */}
         {step === 1 && (
           <div className="flex flex-col items-center gap-6 text-center">
             <BeeImage role="connector" className="w-16 h-16" />
             <h2 className="text-2xl font-bold" style={{ color: 'var(--hive-50)' }}>
-              Meet your AI agent
+              Why Waggle?
             </h2>
-            <p className="max-w-md" style={{ color: 'var(--hive-300)' }}>
-              I can research, draft, plan, code, and <strong style={{ color: 'var(--hive-50)' }}>remember everything</strong> across sessions.
-            </p>
             <p className="text-xs" style={{ color: 'var(--hive-500)' }}>
               Built for people who really work with AI every day
             </p>
-            <div className="flex gap-6 mt-4">
-              {CAPABILITY_ICONS.map(cap => (
-                <div key={cap.label} className="flex flex-col items-center gap-1.5">
+            <div className="flex flex-col gap-4 mt-2 w-full max-w-md">
+              {VALUE_PROPS.map(prop => (
+                <div key={prop.iconName} className="flex items-center gap-4 p-4 rounded-xl" style={{ backgroundColor: 'var(--hive-900)', border: '1px solid var(--hive-700)' }}>
                   <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center"
+                    className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
                     style={{ backgroundColor: 'var(--honey-glow)', border: '1px solid var(--hive-700)' }}
                   >
-                    <HiveIcon name={cap.iconName} size={28} />
+                    <HiveIcon name={prop.iconName} size={28} />
                   </div>
-                  <span className="text-xs" style={{ color: 'var(--hive-400)' }}>{cap.label}</span>
+                  <span className="text-sm font-medium text-left" style={{ color: 'var(--hive-200)' }}>{prop.label}</span>
                 </div>
               ))}
             </div>
-            <Button className="mt-6 px-8" size="lg" onClick={() => goToStep(2)}
+            <Button className="mt-4 px-8" size="lg" onClick={() => goToStep(2)}
               style={{ backgroundColor: 'var(--honey-500)', color: 'var(--hive-950)' }}
             >
-              Let's set up →
+              Continue →
             </Button>
           </div>
         )}
 
-        {/* ── Step 2: API Key ────────────────────────────────── */}
+        {/* ── Step 2: Memory Import (Optional) ────────────────── */}
         {step === 2 && (
           <div className="flex flex-col items-center gap-5 text-center">
-            <div className="text-4xl">🔑</div>
-            <h2 className="text-2xl font-bold text-foreground">Connect your AI brain</h2>
-            <p className="text-sm text-muted-foreground max-w-md">
-              Paste your Anthropic API key to power Waggle's intelligence.
+            <div className="text-4xl">🧠</div>
+            <h2 className="text-2xl font-bold" style={{ color: 'var(--hive-50)' }}>
+              Bring your AI memories
+            </h2>
+            <p className="text-sm max-w-md" style={{ color: 'var(--hive-300)' }}>
+              Import conversation history from ChatGPT or Claude to give your agent a head start.
             </p>
-            <div className="w-full max-w-md mt-2">
-              <div className="relative">
-                <input
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="sk-ant-api03-..."
-                  className="w-full rounded-lg border border-border bg-muted px-4 py-3 text-sm font-mono text-foreground outline-none focus:border-primary transition-colors"
-                  autoFocus
-                />
-                {keyValid && (
-                  <div className="absolute right-3 top-3 text-green-500 text-lg">✓</div>
-                )}
-              </div>
-              {keyError && <p className="text-xs text-yellow-500 mt-2">{keyError}</p>}
-              <div className="flex gap-2 mt-3">
-                <Button
-                  onClick={() => validateKey(apiKey)}
-                  disabled={!apiKey || apiKey.length < 10 || keyChecking}
-                  className="flex-1"
-                >
-                  {keyChecking ? 'Validating...' : keyValid ? 'Key saved!' : 'Validate & save'}
-                </Button>
-                {keyValid && (
-                  <Button variant="outline" onClick={() => goToStep(3)}>
-                    Continue →
-                  </Button>
-                )}
-              </div>
-              <a
-                href="https://console.anthropic.com/settings/keys"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-primary/70 hover:text-primary mt-3 inline-block"
+            <div className="grid grid-cols-2 gap-4 w-full max-w-md mt-2">
+              {/* ChatGPT Export Card */}
+              <button
+                className="flex flex-col items-center gap-3 p-5 rounded-xl border text-center transition-all hover:border-primary/30 hover:bg-card/80"
+                style={{ backgroundColor: 'var(--hive-900)', borderColor: 'var(--hive-700)' }}
+                onClick={() => {
+                  // Placeholder: trigger file upload for ChatGPT JSON
+                  const input = document.createElement('input');
+                  input.type = 'file';
+                  input.accept = '.json,.zip';
+                  input.onchange = () => {
+                    // Placeholder handler — import logic will be wired later
+                  };
+                  input.click();
+                }}
               >
-                Get an API key →
-              </a>
+                <span className="text-3xl">🟢</span>
+                <span className="text-sm font-medium" style={{ color: 'var(--hive-100)' }}>ChatGPT Export</span>
+                <span className="text-[10px]" style={{ color: 'var(--hive-500)' }}>Upload JSON or ZIP</span>
+              </button>
+              {/* Claude Export Card */}
+              <button
+                className="flex flex-col items-center gap-3 p-5 rounded-xl border text-center transition-all hover:border-primary/30 hover:bg-card/80"
+                style={{ backgroundColor: 'var(--hive-900)', borderColor: 'var(--hive-700)' }}
+                onClick={() => {
+                  // Placeholder: trigger file upload for Claude JSON
+                  const input = document.createElement('input');
+                  input.type = 'file';
+                  input.accept = '.json';
+                  input.onchange = () => {
+                    // Placeholder handler — import logic will be wired later
+                  };
+                  input.click();
+                }}
+              >
+                <span className="text-3xl">🟤</span>
+                <span className="text-sm font-medium" style={{ color: 'var(--hive-100)' }}>Claude Export</span>
+                <span className="text-[10px]" style={{ color: 'var(--hive-500)' }}>Upload JSON</span>
+              </button>
             </div>
-            <button
+            <Button
+              className="mt-4 px-8"
+              size="lg"
+              variant="outline"
               onClick={() => goToStep(3)}
-              className="text-xs text-muted-foreground/30 hover:text-muted-foreground mt-4"
+              style={{ color: 'var(--hive-200)', borderColor: 'var(--hive-600)' }}
             >
-              I'll do this later (AI features won't work)
-            </button>
+              Skip this step
+            </Button>
           </div>
         )}
 
@@ -349,14 +416,17 @@ export function OnboardingWizard({
                     setWorkspaceName(t.name);
                     setSelectedPersona(TEMPLATE_PERSONA[t.id] ?? null);
                   }}
-                  className={`flex items-center gap-3 p-4 rounded-xl border text-left transition-all ${
+                  className={`flex items-start gap-3 p-4 rounded-xl border text-left transition-all ${
                     selectedTemplate === t.id
                       ? 'border-primary bg-primary/10 shadow-[0_0_12px_rgba(var(--primary-rgb),0.15)]'
                       : 'border-border bg-card hover:border-primary/30 hover:bg-card/80'
                   }`}
                 >
                   <span className="text-2xl shrink-0">{t.icon}</span>
-                  <span className="text-sm font-medium text-foreground">{t.name}</span>
+                  <div className="min-w-0">
+                    <span className="text-sm font-medium text-foreground block">{t.name}</span>
+                    <span className="text-[10px] text-muted-foreground block mt-0.5">{t.desc}</span>
+                  </div>
                 </button>
               ))}
               <button
@@ -365,14 +435,17 @@ export function OnboardingWizard({
                   setWorkspaceName('My Workspace');
                   setSelectedPersona(null);
                 }}
-                className={`flex items-center gap-3 p-4 rounded-xl border border-dashed text-left transition-all ${
+                className={`flex items-start gap-3 p-4 rounded-xl border border-dashed text-left transition-all ${
                   selectedTemplate === 'blank'
                     ? 'border-primary bg-primary/10'
                     : 'border-border/50 bg-transparent hover:border-border'
                 }`}
               >
                 <span className="text-2xl shrink-0 opacity-40">+</span>
-                <span className="text-sm text-muted-foreground">Blank workspace</span>
+                <div className="min-w-0">
+                  <span className="text-sm text-muted-foreground block">Blank workspace</span>
+                  <span className="text-[10px] text-muted-foreground/60 block mt-0.5">Start from scratch</span>
+                </div>
               </button>
             </div>
             {selectedTemplate && (
@@ -423,20 +496,150 @@ export function OnboardingWizard({
             <Button
               className="mt-2 px-8"
               size="lg"
-              disabled={creating}
-              onClick={handleFinish}
+              onClick={() => goToStep(5)}
             >
-              {creating ? 'Creating workspace...' : 'Start working →'}
+              Continue →
             </Button>
           </div>
         )}
 
-        {/* ── Step 5: Ready ──────────────────────────────────── */}
+        {/* ── Step 5: API Key (Multi-Provider) ────────────────── */}
         {step === 5 && (
-          <div className="flex flex-col items-center gap-4 text-center">
+          <div className="flex flex-col items-center gap-5 text-center">
+            <div className="text-4xl">🔑</div>
+            <h2 className="text-2xl font-bold" style={{ color: 'var(--hive-50)' }}>Connect your AI brain</h2>
+            <p className="text-sm max-w-md" style={{ color: 'var(--hive-300)' }}>
+              Choose your AI provider and paste an API key.
+            </p>
+
+            {/* Provider tabs */}
+            <div className="flex flex-wrap justify-center gap-1.5 w-full max-w-lg mt-1">
+              {ONBOARDING_PROVIDERS.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    setSelectedProvider(p.id);
+                    setApiKey('');
+                    setKeyValid(false);
+                    setKeyError('');
+                  }}
+                  className={`relative px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    selectedProvider === p.id
+                      ? 'bg-primary/15 text-primary border border-primary/30'
+                      : 'bg-muted/40 text-muted-foreground border border-transparent hover:bg-muted/70'
+                  }`}
+                >
+                  {p.name}
+                  {p.badge && (
+                    <span
+                      className="absolute -top-2 -right-1 px-1 py-0.5 rounded text-[8px] font-bold whitespace-nowrap"
+                      style={{ backgroundColor: 'var(--honey-500)', color: 'var(--hive-950)' }}
+                    >
+                      {p.badge}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Free & affordable callout */}
+            <div
+              className="w-full max-w-md rounded-lg p-3 text-left text-xs"
+              style={{ backgroundColor: 'var(--honey-glow)', border: '1px solid var(--honey-500)', color: 'var(--hive-200)' }}
+            >
+              <strong style={{ color: 'var(--honey-500)' }}>Free & affordable options available</strong>
+              <div className="mt-1.5 space-y-0.5" style={{ color: 'var(--hive-400)' }}>
+                <p>OpenRouter free models (Llama, Gemini, DeepSeek, Qwen)</p>
+                <p>Google Gemini Flash (free tier)</p>
+                <p>DeepSeek V3 ($0.14/1M tokens)</p>
+                <p>Local models via Ollama (free, no key needed)</p>
+              </div>
+            </div>
+
+            {/* Key input — hidden for Ollama */}
+            {currentProvider.id !== 'ollama' ? (
+              <div className="w-full max-w-md">
+                <div className="relative">
+                  <input
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder={currentProvider.keyPlaceholder}
+                    className="w-full rounded-lg border border-border bg-muted px-4 py-3 text-sm font-mono text-foreground outline-none focus:border-primary transition-colors"
+                    autoFocus
+                  />
+                  {keyValid && (
+                    <div className="absolute right-3 top-3 text-green-500 text-lg">✓</div>
+                  )}
+                </div>
+                {keyError && <p className="text-xs text-yellow-500 mt-2">{keyError}</p>}
+                <div className="flex gap-2 mt-3">
+                  <Button
+                    onClick={() => validateKey(apiKey)}
+                    disabled={!apiKey || apiKey.length < 10 || keyChecking}
+                    className="flex-1"
+                  >
+                    {keyChecking ? 'Validating...' : keyValid ? 'Key saved!' : 'Validate & save'}
+                  </Button>
+                  {keyValid && (
+                    <Button variant="outline" onClick={handleFinish} disabled={creating}>
+                      {creating ? 'Creating...' : 'Continue →'}
+                    </Button>
+                  )}
+                </div>
+                <a
+                  href={currentProvider.keyUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary/70 hover:text-primary mt-3 inline-block"
+                >
+                  Get a {currentProvider.name} API key →
+                </a>
+              </div>
+            ) : (
+              <div className="w-full max-w-md">
+                <p className="text-sm" style={{ color: 'var(--hive-300)' }}>
+                  No API key needed. Make sure Ollama is running locally.
+                </p>
+                <a
+                  href={currentProvider.keyUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary/70 hover:text-primary mt-2 inline-block"
+                >
+                  Download Ollama →
+                </a>
+                <Button className="mt-4 px-8 block mx-auto" size="lg" onClick={handleFinish} disabled={creating}>
+                  {creating ? 'Creating workspace...' : 'Continue →'}
+                </Button>
+              </div>
+            )}
+
+            {/* Skip button — full opacity, prominent */}
+            <button
+              onClick={handleFinish}
+              disabled={creating}
+              className="text-sm text-muted-foreground hover:text-foreground mt-2 transition-colors underline underline-offset-2"
+            >
+              {creating ? 'Creating workspace...' : "Skip — I'll add a key later"}
+            </button>
+          </div>
+        )}
+
+        {/* ── Step 6: Your Hive is Ready ──────────────────────── */}
+        {step === 6 && (
+          <div className="flex flex-col items-center gap-4 text-center animate-in fade-in duration-500">
             <BeeImage role="celebrating" className="w-[160px] h-[160px] float" />
             <h2 className="text-2xl font-bold" style={{ color: 'var(--hive-50)' }}>Your hive is ready ⬡</h2>
             <p style={{ color: 'var(--hive-300)' }}>Your workspace is ready. Let's get to work.</p>
+            <Button
+              className="mt-4 px-10"
+              size="lg"
+              onClick={handleLetsGo}
+              style={{ backgroundColor: 'var(--honey-500)', color: 'var(--hive-950)' }}
+            >
+              Let's go!
+            </Button>
           </div>
         )}
       </div>
@@ -449,7 +652,7 @@ export function OnboardingWizard({
 export function OnboardingTooltips({ onDismiss }: { onDismiss: () => void }) {
   const [tipIndex, setTipIndex] = useState(0);
   const tips = [
-    { text: 'Type / for 14 powerful commands — research, draft, plan, and more', position: 'bottom' as const },
+    { text: 'Type / for 22 powerful commands — research, draft, plan, and more', position: 'bottom' as const },
     { text: 'I remember everything — ask about past work anytime', position: 'top' as const },
     { text: 'Create workspaces to organize different projects', position: 'top' as const },
     { text: 'Your AI remembers everything — across every session, every workspace. No other AI does this.', position: 'top' as const },

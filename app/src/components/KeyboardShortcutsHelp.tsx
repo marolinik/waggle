@@ -44,6 +44,7 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { description: 'Settings', keys: [mod, ','] },
       { description: 'Keyboard Shortcuts', keys: [mod, '/'] },
       { description: 'Switch Workspace (1-9)', keys: ['Ctrl', '1-9'] },
+      { description: 'Quick-Switch Workspace', keys: ['Ctrl', 'Tab'] },
     ],
   },
   {

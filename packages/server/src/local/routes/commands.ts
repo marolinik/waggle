@@ -52,6 +52,7 @@ export const commandRoutes: FastifyPluginAsync = async (server) => {
           workspaceId: effectiveWorkspaceId,
           wsManager: server.workspaceManager,
           activateWorkspaceMind: server.agentState.activateWorkspaceMind,
+          cronSchedules: server.cronStore.list(),
         });
         if (!block) return 'No workspace state available.';
         return formatWorkspaceNowPrompt(block);

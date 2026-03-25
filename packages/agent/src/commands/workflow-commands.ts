@@ -83,7 +83,7 @@ function researchCommand(): CommandDefinition {
         return ctx.runWorkflow('research-team', args.trim());
       }
       // B2: Re-route through agent loop — the agent has web_search, search_memory tools
-      return `${AGENT_LOOP_REROUTE_PREFIX}Research the following topic thoroughly. Use web_search for current information and search_memory for existing knowledge. Provide a comprehensive summary with key findings, sources, and implications:\n\n${args.trim()}`;
+      return `${AGENT_LOOP_REROUTE_PREFIX}I'll research this using the Research Team workflow:\n1. Researcher agent searches web + memory (5+ sources)\n2. Synthesizer agent combines findings into a report\n3. Reviewer agent validates accuracy and completeness\n\nTopic: ${args.trim()}\n\nStarting now...\n\nResearch the following topic thoroughly. Use web_search for current information and search_memory for existing knowledge. Provide a comprehensive summary with key findings, sources, and implications:\n\n${args.trim()}`;
     },
   };
 }
@@ -102,7 +102,7 @@ function draftCommand(): CommandDefinition {
         return ctx.runWorkflow('review-pair', args.trim());
       }
       // B1: Re-route through agent loop — the agent can draft with memory context
-      return `${AGENT_LOOP_REROUTE_PREFIX}Draft the following. Search memory first for relevant context, then produce a complete, well-structured draft. If appropriate, generate a DOCX file:\n\n${args.trim()}`;
+      return `${AGENT_LOOP_REROUTE_PREFIX}I'll use the Review Pair workflow:\n1. Writer agent creates initial draft\n2. Reviewer agent critiques for accuracy and style\n3. Reviser agent incorporates feedback\n\nTask: ${args.trim()}\n\nDraft the following. Search memory first for relevant context, then produce a complete, well-structured draft. If appropriate, generate a DOCX file:\n\n${args.trim()}`;
     },
   };
 }
@@ -263,7 +263,7 @@ function planCommand(): CommandDefinition {
         return ctx.runWorkflow('plan-execute', args.trim());
       }
       // B3: Re-route through agent loop — the agent can create structured plans
-      return `${AGENT_LOOP_REROUTE_PREFIX}Create a detailed, actionable plan for the following goal. Break it into phases, each with specific tasks, dependencies, and deliverables. Search memory for any existing context:\n\n${args.trim()}`;
+      return `${AGENT_LOOP_REROUTE_PREFIX}I'll use the Plan & Execute workflow:\n1. Planner decomposes into sub-tasks\n2. Executor works through each step\n3. Summarizer consolidates results\n\nGoal: ${args.trim()}\n\nCreate a detailed, actionable plan for the following goal. Break it into phases, each with specific tasks, dependencies, and deliverables. Search memory for any existing context:\n\n${args.trim()}`;
     },
   };
 }
@@ -315,10 +315,14 @@ function helpCommand(): CommandDefinition {
         `| \`/plan <goal>\` | Break a goal into an actionable plan |`,
         `| \`/focus <topic>\` | Narrow agent focus to a specific topic |`,
         `| \`/plugins\` | List installed plugins and capabilities |`,
-        `| \`/export [type]\` | Export workspace data (memories, sessions, all) |`,
+        `| \`/export [type]\` | Export workspace data (memories, sessions, all, workspace) |`,
         `| \`/import <source>\` | Import data into workspace memory |`,
         `| \`/settings\` | Show workspace and agent settings |`,
+        `| \`/connectors\` | List connected services and their status |`,
         `| \`/cli [action]\` | Manage CLI tool access — view, allow, or deny programs |`,
+        `| \`/search-all <query>\` | Search across all workspaces and personal memory |`,
+        `| \`/workflow <sub> [args]\` | Create, list, or run custom workflows |`,
+        `| \`/pr <title>\` | Create a pull request from the current branch |`,
         `| \`/help\` | List all available commands |`,
       ];
       return lines.join('\n');
@@ -353,10 +357,47 @@ function exportCommand(): CommandDefinition {
     name: 'export',
     aliases: [],
     description: 'Export workspace data (memories, sessions, settings)',
-    usage: '/export [memories|sessions|all]',
+    usage: '/export [memories|sessions|all|workspace]',
     handler: async (_args, context) => {
-      const what = _args.trim() || 'all';
-      return `${AGENT_LOOP_REROUTE_PREFIX}Export the workspace ${what} data. List what's available (memory count, session count) and explain the export format options (JSON, Markdown). Workspace: ${context.workspaceId}`;
+      const what = _args.trim().toLowerCase();
+
+      // No args — show structured help
+      if (!what) {
+        return [
+          '## Export Workspace Data',
+          '',
+          'Usage: `/export <type>`',
+          '',
+          '| Type | Description |',
+          '|------|-------------|',
+          '| `memories` | Export all workspace memories as JSON/Markdown |',
+          '| `sessions` | Export conversation sessions and history |',
+          '| `all` | Export everything (memories + sessions + settings) |',
+          '| `workspace` | Export workspace configuration and metadata |',
+          '',
+          'Example: `/export memories`',
+        ].join('\n');
+      }
+
+      // Specific export types with targeted agent instructions
+      if (what === 'memories') {
+        return `${AGENT_LOOP_REROUTE_PREFIX}Export all workspace memories for workspace "${context.workspaceId}". Use search_memory to retrieve all memories, then format them as a comprehensive Markdown document with categories, dates, and importance levels. Offer to save as a file.`;
+      }
+
+      if (what === 'sessions') {
+        return `${AGENT_LOOP_REROUTE_PREFIX}Export conversation sessions for workspace "${context.workspaceId}". List all sessions with their titles, dates, and message counts. Offer to export as JSON or summarized Markdown.`;
+      }
+
+      if (what === 'all') {
+        return `${AGENT_LOOP_REROUTE_PREFIX}Export all data for workspace "${context.workspaceId}": memories, sessions, and settings. Create a comprehensive export package. List what's available (memory count, session count) and export as organized files.`;
+      }
+
+      if (what === 'workspace') {
+        return `${AGENT_LOOP_REROUTE_PREFIX}Export workspace configuration and metadata for workspace "${context.workspaceId}". Include workspace name, group, model, persona, linked directory, and any custom settings.`;
+      }
+
+      // Unknown type — show help
+      return `Unknown export type: "${what}". Run \`/export\` without arguments to see available types.`;
     },
   };
 }
@@ -368,7 +409,29 @@ function importCommand(): CommandDefinition {
     description: 'Import data into workspace memory',
     usage: '/import <source>',
     handler: async (_args, context) => {
-      return `${AGENT_LOOP_REROUTE_PREFIX}Help the user import data into workspace "${context.workspaceId}". Explain supported formats: paste text directly, upload files, or provide URLs. Ask what they want to import.`;
+      const trimmed = _args.trim();
+
+      // No args — show structured help
+      if (!trimmed) {
+        return [
+          '## Import Data',
+          '',
+          'Usage: `/import <source>`',
+          '',
+          '**Supported sources:**',
+          '- **Text**: `/import` then paste content in the next message',
+          '- **File path**: `/import /path/to/file.md`',
+          '- **URL**: `/import https://example.com/document`',
+          '- **Clipboard**: `/import clipboard`',
+          '',
+          '**Supported formats:** Markdown, JSON, plain text, CSV',
+          '',
+          'Example: `/import ./notes/meeting-2026-03-25.md`',
+        ].join('\n');
+      }
+
+      // With args — reroute with the source description
+      return `${AGENT_LOOP_REROUTE_PREFIX}Help the user import data into workspace "${context.workspaceId}" from source: ${trimmed}. Read or fetch the content, then save relevant information as workspace memories. Confirm what was imported.`;
     },
   };
 }
@@ -381,6 +444,34 @@ function settingsCommand(): CommandDefinition {
     usage: '/settings',
     handler: async (_args, context) => {
       return `${AGENT_LOOP_REROUTE_PREFIX}Show the current settings for workspace "${context.workspaceId}": model, persona, linked directory, budget, and suggest what can be changed. Check memory for any stored preferences.`;
+    },
+  };
+}
+
+function searchAllCommand(): CommandDefinition {
+  return {
+    name: 'search-all',
+    aliases: ['find-all'],
+    description: 'Search across all workspaces and personal memory',
+    usage: '/search-all <query>',
+    handler: async (args, _ctx) => {
+      if (!args.trim()) {
+        return 'Missing query. Usage: `/search-all <query>`\n\nExample: `/search-all project deadlines`';
+      }
+      // Q23: Re-route through agent loop to use cross-workspace search tools
+      return `${AGENT_LOOP_REROUTE_PREFIX}Search across all my workspaces for: ${args.trim()}. Use search_all_workspaces tool if available, otherwise search_memory with scope=all. Summarize results grouped by workspace.`;
+    },
+  };
+}
+
+function connectorsCommand(): CommandDefinition {
+  return {
+    name: 'connectors',
+    aliases: ['integrations', 'connections'],
+    description: 'List connected services and their status',
+    usage: '/connectors',
+    handler: async (_args, _ctx) => {
+      return `${AGENT_LOOP_REROUTE_PREFIX}List all my connected services and their health status. Show which are connected, which need setup, and how to connect new ones.`;
     },
   };
 }
@@ -423,6 +514,80 @@ function cliCommand(): CommandDefinition {
   };
 }
 
+function workflowCommand(): CommandDefinition {
+  return {
+    name: 'workflow',
+    aliases: ['wf'],
+    description: 'Create, list, or run custom multi-agent workflows',
+    usage: '/workflow <create|list|run> [args]',
+    handler: async (args, _ctx) => {
+      const trimmed = args.trim();
+
+      // /workflow (no args) — show help
+      if (!trimmed) {
+        return [
+          '## Workflow Manager',
+          '',
+          'Usage: `/workflow <subcommand> [args]`',
+          '',
+          '| Subcommand | Description |',
+          '|------------|-------------|',
+          '| `create <description>` | Create a custom multi-agent workflow from a description |',
+          '| `list` | List all available workflows (built-in and custom) |',
+          '| `run <name>` | Run a workflow by name |',
+          '',
+          'Examples:',
+          '- `/workflow create Research a topic, then draft a report, then review it`',
+          '- `/workflow list`',
+          '- `/workflow run research-and-report`',
+        ].join('\n');
+      }
+
+      // Parse subcommand
+      const spaceIdx = trimmed.indexOf(' ');
+      const sub = spaceIdx === -1 ? trimmed.toLowerCase() : trimmed.slice(0, spaceIdx).toLowerCase();
+      const subArgs = spaceIdx === -1 ? '' : trimmed.slice(spaceIdx + 1).trim();
+
+      if (sub === 'create') {
+        if (!subArgs) {
+          return 'Missing description. Usage: `/workflow create <description>`\n\nExample: `/workflow create Research competitors, summarize findings, and draft an executive brief`';
+        }
+        return `${AGENT_LOOP_REROUTE_PREFIX}Create a custom multi-agent workflow based on this description: ${subArgs}. Use the compose_workflow tool to analyze the task and create a reusable template. Save it using the skill creation tools.`;
+      }
+
+      if (sub === 'list') {
+        return `${AGENT_LOOP_REROUTE_PREFIX}List all available workflows including built-in and custom ones. Check loaded skills for workflow-type skills, and list the built-in workflow templates (research-team, review-pair, plan-execute, decision-analysis).`;
+      }
+
+      if (sub === 'run') {
+        if (!subArgs) {
+          return 'Missing workflow name. Usage: `/workflow run <name>`\n\nExample: `/workflow run research-team`';
+        }
+        return `${AGENT_LOOP_REROUTE_PREFIX}Run the workflow named ${subArgs}. If it's a built-in workflow template, execute it. If it's a custom skill-based workflow, load and execute it.`;
+      }
+
+      return `Unknown subcommand: "${sub}". Available: \`create\`, \`list\`, \`run\`. Run \`/workflow\` for help.`;
+    },
+  };
+}
+
+function prCommand(): CommandDefinition {
+  return {
+    name: 'pr',
+    aliases: ['pull-request', 'merge-request'],
+    description: 'Create a pull request from the current branch',
+    usage: '/pr <title>',
+    handler: async (args, _ctx) => {
+      const title = args.trim();
+      if (!title) {
+        return 'Missing title. Usage: `/pr <title>`\n\nExample: `/pr Add user authentication module`';
+      }
+      // Re-route through agent loop — the agent has git_pr, git_status, git_log tools
+      return `${AGENT_LOOP_REROUTE_PREFIX}Create a pull request with title: "${title}". First run git_status and git_log to gather context, then use git_pr tool to create the PR. Include a summary of changes in the PR body.`;
+    },
+  };
+}
+
 // ── Registration ────────────────────────────────────────────────────────
 
 export function registerWorkflowCommands(registry: CommandRegistry): void {
@@ -444,7 +609,11 @@ export function registerWorkflowCommands(registry: CommandRegistry): void {
     exportCommand(),
     importCommand(),
     settingsCommand(),
+    connectorsCommand(),
     cliCommand(),
+    searchAllCommand(),
+    workflowCommand(),
+    prCommand(),
   ];
 
   for (const cmd of commands) {

@@ -2,11 +2,8 @@
  * CockpitView — Control Cockpit dashboard.
  *
  * Composes 10 card sub-components in a responsive 2-column grid:
- *   1. Agent Status (SystemHealth)  2. Service Health
- *   3. Cost Estimates               4. Memory Stats
- *   5. Vault Summary                6. Scheduled Tasks (Cron)
- *   7. Installed Tools (Capability) 8. AI Configuration (Topology)
- *   9. Connectors                  10. Recent Activity (Audit)
+ *   Visible (5): SystemHealth, CostDashboard, CronSchedules, Connectors, MemoryStats
+ *   Collapsed (5): ServiceHealth, VaultSummary, CapabilityOverview, AgentTopology, AuditTrail
  *
  * Progressive disclosure: first 5 cards always visible, remaining 5 behind toggle.
  * KVARK card shown only when enterprise config is present.
@@ -358,13 +355,28 @@ export default function CockpitView() {
       {/* Main content — shown once data starts arriving */}
       {(!initialLoading || health) && !(fetchError && healthError && !health) && (
         <>
-          {/* Always-visible cards (primary group) */}
+          {/* Always-visible cards (primary group — actionable cards first) */}
           <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fit,minmax(420px,1fr))] gap-4">
             <SystemHealthCard health={health} healthError={healthError} />
-            <ServiceHealthCard health={health} />
             <CostDashboardCard costSummary={costSummary} workspaceCosts={workspaceCosts} />
+            <CronSchedulesCard
+              schedules={schedules}
+              schedulesLoading={schedulesLoading}
+              togglingId={togglingId}
+              triggeringId={triggeringId}
+              onToggle={toggleSchedule}
+              onTrigger={triggerSchedule}
+              onCreated={fetchSchedules}
+            />
+            <ConnectorsCard
+              connectors={connectors}
+              connectingId={connectingId}
+              connectToken={connectToken}
+              onConnectTokenChange={setConnectToken}
+              onConnect={connectConnector}
+              onDisconnect={disconnectConnector}
+            />
             <MemoryStatsCard health={health} />
-            <VaultSummaryCard connectors={connectors} />
           </div>
 
           {/* Show more / Show less toggle */}
@@ -392,29 +404,50 @@ export default function CockpitView() {
             </button>
           </div>
 
-          {/* Collapsible cards (secondary group) */}
+          {/* Collapsible cards (secondary group — passive/reference cards) */}
           {expanded && (
             <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fit,minmax(420px,1fr))] gap-4">
-              <CronSchedulesCard
-                schedules={schedules}
-                schedulesLoading={schedulesLoading}
-                togglingId={togglingId}
-                triggeringId={triggeringId}
-                onToggle={toggleSchedule}
-                onTrigger={triggerSchedule}
-                onCreated={fetchSchedules}
-              />
+              <ServiceHealthCard health={health} />
+              <VaultSummaryCard connectors={connectors} />
               <CapabilityOverviewCard capabilities={capabilities} />
               <AgentTopologyCard health={health} capabilities={capabilities} />
-              <ConnectorsCard
-                connectors={connectors}
-                connectingId={connectingId}
-                connectToken={connectToken}
-                onConnectTokenChange={setConnectToken}
-                onConnect={connectConnector}
-                onDisconnect={disconnectConnector}
-              />
               <AuditTrailCard auditEntries={auditEntries} />
+
+              {/* W5.6: Agent Learning — workflow capture visibility */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--honey-500)' }}>
+                      <path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7z" />
+                      <line x1="9" y1="21" x2="15" y2="21" />
+                      <line x1="10" y1="24" x2="14" y2="24" />
+                    </svg>
+                    Agent Learning
+                  </h3>
+                </CardHeader>
+                <CardContent className="text-xs text-muted-foreground space-y-3">
+                  <p className="leading-relaxed">
+                    Your agent detects repeating patterns and suggests saving them as skills.
+                  </p>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 text-[11px]">
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--honey-500)' }} />
+                      <span>Monitors tool sequences across sessions</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px]">
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--honey-500)' }} />
+                      <span>Triggers after 3+ repetitions of the same workflow</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px]">
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--honey-500)' }} />
+                      <span>Suggests saving patterns as reusable skills</span>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground/60 leading-relaxed">
+                    Captured patterns appear as skill suggestions in your chat. Install them from Skills &amp; Apps to automate recurring workflows.
+                  </p>
+                </CardContent>
+              </Card>
 
               {/* W5.2: KVARK Enterprise health indicator — only shown when enterprise config present */}
               {hasEnterpriseConfig && (

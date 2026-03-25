@@ -13,10 +13,50 @@ import type { Message, ToolUseEvent, WorkspaceContext } from '../../services/typ
 import { ChatMessage } from './ChatMessage.js';
 import { ChatInput, CLIENT_COMMANDS, type SlashCommand } from './ChatInput.js';
 import { SubAgentProgress, type SubAgentInfo } from './SubAgentProgress.js';
+import { SubAgentPanel } from './SubAgentPanel.js';
 import type { FeedbackRating, FeedbackReason } from './FeedbackButtons.js';
 
 /** Scroll positions keyed by workspace/session for persistence across switches */
 const scrollPositions = new Map<string, number>();
+
+// Wave 1.6: Template-specific starter card definitions
+const TEMPLATE_STARTERS: Record<string, Array<{ label: string; sub: string; cmd: string }>> = {
+  'sales-pipeline': [
+    { label: 'Research a prospect', sub: 'Company deep-dive', cmd: 'Research [company name] — find key decision-makers, recent news, and pain points' },
+    { label: 'Draft outreach', sub: 'Cold email', cmd: '/draft cold email to [prospect name] at [company]' },
+    { label: 'Prep for call', sub: 'Meeting brief', cmd: 'Help me prepare for my call with [prospect] tomorrow' },
+  ],
+  'research-project': [
+    { label: 'Start research', sub: 'Deep dive', cmd: '/research ' },
+    { label: 'Literature review', sub: 'Academic sources', cmd: 'Help me design a literature review on [topic]' },
+    { label: 'Analyze findings', sub: 'Synthesis', cmd: 'Analyze and synthesize my research findings so far' },
+  ],
+  'code-review': [
+    { label: 'Review code', sub: 'Paste a diff', cmd: '/review ' },
+    { label: 'Architecture check', sub: 'Design review', cmd: 'Review the architecture of [component/service]' },
+    { label: 'Debug issue', sub: 'Investigate', cmd: 'Help me debug [describe the issue]' },
+  ],
+  'marketing-campaign': [
+    { label: 'Campaign brief', sub: 'Strategy', cmd: '/draft campaign brief for [product/initiative]' },
+    { label: 'Content calendar', sub: 'Planning', cmd: 'Create a content calendar for next month' },
+    { label: 'Competitive analysis', sub: 'Research', cmd: '/research competitors in [industry]' },
+  ],
+  'product-launch': [
+    { label: 'Write PRD', sub: 'Feature spec', cmd: '/draft PRD for [feature name]' },
+    { label: 'Roadmap update', sub: 'Planning', cmd: 'Help me prioritize my backlog for next quarter' },
+    { label: 'Stakeholder update', sub: 'Communication', cmd: '/draft stakeholder update for [project]' },
+  ],
+  'legal-review': [
+    { label: 'Review contract', sub: 'Flag risks', cmd: 'Review this contract and flag risky clauses: [paste or describe]' },
+    { label: 'Legal research', sub: 'Regulations', cmd: '/research [legal topic or regulation]' },
+    { label: 'Draft document', sub: 'Legal writing', cmd: '/draft NDA template for [context]' },
+  ],
+  'agency-consulting': [
+    { label: 'Client research', sub: 'Deep dive', cmd: '/research [client company] — industry, competitors, recent developments' },
+    { label: 'Draft deliverable', sub: 'Consulting output', cmd: '/draft [presentation/report] for [client]' },
+    { label: 'Plan project', sub: 'Work breakdown', cmd: '/plan [project name] deliverables and timeline' },
+  ],
+};
 
 function formatRelativeTime(isoDate: string): string {
   const diff = Date.now() - new Date(isoDate).getTime();
@@ -132,6 +172,18 @@ export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, o
 
   return (
     <div className="flex flex-col h-full">
+      {/* Sub-agent orchestration panel — above messages when agents are active */}
+      {subAgents && subAgents.length > 0 && (
+        <SubAgentPanel
+          agents={subAgents.map((a) => ({
+            id: a.id,
+            role: a.role,
+            status: a.status === 'done' ? 'complete' : a.status === 'failed' ? 'error' : a.status,
+            name: a.name,
+          }))}
+        />
+      )}
+
       {/* Messages list — scrollable */}
       <div
         ref={scrollRef}
@@ -143,11 +195,44 @@ export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, o
         {/* Workspace Home — shown when entering a workspace with no messages */}
         {showWorkspaceHome && (
           <div className="max-w-2xl mx-auto py-8 space-y-6">
-            {workspaceContext.stats.memoryCount > 0 && workspaceContext.stats.sessionCount > 1 && (
+            {/* Wave 3.1: Time-aware greeting — prominent, above everything */}
+            {workspaceContext.greeting && workspaceContext.stats.memoryCount > 0 && (
+              <div className="text-lg font-medium" style={{ color: 'var(--honey-500)' }}>
+                {workspaceContext.greeting}
+              </div>
+            )}
+            {/* Fallback for workspaces without greeting (e.g. no memories yet) */}
+            {!workspaceContext.greeting && workspaceContext.stats.memoryCount > 0 && workspaceContext.stats.sessionCount > 1 && (
               <div className="text-sm text-muted-foreground">
                 Welcome back — here's where things stand.
               </div>
             )}
+
+            {/* Wave 3.1: Pending tasks — compact list with status icons */}
+            {workspaceContext.pendingTasks && workspaceContext.pendingTasks.length > 0 && (
+              <div className="space-y-1.5">
+                <h3 className="text-sm font-semibold text-foreground">Pending</h3>
+                {workspaceContext.pendingTasks.slice(0, 5).map((task, i) => (
+                  <div key={`pt-${i}`} className="flex items-start gap-2 bg-card border border-border rounded-lg px-4 py-2">
+                    <span className="shrink-0" style={{ color: 'var(--honey-500)' }}>{'\u25CB'}</span>
+                    <span className="text-sm text-foreground leading-relaxed flex-1">{task}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Wave 3.1: Upcoming schedules */}
+            {workspaceContext.upcomingSchedules && workspaceContext.upcomingSchedules.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {workspaceContext.upcomingSchedules.map((schedule, i) => (
+                  <div key={`us-${i}`} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground bg-secondary/50 border border-border rounded-full px-3 py-1">
+                    <span style={{ color: 'var(--honey-400)' }}>{'\u23F0'}</span>
+                    <span>Upcoming: {schedule}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="space-y-2">
               <div className="text-muted-foreground/40">
                 <svg width="32" height="32" viewBox="0 0 48 48" fill="none">
@@ -177,6 +262,63 @@ export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, o
             {workspaceContext.summary && (
               <div className="text-sm text-foreground leading-relaxed bg-card border border-border rounded-lg p-4">
                 {workspaceContext.summary}
+              </div>
+            )}
+
+            {/* Cross-workspace hints — Wave 6.5 */}
+            {workspaceContext.crossWorkspaceHints && workspaceContext.crossWorkspaceHints.length > 0 && (
+              <div className="space-y-1.5">
+                <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-60">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                  </svg>
+                  Cross-workspace
+                </h3>
+                <div className="flex flex-wrap gap-1.5">
+                  {workspaceContext.crossWorkspaceHints.map((hint, i) => (
+                    <div
+                      key={i}
+                      className="text-[11px] text-muted-foreground bg-card border border-border rounded-md px-2.5 py-1.5 leading-relaxed"
+                    >
+                      {hint}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Pinned messages — Wave 5.2 */}
+            {workspaceContext.pinnedItems && workspaceContext.pinnedItems.length > 0 && (
+              <div className="space-y-1.5">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                  <span>{'\uD83D\uDCCC'}</span> Pinned
+                </h3>
+                {workspaceContext.pinnedItems.slice(0, 5).map((pin) => (
+                  <div key={pin.id} className="flex items-start gap-2 bg-card border border-border rounded-lg px-4 py-2">
+                    <span className="shrink-0 text-xs" style={{ color: 'var(--honey-500)' }}>
+                      {pin.messageRole === 'assistant' ? '\u2B21' : '\u25CB'}
+                    </span>
+                    <span className="text-sm text-foreground leading-relaxed flex-1 line-clamp-2">
+                      {pin.messageContent.length > 100
+                        ? pin.messageContent.slice(0, 100) + '...'
+                        : pin.messageContent}
+                    </span>
+                    {/* W7.4: Draft/Final status badge */}
+                    {pin.status && (
+                      <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                        pin.status === 'final'
+                          ? 'bg-green-500/15 text-green-600 dark:text-green-400'
+                          : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                      }`}>
+                        {pin.status === 'final' ? 'Final' : 'Draft'}
+                      </span>
+                    )}
+                    {pin.label && (
+                      <span className="shrink-0 text-[10px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">{pin.label}</span>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
 
@@ -296,7 +438,7 @@ export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, o
                   'Create Word documents (.docx) with professional formatting',
                   'Read, write, and edit files in your workspace',
                   'Run shell commands (sandboxed)',
-                  '15 workflow commands \u2014 type / to discover them',
+                  '22 workflow commands \u2014 type / to discover them',
                   'Remember everything across sessions automatically',
                   'Schedule recurring tasks',
                   'Install new skills from the marketplace',
@@ -310,10 +452,127 @@ export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, o
               </div>
             </details>
 
+            {/* Quick Actions — clickable slash command pills */}
+            <div className="space-y-2 pt-2">
+              <div className="flex flex-wrap justify-center gap-2">
+                {[
+                  { icon: '\uD83D\uDD0D', label: 'Research', cmd: '/research ' },
+                  { icon: '\uD83D\uDCDD', label: 'Draft', cmd: '/draft ' },
+                  { icon: '\uD83D\uDCCB', label: 'Plan', cmd: '/plan ' },
+                  { icon: '\uD83D\uDD04', label: 'Review', cmd: '/review' },
+                  { icon: '\u2600\uFE0F', label: 'Catch Up', cmd: '/catchup' },
+                ].map((action) => (
+                  <button
+                    key={action.cmd}
+                    type="button"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium cursor-pointer disabled:opacity-50 transition-all duration-150"
+                    style={{
+                      backgroundColor: 'var(--hive-800)',
+                      border: '1px solid var(--hive-700)',
+                      color: 'var(--hive-200)',
+                    }}
+                    onClick={() => onSendMessage(action.cmd.trim())}
+                    disabled={isLoading}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLElement).style.borderColor = 'var(--honey-500)';
+                      (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--hive-750, var(--hive-800))';
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLElement).style.borderColor = 'var(--hive-700)';
+                      (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--hive-800)';
+                    }}
+                  >
+                    <span>{action.icon}</span>
+                    <span>{action.label}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-center" style={{ color: 'var(--hive-500)' }}>
+                Or ask: &quot;Create a workflow that...&quot; to build custom multi-agent workflows
+              </p>
+              <p className="text-[11px] text-center italic text-muted-foreground">
+                Multi-agent workflows available: Research Team (3 agents), Review Pair (writer + reviewer), Plan &amp; Execute. Try <span style={{ color: 'var(--honey-500)' }}>/research</span>, <span style={{ color: 'var(--honey-500)' }}>/draft</span>, or <span style={{ color: 'var(--honey-500)' }}>/plan</span>.
+              </p>
+            </div>
+
+            {/* Wave 4.1: Connect Your Apps banner — Composio app connector visibility */}
+            <div
+              className="rounded-lg p-4 space-y-2"
+              style={{
+                backgroundColor: 'var(--hive-850)',
+                border: '1px dashed var(--hive-600)',
+              }}
+            >
+              <h3 className="text-sm font-semibold text-foreground">{'\uD83D\uDD17'} Connect Your Apps</h3>
+              <p className="text-xs text-muted-foreground">
+                Link GitHub, Slack, Notion, Google, Jira and 250+ more via Composio
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { emoji: '\uD83D\uDC19', name: 'GitHub' },
+                  { emoji: '\uD83D\uDCAC', name: 'Slack' },
+                  { emoji: '\uD83D\uDCDD', name: 'Notion' },
+                  { emoji: '\uD83D\uDCC5', name: 'Google' },
+                  { emoji: '\uD83D\uDD27', name: 'Jira' },
+                  { emoji: '\uD83D\uDCCA', name: 'Salesforce' },
+                  { emoji: '\uD83D\uDCE7', name: 'Gmail' },
+                  { emoji: '\u2728', name: '250+ more' },
+                ].map((svc) => (
+                  <span
+                    key={svc.name}
+                    className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full"
+                    style={{
+                      backgroundColor: 'var(--hive-800)',
+                      border: '1px solid var(--hive-700)',
+                      color: 'var(--hive-300)',
+                    }}
+                  >
+                    <span>{svc.emoji}</span>
+                    <span>{svc.name}</span>
+                  </span>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Set up in <span className="font-medium" style={{ color: 'var(--honey-500)' }}>Settings &gt; Keys &amp; Connections</span>
+              </p>
+            </div>
+
             {/* Slash command & search tip */}
             <div className="text-xs text-muted-foreground/60 text-center pt-2">
               Type <kbd className="px-1.5 py-0.5 rounded bg-secondary text-foreground text-[10px]">/</kbd> for workflows · <kbd className="px-1.5 py-0.5 rounded bg-secondary text-foreground text-[10px]">Ctrl+K</kbd> to search
             </div>
+
+            {/* Template-specific starter cards — shown when workspace has a matching template */}
+            {workspaceContext.workspace.templateId && TEMPLATE_STARTERS[workspaceContext.workspace.templateId] && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-foreground">Quick start</h3>
+                <div className="flex flex-wrap gap-3">
+                  {TEMPLATE_STARTERS[workspaceContext.workspace.templateId]!.map((card) => (
+                    <button
+                      key={card.cmd}
+                      className="flex flex-col items-start gap-1 px-4 py-3 rounded-xl text-sm text-left cursor-pointer disabled:opacity-50 transition-all duration-200 waggle-card-lift min-w-[160px] flex-1"
+                      style={{
+                        backgroundColor: 'var(--hive-850)',
+                        border: '1px solid var(--hive-700)',
+                      }}
+                      onClick={() => onSendMessage(card.cmd.trim())}
+                      disabled={isLoading}
+                      onMouseEnter={(e) => {
+                        (e.currentTarget as HTMLElement).style.borderColor = 'var(--honey-500)';
+                        (e.currentTarget as HTMLElement).style.boxShadow = 'var(--shadow-honey)';
+                      }}
+                      onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLElement).style.borderColor = 'var(--hive-700)';
+                        (e.currentTarget as HTMLElement).style.boxShadow = 'none';
+                      }}
+                    >
+                      <span className="font-medium" style={{ color: 'var(--hive-100)' }}>{card.label}</span>
+                      <span className="text-[12px]" style={{ color: 'var(--hive-500)' }}>{card.sub}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Suggested prompts — clickable chips */}
             <div className="flex flex-wrap gap-2 pt-2">
@@ -390,9 +649,9 @@ export function ChatArea({ messages, isLoading, onSendMessage, onSlashCommand, o
             {/* Starter honeycomb cards */}
             <div className="flex flex-wrap justify-center gap-3 pt-2 max-w-xl">
               {[
-                { icon: '🔄', title: 'Catch up', desc: 'on this workspace', cmd: '/catchup' },
-                { icon: '🔍', title: 'Research', desc: 'a topic', cmd: '/research ' },
-                { icon: '📝', title: 'Draft', desc: 'a document', cmd: '/draft ' },
+                { icon: '\uD83D\uDD0D', title: 'Research', desc: 'a topic', cmd: '/research ' },
+                { icon: '\uD83D\uDCDD', title: 'Draft', desc: 'a document', cmd: '/draft ' },
+                { icon: '\uD83D\uDCCB', title: 'Plan', desc: 'a project', cmd: '/plan ' },
               ].map((card) => (
                 <button
                   key={card.cmd}

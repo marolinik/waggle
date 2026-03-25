@@ -7,7 +7,7 @@
  *   - Settings tabs (General, Models, Vault, Permissions, Team, Advanced)
  */
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import type { Workspace } from '@waggle/ui';
 import {
   CommandDialog,
@@ -46,6 +46,7 @@ const SLASH_COMMANDS = [
   { id: '/plan', name: '/plan', description: 'Create a structured plan' },
   { id: '/focus', name: '/focus', description: 'Set focus mode for deep work' },
   { id: '/help', name: '/help', description: 'Show available commands' },
+  { id: '/search-all', name: '/search-all', description: 'Search across all workspaces' },
 ] as const;
 
 const SETTINGS_TABS = [
@@ -65,6 +66,9 @@ export function GlobalSearch({
   onSelect,
   workspaces,
 }: GlobalSearchProps) {
+  // Q23: Cross-workspace search toggle
+  const [searchAllWorkspaces, setSearchAllWorkspaces] = useState(false);
+
   const handleSelect = useCallback(
     (type: GlobalSearchResultType, id: string) => {
       onSelect(type, id);
@@ -86,6 +90,23 @@ export function GlobalSearch({
       description="Search workspaces, commands, and settings"
     >
       <CommandInput placeholder="⬡ Search everything..." />
+      {/* Q23: Cross-workspace search toggle */}
+      <div className="flex items-center gap-2 px-3 py-1.5" style={{ borderBottom: '1px solid var(--border)' }}>
+        <label className="flex items-center gap-1.5 cursor-pointer text-xs text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={searchAllWorkspaces}
+            onChange={(e) => setSearchAllWorkspaces(e.target.checked)}
+            className="rounded"
+          />
+          Search all workspaces
+        </label>
+        {searchAllWorkspaces && (
+          <span className="text-[10px] rounded px-1.5 py-0.5" style={{ backgroundColor: 'var(--honey-600)', color: '#fff' }}>
+            Cross-workspace
+          </span>
+        )}
+      </div>
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
 

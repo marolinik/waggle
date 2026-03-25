@@ -45,7 +45,8 @@ describe('createSystemTools', () => {
     expect(names).toContain('multi_edit');
     expect(names).toContain('get_task_output');
     expect(names).toContain('kill_task');
-    expect(tools).toHaveLength(11);
+    expect(names).toContain('run_code');
+    expect(tools).toHaveLength(12);
   });
 
   describe('bash', () => {

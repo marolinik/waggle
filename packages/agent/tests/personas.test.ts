@@ -86,15 +86,16 @@ describe('Prompt composition', () => {
   it('persona prompt is truncated if combined exceeds limit', () => {
     const longCore = 'A'.repeat(30000);
     const persona = getPersona('researcher')!;
-    // Set a tight limit so persona MUST be truncated
-    const result = composePersonaPrompt(longCore, persona, 30100);
+    // Set a tight limit so persona MUST be truncated (account for DOCX hint ~150 chars)
+    const result = composePersonaPrompt(longCore, persona, 30300);
 
-    expect(result.length).toBeLessThanOrEqual(30100);
+    expect(result.length).toBeLessThanOrEqual(30300);
     expect(result).toContain('[...truncated]');
   });
 
-  it('null persona returns core prompt unchanged', () => {
+  it('null persona returns core prompt with DOCX hint appended', () => {
     const result = composePersonaPrompt(corePrompt, null);
-    expect(result).toBe(corePrompt);
+    expect(result).toContain(corePrompt);
+    expect(result).toContain('generate_docx');
   });
 });

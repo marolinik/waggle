@@ -14,15 +14,39 @@ import type { Message, ToolUseEvent } from '../../services/types.js';
 import { ToolCard, AUTO_HIDE_TOOLS } from './ToolCard.js';
 import { FeedbackButtons, type FeedbackRating, type FeedbackReason } from './FeedbackButtons.js';
 
-// W4.9/W4.10: Custom renderer for code blocks with language labels + copy buttons
+// Languages eligible for the Run button (Task 7.1)
+const RUNNABLE_LANGUAGES = new Set(['javascript', 'typescript', 'python']);
+
+// W4.9/W4.10: Custom renderer for code blocks with language labels + copy/run buttons
+// W7.1: Run button for runnable languages, W7.2: Mermaid diagram rendering
 const renderer = new Renderer();
 renderer.code = ({ text, lang }: { text: string; lang?: string }) => {
   const language = lang || 'text';
   const escapedCode = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  // W7.2: Mermaid diagram — render in a styled container with a label
+  if (language === 'mermaid') {
+    return `<div class="mermaid-block my-3 border border-border rounded-lg overflow-hidden">
+      <div class="flex items-center justify-between bg-muted/50 border-b border-border px-3 py-1 text-[10px] font-mono text-muted-foreground">
+        <span>\u25C8 Mermaid Diagram</span>
+        <button onclick="navigator.clipboard.writeText(decodeURIComponent('${encodeURIComponent(text)}'));this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)" class="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] hover:text-foreground cursor-pointer">Copy</button>
+      </div>
+      <pre class="mermaid !mt-0 !rounded-t-none p-4 bg-card text-sm">${escapedCode}</pre>
+    </div>`;
+  }
+
+  const showRun = RUNNABLE_LANGUAGES.has(language);
+  const encodedForCopy = encodeURIComponent(text);
+  const runBtnHtml = showRun
+    ? ` <button data-run-code data-lang="${language}" data-code="${encodedForCopy}" class="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] hover:text-foreground cursor-pointer ml-2">\u25B6 Run</button>`
+    : '';
+
   return `<div class="code-block-wrapper group relative my-3">
     <div class="flex items-center justify-between bg-muted/50 border border-border border-b-0 rounded-t-lg px-3 py-1 text-[10px] font-mono text-muted-foreground">
       <span>${language}</span>
-      <button onclick="navigator.clipboard.writeText(decodeURIComponent('${encodeURIComponent(text)}'));this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)" class="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] hover:text-foreground cursor-pointer">Copy</button>
+      <span class="flex items-center">
+        <button onclick="navigator.clipboard.writeText(decodeURIComponent('${encodedForCopy}'));this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)" class="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] hover:text-foreground cursor-pointer">Copy</button>${runBtnHtml}
+      </span>
     </div>
     <pre class="!mt-0 !rounded-t-none"><code class="language-${language}">${escapedCode}</code></pre>
   </div>`;
@@ -179,9 +203,13 @@ export interface ChatMessageProps {
   onToolDeny?: (tool: ToolUseEvent, reason?: string) => void;
   /** Called when the user submits thumbs up/down feedback on this message. */
   onFeedback?: (rating: FeedbackRating, reason?: FeedbackReason, detail?: string) => void;
+  /** Called to send a message to the chat (used for DOCX generation prompt). */
+  onSendMessage?: (text: string) => void;
+  /** Called when user pins/favorites this message. */
+  onPinMessage?: (content: string, role: 'assistant' | 'user') => void;
 }
 
-export const ChatMessage = memo(function ChatMessage({ message, messageIndex, sessionId, onToolApprove, onToolDeny, onFeedback }: ChatMessageProps) {
+export const ChatMessage = memo(function ChatMessage({ message, messageIndex, sessionId, onToolApprove, onToolDeny, onFeedback, onSendMessage, onPinMessage }: ChatMessageProps) {
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
   const [trailExpanded, setTrailExpanded] = useState(false);
@@ -195,6 +223,19 @@ export const ChatMessage = memo(function ChatMessage({ message, messageIndex, se
     }).catch(() => { /* clipboard not available */ });
   }, [message.content]);
 
+  // W7.1: Handle Run button clicks on code blocks (delegated via data attributes)
+  const handleContentClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.hasAttribute('data-run-code') && onSendMessage) {
+      e.preventDefault();
+      const lang = target.getAttribute('data-lang') ?? 'javascript';
+      const code = decodeURIComponent(target.getAttribute('data-code') ?? '');
+      if (code) {
+        onSendMessage(`Run this ${lang} code:\n\`\`\`${lang}\n${code}\n\`\`\``);
+      }
+    }
+  }, [onSendMessage]);
+
   // Render markdown for assistant and system messages, sanitize HTML output
   // Content is sanitized with DOMPurify before rendering
   const renderedContent = useMemo(() => {
@@ -202,10 +243,16 @@ export const ChatMessage = memo(function ChatMessage({ message, messageIndex, se
     const rawHtml = marked.parse(message.content) as string;
     return DOMPurify.sanitize(rawHtml, {
       ALLOWED_TAGS: ['p','br','strong','em','code','pre','ul','ol','li','a','h1','h2','h3','h4','h5','h6','blockquote','table','thead','tbody','tr','th','td','span','div','hr','img','sup','sub','del','s','button'],
-      ALLOWED_ATTR: ['href','src','alt','class','id','onclick'],
-      FORBID_TAGS: ['form','input','textarea','button','iframe','object','embed','script','style'],
+      ALLOWED_ATTR: ['href','src','alt','class','id','onclick','data-run-code','data-lang','data-code'],
+      FORBID_TAGS: ['form','input','textarea','iframe','object','embed','script','style'],
     });
   }, [message.content, isUser]);
+
+  // DOCX download eligibility: assistant messages with 500+ chars and markdown headers
+  const isDocxEligible = useMemo(() => {
+    if (isUser || isSystem || !message.content) return false;
+    return message.content.length > 500 && /^#{2,3}\s/m.test(message.content);
+  }, [message.content, isUser, isSystem]);
 
   const hasSteps = message.steps && message.steps.length > 0;
   const hasTools = message.toolUse && message.toolUse.length > 0;
@@ -243,7 +290,7 @@ export const ChatMessage = memo(function ChatMessage({ message, messageIndex, se
       aria-label={isUser ? 'Your message' : 'Agent message'}
     >
       <div
-        className="max-w-[70%] rounded-xl px-5 py-3.5"
+        className="group/msg max-w-[70%] rounded-xl px-5 py-3.5"
         style={isUser
           ? { backgroundColor: 'var(--hive-800)', color: 'var(--hive-100)' }
           : { backgroundColor: 'var(--hive-850)', borderLeft: '3px solid var(--honey-500)', color: 'var(--hive-100)' }
@@ -255,12 +302,45 @@ export const ChatMessage = memo(function ChatMessage({ message, messageIndex, se
             {message.content}
           </div>
         ) : (
-          /* Content sanitized with DOMPurify (line ~160) — full markdown rendering */
+          /* Content sanitized with DOMPurify — full markdown rendering, W7.1 Run button handler */
           <div
             className="chat-message__content prose dark:prose-invert max-w-none"
             style={{ color: 'var(--hive-100)', fontSize: '14px', lineHeight: '1.7' }}
             dangerouslySetInnerHTML={{ __html: renderedContent ?? '' }}
+            onClick={handleContentClick}
           />
+        )}
+
+        {/* Hover action buttons — pin + DOCX save */}
+        {!isUser && (
+          <div className="chat-message__hover-actions mt-1 opacity-0 group-hover/msg:opacity-100 focus-within:opacity-100 transition-opacity flex items-center gap-3">
+            {/* Pin/favorite button — appears on hover for assistant messages */}
+            {onPinMessage && message.content && (
+              <button
+                onClick={() => onPinMessage(message.content!, 'assistant')}
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors bg-transparent border-none cursor-pointer px-0 py-0.5"
+                title="Pin this message"
+              >
+                <span>{'\uD83D\uDCCC'}</span>
+                <span>Pin</span>
+              </button>
+            )}
+            {/* Save as DOCX button — appears on hover for long structured assistant messages */}
+            {isDocxEligible && (
+              <button
+                onClick={() => {
+                  if (onSendMessage) {
+                    onSendMessage('Please save the above response as a DOCX document.');
+                  }
+                }}
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors bg-transparent border-none cursor-pointer px-0 py-0.5"
+                title="Save this response as a Word document"
+              >
+                <span>{'\uD83D\uDCC4'}</span>
+                <span>Save as DOCX</span>
+              </button>
+            )}
+          </div>
         )}
 
         {/* Unified event trail — steps + tool cards */}

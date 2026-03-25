@@ -18,12 +18,21 @@ export interface UseChatOptions {
   onFileCreated?: (filePath: string, action: 'write' | 'edit' | 'generate') => void;
 }
 
+/** Q12:C — Tool progress counter for top-bar progress indicator */
+export interface ToolProgress {
+  total: number;
+  completed: number;
+  active: string | null;
+}
+
 export interface UseChatReturn {
   messages: Message[];
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   isLoading: boolean;
   sendMessage: (text: string) => Promise<void>;
   clearMessages: () => void;
+  /** Q12:C — Live tool progress during agent execution */
+  toolProgress: ToolProgress;
 }
 
 let messageIdCounter = 0;
@@ -147,9 +156,12 @@ export function processStreamEvent(
   return result;
 }
 
+const EMPTY_TOOL_PROGRESS: ToolProgress = { total: 0, completed: 0, active: null };
+
 export function useChat({ service, workspace, session, workspacePath, onFileCreated }: UseChatOptions): UseChatReturn {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [toolProgress, setToolProgress] = useState<ToolProgress>(EMPTY_TOOL_PROGRESS);
   const abortRef = useRef(false);
 
   // Load history when session or workspace changes
@@ -194,6 +206,7 @@ export function useChat({ service, workspace, session, workspacePath, onFileCrea
     };
     setMessages((prev) => [...prev, userMsg]);
     setIsLoading(true);
+    setToolProgress(EMPTY_TOOL_PROGRESS);
     abortRef.current = false;
 
     // Create placeholder assistant message
@@ -212,6 +225,16 @@ export function useChat({ service, workspace, session, workspacePath, onFileCrea
         }
 
         accumulated = processStreamEvent(event, accumulated);
+
+        // Q12:C — Update tool progress counter from accumulated tools
+        if (event.type === 'tool' || event.type === 'tool_result') {
+          const total = accumulated.tools.length;
+          const completed = accumulated.tools.filter(
+            t => t.status === 'done' || t.status === 'error' || t.status === 'denied',
+          ).length;
+          const activeTool = accumulated.tools.find(t => t.status === 'running');
+          setToolProgress({ total, completed, active: activeTool?.name ?? null });
+        }
 
         // Update the assistant message in-place
         const assistantMsg: Message = {
@@ -264,6 +287,7 @@ export function useChat({ service, workspace, session, workspacePath, onFileCrea
       });
     } finally {
       setIsLoading(false);
+      setToolProgress(EMPTY_TOOL_PROGRESS);
     }
   }, [service, workspace, session, workspacePath, isLoading, onFileCreated]);
 
@@ -271,5 +295,5 @@ export function useChat({ service, workspace, session, workspacePath, onFileCrea
     setMessages([]);
   }, []);
 
-  return { messages, setMessages, isLoading, sendMessage, clearMessages };
+  return { messages, setMessages, isLoading, sendMessage, clearMessages, toolProgress };
 }

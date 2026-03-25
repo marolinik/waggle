@@ -5,6 +5,7 @@
  * Orchestrates search, filtering, and frame selection.
  */
 
+import { useState, useCallback } from 'react';
 import type { Frame } from '../../services/types.js';
 import type { FrameFilters, MemoryStats } from './utils.js';
 import { FRAME_TYPES } from './utils.js';
@@ -23,6 +24,12 @@ export interface MemoryBrowserProps {
   loading?: boolean;
   error?: string | null;
   onRetry?: () => void;
+  /** Callback when a frame is deleted. If not provided, delete button is hidden. */
+  onDeleteFrame?: (id: number) => void;
+  /** Callback when a frame is edited. If not provided, edit button is hidden. */
+  onEditFrame?: (id: number, content: string, importance?: string) => void;
+  /** Callback when a new frame is added. If not provided, add button is hidden. */
+  onAddFrame?: (content: string, importance: string) => void;
 }
 
 function formatBytes(bytes: number): string {
@@ -42,13 +49,126 @@ export function MemoryBrowser({
   loading = false,
   error = null,
   onRetry,
+  onDeleteFrame,
+  onEditFrame,
+  onAddFrame,
 }: MemoryBrowserProps) {
+  // Q22: Add Memory form state
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [addContent, setAddContent] = useState('');
+  const [addImportance, setAddImportance] = useState('normal');
+  const [addSubmitting, setAddSubmitting] = useState(false);
+
+  // Q22: Edit mode state
+  const [editingFrameId, setEditingFrameId] = useState<number | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [editImportance, setEditImportance] = useState('');
+  const [editSubmitting, setEditSubmitting] = useState(false);
+
+  const handleAddSubmit = useCallback(() => {
+    if (!addContent.trim() || !onAddFrame) return;
+    setAddSubmitting(true);
+    try {
+      onAddFrame(addContent.trim(), addImportance);
+      setAddContent('');
+      setAddImportance('normal');
+      setShowAddForm(false);
+    } finally {
+      setAddSubmitting(false);
+    }
+  }, [addContent, addImportance, onAddFrame]);
+
+  const handleEditStart = useCallback((frame: Frame) => {
+    setEditingFrameId(frame.id);
+    setEditContent(frame.content);
+    setEditImportance(frame.importance);
+  }, []);
+
+  const handleEditSave = useCallback(() => {
+    if (editingFrameId === null || !editContent.trim() || !onEditFrame) return;
+    setEditSubmitting(true);
+    try {
+      onEditFrame(editingFrameId, editContent.trim(), editImportance);
+      setEditingFrameId(null);
+      setEditContent('');
+      setEditImportance('');
+    } finally {
+      setEditSubmitting(false);
+    }
+  }, [editingFrameId, editContent, editImportance, onEditFrame]);
+
+  const handleEditCancel = useCallback(() => {
+    setEditingFrameId(null);
+    setEditContent('');
+    setEditImportance('');
+  }, []);
+
+  const handleDelete = useCallback((frameId: number) => {
+    if (!onDeleteFrame) return;
+    onDeleteFrame(frameId);
+  }, [onDeleteFrame]);
+
   return (
     <div className="memory-browser flex h-full flex-col honeycomb-bg" style={{ backgroundColor: 'var(--hive-900)' }}>
-      {/* Search */}
-      <div className="memory-browser__search p-3" style={{ borderBottom: '1px solid var(--hive-700)' }}>
-        <MemorySearch onSearch={onSearch} disabled={loading} />
+      {/* Search + Add Memory button */}
+      <div className="memory-browser__search flex items-center gap-2 p-3" style={{ borderBottom: '1px solid var(--hive-700)' }}>
+        <div className="flex-1">
+          <MemorySearch onSearch={onSearch} disabled={loading} />
+        </div>
+        {onAddFrame && (
+          <button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="shrink-0 rounded px-3 py-1.5 text-xs font-medium transition-colors"
+            style={{
+              backgroundColor: showAddForm ? 'var(--hive-700)' : 'var(--honey-600)',
+              color: showAddForm ? 'var(--hive-200)' : '#fff',
+            }}
+            title="Add memory"
+          >
+            + Add
+          </button>
+        )}
       </div>
+
+      {/* Q22: Add Memory form */}
+      {showAddForm && onAddFrame && (
+        <div className="memory-browser__add-form p-3 flex flex-col gap-2" style={{ borderBottom: '1px solid var(--hive-700)', backgroundColor: 'var(--hive-850)' }}>
+          <textarea
+            value={addContent}
+            onChange={(e) => setAddContent(e.target.value)}
+            placeholder="What do you want to remember?"
+            className="w-full rounded bg-background p-2 text-sm text-foreground resize-none"
+            rows={3}
+          />
+          <div className="flex items-center gap-2">
+            <select
+              value={addImportance}
+              onChange={(e) => setAddImportance(e.target.value)}
+              className="rounded bg-card px-2 py-1 text-xs text-muted-foreground"
+            >
+              <option value="critical">Critical</option>
+              <option value="important">Important</option>
+              <option value="normal">Normal</option>
+              <option value="temporary">Temporary</option>
+            </select>
+            <div className="flex-1" />
+            <button
+              onClick={() => { setShowAddForm(false); setAddContent(''); }}
+              className="rounded px-3 py-1 text-xs text-muted-foreground hover:bg-secondary transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleAddSubmit}
+              disabled={!addContent.trim() || addSubmitting}
+              className="rounded px-3 py-1 text-xs font-medium transition-colors disabled:opacity-50"
+              style={{ backgroundColor: 'var(--honey-600)', color: '#fff' }}
+            >
+              {addSubmitting ? 'Saving...' : 'Save Memory'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="memory-browser__filters flex flex-wrap gap-2 px-3 py-2" style={{ borderBottom: '1px solid var(--hive-700)' }}>
@@ -140,7 +260,72 @@ export function MemoryBrowser({
         {/* Detail panel */}
         <div className="memory-browser__detail flex-1 overflow-y-auto p-3">
           {selectedFrame ? (
-            <FrameDetail frame={selectedFrame} />
+            <div className="flex flex-col gap-3">
+              {/* Q22: Edit mode for selected frame */}
+              {editingFrameId === selectedFrame.id ? (
+                <div className="flex flex-col gap-3 rounded-lg bg-card p-4">
+                  <div className="text-sm font-medium text-muted-foreground">Edit Memory</div>
+                  <textarea
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    className="w-full rounded bg-background p-2 text-sm text-foreground resize-none"
+                    rows={6}
+                  />
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={editImportance}
+                      onChange={(e) => setEditImportance(e.target.value)}
+                      className="rounded bg-card px-2 py-1 text-xs text-muted-foreground"
+                    >
+                      <option value="critical">Critical</option>
+                      <option value="important">Important</option>
+                      <option value="normal">Normal</option>
+                      <option value="temporary">Temporary</option>
+                      <option value="deprecated">Superseded</option>
+                    </select>
+                    <div className="flex-1" />
+                    <button
+                      onClick={handleEditCancel}
+                      className="rounded px-3 py-1 text-xs text-muted-foreground hover:bg-secondary transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleEditSave}
+                      disabled={!editContent.trim() || editSubmitting}
+                      className="rounded px-3 py-1 text-xs font-medium transition-colors disabled:opacity-50"
+                      style={{ backgroundColor: 'var(--honey-600)', color: '#fff' }}
+                    >
+                      {editSubmitting ? 'Saving...' : 'Save'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <FrameDetail frame={selectedFrame} />
+                  {/* Q22: Action buttons */}
+                  <div className="flex items-center gap-2">
+                    {onEditFrame && (
+                      <button
+                        onClick={() => handleEditStart(selectedFrame)}
+                        className="rounded border border-border px-3 py-1.5 text-xs text-foreground hover:bg-secondary transition-colors"
+                      >
+                        Edit
+                      </button>
+                    )}
+                    {onDeleteFrame && (
+                      <button
+                        onClick={() => handleDelete(selectedFrame.id)}
+                        className="rounded border px-3 py-1.5 text-xs transition-colors hover:bg-red-900/30"
+                        style={{ borderColor: 'var(--destructive)', color: 'var(--destructive)' }}
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full gap-4 text-center p-8">
               <img src="/brand/bee-researcher-dark.png" alt="" className="w-20 h-20 opacity-40 bee-image-researcher" />

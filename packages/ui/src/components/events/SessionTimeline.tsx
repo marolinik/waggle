@@ -31,27 +31,95 @@ export interface SessionTimelineProps {
 // ── Helpers ───────────────────────────────────────────────────────────
 
 const TOOL_ICONS: Record<string, string> = {
+  // Search / web
   web_search: 'magnifier',
   web_fetch: 'globe',
+  tavily_search: 'magnifier',
+  brave_search: 'magnifier',
+
+  // Memory / knowledge
   search_memory: 'brain',
   save_memory: 'brain',
+  query_knowledge: 'brain',
+  correct_knowledge: 'brain',
+  add_task: 'brain',
+
+  // File system
   bash: 'terminal',
   read_file: 'file',
   write_file: 'file',
   edit_file: 'pen',
+  multi_edit: 'files',
   search_files: 'magnifier',
   search_content: 'magnifier',
+
+  // Git
   git_status: 'git',
   git_diff: 'git',
   git_log: 'git',
   git_commit: 'git',
-  spawn_agent: 'agent',
+
+  // Planning
   create_plan: 'plan',
+  add_plan_step: 'plan',
+  execute_step: 'plan',
+  show_plan: 'plan',
+
+  // Workflows
+  compose_workflow: 'workflow',
+  orchestrate_workflow: 'workflow',
+
+  // Sub-agents
+  spawn_agent: 'agent',
+  list_agents: 'agent',
+  get_agent_result: 'agent',
+
+  // Scheduling
+  create_schedule: 'clock',
+  list_schedules: 'clock',
+  delete_schedule: 'clock',
+  trigger_schedule: 'clock',
+
+  // Skills / capabilities
+  list_skills: 'package',
+  create_skill: 'package',
+  delete_skill: 'package',
+  search_skills: 'package',
+  suggest_skill: 'package',
+  acquire_capability: 'package',
+  install_capability: 'package',
+
+  // Documents
   generate_docx: 'doc',
+
+  // CLI
+  cli_discover: 'terminal',
+  cli_execute: 'terminal',
+
+  // Browser automation
+  browser_navigate: 'globe',
+  browser_screenshot: 'globe',
+  browser_click: 'globe',
+  browser_fill: 'globe',
+  browser_evaluate: 'globe',
+  browser_snapshot: 'globe',
+
+  // Audit
+  query_audit: 'shield',
 };
 
 export function getToolIcon(toolName: string): string {
-  return TOOL_ICONS[toolName] ?? 'tool';
+  // Direct match
+  if (TOOL_ICONS[toolName]) return TOOL_ICONS[toolName];
+
+  // Prefix-based fallback for tool families
+  if (toolName.startsWith('connector_')) return 'plug';
+  if (toolName.startsWith('kvark_')) return 'building';
+  if (toolName.startsWith('git_')) return 'git';
+  // Team tools: check_hive, share_to_team, etc.
+  if (toolName.includes('team') || toolName.includes('hive') || toolName === 'share_to_team' || toolName === 'check_hive') return 'team';
+
+  return 'tool';
 }
 
 /**

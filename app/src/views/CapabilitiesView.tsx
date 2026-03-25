@@ -188,9 +188,55 @@ function skillLabelClasses(state: string): string {
   return 'text-muted-foreground';
 }
 
+// ── Post-install example prompts per category ────────────────────────────
+
+const INSTALL_GUIDE_PROMPTS: Record<string, string[]> = {
+  research_analyst: ['Research [topic]', 'Compare [A] vs [B]'],
+  research: ['Research [topic]', 'Compare [A] vs [B]'],
+  document_master: ['Draft a [document type]', 'Review this contract'],
+  document: ['Draft a [document type]', 'Review this contract'],
+  writing: ['Draft a [document type]', 'Review this contract'],
+  developer_workspace: ['Review this code', 'Find bugs in [file]'],
+  developer: ['Review this code', 'Find bugs in [file]'],
+  coding: ['Review this code', 'Find bugs in [file]'],
+  collaboration_hub: ['Set up my Slack integration', 'Check my GitHub notifications'],
+  collaboration: ['Set up my Slack integration', 'Check my GitHub notifications'],
+  productivity: ['Create a daily standup summary', 'Organize my tasks'],
+  analytics: ['Analyze this dataset', 'Create a dashboard for [metric]'],
+  security: ['Audit this configuration', 'Check for vulnerabilities'],
+};
+
+function getGuidePrompts(category: string): string[] {
+  const lower = category.toLowerCase().replace(/[^a-z_]/g, '_');
+  return INSTALL_GUIDE_PROMPTS[lower]
+    ?? INSTALL_GUIDE_PROMPTS[lower.split('_')[0]]
+    ?? ['Ask your agent to use this new capability', 'Type /skills to see what changed'];
+}
+
+// ── Star rating display helper ───────────────────────────────────────────
+
+function renderStarRating(rating: number): string {
+  const full = Math.floor(rating);
+  const remainder = rating - full;
+  let stars = '';
+  for (let i = 0; i < 5; i++) {
+    if (i < full) stars += '\u2605';        // filled star
+    else if (i === full && remainder >= 0.5) stars += '\u2605'; // half rounds up
+    else stars += '\u2606';                   // empty star
+  }
+  return stars;
+}
+
+// ── Props ─────────────────────────────────────────────────────────────────
+
+interface CapabilitiesViewProps {
+  /** Navigate to another view, optionally with a settings tab target */
+  onNavigate?: (view: string, tab?: string) => void;
+}
+
 // ── Component ────────────────────────────────────────────────────────────
 
-export default function CapabilitiesView() {
+export default function CapabilitiesView({ onNavigate }: CapabilitiesViewProps) {
   const [activeTab, setActiveTab] = useState<'recommended' | 'browse'>('recommended');
 
   // ── Create Skill panel state ──
@@ -230,8 +276,9 @@ export default function CapabilitiesView() {
   const [installingPackageId, setInstallingPackageId] = useState<number | null>(null);
   const [uninstallingPackageId, setUninstallingPackageId] = useState<number | null>(null);
 
-  // ── Post-install toast ──
+  // ── Post-install capability guide card ──
   const [installToast, setInstallToast] = useState<string | null>(null);
+  const [installGuide, setInstallGuide] = useState<{ name: string; category: string } | null>(null);
   const installToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const baseUrl = getServerBaseUrl();
@@ -405,12 +452,14 @@ export default function CapabilitiesView() {
           setMarketplacePackages(prev =>
             prev.map(p => p.id === packageId ? { ...p, installed: true } : p),
           );
-          // Show post-install toast
+          // Show post-install capability guide card
           const pkg = marketplacePackages.find(p => p.id === packageId);
           const name = pkg?.display_name || pkg?.name || 'Package';
+          const category = pkg?.category || '';
           if (installToastTimerRef.current) clearTimeout(installToastTimerRef.current);
-          setInstallToast(`${name} installed! Your agent now has new capabilities.`);
-          installToastTimerRef.current = setTimeout(() => setInstallToast(null), 3000);
+          setInstallToast(name);
+          setInstallGuide({ name, category });
+          installToastTimerRef.current = setTimeout(() => { setInstallToast(null); setInstallGuide(null); }, 10000);
         }
       }
     } catch {
@@ -620,7 +669,7 @@ export default function CapabilitiesView() {
       <div className="text-xs text-muted-foreground mb-6">Browse and install capability packs, marketplace packages, and custom skills.</div>
 
       {/* Tab bar */}
-      <div className="flex gap-0.5 mb-6 border-b border-border" role="tablist" aria-label="Capability sections">
+      <div className="flex items-center gap-0.5 mb-6 border-b border-border" role="tablist" aria-label="Capability sections">
         <button
           className={`px-4 py-2 text-xs font-medium bg-transparent border-none cursor-pointer font-[inherit] transition-colors ${
             activeTab === 'recommended'
@@ -647,6 +696,14 @@ export default function CapabilitiesView() {
         >
           Browse All {marketplaceTotal > 0 ? `(${marketplaceTotal})` : ''}
         </button>
+        {/* Create Skill action button */}
+        <button
+          className="ml-auto text-[11px] font-medium px-2.5 py-1 rounded-md border border-primary/30 bg-transparent text-primary cursor-pointer font-[inherit] transition-colors hover:bg-primary/10 flex items-center gap-1"
+          onClick={() => { setActiveTab('browse'); setShowCreateSkill(v => !v); setCreateError(null); setCreateSuccess(null); }}
+          data-testid="create-skill-btn"
+        >
+          <span className="text-sm leading-none">+</span> Create Skill
+        </button>
       </div>
 
       {/* Connector cross-link */}
@@ -655,9 +712,12 @@ export default function CapabilitiesView() {
           <h3 className="text-sm font-medium text-foreground">Connect Your Tools</h3>
           <p className="text-xs text-muted-foreground mt-0.5">Link GitHub, Slack, and 250+ apps to your agent</p>
         </div>
-        <span className="text-xs px-3 py-1.5 rounded border border-primary/30 text-primary">
+        <button
+          className="text-xs px-3 py-1.5 rounded border border-primary/30 text-primary bg-transparent cursor-pointer font-[inherit] transition-colors hover:bg-primary/10"
+          onClick={() => onNavigate?.('settings', 'vault')}
+        >
           Settings &rarr; Keys &amp; Connections
-        </span>
+        </button>
       </div>
 
       {/* Pack error */}
@@ -1053,9 +1113,26 @@ export default function CapabilitiesView() {
                       </div>
 
                       {/* Description */}
-                      <div className="text-[11px] text-muted-foreground mb-2.5 leading-relaxed line-clamp-2">
+                      <div className="text-[11px] text-muted-foreground mb-1.5 leading-relaxed line-clamp-2">
                         {pkg.description}
                       </div>
+
+                      {/* Rating + downloads — compact line below description */}
+                      {(pkg.rating > 0 || pkg.downloads > 0) && (
+                        <div className="flex items-center gap-3 mb-2 text-xs text-muted-foreground">
+                          {pkg.rating > 0 && (
+                            <span className="flex items-center gap-1" title={`${pkg.rating.toFixed(1)} out of 5${pkg.rating_count ? ` (${pkg.rating_count} ratings)` : ''}`}>
+                              <span className="text-primary/70 text-[11px] tracking-tight">{renderStarRating(pkg.rating)}</span>
+                              <span className="text-[10px]">{pkg.rating.toFixed(1)}</span>
+                            </span>
+                          )}
+                          {pkg.downloads > 0 && (
+                            <span className="text-[10px]" title={`${pkg.downloads.toLocaleString()} downloads`}>
+                              {formatDownloads(pkg.downloads)} downloads
+                            </span>
+                          )}
+                        </div>
+                      )}
 
                       {/* Bottom row: metadata + action */}
                       <div className="flex justify-between items-center">
@@ -1250,16 +1327,47 @@ export default function CapabilitiesView() {
         </div>
       )}
 
-      {/* Post-install toast */}
-      {installToast && (
+      {/* Post-install capability guide card */}
+      {installToast && installGuide && (
+        <div className="fixed bottom-6 right-6 z-[10000] bg-card border border-green-500/30 border-l-[3px] border-l-green-500 rounded-lg px-4 py-4 shadow-[0_4px_12px_rgba(0,0,0,0.3)] max-w-[400px] animate-in fade-in slide-in-from-bottom-2 space-y-2.5">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-green-500 text-sm">{'\u2713'}</span>
+              <span className="text-sm font-semibold text-foreground">{installGuide.name} installed!</span>
+            </div>
+            <button
+              onClick={() => { if (installToastTimerRef.current) clearTimeout(installToastTimerRef.current); setInstallToast(null); setInstallGuide(null); }}
+              className="shrink-0 bg-transparent border-none text-muted-foreground cursor-pointer text-sm px-1 hover:text-foreground"
+            >{'\u00D7'}</button>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            Your agent now has new capabilities. Try asking:
+          </div>
+          <div className="space-y-1">
+            {getGuidePrompts(installGuide.category).map((prompt, i) => (
+              <div key={i} className="text-xs text-foreground bg-secondary/50 border border-border rounded px-2.5 py-1.5 font-mono">
+                {'\u201C'}{prompt}{'\u201D'}
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => { if (installToastTimerRef.current) clearTimeout(installToastTimerRef.current); setInstallToast(null); setInstallGuide(null); }}
+            className="text-[11px] text-muted-foreground hover:text-foreground bg-transparent border border-border rounded px-3 py-1 cursor-pointer transition-colors"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+      {/* Simple toast fallback when guide data is not available */}
+      {installToast && !installGuide && (
         <div className="fixed bottom-6 right-6 z-[10000] bg-card border border-green-500/30 border-l-[3px] border-l-green-500 rounded-lg px-4 py-3 shadow-[0_4px_12px_rgba(0,0,0,0.3)] max-w-[360px] animate-in fade-in slide-in-from-bottom-2">
           <div className="flex items-center gap-2">
-            <span className="text-green-500 text-sm">&#10003;</span>
+            <span className="text-green-500 text-sm">{'\u2713'}</span>
             <span className="text-xs text-foreground">{installToast}</span>
             <button
               onClick={() => { if (installToastTimerRef.current) clearTimeout(installToastTimerRef.current); setInstallToast(null); }}
               className="ml-auto bg-transparent border-none text-muted-foreground cursor-pointer text-sm px-1 hover:text-foreground"
-            >&times;</button>
+            >{'\u00D7'}</button>
           </div>
         </div>
       )}

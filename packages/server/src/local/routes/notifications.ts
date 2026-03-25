@@ -161,6 +161,40 @@ export async function notificationRoutes(fastify: FastifyInstance) {
     return { read: true, id };
   });
 
+  // Q16:C — GET /api/notifications/history — alias with unread filter support
+  fastify.get<{
+    Querystring: { unread?: string; limit?: string };
+  }>('/api/notifications/history', async (request) => {
+    const { unread, limit } = request.query;
+    const cronStore = (fastify as any).cronStore;
+    if (!cronStore?.getNotifications) return { notifications: [], count: 0, unread: 0 };
+    const results = cronStore.getNotifications({
+      limit: limit ? parseInt(limit, 10) : 100,
+      unreadOnly: unread === 'true',
+    });
+    return { notifications: results, count: results.length, unread: cronStore.countUnread() };
+  });
+
+  // Q16:C — PATCH /api/notifications/:id/read — mark single notification as read
+  fastify.patch<{
+    Params: { id: string };
+  }>('/api/notifications/:id/read', async (request, reply) => {
+    const id = parseInt(request.params.id, 10);
+    if (isNaN(id)) return reply.status(400).send({ error: 'Invalid ID' });
+    const cronStore = (fastify as any).cronStore;
+    if (!cronStore?.markNotificationRead) return reply.status(503).send({ error: 'Not available' });
+    cronStore.markNotificationRead(id);
+    return { read: true, id };
+  });
+
+  // Q16:C — POST /api/notifications/read-all — mark all notifications as read
+  fastify.post('/api/notifications/read-all', async (_request, reply) => {
+    const cronStore = (fastify as any).cronStore;
+    if (!cronStore?.markAllRead) return reply.status(503).send({ error: 'Not available' });
+    const count = cronStore.markAllRead();
+    return { markedRead: count };
+  });
+
   // W5.12: REST endpoint for cron execution history
   fastify.get<{
     Params: { id: string };

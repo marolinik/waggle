@@ -21,6 +21,9 @@ export { getToolStatusColor, formatDuration } from './utils.js';
 export { SubAgentProgress, formatElapsed } from './SubAgentProgress.js';
 export type { SubAgentProgressProps, SubAgentInfo } from './SubAgentProgress.js';
 
+export { SubAgentPanel } from './SubAgentPanel.js';
+export type { SubAgentPanelProps } from './SubAgentPanel.js';
+
 export { FileDropZone } from './FileDropZone.js';
 export type { FileDropZoneProps } from './FileDropZone.js';
 

@@ -15,6 +15,12 @@ export interface CaptureCheckParams {
   sessionHistory: Array<{ toolSequence: string[] }>;
 }
 
+export interface CaptureNotification {
+  type: 'workflow_captured';
+  title: string;
+  message: string;
+}
+
 export interface CaptureResult {
   /** Whether to suggest capturing this workflow */
   suggest: boolean;
@@ -22,6 +28,8 @@ export interface CaptureResult {
   pattern?: SkillTemplate;
   /** Human-readable explanation of why this was suggested */
   reason?: string;
+  /** Notification for UI visibility when a pattern is detected */
+  notification?: CaptureNotification;
 }
 
 /**
@@ -84,18 +92,30 @@ export function shouldSuggestCapture(params: CaptureCheckParams): CaptureResult 
       category: inferCategoryFromTools(uniqueTools),
     };
 
-    return {
+    const basicResult: CaptureResult = {
       suggest: true,
       pattern: basicPattern,
       reason: `You've used this tool sequence (${uniqueTools.slice(0, 4).join(' -> ')}${uniqueTools.length > 4 ? '...' : ''}) in ${matchCount + 1} sessions. Want me to save it as a reusable skill?`,
     };
+    basicResult.notification = {
+      type: 'workflow_captured',
+      title: 'Your agent learned a new pattern',
+      message: `Detected repeating workflow: ${basicPattern.name}. Save as a reusable skill?`,
+    };
+    return basicResult;
   }
 
-  return {
+  const detectedResult: CaptureResult = {
     suggest: true,
     pattern,
     reason: `You've repeated this workflow pattern ${matchCount + 1} times across sessions. Want me to save it as a reusable skill?`,
   };
+  detectedResult.notification = {
+    type: 'workflow_captured',
+    title: 'Your agent learned a new pattern',
+    message: `Detected repeating workflow: ${pattern.name}. Save as a reusable skill?`,
+  };
+  return detectedResult;
 }
 
 /**

@@ -30,6 +30,7 @@ export const KEYBOARD_SHORTCUTS: Record<string, KeyCombo> = {
   switchView6:     { key: '6', ctrl: true, shift: true },
   switchView7:     { key: '7', ctrl: true, shift: true },
   switchPersona:   { key: 'p', ctrl: true, shift: true },
+  quickSwitchWorkspace: { key: 'Tab', ctrl: true },
 } as const;
 
 export type ShortcutName = keyof typeof KEYBOARD_SHORTCUTS;

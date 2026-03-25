@@ -7,6 +7,7 @@ import { assertSafeSegment } from './validate.js';
 import { extractProgressItems, type ProgressItem } from './sessions.js';
 import { readFileRegistry, type FileRegistryEntry } from './ingest.js';
 import { buildWorkspaceState, type WorkspaceState } from '../workspace-state.js';
+import { buildTimeAwareGreeting, buildUpcomingSchedules } from './workspace-context.js';
 import { emitAuditEvent } from './events.js';
 
 // BUG-R3-03: Known model IDs for validation
@@ -94,6 +95,18 @@ const TEMPLATE_PACK_MAP: Record<string, string> = {
   'agency': 'collaboration_hub',
 };
 
+// Wave 1.6: Template-specific agent welcome messages
+// Stored in workspace config so the UI can show contextual starter content.
+const TEMPLATE_WELCOME: Record<string, string> = {
+  'sales-pipeline': "I'm set up as your Sales workspace. I can research prospects, draft outreach emails, prep for calls, and track your pipeline. What's your top priority?",
+  'research-project': "I'm your research workspace. I can deep-dive on any topic, synthesize sources, and generate reports. What should we investigate?",
+  'code-review': "I'm configured for code work. I can review diffs, debug issues, and analyze architecture. Paste some code or describe what you're working on.",
+  'marketing-campaign': "Marketing workspace ready. I can plan campaigns, draft content, analyze competitors, and build content calendars. What's the initiative?",
+  'product-launch': "Product workspace activated. I can write PRDs, plan roadmaps, draft stakeholder updates, and track decisions. What's the feature?",
+  'legal-review': "Legal workspace ready. I can review contracts, research regulations, draft legal documents, and flag compliance issues. What's the first matter?",
+  'agency-consulting': "Consulting workspace set up. I can research clients, draft deliverables, plan projects, and prepare presentations. Who's the client?",
+};
+
 export const workspaceRoutes: FastifyPluginAsync = async (server) => {
   // GET /api/workspaces — list all workspaces (F6: optional ?group and ?teamId filters)
   server.get<{
@@ -122,13 +135,15 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
       personaId?: string;
       directory?: string;
       template?: string;
+      templateId?: string;
+      tone?: 'professional' | 'casual' | 'technical' | 'legal' | 'marketing';
       teamId?: string;
       teamServerUrl?: string;
       teamRole?: 'owner' | 'admin' | 'member' | 'viewer';
       teamUserId?: string;
     };
   }>('/api/workspaces', async (request, reply) => {
-    const { name, group, icon, model, personaId, directory, teamId, teamServerUrl, teamRole, teamUserId } = request.body;
+    const { name, group, icon, model, personaId, directory, tone, teamId, teamServerUrl, teamRole, teamUserId } = request.body;
     if (!name || !group) {
       return reply.status(400).send({ error: 'name and group are required' });
     }
@@ -159,9 +174,12 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
         knownModels: Array.from(KNOWN_MODELS).slice(0, 10),
       });
     }
+    // Resolve templateId from either templateId or template body field
+    const resolvedTemplateId = request.body.templateId ?? request.body.template;
     const ws = server.workspaceManager.create({
-      name, group, icon, model, personaId, directory,
+      name, group, icon, model, personaId, directory, tone,
       teamId, teamServerUrl, teamRole, teamUserId,
+      ...(resolvedTemplateId && { templateId: resolvedTemplateId }),
     });
 
     // Auto-install starter skills on first workspace creation
@@ -182,7 +200,7 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
     emitAuditEvent(server, { workspaceId: ws.id, eventType: 'workspace_create', input: JSON.stringify({ name: ws.name, group: ws.group }) });
 
     // IMP-012: Fire-and-forget template skill pack installation
-    const template = request.body?.template as string;
+    const template = resolvedTemplateId;
     if (template && TEMPLATE_PACK_MAP[template]) {
       const packId = TEMPLATE_PACK_MAP[template];
       const port = (server.server.address() as any)?.port ?? 3333;
@@ -460,8 +478,75 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
       }
     }
 
+    // Wave 1.6: Resolve template-specific welcome message for first-time context
+    const welcomeMessage = ws.templateId ? TEMPLATE_WELCOME[ws.templateId] : undefined;
+
+    // Wave 3.1: Time-aware greeting, pending tasks, and upcoming schedules
+    const lastActive = recentThreads[0]?.lastActive ?? ws.created;
+    const greeting = buildTimeAwareGreeting(lastActive);
+
+    const pendingTasks = progressItems
+      .filter(p => p.type === 'task' || p.type === 'blocker')
+      .map(p => p.content)
+      .slice(0, 5);
+
+    let upcomingSchedules: string[] = [];
+    try {
+      const cronSchedules = server.cronStore.list();
+      upcomingSchedules = buildUpcomingSchedules(cronSchedules, id);
+    } catch { /* non-blocking — cron store may not be available */ }
+
+    // ── Wave 6.5: Lightweight cross-workspace relevance hints ──
+    let crossWorkspaceHints: string[] = [];
+    try {
+      const allWorkspaces = server.workspaceManager.list();
+      // Only check if there are 2+ workspaces (current + at least one other)
+      if (allWorkspaces.length >= 2 && recentMemories.length > 0) {
+        // Extract top 3 keywords from workspace name + recent memory content
+        const keywordSource = [ws.name, ...recentMemories.slice(0, 3).map(m => m.content)].join(' ');
+        const stopWords = new Set(['the', 'a', 'an', 'is', 'are', 'was', 'were', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'this', 'that', 'it', 'not', 'from', 'by', 'as', 'be', 'has', 'have', 'had', 'will', 'would', 'can', 'could', 'should', 'may', 'do', 'does']);
+        const words = keywordSource.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 3 && !stopWords.has(w));
+        // Count word frequency
+        const freq = new Map<string, number>();
+        for (const w of words) {
+          freq.set(w, (freq.get(w) ?? 0) + 1);
+        }
+        const topKeywords = Array.from(freq.entries()).sort((a, b) => b[1] - a[1]).slice(0, 3).map(e => e[0]);
+
+        // Search other workspace minds for those keywords (limit 1 result per workspace, max 3 hints)
+        for (const otherWs of allWorkspaces) {
+          if (otherWs.id === id || crossWorkspaceHints.length >= 3) break;
+          const otherMindPath = server.workspaceManager.getMindPath(otherWs.id);
+          if (!fs.existsSync(otherMindPath)) continue;
+          let otherDb: MindDB | null = null;
+          try {
+            otherDb = new MindDB(otherMindPath);
+            const raw = otherDb.getDatabase();
+            for (const keyword of topKeywords) {
+              if (crossWorkspaceHints.length >= 3) break;
+              const match = raw.prepare(
+                `SELECT content FROM memory_frames
+                 WHERE importance != 'deprecated' AND importance != 'temporary'
+                   AND content LIKE ?
+                 LIMIT 1`
+              ).get(`%${keyword}%`) as { content: string } | undefined;
+              if (match) {
+                const firstLine = match.content.split('\n')[0].slice(0, 80);
+                crossWorkspaceHints.push(`Related: "${firstLine}" found in ${otherWs.name}`);
+                break; // Only 1 hint per workspace
+              }
+            }
+            otherDb.close();
+            otherDb = null;
+          } catch {
+            if (otherDb) { try { otherDb.close(); } catch { /* */ } }
+          }
+        }
+      }
+    } catch { /* cross-workspace hints are non-blocking */ }
+
     return {
-      workspace: { id: ws.id, name: ws.name, group: ws.group, model: ws.model, directory: ws.directory },
+      workspace: { id: ws.id, name: ws.name, group: ws.group, model: ws.model, directory: ws.directory, templateId: ws.templateId, personaId: ws.personaId },
       summary: summary || `This is your ${ws.name} workspace. Everything you discuss here stays in context — decisions, research, and progress are remembered across sessions.`,
       recentThreads,
       recentDecisions,
@@ -473,9 +558,14 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
         sessionCount,
         fileCount,
       },
-      lastActive: recentThreads[0]?.lastActive ?? ws.created,
+      lastActive,
+      greeting,
+      pendingTasks,
+      upcomingSchedules,
+      welcomeMessage,
       teamContext,
       workspaceState,
+      crossWorkspaceHints: crossWorkspaceHints.length > 0 ? crossWorkspaceHints : undefined,
     };
   });
 
@@ -496,7 +586,7 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
   // PUT /api/workspaces/:id — update workspace
   server.put<{
     Params: { id: string };
-    Body: { name?: string; group?: string; icon?: string; model?: string; personaId?: string | null; directory?: string; budget?: number | null };
+    Body: { name?: string; group?: string; icon?: string; model?: string; personaId?: string | null; directory?: string; tone?: 'professional' | 'casual' | 'technical' | 'legal' | 'marketing'; budget?: number | null };
   }>('/api/workspaces/:id', async (request, reply) => {
     assertSafeSegment(request.params.id, 'id');
     const existing = server.workspaceManager.get(request.params.id);
@@ -528,6 +618,153 @@ export const workspaceRoutes: FastifyPluginAsync = async (server) => {
     server.workspaceManager.delete(request.params.id);
     emitAuditEvent(server, { workspaceId: request.params.id, eventType: 'workspace_delete' });
     return reply.status(204).send();
+  });
+
+  // GET /api/workspaces/:id/export — export workspace data as JSON or briefing markdown
+  server.get<{
+    Params: { id: string };
+    Querystring: { format?: string };
+  }>('/api/workspaces/:id/export', async (request, reply) => {
+    const { id } = request.params;
+    assertSafeSegment(id, 'id');
+
+    const ws = server.workspaceManager.get(id);
+    if (!ws) {
+      return reply.status(404).send({ error: 'Workspace not found' });
+    }
+
+    // ── Gather memories ──────────────────────────────────────────
+    const memories: Array<{ content: string; importance: string; created_at: string; frame_type?: string }> = [];
+    const mindPath = server.workspaceManager.getMindPath(id);
+    if (fs.existsSync(mindPath)) {
+      try {
+        const wsDb = new MindDB(mindPath);
+        const raw = wsDb.getDatabase();
+        const frames = raw.prepare(
+          `SELECT content, importance, created_at, frame_type FROM memory_frames
+           WHERE importance != 'deprecated'
+           ORDER BY id DESC LIMIT 500`
+        ).all() as Array<{ content: string; importance: string; created_at: string; frame_type: string }>;
+        memories.push(...frames);
+        wsDb.close();
+      } catch { /* non-blocking */ }
+    }
+
+    // ── Gather pinned items ──────────────────────────────────────
+    let pinnedItems: Array<{ id: string; messageContent: string; pinnedAt: string; label?: string }> = [];
+    try {
+      const pinsDir = path.join(server.localConfig.dataDir, 'workspaces', id, 'pins.json');
+      if (fs.existsSync(pinsDir)) {
+        pinnedItems = JSON.parse(fs.readFileSync(pinsDir, 'utf-8'));
+      }
+    } catch { /* non-blocking */ }
+
+    // ── Gather session list ──────────────────────────────────────
+    const sessionsDir = path.join(server.localConfig.dataDir, 'workspaces', id, 'sessions');
+    const sessions: Array<{ id: string; title: string; lastActive: string }> = [];
+    if (fs.existsSync(sessionsDir)) {
+      const files = fs.readdirSync(sessionsDir).filter(f => f.endsWith('.jsonl'));
+      for (const file of files) {
+        const sessionId = file.replace('.jsonl', '');
+        const filePath = path.join(sessionsDir, file);
+        try {
+          const stat = fs.statSync(filePath);
+          const content = fs.readFileSync(filePath, 'utf-8').trim();
+          const lines = content ? content.split('\n').filter(l => l.trim()) : [];
+          let title = sessionId;
+          if (lines.length > 0) {
+            try {
+              const first = JSON.parse(lines[0]);
+              if (first.type === 'meta' && first.title) title = first.title;
+              else if (first.content) title = first.content.slice(0, 80);
+            } catch { /* use default */ }
+          }
+          sessions.push({ id: sessionId, title, lastActive: new Date(stat.mtimeMs).toISOString() });
+        } catch { /* skip */ }
+      }
+      sessions.sort((a, b) => b.lastActive.localeCompare(a.lastActive));
+    }
+
+    // ── Briefing format ──────────────────────────────────────────
+    if (request.query.format === 'briefing') {
+      const lines: string[] = [];
+      lines.push(`# Workspace Briefing: ${ws.name}`);
+      lines.push('');
+      lines.push(`**Group:** ${ws.group}`);
+      lines.push(`**Memories:** ${memories.length}`);
+      lines.push(`**Sessions:** ${sessions.length}`);
+      lines.push('');
+
+      // Key decisions (critical/important memories)
+      const keyDecisions = memories.filter(m =>
+        m.importance === 'critical' || m.importance === 'important'
+      ).slice(0, 10);
+      if (keyDecisions.length > 0) {
+        lines.push('## Key Decisions & Important Memories');
+        lines.push('');
+        for (const m of keyDecisions) {
+          const firstLine = m.content.split('\n')[0].slice(0, 200);
+          lines.push(`- **[${m.importance}]** ${firstLine} _(${m.created_at?.slice(0, 10) ?? 'unknown'})_`);
+        }
+        lines.push('');
+      }
+
+      // Recent memories
+      const recentMemories = memories.slice(0, 15);
+      if (recentMemories.length > 0) {
+        lines.push('## Recent Memories');
+        lines.push('');
+        for (const m of recentMemories) {
+          const firstLine = m.content.split('\n')[0].slice(0, 200);
+          lines.push(`- ${firstLine} _(${m.created_at?.slice(0, 10) ?? 'unknown'})_`);
+        }
+        lines.push('');
+      }
+
+      // Recent sessions
+      if (sessions.length > 0) {
+        lines.push('## Recent Sessions');
+        lines.push('');
+        for (const s of sessions.slice(0, 10)) {
+          lines.push(`- **${s.title}** — last active ${s.lastActive.slice(0, 10)}`);
+        }
+        lines.push('');
+      }
+
+      // Pinned items
+      if (pinnedItems.length > 0) {
+        lines.push('## Pinned Items');
+        lines.push('');
+        for (const pin of pinnedItems) {
+          const content = pin.messageContent.length > 150 ? pin.messageContent.slice(0, 147) + '...' : pin.messageContent;
+          lines.push(`- ${content}${pin.label ? ` [${pin.label}]` : ''}`);
+        }
+        lines.push('');
+      }
+
+      lines.push(`---`);
+      lines.push(`_Exported ${new Date().toISOString().slice(0, 10)}_`);
+
+      return reply.type('text/markdown').send(lines.join('\n'));
+    }
+
+    // ── JSON format (default) ────────────────────────────────────
+    emitAuditEvent(server, { workspaceId: id, eventType: 'export', input: JSON.stringify({ format: 'json' }) });
+
+    return {
+      workspace: {
+        id: ws.id,
+        name: ws.name,
+        group: ws.group,
+        model: ws.model,
+        directory: ws.directory,
+        created: ws.created,
+      },
+      memories,
+      pinnedItems,
+      sessions,
+      exportedAt: new Date().toISOString(),
+    };
   });
 
   // GET /api/workspaces/:id/cost — per-workspace cost and budget status

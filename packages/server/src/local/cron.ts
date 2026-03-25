@@ -13,12 +13,16 @@ import type { CronStore, CronSchedule } from '@waggle/core';
 /** Function that executes a cron job. Injected to keep the scheduler generic and testable. */
 export type JobExecutor = (schedule: CronSchedule) => Promise<void>;
 
+/** Q16:C — Optional callback fired after each cron job execution (success or failure). */
+export type JobCompleteCallback = (schedule: CronSchedule, result: { success: boolean; error?: string }) => void;
+
 /** Maximum consecutive failures before a job is auto-disabled */
 const MAX_CONSECUTIVE_FAILURES = 5;
 
 export class LocalScheduler {
   private store: CronStore;
   private executor: JobExecutor;
+  private onJobComplete?: JobCompleteCallback;
   private timer: NodeJS.Timeout | null = null;
   private ticking = false;
   /** Track consecutive failure count per schedule ID */
@@ -26,9 +30,10 @@ export class LocalScheduler {
   /** Set of schedule IDs that have been disabled due to repeated failures */
   private disabledJobs = new Set<number>();
 
-  constructor(store: CronStore, executor: JobExecutor) {
+  constructor(store: CronStore, executor: JobExecutor, onJobComplete?: JobCompleteCallback) {
     this.store = store;
     this.executor = executor;
+    this.onJobComplete = onJobComplete;
   }
 
   /** Get the current fail count for a schedule (for testing). */
@@ -99,10 +104,18 @@ export class LocalScheduler {
           // Reset fail count on success
           this.failCounts.delete(schedule.id);
           executed++;
+          // Q16:C — notify on success
+          this.onJobComplete?.(schedule, { success: true });
         } catch (err) {
           const count = (this.failCounts.get(schedule.id) ?? 0) + 1;
           this.failCounts.set(schedule.id, count);
           console.error('[cron] Job failed:', schedule.id, err);
+
+          // Q16:C — notify on failure
+          this.onJobComplete?.(schedule, {
+            success: false,
+            error: err instanceof Error ? err.message : String(err),
+          });
 
           if (count >= MAX_CONSECUTIVE_FAILURES) {
             this.disabledJobs.add(schedule.id);

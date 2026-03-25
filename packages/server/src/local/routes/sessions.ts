@@ -148,14 +148,20 @@ function readSessionMeta(filePath: string, sessionId: string): SessionInfo {
     }
   }
 
-  // If no meta title, derive from first message content
+  // If no meta title, derive from first message content (truncate at word boundary)
   if (title === sessionId && messageLines.length > 0) {
     try {
       const firstMsg = JSON.parse(messageLines[0]);
       if (firstMsg.content) {
-        title = firstMsg.content.length > 50
-          ? firstMsg.content.slice(0, 50) + '...'
-          : firstMsg.content;
+        const raw = (firstMsg.content as string).trim();
+        if (raw.length <= 50) {
+          title = raw;
+        } else {
+          const truncated = raw.slice(0, 50);
+          const lastSpace = truncated.lastIndexOf(' ');
+          const cutPoint = lastSpace > 20 ? lastSpace : 50;
+          title = raw.slice(0, cutPoint) + '...';
+        }
       }
     } catch {
       // Keep default title

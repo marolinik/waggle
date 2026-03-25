@@ -259,9 +259,9 @@ describe('Workflow Commands', () => {
     expect(result).toContain('/help');
   });
 
-  it('all 18 commands are registered', () => {
+  it('all 22 commands are registered', () => {
     const commands = registry.list();
-    expect(commands).toHaveLength(18);
+    expect(commands).toHaveLength(22);
 
     const names = commands.map(c => c.name);
     expect(names).toContain('catchup');
@@ -282,5 +282,6 @@ describe('Workflow Commands', () => {
     expect(names).toContain('import');
     expect(names).toContain('settings');
     expect(names).toContain('cli');
+    expect(names).toContain('pr');
   });
 });

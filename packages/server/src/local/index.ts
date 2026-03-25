@@ -112,6 +112,9 @@ import { offlineRoutes } from './routes/offline.js';
 import { weaverRoutes } from './routes/weaver.js';
 import { eventRoutes, closeAuditDb, cleanupAuditEvents } from './routes/events.js';
 import { closeTeamsDb } from './routes/team.js';
+import { pinRoutes } from './routes/pins.js';
+import { documentRoutes } from './routes/documents.js';
+import { oauthRoutes } from './routes/oauth.js';
 import { OfflineManager } from './offline-manager.js';
 import { securityMiddleware } from './security-middleware.js';
 import { LocalScheduler } from './cron.js';
@@ -1289,6 +1292,23 @@ Return ONLY the improved system prompt text. No commentary, no markdown fences, 
         break;
       }
     }
+  }, (schedule, result) => {
+    // Q16:C — Emit notification after every cron job tick (success or failure)
+    if (result.success) {
+      emitNotification(server, {
+        title: `${schedule.name || 'Scheduled task'} completed`,
+        body: 'Scheduled task ran successfully.',
+        category: 'cron',
+        actionUrl: '/cockpit',
+      });
+    } else {
+      emitNotification(server, {
+        title: `${schedule.name || 'Scheduled task'} failed`,
+        body: `Error: ${result.error ?? 'Unknown error'}`,
+        category: 'cron',
+        actionUrl: '/cockpit',
+      });
+    }
   });
   scheduler.start();
   server.decorate('scheduler', scheduler);
@@ -1367,6 +1387,9 @@ Return ONLY the improved system prompt text. No commentary, no markdown fences, 
   await server.register(weaverRoutes);
   await server.register(eventRoutes);
   await server.register(workflowRoutes);
+  await server.register(pinRoutes);
+  await server.register(documentRoutes);
+  await server.register(oauthRoutes);
 
   // ── Static file serving for web mode ──────────────────────────
   // When WAGGLE_FRONTEND_DIR is set (or app/dist exists), serve the React frontend

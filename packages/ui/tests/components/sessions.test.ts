@@ -192,6 +192,15 @@ describe('generateSessionTitle', () => {
   it('trims whitespace from first message', () => {
     expect(generateSessionTitle(['  Hello  '])).toBe('Hello');
   });
+
+  it('truncates at word boundary for messages with spaces', () => {
+    // "Help me understand how to implement a workspace switcher component in React" is 75 chars
+    const msg = 'Help me understand how to implement a workspace switcher component in React';
+    const result = generateSessionTitle([msg]);
+    expect(result.endsWith('...')).toBe(true);
+    // Should cut at "implement" (word boundary near 50 chars), not mid-word
+    expect(result).toBe('Help me understand how to implement a workspace...');
+  });
 });
 
 // ── sortSessions ──────────────────────────────────────────────────

@@ -57,6 +57,8 @@ import { GlobalSearch } from './components/GlobalSearch';
 import type { GlobalSearchResultType } from './components/GlobalSearch';
 import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
 import { PersonaSwitcher } from './components/PersonaSwitcher';
+import { NotificationInbox } from './components/NotificationInbox';
+import { WorkspaceSwitcher } from './components/WorkspaceSwitcher';
 import { OnboardingWizard as EnhancedOnboardingWizard, OnboardingTooltips } from './components/onboarding/OnboardingWizard';
 import { useOnboarding } from './hooks/useOnboarding';
 import { getServerBaseUrl } from './lib/ipc';
@@ -77,6 +79,7 @@ const EventsView = React.lazy(() => import('./views/EventsView'));
 const CapabilitiesView = React.lazy(() => import('./views/CapabilitiesView'));
 const CockpitView = React.lazy(() => import('./views/CockpitView'));
 const MissionControlView = React.lazy(() => import('./views/MissionControlView'));
+const DashboardView = React.lazy(() => import('./views/DashboardView'));
 
 const SERVER_BASE = getServerBaseUrl();
 const adapter = new LocalAdapter({ baseUrl: SERVER_BASE });
@@ -103,7 +106,7 @@ function friendlyModelName(model: string): string {
   return parts[parts.length - 1];
 }
 
-type AppView = 'chat' | 'memory' | 'events' | 'capabilities' | 'cockpit' | 'mission-control' | 'settings';
+type AppView = 'chat' | 'dashboard' | 'memory' | 'events' | 'capabilities' | 'cockpit' | 'mission-control' | 'settings';
 
 function WaggleApp() {
   const service = useService();
@@ -146,6 +149,10 @@ function WaggleApp() {
   const [showHelp, setShowHelp] = useState(false);
   // Persona switcher dialog state
   const [showPersonaSwitcher, setShowPersonaSwitcher] = useState(false);
+  // Q16:C — Notification inbox panel state
+  const [showNotificationInbox, setShowNotificationInbox] = useState(false);
+  // Workspace quick-switch overlay state (Ctrl+Tab)
+  const [showWorkspaceSwitcher, setShowWorkspaceSwitcher] = useState(false);
 
   // IMP-007: Reset memory badge when switching to Memory view
   const handleViewChange = useCallback((view: AppView) => {
@@ -613,6 +620,49 @@ function WaggleApp() {
   });
   const [selectedFrame, setSelectedFrame] = useState<Frame | undefined>(undefined);
 
+  // Q22: Memory management callbacks (delete, edit, add)
+  const handleDeleteFrame = useCallback(async (id: number) => {
+    try {
+      const wsParam = activeWorkspace?.id ? `?workspace=${activeWorkspace.id}` : '';
+      const res = await fetch(`${SERVER_BASE}/api/memory/frames/${id}${wsParam}`, { method: 'DELETE' });
+      if (res.ok) {
+        // Clear selection if deleted frame was selected
+        if (selectedFrame?.id === id) setSelectedFrame(undefined);
+        // Refresh memory list
+        memorySearch('');
+      }
+    } catch { /* network error — silently fail */ }
+  }, [activeWorkspace?.id, selectedFrame?.id, memorySearch]);
+
+  const handleEditFrame = useCallback(async (id: number, content: string, importance?: string) => {
+    try {
+      const wsParam = activeWorkspace?.id ? `?workspace=${activeWorkspace.id}` : '';
+      const res = await fetch(`${SERVER_BASE}/api/memory/frames/${id}${wsParam}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, importance }),
+      });
+      if (res.ok) {
+        // Refresh memory list to reflect update
+        memorySearch('');
+      }
+    } catch { /* network error — silently fail */ }
+  }, [activeWorkspace?.id, memorySearch]);
+
+  const handleAddFrame = useCallback(async (content: string, importance: string) => {
+    try {
+      const res = await fetch(`${SERVER_BASE}/api/memory/frames`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, importance, workspace: activeWorkspace?.id }),
+      });
+      if (res.ok) {
+        // Refresh memory list to show new frame
+        memorySearch('');
+      }
+    } catch { /* network error — silently fail */ }
+  }, [activeWorkspace?.id, memorySearch]);
+
   // ── Events ────────────────────────────────────────────────────────
   const {
     steps,
@@ -713,6 +763,7 @@ function WaggleApp() {
     onOpenSettings: useCallback(() => handleViewChange('settings'), [handleViewChange]),
     onToggleHelp: useCallback(() => setShowHelp(prev => !prev), []),
     onTogglePersonaSwitcher: useCallback(() => setShowPersonaSwitcher(prev => !prev), []),
+    onToggleWorkspaceSwitcher: useCallback(() => setShowWorkspaceSwitcher(prev => !prev), []),
     onViewChange: handleViewChange,
   });
 
@@ -989,9 +1040,53 @@ function WaggleApp() {
         content={
           <div
             key={activeWorkspace?.id ?? 'none'}
-            className="workspace-transition h-full overflow-hidden"
+            className="workspace-transition h-full overflow-hidden relative"
             style={{ '--workspace-hue': activeWorkspace ? workspaceHue(activeWorkspace.name) : 220 } as React.CSSProperties}
           >
+            {/* Q16:C — Notification bell + inbox */}
+            <div className="absolute top-2 right-3 z-40">
+              <button
+                onClick={() => setShowNotificationInbox(prev => !prev)}
+                className="relative p-1.5 rounded-lg transition-colors cursor-pointer"
+                style={{
+                  color: 'var(--hive-400, #8a8d9a)',
+                  backgroundColor: showNotificationInbox ? 'var(--honey-glow, rgba(229,160,0,0.08))' : 'transparent',
+                }}
+                title="Notifications"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
+                {notifications.length > 0 && (
+                  <span
+                    className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 flex items-center justify-center text-[9px] font-bold rounded-full px-1"
+                    style={{ backgroundColor: 'var(--honey-500, #e5a000)', color: 'var(--hive-900, #0f1117)' }}
+                  >
+                    {notifications.length > 99 ? '99+' : notifications.length}
+                  </span>
+                )}
+              </button>
+              <NotificationInbox
+                open={showNotificationInbox}
+                onClose={() => setShowNotificationInbox(false)}
+                serverBaseUrl={SERVER_BASE}
+                sseNotificationCount={notifications.length}
+              />
+            </div>
+            {currentView === 'dashboard' && (
+              <ErrorBoundary viewName="Dashboard">
+                <Suspense fallback={<div className="flex items-center justify-center h-full text-muted-foreground">Loading...</div>}>
+                  <DashboardView
+                    workspaces={workspaces}
+                    activeWorkspaceId={activeWorkspace?.id ?? null}
+                    microStatus={workspaceMicroStatus}
+                    onSelectWorkspace={setActiveWorkspace}
+                    onCreateWorkspace={() => setShowCreateWorkspace(true)}
+                  />
+                </Suspense>
+              </ErrorBoundary>
+            )}
             {currentView === 'chat' && (
               <ErrorBoundary viewName="Chat">
                 <ChatView
@@ -1051,6 +1146,9 @@ function WaggleApp() {
                     loading={memoryLoading}
                     error={memoryError}
                     onRetry={() => memorySearch('')}
+                    onDeleteFrame={handleDeleteFrame}
+                    onEditFrame={handleEditFrame}
+                    onAddFrame={handleAddFrame}
                   />
                 </Suspense>
               </ErrorBoundary>
@@ -1072,7 +1170,7 @@ function WaggleApp() {
             {currentView === 'capabilities' && (
               <ErrorBoundary viewName="Capabilities">
                 <Suspense fallback={<div className="flex items-center justify-center h-full text-muted-foreground">Loading...</div>}>
-                  <CapabilitiesView />
+                  <CapabilitiesView onNavigate={(view, tab) => { if (tab) setSettingsTab(tab); handleViewChange(view as AppView); }} />
                 </Suspense>
               </ErrorBoundary>
             )}
@@ -1173,6 +1271,23 @@ function WaggleApp() {
         onSelect={handlePersonaSwitch}
         currentPersonaId={activeWorkspace?.personaId ?? null}
         personas={personas}
+        serverBaseUrl={SERVER_BASE}
+        onPersonaCreated={() => {
+          fetch(`${SERVER_BASE}/api/personas`)
+            .then(r => r.ok ? r.json() as Promise<{ personas: PersonaOption[] }> : null)
+            .then(data => { if (data?.personas) setPersonas(data.personas); })
+            .catch(() => {});
+        }}
+      />
+
+      {/* Workspace quick-switch overlay (Ctrl+Tab) */}
+      <WorkspaceSwitcher
+        open={showWorkspaceSwitcher}
+        onClose={() => setShowWorkspaceSwitcher(false)}
+        onSelect={(id) => { setActiveWorkspace(id); setShowWorkspaceSwitcher(false); }}
+        workspaces={workspaces}
+        activeWorkspaceId={activeWorkspace?.id ?? null}
+        microStatus={workspaceMicroStatus}
       />
 
       {/* Create workspace modal */}

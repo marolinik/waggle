@@ -386,6 +386,73 @@ export const memoryRoutes: FastifyPluginAsync = async (server) => {
     };
   });
 
+  // Q22: PUT /api/memory/frames/:id — edit a memory frame's content and/or importance
+  server.put<{
+    Params: { id: string };
+    Body: { content: string; importance?: string };
+    Querystring: { workspace?: string; workspaceId?: string };
+  }>('/api/memory/frames/:id', async (request, reply) => {
+    const frameId = parseInt(request.params.id, 10);
+    if (isNaN(frameId)) {
+      return reply.status(400).send({ error: 'Invalid frame ID' });
+    }
+
+    const { content: rawContent, importance } = request.body ?? {};
+    if (!rawContent) {
+      return reply.status(400).send({ error: 'content is required' });
+    }
+
+    // M4: Sanitize content to prevent stored XSS
+    const content = sanitizeFrameContent(rawContent);
+
+    // D6: Validate importance if provided
+    const VALID_IMPORTANCE = ['critical', 'important', 'normal', 'temporary', 'deprecated'];
+    if (importance && !VALID_IMPORTANCE.includes(importance)) {
+      return reply.status(400).send({
+        error: `Invalid importance "${importance}". Valid values: ${VALID_IMPORTANCE.join(', ')}`,
+      });
+    }
+
+    const workspace = request.query.workspace ?? request.query.workspaceId;
+
+    // Try workspace mind first, then personal
+    let updated: Record<string, unknown> | undefined;
+    let mindLabel = 'personal';
+    if (workspace) {
+      const wsDb = server.agentState.getWorkspaceMindDb(workspace);
+      if (wsDb) {
+        const wsFrames = new FrameStore(wsDb);
+        const result = wsFrames.update(frameId, content, importance as any);
+        if (result) {
+          updated = result as unknown as Record<string, unknown>;
+          mindLabel = 'workspace';
+        }
+      }
+    }
+    if (!updated) {
+      const personalFrames = new FrameStore(server.multiMind.personal);
+      const result = personalFrames.update(frameId, content, importance as any);
+      if (result) {
+        updated = result as unknown as Record<string, unknown>;
+        mindLabel = 'personal';
+      }
+    }
+
+    if (!updated) {
+      return reply.status(404).send({ error: 'Frame not found' });
+    }
+
+    // F2: Audit trail — memory edit
+    emitAuditEvent(server, {
+      workspaceId: workspace ?? 'personal',
+      eventType: 'memory_write',
+      input: JSON.stringify({ frameId, content: content.slice(0, 500), importance }),
+      output: JSON.stringify({ frameId, mind: mindLabel, action: 'edit' }),
+    });
+
+    return { ...normalizeFrame({ ...updated, _mind: mindLabel }), updated: true };
+  });
+
   // L2: DELETE /api/memory/frames/:id — delete a memory frame by ID
   server.delete<{
     Params: { id: string };

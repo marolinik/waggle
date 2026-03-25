@@ -176,8 +176,8 @@ describe('Phase 6 — Capability Truth integration', () => {
     const registry = new CommandRegistry();
     registerWorkflowCommands(registry);
 
-    // 18 commands registered (13 original + plugins, export, import, settings, cli)
-    expect(registry.list()).toHaveLength(18);
+    // 22 commands registered (13 original + plugins, export, import, settings, cli + search-all, connectors, workflow + pr)
+    expect(registry.list()).toHaveLength(22);
 
     // Execute /catchup with mock context
     const ctx = {

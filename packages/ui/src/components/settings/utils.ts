@@ -127,6 +127,18 @@ export const SUPPORTED_PROVIDERS: ProviderConfig[] = [
     ],
   },
   {
+    id: 'openrouter',
+    name: 'OpenRouter',
+    keyPrefix: 'sk-or-',
+    models: [
+      { id: 'openrouter/auto', displayName: 'Auto (best free)' },
+      { id: 'meta-llama/llama-3.3-70b-instruct:free', displayName: 'Llama 3.3 70B (Free)' },
+      { id: 'google/gemini-2.5-flash-preview:free', displayName: 'Gemini 2.5 Flash (Free)' },
+      { id: 'deepseek/deepseek-chat-v3-0324:free', displayName: 'DeepSeek V3 (Free)' },
+      { id: 'qwen/qwen-2.5-72b-instruct:free', displayName: 'Qwen 2.5 72B (Free)' },
+    ],
+  },
+  {
     id: 'custom',
     name: 'Custom / Local (Ollama, LM Studio, etc.)',
     keyPrefix: null,

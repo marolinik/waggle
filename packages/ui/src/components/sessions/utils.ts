@@ -64,14 +64,19 @@ export function formatLastActive(dateStr: string): string {
 
 /**
  * Auto-generate a session title from first messages.
- * Uses first 50 chars of first user message, or "New Session".
+ * Uses first ~50 chars of first user message, truncated at a word boundary.
+ * Returns "New Session" when no messages are available.
  */
 export function generateSessionTitle(messages?: string[]): string {
   if (!messages || messages.length === 0) return 'New Session';
   const first = messages[0].trim();
   if (!first) return 'New Session';
   if (first.length <= 50) return first;
-  return first.slice(0, 50) + '...';
+  // Truncate at word boundary: find last space within first 50 chars
+  const truncated = first.slice(0, 50);
+  const lastSpace = truncated.lastIndexOf(' ');
+  const cutPoint = lastSpace > 20 ? lastSpace : 50; // fallback to hard-cut if no good word boundary
+  return first.slice(0, cutPoint) + '...';
 }
 
 /**

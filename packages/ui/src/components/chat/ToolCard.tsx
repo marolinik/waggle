@@ -18,6 +18,8 @@ export interface ToolCardProps {
   tool: ToolUseEvent;
   onApprove?: (tool: ToolUseEvent) => void;
   onDeny?: (tool: ToolUseEvent, reason?: string) => void;
+  /** Optional navigation callback — used by save_memory "Remembered" link to open Memory view. */
+  onNavigate?: (view: string) => void;
 }
 
 // Tools that are safe/read-only — auto-hide after completion
@@ -222,10 +224,14 @@ function formatResultDetail(result: string): string {
 
 // ── Component ─────────────────────────────────────────────────────────
 
-export const ToolCard = memo(function ToolCard({ tool, onApprove, onDeny }: ToolCardProps) {
+/** localStorage key for tracking whether the user has seen the memory explanation tooltip. */
+const MEMORY_EXPLAINED_KEY = 'waggle:memory-explained';
+
+export const ToolCard = memo(function ToolCard({ tool, onApprove, onDeny, onNavigate }: ToolCardProps) {
   const [layer, setLayer] = useState<1 | 2 | 3>(1); // Current transparency layer
   const [visible, setVisible] = useState(true);
   const [justCompleted, setJustCompleted] = useState(false);
+  const [showMemoryTooltip, setShowMemoryTooltip] = useState(false);
   const status = tool.status ?? (tool.result !== undefined ? 'done' : 'running');
   const isPendingApproval = status === 'pending_approval';
   const isDone = status === 'done' || status === 'error' || status === 'denied';
@@ -238,6 +244,28 @@ export const ToolCard = memo(function ToolCard({ tool, onApprove, onDeny }: Tool
       return () => clearTimeout(timer);
     }
   }, [isDone]);
+
+  // Show memory explanation tooltip on first save_memory completion per session
+  useEffect(() => {
+    if (isDone && tool.name === 'save_memory') {
+      try {
+        if (!localStorage.getItem(MEMORY_EXPLAINED_KEY)) {
+          setShowMemoryTooltip(true);
+        }
+      } catch {
+        // localStorage unavailable — skip tooltip
+      }
+    }
+  }, [isDone, tool.name]);
+
+  const dismissMemoryTooltip = () => {
+    setShowMemoryTooltip(false);
+    try {
+      localStorage.setItem(MEMORY_EXPLAINED_KEY, '1');
+    } catch {
+      // localStorage unavailable — ignore
+    }
+  };
 
   // Auto-hide read-only completed tools after 3 seconds
   useEffect(() => {
@@ -284,10 +312,36 @@ export const ToolCard = memo(function ToolCard({ tool, onApprove, onDeny }: Tool
           {STATUS_ICONS[status]}
         </span>
 
-        {/* Description */}
-        <span className="tool-card__description flex-1 font-mono">
-          {description}
-        </span>
+        {/* Pulsing amber dot for active (running/pending) tools — Q12:C progress indicator */}
+        {status !== 'done' && status !== 'error' && status !== 'denied' && (
+          <span className="tool-card__active-dot inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+        )}
+
+        {/* Description — clickable for save_memory to navigate to Memory view */}
+        {tool.name === 'save_memory' && isDone ? (
+          <span
+            className="tool-card__description flex-1 font-mono cursor-pointer hover:text-primary transition-colors"
+            role="link"
+            tabIndex={0}
+            title="Open Memory view"
+            onClick={(e) => {
+              e.stopPropagation();
+              onNavigate?.('memory');
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.stopPropagation();
+                onNavigate?.('memory');
+              }
+            }}
+          >
+            {description}
+          </span>
+        ) : (
+          <span className="tool-card__description flex-1 font-mono">
+            {description}
+          </span>
+        )}
 
         {/* Result summary (Layer 1 only) */}
         {resultSummary && layer === 1 && (
@@ -361,6 +415,24 @@ export const ToolCard = memo(function ToolCard({ tool, onApprove, onDeny }: Tool
               {tool.result}
             </pre>
           )}
+        </div>
+      )}
+
+      {/* Memory explanation tooltip — shown once per session on first save_memory */}
+      {showMemoryTooltip && tool.name === 'save_memory' && (
+        <div className="tool-card__memory-tooltip mx-2 mb-1.5 mt-0.5 rounded-lg px-3 py-2 bg-amber-950/30 border border-amber-500/20 text-xs text-amber-200/80">
+          <p className="mb-1.5">
+            Your agent just saved this to memory. Browse all memories in the Memory tab (<kbd className="px-1 py-0.5 rounded bg-amber-900/40 text-amber-300/90 text-[10px]">Ctrl+Shift+5</kbd>).
+          </p>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              dismissMemoryTooltip();
+            }}
+            className="text-[10px] px-2 py-0.5 rounded bg-amber-800/40 border border-amber-500/20 text-amber-300 hover:bg-amber-700/40 transition-colors cursor-pointer"
+          >
+            Got it
+          </button>
         </div>
       )}
     </div>

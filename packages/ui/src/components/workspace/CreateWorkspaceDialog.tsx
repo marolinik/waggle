@@ -6,8 +6,23 @@
  * Supports "Start blank" or "Use template" mode with 6+ pre-configured templates.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { validateWorkspaceForm } from './utils.js';
+import { SUPPORTED_PROVIDERS } from '../settings/utils.js';
+
+/** Fallback descriptions for built-in templates when server omits them. */
+const TEMPLATE_FALLBACK_DESCRIPTIONS: Record<string, string> = {
+  sales: 'Track leads, draft outreach, prep for calls',
+  research: 'Deep research with multi-source synthesis',
+  'code-review': 'Review PRs, debug, architecture decisions',
+  marketing: 'Content calendar, copy, competitive analysis',
+  'product-launch': 'PRDs, roadmaps, stakeholder updates',
+  legal: 'Contract review, compliance, legal research',
+  consulting: 'Client research, deliverables, presentations',
+};
+
+/** The model ID that should be marked as "Recommended". */
+const RECOMMENDED_MODEL_ID = 'claude-sonnet-4-6';
 
 export interface TeamInfo {
   id: string;
@@ -107,11 +122,20 @@ export function CreateWorkspaceDialog({
   const [selectedTeamId, setSelectedTeamId] = useState<string>('');
   const [teamsLoading, setTeamsLoading] = useState(false);
 
+  // Model dropdown state: when true, show a free-text input instead of the select
+  const [useCustomModel, setUseCustomModel] = useState(false);
+
   // Template state
   const [mode, setMode] = useState<'blank' | 'template'>('blank');
   const [templates, setTemplates] = useState<WorkspaceTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<WorkspaceTemplate | null>(null);
   const [templatesLoading, setTemplatesLoading] = useState(false);
+
+  /** Providers that have at least one model (excludes the "custom" bucket). */
+  const providersWithModels = useMemo(
+    () => SUPPORTED_PROVIDERS.filter((p) => p.models.length > 0),
+    [],
+  );
 
   // Fetch templates when dialog opens and template mode is selected
   const fetchTemplates = useCallback(async () => {
@@ -207,6 +231,7 @@ export function CreateWorkspaceDialog({
     setPersonality('');
     setDirectory('');
     setError(null);
+    setUseCustomModel(false);
     setIsTeamWorkspace(false);
     setSelectedTeamId('');
     setMode('blank');
@@ -274,7 +299,9 @@ export function CreateWorkspaceDialog({
                       </span>
                       <span className="text-sm font-medium text-foreground">{tpl.name}</span>
                     </div>
-                    <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{tpl.description}</p>
+                    <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+                      {tpl.description || TEMPLATE_FALLBACK_DESCRIPTIONS[tpl.id] || ''}
+                    </p>
                   </button>
                 ))}
               </div>
@@ -364,10 +391,11 @@ export function CreateWorkspaceDialog({
               value={name}
               onChange={(e) => { setName(e.target.value); setError(null); }}
               className="w-full rounded bg-card px-3 py-2 text-sm text-foreground outline-none focus:ring-1 focus:ring-primary"
-              placeholder={selectedTemplate ? selectedTemplate.name : 'My Workspace'}
+              placeholder={selectedTemplate ? selectedTemplate.name : 'e.g., Marketing Q2, Client: Acme Corp, Personal Research'}
               autoFocus
             />
             {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+            <p className="mt-1 text-xs text-muted-foreground">A workspace is like a project — Waggle remembers everything inside it</p>
           </div>
 
           {/* Group (hidden when team workspace — auto-set to "Team") */}
@@ -410,14 +438,54 @@ export function CreateWorkspaceDialog({
             <label className="mb-1 block text-sm text-muted-foreground" htmlFor="ws-model">
               Model <span className="text-muted-foreground/60">(optional)</span>
             </label>
-            <input
-              id="ws-model"
-              type="text"
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              className="w-full rounded bg-card px-3 py-2 text-sm text-foreground outline-none focus:ring-1 focus:ring-primary"
-              placeholder="claude-sonnet-4-20250514"
-            />
+            {useCustomModel ? (
+              <div className="flex gap-2">
+                <input
+                  id="ws-model"
+                  type="text"
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  className="flex-1 rounded bg-card px-3 py-2 text-sm text-foreground outline-none focus:ring-1 focus:ring-primary"
+                  placeholder="custom-model-id"
+                />
+                <button
+                  type="button"
+                  onClick={() => { setUseCustomModel(false); setModel(''); }}
+                  className="rounded px-2 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  title="Back to model list"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <select
+                id="ws-model"
+                value={model}
+                onChange={(e) => {
+                  if (e.target.value === '__custom__') {
+                    setUseCustomModel(true);
+                    setModel('');
+                  } else {
+                    setModel(e.target.value);
+                  }
+                }}
+                className="w-full rounded bg-card px-3 py-2 text-sm text-foreground outline-none focus:ring-1 focus:ring-primary"
+              >
+                <option value="">Default (auto)</option>
+                {providersWithModels.map((provider) => (
+                  <optgroup key={provider.id} label={provider.name}>
+                    {provider.models.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.displayName}{m.id === RECOMMENDED_MODEL_ID ? ' — Recommended' : ''}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+                <optgroup label="Other">
+                  <option value="__custom__">Enter custom model ID...</option>
+                </optgroup>
+              </select>
+            )}
           </div>
 
           {/* Personality */}

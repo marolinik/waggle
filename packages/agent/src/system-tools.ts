@@ -833,7 +833,90 @@ export function createSystemTools(workspace: string): ToolDefinition[] {
       },
     },
 
-    // 11. kill_task — Kill a background task
+    // 11. run_code — Execute code in a sandboxed environment
+    {
+      name: 'run_code',
+      description: 'Execute a code snippet in a sandboxed environment. Supports JavaScript/TypeScript and Python (if installed).',
+      offlineCapable: true,
+      parameters: {
+        type: 'object',
+        properties: {
+          code: { type: 'string', description: 'The code to execute' },
+          language: { type: 'string', enum: ['javascript', 'typescript', 'python'], description: 'Programming language' },
+          timeout: { type: 'number', description: 'Timeout in milliseconds (default 10000, max 30000)' },
+        },
+        required: ['code', 'language'],
+      },
+      execute: async (args) => {
+        const code = args.code as string;
+        const language = args.language as string;
+        const rawTimeout = (args.timeout as number) ?? 10_000;
+        const timeout = Math.min(Math.max(rawTimeout, 1000), 30_000);
+
+        // Build the command depending on language
+        let shell: string;
+        let shellArgs: string[];
+        const isWindows = process.platform === 'win32';
+
+        if (language === 'javascript' || language === 'typescript') {
+          // Use node -e for both JS and TS (TS runs as JS via node — for full TS, tsx would be needed)
+          shell = isWindows ? 'cmd.exe' : '/bin/sh';
+          const nodeCmd = `node -e ${JSON.stringify(code)}`;
+          shellArgs = isWindows ? ['/c', nodeCmd] : ['-c', nodeCmd];
+        } else if (language === 'python') {
+          shell = isWindows ? 'cmd.exe' : '/bin/sh';
+          // Try python3 first on Unix, python on Windows
+          const pythonBin = isWindows ? 'python' : 'python3';
+          const pyCmd = `${pythonBin} -c ${JSON.stringify(code)}`;
+          shellArgs = isWindows ? ['/c', pyCmd] : ['-c', pyCmd];
+        } else {
+          return `Error: Unsupported language "${language}". Supported: javascript, typescript, python.`;
+        }
+
+        const sanitizedEnv = createSanitizedEnv();
+        const ac = new AbortController();
+        const timer = setTimeout(() => ac.abort(), timeout);
+
+        return new Promise<string>((resolve) => {
+          execFile(shell, shellArgs, {
+            cwd: workspace,
+            maxBuffer: MAX_OUTPUT_SIZE,
+            signal: ac.signal,
+            env: sanitizedEnv,
+          }, (error, stdout, stderr) => {
+            clearTimeout(timer);
+            const parts: string[] = [];
+
+            if (error) {
+              if ((error as any).code === 'ABORT_ERR') {
+                resolve(`Error: Code execution timed out after ${timeout}ms`);
+                return;
+              }
+              // Check for runtime not found
+              if ((error as any).code === 'ENOENT' || (error.message && error.message.includes('not found'))) {
+                resolve(`Error: ${language} runtime not found. Please ensure ${language === 'python' ? 'python3/python' : 'node'} is installed and on PATH.`);
+                return;
+              }
+            }
+
+            if (stdout) parts.push(`--- stdout ---\n${truncateOutput(stdout)}`);
+            if (stderr) parts.push(`--- stderr ---\n${truncateOutput(stderr)}`);
+
+            if (parts.length === 0 && error) {
+              resolve(`Error: ${error.message}`);
+              return;
+            }
+            if (parts.length === 0) {
+              resolve('(no output)');
+              return;
+            }
+            resolve(parts.join('\n'));
+          });
+        });
+      },
+    },
+
+    // 12. kill_task — Kill a background task
     {
       name: 'kill_task',
       description: 'Kill a running background task.',

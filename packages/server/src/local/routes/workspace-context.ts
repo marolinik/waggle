@@ -17,6 +17,12 @@ export interface WorkspaceNowBlock {
   activeThreads: string[];   // max 3, title + last active
   progressItems: string[];   // max 5, formatted as "type: content"
   nextActions: string[];     // max 3, derived from progress/decisions
+  /** Time-aware greeting based on hour-of-day and inactivity */
+  greeting: string;
+  /** Open/blocker progress items as pending tasks */
+  pendingTasks: string[];
+  /** Next upcoming cron schedules (max 3) */
+  upcomingSchedules: string[];
   /** Structured state — richer model for programmatic access */
   structuredState?: WorkspaceState;
 }
@@ -88,6 +94,76 @@ function formatRelativeTime(mtimeMs: number): string {
   return days === 1 ? 'yesterday' : `${days}d ago`;
 }
 
+// ── Time-aware greeting builder ─────────────────────────────────────
+
+export interface CronScheduleLike {
+  name: string;
+  next_run_at: string | null;
+  enabled: number;
+  workspace_id: string | null;
+}
+
+/**
+ * Build a time-aware greeting based on hour-of-day and workspace inactivity.
+ * If the workspace has been inactive for >24h, the greeting reflects the absence duration.
+ */
+export function buildTimeAwareGreeting(lastActiveIso: string | null): string {
+  const now = new Date();
+  const hour = now.getHours();
+
+  // Check inactivity override (>24 hours)
+  if (lastActiveIso) {
+    const lastActive = new Date(lastActiveIso);
+    const diffMs = now.getTime() - lastActive.getTime();
+    const diffDays = Math.floor(diffMs / (86400 * 1000));
+    if (diffDays > 0) {
+      const dayLabel = diffDays === 1 ? '1 day' : `${diffDays} days`;
+      return `You've been away ${dayLabel}. Here's what happened:`;
+    }
+  }
+
+  // Time-of-day greeting
+  if (hour >= 6 && hour < 12) return "Good morning. Here's your day:";
+  if (hour >= 12 && hour < 18) return "Good afternoon. Here's where you left off:";
+  if (hour >= 18 && hour <= 23) return "Good evening. Here's what you accomplished today:";
+  return "Working late. Here's your current state:";
+}
+
+/**
+ * Extract pending task labels from structured progress items.
+ * Returns open tasks and blockers as human-readable strings.
+ */
+function extractPendingTasks(progressItems: string[]): string[] {
+  return progressItems
+    .filter(p => p.startsWith('[task]') || p.startsWith('[blocker]'))
+    .map(p => p.replace(/^\[(task|blocker)\]\s*/, ''))
+    .slice(0, 5);
+}
+
+/**
+ * Build upcoming schedule descriptions from cron schedules.
+ * Returns the next 3 enabled schedules sorted by next_run_at.
+ */
+export function buildUpcomingSchedules(schedules: CronScheduleLike[], workspaceId?: string): string[] {
+  const upcoming = schedules
+    .filter(s => s.enabled === 1 && s.next_run_at)
+    .filter(s => !s.workspace_id || s.workspace_id === '*' || s.workspace_id === workspaceId)
+    .sort((a, b) => {
+      const ta = a.next_run_at ? new Date(a.next_run_at).getTime() : Infinity;
+      const tb = b.next_run_at ? new Date(b.next_run_at).getTime() : Infinity;
+      return ta - tb;
+    })
+    .slice(0, 3);
+
+  return upcoming.map(s => {
+    const nextDate = s.next_run_at ? new Date(s.next_run_at) : null;
+    const timeStr = nextDate
+      ? nextDate.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+      : 'unknown';
+    return `${s.name} at ${timeStr}`;
+  });
+}
+
 // ── Main builder ───────────────────────────────────────────────────────
 
 export function buildWorkspaceNowBlock(opts: {
@@ -95,6 +171,8 @@ export function buildWorkspaceNowBlock(opts: {
   workspaceId: string;
   wsManager: WsManagerLike;
   activateWorkspaceMind: (id: string) => boolean;
+  /** Optional cron schedules for upcoming schedule display */
+  cronSchedules?: CronScheduleLike[];
 }): WorkspaceNowBlock | null {
   const { dataDir, workspaceId, wsManager, activateWorkspaceMind } = opts;
 
@@ -165,6 +243,12 @@ export function buildWorkspaceNowBlock(opts: {
       if (wsDb) { try { wsDb.close(); } catch { /* */ } }
     }
 
+    // Compute last active from active threads or structured state
+    const lastActiveThread = structuredState.active[0]?.dateLastTouched ?? null;
+    const greeting = buildTimeAwareGreeting(lastActiveThread);
+    const pendingTasks = extractPendingTasks(progressItems);
+    const upcomingSchedules = buildUpcomingSchedules(opts.cronSchedules ?? [], workspaceId);
+
     return {
       workspaceName: ws.name as string,
       summary,
@@ -172,6 +256,9 @@ export function buildWorkspaceNowBlock(opts: {
       activeThreads,
       progressItems: progressItems.slice(0, 5),
       nextActions: structuredState.nextActions.slice(0, 3),
+      greeting,
+      pendingTasks,
+      upcomingSchedules,
       structuredState,
     };
   }
@@ -256,6 +343,24 @@ export function buildWorkspaceNowBlock(opts: {
     nextActions.push('Review recent decisions and determine next steps');
   }
 
+  // Legacy path: derive last-active from session files
+  let legacyLastActive: string | null = null;
+  if (fs.existsSync(sessionsDir)) {
+    try {
+      const files = fs.readdirSync(sessionsDir).filter(f => f.endsWith('.jsonl'));
+      let maxMtime = 0;
+      for (const file of files) {
+        const stat = fs.statSync(path.join(sessionsDir, file));
+        if (stat.mtimeMs > maxMtime) maxMtime = stat.mtimeMs;
+      }
+      if (maxMtime > 0) legacyLastActive = new Date(maxMtime).toISOString();
+    } catch { /* */ }
+  }
+
+  const greeting = buildTimeAwareGreeting(legacyLastActive);
+  const pendingTasks = extractPendingTasks(progressItems);
+  const upcomingSchedules = buildUpcomingSchedules(opts.cronSchedules ?? [], workspaceId);
+
   return {
     workspaceName: ws.name as string,
     summary,
@@ -263,6 +368,9 @@ export function buildWorkspaceNowBlock(opts: {
     activeThreads: [],
     progressItems,
     nextActions: nextActions.slice(0, 3),
+    greeting,
+    pendingTasks,
+    upcomingSchedules,
   };
 }
 
@@ -273,6 +381,11 @@ export function formatWorkspaceNowPrompt(block: WorkspaceNowBlock): string {
 
   sections.push(`# Workspace Now — ${block.workspaceName}`);
   sections.push('');
+
+  if (block.greeting) {
+    sections.push(block.greeting);
+    sections.push('');
+  }
 
   if (block.summary) {
     sections.push(block.summary);

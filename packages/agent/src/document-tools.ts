@@ -588,6 +588,23 @@ export function createDocumentTools(workspace: string): ToolDefinition[] {
             .trim();
           const summary = strippedContent.slice(0, 250);
 
+          // W7.5: Track document version in the registry (fire-and-forget)
+          const docName = title ?? path.basename(filePath, '.docx');
+          try {
+            const port = process.env.WAGGLE_PORT ?? '3333';
+            // Derive workspaceId from workspace path (last segment of the path)
+            const wsSegments = workspace.replace(/\\/g, '/').split('/').filter(Boolean);
+            const wsId = wsSegments[wsSegments.length - 1] ?? '';
+            if (wsId) {
+              fetch(`http://127.0.0.1:${port}/api/workspaces/${encodeURIComponent(wsId)}/documents`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: docName, path: filePath, sizeBytes: stats.size }),
+                signal: AbortSignal.timeout(3000),
+              }).catch(() => { /* version tracking is best-effort */ });
+            }
+          } catch { /* version tracking is best-effort */ }
+
           return (
             `Successfully generated ${filePath} (${sizeKB} KB)\n` +
             `Structure: ${blocks.filter((b) => b.type === 'heading').length} headings, ` +

@@ -22,7 +22,7 @@ export function ThemeSection({ config, onConfigUpdate }: ThemeSectionProps) {
         <div className="space-y-1 text-xs text-muted-foreground">
           <div>Model: {config?.defaultModel ?? 'Not set'}</div>
           <div>Personas: 9+ available (Ctrl+Shift+P to switch)</div>
-          <div>Commands: 18 workflow commands (type / in chat)</div>
+          <div>Commands: 22 workflow commands (type / in chat)</div>
           <div>Tools: 64+ built-in agent tools</div>
           <div>Data: Encrypted locally with AES-256-GCM</div>
         </div>

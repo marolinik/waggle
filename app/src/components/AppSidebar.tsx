@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { HiveIcon, HiveLogo } from '@/components/HiveIcon';
 
-type AppView = 'chat' | 'memory' | 'events' | 'capabilities' | 'cockpit' | 'mission-control' | 'settings';
+type AppView = 'chat' | 'dashboard' | 'memory' | 'events' | 'capabilities' | 'cockpit' | 'mission-control' | 'settings';
 
 export interface AppSidebarProps {
   collapsed: boolean;
@@ -29,6 +29,7 @@ export interface AppSidebarProps {
 
 // Nav items with brand icon names — order matches Ctrl+Shift+N shortcuts
 const NAV_ITEMS: { view: AppView; label: string; shortcut: string; iconName: string }[] = [
+  { view: 'dashboard', label: 'Dashboard', shortcut: '0', iconName: 'cockpit' },
   { view: 'chat', label: 'Chat', shortcut: '1', iconName: 'chat' },
   { view: 'capabilities', label: 'Skills & Apps', shortcut: '2', iconName: 'capabilities' },
   { view: 'cockpit', label: 'Cockpit', shortcut: '3', iconName: 'cockpit' },
@@ -56,8 +57,8 @@ export function AppSidebar({
 
   const bottomItems = (
     <div className="flex flex-col gap-0.5 px-1.5">
-      {/* Work section: Chat, Skills & Apps */}
-      {NAV_ITEMS.slice(0, 2).map(({ view, label, shortcut, iconName }) => {
+      {/* Work section: Dashboard, Chat, Skills & Apps */}
+      {NAV_ITEMS.slice(0, 3).map(({ view, label, shortcut, iconName }) => {
         const isActive = currentView === view;
         return (
           <button
@@ -92,7 +93,7 @@ export function AppSidebar({
       <div className="my-2 mx-3 border-t" style={{ borderColor: 'var(--hive-700)' }} />
 
       {/* System section: Cockpit, Mission Control, Memory, Events, Settings */}
-      {NAV_ITEMS.slice(2).map(({ view, label, shortcut, iconName }) => {
+      {NAV_ITEMS.slice(3).map(({ view, label, shortcut, iconName }) => {
         const isActive = currentView === view;
         const showMemoryBadge = view === 'memory' && !!memoryBadge && memoryBadge > 0;
         return (

@@ -31,6 +31,7 @@ export interface UseKeyboardShortcutsOptions {
   onOpenSettings: () => void;
   onToggleHelp: () => void;
   onTogglePersonaSwitcher: () => void;
+  onToggleWorkspaceSwitcher: () => void;
   onViewChange: (view: AppView) => void;
 }
 
@@ -48,6 +49,7 @@ export function useKeyboardShortcuts({
   onOpenSettings,
   onToggleHelp,
   onTogglePersonaSwitcher,
+  onToggleWorkspaceSwitcher,
   onViewChange,
 }: UseKeyboardShortcutsOptions): void {
   useEffect(() => {
@@ -100,6 +102,11 @@ export function useKeyboardShortcuts({
         e.preventDefault();
         onTogglePersonaSwitcher();
       }
+      // Ctrl+Tab — quick-switch workspace
+      if (matchesNamedShortcut(e, 'quickSwitchWorkspace')) {
+        e.preventDefault();
+        onToggleWorkspaceSwitcher();
+      }
       // Ctrl+Shift+1-7 — switch views
       const viewMap: Record<string, AppView> = {
         switchView1: 'chat',
@@ -134,6 +141,7 @@ export function useKeyboardShortcuts({
     onOpenSettings,
     onToggleHelp,
     onTogglePersonaSwitcher,
+    onToggleWorkspaceSwitcher,
     onViewChange,
   ]);
 }

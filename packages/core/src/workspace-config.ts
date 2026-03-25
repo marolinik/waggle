@@ -10,6 +10,8 @@ export interface WorkspaceConfig {
   personality?: string;
   /** Selected agent persona ID (from persona catalog) */
   personaId?: string;
+  /** Template ID chosen during onboarding (e.g. 'sales-pipeline', 'research-project'). */
+  templateId?: string;
   tools?: string[];
   skills?: string[];
   team?: string | null;
@@ -31,6 +33,10 @@ export interface WorkspaceConfig {
   /** Monthly cost budget in USD. null = unlimited. */
   budget?: number | null;
 
+  // --- Tone/Voice (Wave 7.3) ---
+  /** Workspace communication tone preset. */
+  tone?: 'professional' | 'casual' | 'technical' | 'legal' | 'marketing';
+
   // --- Optimization fields (GEPA/Ax) ---
   /** Enable GEPA prompt optimization for this workspace (opt-in, default false). */
   optimizationEnabled?: boolean;
@@ -46,6 +52,8 @@ export interface CreateWorkspaceOptions {
   personality?: string;
   /** Selected agent persona ID (from persona catalog) */
   personaId?: string;
+  /** Template ID chosen during onboarding (e.g. 'sales-pipeline', 'research-project'). */
+  templateId?: string;
   tools?: string[];
   skills?: string[];
   team?: string | null;
@@ -57,6 +65,9 @@ export interface CreateWorkspaceOptions {
   teamServerUrl?: string;
   teamRole?: 'owner' | 'admin' | 'member' | 'viewer';
   teamUserId?: string;
+
+  // --- Tone/Voice (Wave 7.3) ---
+  tone?: 'professional' | 'casual' | 'technical' | 'legal' | 'marketing';
 
   // --- Budget ---
   budget?: number | null;
@@ -111,6 +122,7 @@ export class WorkspaceManager {
       ...(options.model !== undefined && { model: options.model }),
       ...(options.personality !== undefined && { personality: options.personality }),
       ...(options.personaId !== undefined && { personaId: options.personaId }),
+      ...(options.templateId !== undefined && { templateId: options.templateId }),
       ...(options.tools !== undefined && { tools: options.tools }),
       ...(options.skills !== undefined && { skills: options.skills }),
       ...(options.team !== undefined && { team: options.team }),
@@ -119,6 +131,7 @@ export class WorkspaceManager {
       ...(options.teamServerUrl !== undefined && { teamServerUrl: options.teamServerUrl }),
       ...(options.teamRole !== undefined && { teamRole: options.teamRole }),
       ...(options.teamUserId !== undefined && { teamUserId: options.teamUserId }),
+      ...(options.tone !== undefined && { tone: options.tone }),
       ...(options.optimizationEnabled !== undefined && { optimizationEnabled: options.optimizationEnabled }),
       ...(options.optimizationBudget !== undefined && { optimizationBudget: options.optimizationBudget }),
       created: new Date().toISOString(),

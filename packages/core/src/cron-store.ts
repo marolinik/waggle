@@ -311,6 +311,12 @@ export class CronStore {
     this.db.getDatabase().prepare('UPDATE notifications SET read = 1 WHERE id = ?').run(id);
   }
 
+  /** Mark all notifications as read. Returns the number of rows updated. */
+  markAllRead(): number {
+    const result = this.db.getDatabase().prepare('UPDATE notifications SET read = 1 WHERE read = 0').run();
+    return result.changes;
+  }
+
   /** Count unread notifications. */
   countUnread(): number {
     const row = this.db.getDatabase().prepare('SELECT COUNT(*) as cnt FROM notifications WHERE read = 0').get() as { cnt: number };

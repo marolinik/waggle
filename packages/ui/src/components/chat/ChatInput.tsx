@@ -298,19 +298,26 @@ export function ChatInput({
       )}
 
       <div className="flex items-end gap-2">
-        {/* Attachment button */}
+        {/* Attachment button — paperclip icon with tooltip */}
         {onFileSelect && (
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={disabled}
-            title="Attach files"
-            className={`chat-input__attach-btn rounded-lg border border-border bg-muted text-lg leading-none flex items-center justify-center py-2.5 px-3 ${
+            title="Attach files (PDF, DOCX, images, code, CSV)"
+            className={`chat-input__attach-btn group/attach relative rounded-lg border border-border bg-muted text-lg leading-none flex items-center justify-center py-2.5 px-3 ${
               disabled
                 ? 'text-muted-foreground/30 cursor-not-allowed'
-                : 'text-muted-foreground cursor-pointer'
+                : 'text-muted-foreground cursor-pointer hover:text-foreground hover:border-foreground/30 transition-colors'
             }`}
           >
-            +
+            {/* Paperclip SVG icon */}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+            </svg>
+            {/* Hover tooltip */}
+            <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 whitespace-nowrap rounded-md bg-foreground text-background text-[11px] px-2 py-1 opacity-0 group-hover/attach:opacity-100 transition-opacity z-50">
+              Attach files (PDF, DOCX, images, code, CSV)
+            </span>
           </button>
         )}
         <textarea
@@ -336,6 +343,62 @@ export function ChatInput({
             e.target.style.boxShadow = 'none';
           }}
         />
+        {/* Wave 4.1B: App connector button — navigate to Settings > Keys & Connections */}
+        <button
+          onClick={() => {
+            // Surface the connection setting; for now show a tooltip hint
+          }}
+          disabled={disabled}
+          title="Connect apps (Settings > Keys & Connections)"
+          className="group/apps relative rounded-xl border-none text-[15px] py-2.5 px-2.5 transition-all duration-150"
+          style={{
+            backgroundColor: 'transparent',
+            color: 'var(--hive-400)',
+            cursor: disabled ? 'not-allowed' : 'pointer',
+            opacity: disabled ? 0.3 : 1,
+          }}
+          onMouseEnter={(e) => {
+            if (!disabled) (e.currentTarget as HTMLElement).style.color = 'var(--hive-200)';
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.color = 'var(--hive-400)';
+          }}
+        >
+          {'\uD83D\uDD0C'}
+          {/* Hover tooltip */}
+          <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 whitespace-nowrap rounded-md bg-foreground text-background text-[11px] px-2 py-1 opacity-0 group-hover/apps:opacity-100 transition-opacity z-50">
+            Connect apps (Settings &gt; Keys &amp; Connections)
+          </span>
+        </button>
+        {/* Command palette button — opens slash command popup */}
+        <button
+          onClick={() => {
+            setText('/');
+            textareaRef.current?.focus();
+          }}
+          disabled={disabled}
+          title="Commands (type / to browse)"
+          className="group/cmd relative rounded-xl border-none text-[15px] py-2.5 px-3 transition-all duration-150 font-mono font-bold"
+          style={{
+            fontFamily: 'var(--font-mono, monospace)',
+            backgroundColor: 'transparent',
+            color: 'var(--hive-400)',
+            cursor: disabled ? 'not-allowed' : 'pointer',
+            opacity: disabled ? 0.3 : 1,
+          }}
+          onMouseEnter={(e) => {
+            if (!disabled) (e.currentTarget as HTMLElement).style.color = 'var(--hive-200)';
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.color = 'var(--hive-400)';
+          }}
+        >
+          /
+          {/* Hover tooltip */}
+          <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 whitespace-nowrap rounded-md bg-foreground text-background text-[11px] px-2 py-1 opacity-0 group-hover/cmd:opacity-100 transition-opacity z-50">
+            Commands (type / to browse)
+          </span>
+        </button>
         <button
           onClick={handleSubmit}
           disabled={isDisabledOrEmpty}

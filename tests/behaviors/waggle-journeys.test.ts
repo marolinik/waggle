@@ -116,9 +116,11 @@ describe('Persona system — all 13 personas', () => {
     expect(composed).toContain('Persona: Researcher');
   });
 
-  it('composePersonaPrompt returns core prompt unchanged when persona is null', () => {
+  it('composePersonaPrompt returns core prompt with DOCX hint when persona is null', () => {
     const core = 'CORE_ONLY';
-    expect(composePersonaPrompt(core, null)).toBe('CORE_ONLY');
+    const result = composePersonaPrompt(core, null);
+    expect(result).toContain('CORE_ONLY');
+    expect(result).toContain('generate_docx');
   });
 
   it('composePersonaPrompt truncates persona prompt to fit maxChars', () => {
@@ -544,8 +546,8 @@ describe('Command registry — all 13 slash commands', () => {
     registerWorkflowCommands(registry);
   });
 
-  it('registers exactly 18 commands', () => {
-    expect(registry.list()).toHaveLength(18);
+  it('registers exactly 22 commands', () => {
+    expect(registry.list()).toHaveLength(22);
   });
 
   it('/help lists all commands', async () => {

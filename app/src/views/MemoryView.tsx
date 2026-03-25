@@ -16,6 +16,12 @@ export interface MemoryViewProps {
   loading: boolean;
   error?: string | null;
   onRetry?: () => void;
+  /** Q22: Callback when a frame is deleted */
+  onDeleteFrame?: (id: number) => void;
+  /** Q22: Callback when a frame is edited */
+  onEditFrame?: (id: number, content: string, importance?: string) => void;
+  /** Q22: Callback when a new frame is added */
+  onAddFrame?: (content: string, importance: string) => void;
 }
 
 export default function MemoryView({
@@ -29,6 +35,9 @@ export default function MemoryView({
   loading,
   error,
   onRetry,
+  onDeleteFrame,
+  onEditFrame,
+  onAddFrame,
 }: MemoryViewProps) {
   return (
     <div className="h-full overflow-hidden">
@@ -43,6 +52,9 @@ export default function MemoryView({
         loading={loading}
         error={error}
         onRetry={onRetry}
+        onDeleteFrame={onDeleteFrame}
+        onEditFrame={onEditFrame}
+        onAddFrame={onAddFrame}
       />
     </div>
   );

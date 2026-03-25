@@ -92,7 +92,7 @@ export interface ProgressItem {
 // ── Workspace Context (catch-up / return reward) ──────────────────────
 
 export interface WorkspaceContext {
-  workspace: { id: string; name: string; group?: string; model?: string; directory?: string };
+  workspace: { id: string; name: string; group?: string; model?: string; directory?: string; templateId?: string; personaId?: string };
   summary: string;
   recentThreads: Array<{ id: string; title: string; lastActive: string }>;
   recentDecisions: Array<{ content: string; date: string }>;
@@ -101,6 +101,18 @@ export interface WorkspaceContext {
   progressItems?: ProgressItem[];
   stats: { memoryCount: number; sessionCount: number; fileCount?: number };
   lastActive: string;
+  /** Wave 3.1: Time-aware greeting (e.g. "Good morning. Here's your day:") */
+  greeting?: string;
+  /** Wave 3.1: Open tasks and blockers as pending task strings */
+  pendingTasks?: string[];
+  /** Wave 3.1: Next 3 upcoming cron schedules (e.g. "Memory consolidation at Mar 26, 3:00 AM") */
+  upcomingSchedules?: string[];
+  /** Wave 1.6: Template-specific agent welcome message for first-time context */
+  welcomeMessage?: string;
+  /** Wave 5.2: Pinned/favorited messages */
+  pinnedItems?: Array<{ id: string; messageContent: string; messageRole: 'assistant' | 'user'; pinnedAt: string; label?: string; status?: 'draft' | 'final' }>;
+  /** Wave 6.5: Cross-workspace intelligence hints */
+  crossWorkspaceHints?: string[];
 }
 
 // ── Sessions ───────────────────────────────────────────────────────────

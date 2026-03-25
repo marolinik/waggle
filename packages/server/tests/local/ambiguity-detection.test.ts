@@ -3,6 +3,12 @@
  *
  * Tests for the isAmbiguousMessage() function that detects short/vague
  * user messages and triggers a clarification prompt before acting.
+ *
+ * NOTE (Q11:A): Context-awareness is enforced at the CALL SITE in chat.ts,
+ * not inside isAmbiguousMessage() itself. The call site skips ambiguity
+ * detection for mid-conversation follow-ups (i.e., when prior user messages
+ * already exist in the session). These unit tests validate the pure detection
+ * logic only — the context gate is integration-level.
  */
 
 import { describe, it, expect } from 'vitest';

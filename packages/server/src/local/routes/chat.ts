@@ -666,6 +666,7 @@ When approaching any task:
           workspaceId,
           wsManager: server.workspaceManager,
           activateWorkspaceMind: server.agentState.activateWorkspaceMind,
+          cronSchedules: server.cronStore.list(),
         });
         if (nowBlock) {
           // Use structured state prompt when available (richer: open questions, blockers, stale threads)
@@ -695,9 +696,14 @@ When approaching any task:
     } catch { /* non-blocking */ }
 
     // W1.3: Apply active persona instructions (extends, not replaces, core prompt)
+    // W7.3: Pass workspace tone to composePersonaPrompt
+    const workspaceTone = wsConfig?.tone;
     if (activePersonaId) {
       const persona = getPersona(activePersonaId);
-      prompt = composePersonaPrompt(prompt, persona);
+      prompt = composePersonaPrompt(prompt, persona, undefined, workspaceTone);
+    } else if (workspaceTone) {
+      // Even without a persona, apply tone if workspace has one set
+      prompt = composePersonaPrompt(prompt, null, undefined, workspaceTone);
     }
 
     // Item 3: Regulated-persona disclaimer enforcement
@@ -877,6 +883,7 @@ When approaching any task:
               workspaceId: effectiveWorkspace,
               wsManager: server.workspaceManager,
               activateWorkspaceMind: server.agentState.activateWorkspaceMind,
+              cronSchedules: server.cronStore.list(),
             });
             if (!block) return 'No workspace state available.';
             return formatWorkspaceNowPrompt(block);
@@ -998,7 +1005,13 @@ When approaching any task:
 
         // Build system prompt (with workspace path awareness + recalled memories)
         // GAP-006: Prepend ambiguity guard when user message is too brief/vague
-        const ambiguityPrefix = (!hasCustomRunner && isAmbiguousMessage(agentMessage)) ? AMBIGUITY_PROMPT : '';
+        // Q11:A — Context-aware: only trigger ambiguity detection on the FIRST user
+        // message in a session. Mid-conversation follow-ups like "yes", "run it",
+        // "LGTM" are valid replies and should not be flagged.
+        const priorUserMessages = history.filter((m: { role: string }) => m.role === 'user').length;
+        const isFirstUserMessage = priorUserMessages <= 1; // history already includes current message
+        const shouldCheckAmbiguity = isFirstUserMessage;
+        const ambiguityPrefix = (!hasCustomRunner && shouldCheckAmbiguity && isAmbiguousMessage(agentMessage)) ? AMBIGUITY_PROMPT : '';
         const systemPrompt = hasCustomRunner
           ? 'You are a helpful AI assistant.'
           : ambiguityPrefix + buildSystemPrompt(workspacePath, sessionId, history.length, effectiveWorkspace) + recalledContext;

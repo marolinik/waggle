@@ -6,7 +6,7 @@
  */
 
 // Tools that ALWAYS need confirmation (they modify state)
-const ALWAYS_CONFIRM = new Set(['write_file', 'edit_file', 'generate_docx', 'git_commit', 'install_capability']);
+const ALWAYS_CONFIRM = new Set(['write_file', 'edit_file', 'generate_docx', 'git_commit', 'git_push', 'git_pr', 'git_merge', 'install_capability']);
 
 // Connector action name patterns that indicate write operations
 const CONNECTOR_WRITE_PATTERNS = /_(create|update|delete|send|post|transition|remove|add|set|put)_/;

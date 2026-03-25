@@ -104,7 +104,7 @@ You specialize in software development, debugging, and code architecture.
 - Explain technical decisions when the impact isn't obvious
 - Search the codebase before writing new utilities — reuse what exists`,
     modelPreference: 'claude-sonnet-4-6',
-    tools: ['bash', 'read_file', 'write_file', 'edit_file', 'search_files', 'search_content', 'git_status', 'git_diff', 'git_log', 'git_commit'],
+    tools: ['bash', 'read_file', 'write_file', 'edit_file', 'search_files', 'search_content', 'git_status', 'git_diff', 'git_log', 'git_commit', 'git_branch', 'git_stash', 'git_push', 'git_pull', 'git_merge', 'git_pr'],
     workspaceAffinity: ['development', 'coding', 'engineering', 'debugging'],
     suggestedCommands: ['/review', '/plan'],
     defaultWorkflow: null,
@@ -307,26 +307,48 @@ export function listPersonas(): AgentPersona[] {
 const MAX_COMBINED_CHARS = 32000; // ~8000 tokens
 const SEPARATOR = '\n\n---\n\n';
 
+/** Hint appended to every composed prompt — encourages DOCX generation for structured content */
+const DOCX_HINT = '\n\nWhen generating long, structured content (reports, proposals, analyses), proactively offer to save it as a DOCX document using the generate_docx tool.';
+
+/** W7.3: Tone instruction map — maps workspace tone presets to system prompt instructions */
+const TONE_INSTRUCTIONS: Record<string, string> = {
+  professional: 'Maintain a professional, polished tone. Use formal language appropriate for business communication.',
+  casual: 'Use a conversational, approachable tone. Be friendly but not unprofessional.',
+  technical: 'Use precise technical language. Include relevant jargon and detailed explanations.',
+  legal: 'Use careful, precise legal language. Include appropriate disclaimers and caveats.',
+  marketing: 'Use engaging, persuasive language. Focus on benefits and compelling narratives.',
+};
+
 /**
  * Compose a system prompt by appending persona instructions after the core prompt.
  * Truncates persona prompt if combined length exceeds maxChars.
  * Returns core prompt unchanged if persona is null.
+ * W7.3: If workspaceTone is provided, appends a tone instruction section.
  */
 export function composePersonaPrompt(
   corePrompt: string,
   persona: AgentPersona | null,
   maxChars: number = MAX_COMBINED_CHARS,
+  workspaceTone?: string,
 ): string {
-  if (!persona) return corePrompt;
+  // Always append DOCX generation hint to the core prompt
+  let basePrompt = corePrompt + DOCX_HINT;
 
-  const combined = `${corePrompt}${SEPARATOR}${persona.systemPrompt}`;
+  // W7.3: Append workspace tone instruction if set
+  if (workspaceTone && TONE_INSTRUCTIONS[workspaceTone]) {
+    basePrompt += `\n\n## Communication Tone\n${TONE_INSTRUCTIONS[workspaceTone]}`;
+  }
+
+  if (!persona) return basePrompt;
+
+  const combined = `${basePrompt}${SEPARATOR}${persona.systemPrompt}`;
   if (combined.length <= maxChars) return combined;
 
   // Truncate persona prompt to fit
   const TRUNCATION_MARKER = '\n[...truncated]';
-  const available = maxChars - corePrompt.length - SEPARATOR.length - TRUNCATION_MARKER.length;
-  if (available <= 0) return corePrompt; // Core prompt alone exceeds limit
+  const available = maxChars - basePrompt.length - SEPARATOR.length - TRUNCATION_MARKER.length;
+  if (available <= 0) return basePrompt; // Core prompt alone exceeds limit
 
   const truncated = persona.systemPrompt.slice(0, available) + TRUNCATION_MARKER;
-  return `${corePrompt}${SEPARATOR}${truncated}`;
+  return `${basePrompt}${SEPARATOR}${truncated}`;
 }

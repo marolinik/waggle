@@ -60,6 +60,9 @@ interface ConnectorSetupGuide {
   featured?: boolean;
 }
 
+// ── OAuth-capable providers ──────────────────────────────────────────
+const OAUTH_PROVIDERS = new Set(['github', 'slack', 'google', 'notion', 'jira']);
+
 const CONNECTOR_GUIDES: Record<string, ConnectorSetupGuide> = {
   github: {
     id: 'github',
@@ -141,6 +144,67 @@ const CONNECTOR_GUIDES: Record<string, ConnectorSetupGuide> = {
     tokenPlaceholder: 'Your Composio API key',
   },
 };
+
+// ── OAuth Connect Button ────────────────────────────────────────────
+
+interface OAuthButtonProps {
+  provider: string;
+  baseUrl: string;
+}
+
+function OAuthButton({ provider, baseUrl }: OAuthButtonProps) {
+  const [status, setStatus] = useState<'idle' | 'checking' | 'ready' | 'no-creds'>('checking');
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${baseUrl}/api/oauth/providers`);
+        if (!res.ok || cancelled) return;
+        const data = await res.json() as { providers: Array<{ provider: string; hasCredentials: boolean; hasToken: boolean }> };
+        const prov = data.providers?.find(p => p.provider === provider);
+        if (cancelled) return;
+        if (prov?.hasToken) setStatus('ready');
+        else if (prov?.hasCredentials) setStatus('ready');
+        else setStatus('no-creds');
+      } catch {
+        if (!cancelled) setStatus('no-creds');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [baseUrl, provider]);
+
+  if (status === 'checking') return null;
+
+  if (status === 'no-creds') {
+    return (
+      <div className="flex items-center gap-2 text-[11px] text-muted-foreground/70 mt-2">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-50">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 16v-4" />
+          <path d="M12 8h.01" />
+        </svg>
+        <span>OAuth available — store OAuth client credentials in Vault to enable</span>
+      </div>
+    );
+  }
+
+  return (
+    <a
+      href={`${baseUrl}/api/oauth/${provider}/authorize`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 transition-colors mt-2"
+    >
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+        <polyline points="10 17 15 12 10 7" />
+        <line x1="15" y1="12" x2="3" y2="12" />
+      </svg>
+      <span>Connect with OAuth</span>
+    </a>
+  );
+}
 
 // ── Connector Guide Panel ───────────────────────────────────────────
 
@@ -906,6 +970,11 @@ export function VaultSection({ baseUrl = 'http://127.0.0.1:3333' }: VaultSection
                         {connectingId === c.id ? 'Connecting...' : 'Connect'}
                       </button>
                     </div>
+
+                    {/* OAuth button for supported providers */}
+                    {OAUTH_PROVIDERS.has(c.id) && (
+                      <OAuthButton provider={c.id} baseUrl={baseUrl} />
+                    )}
                   </div>
                 )}
               </div>
