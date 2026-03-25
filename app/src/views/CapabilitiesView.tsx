@@ -11,7 +11,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { InstallCenter } from '@waggle/ui';
-import { getServerBaseUrl } from '../lib/ipc';
+import { getServerBaseUrl, authFetch } from '../lib/ipc';
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -292,7 +292,7 @@ export default function CapabilitiesView({ onNavigate }: CapabilitiesViewProps) 
     setPacksLoading(true);
     setFetchFailed(false);
     try {
-      const res = await fetch(`${baseUrl}/api/skills/capability-packs/catalog`);
+      const res = await authFetch(`${baseUrl}/api/skills/capability-packs/catalog`);
       if (res.ok) {
         const data = await res.json();
         setPacks(data.packs ?? []);
@@ -311,7 +311,7 @@ export default function CapabilitiesView({ onNavigate }: CapabilitiesViewProps) 
     setCommunityLoading(true);
     setCommunityError(null);
     try {
-      const res = await fetch(`${baseUrl}/api/marketplace/packs`);
+      const res = await authFetch(`${baseUrl}/api/marketplace/packs`);
       if (res.ok) {
         const data = await res.json();
         setCommunityPacks(data.packs ?? []);
@@ -338,7 +338,7 @@ export default function CapabilitiesView({ onNavigate }: CapabilitiesViewProps) 
       if (categoryFilter !== 'all') params.set('category', categoryFilter);
       params.set('limit', '100');
 
-      const res = await fetch(`${baseUrl}/api/marketplace/search?${params.toString()}`);
+      const res = await authFetch(`${baseUrl}/api/marketplace/search?${params.toString()}`);
       if (res.ok) {
         const data: MarketplaceSearchResult = await res.json();
         setMarketplacePackages(data.packages ?? []);
@@ -422,7 +422,7 @@ export default function CapabilitiesView({ onNavigate }: CapabilitiesViewProps) 
     setInstallingPack(packId);
     setPackError(null);
     try {
-      const res = await fetch(`${baseUrl}/api/skills/capability-packs/${packId}`, { method: 'POST' });
+      const res = await authFetch(`${baseUrl}/api/skills/capability-packs/${packId}`, { method: 'POST' });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Install failed' }));
         setPackError(err.error ?? 'Install failed');
@@ -440,7 +440,7 @@ export default function CapabilitiesView({ onNavigate }: CapabilitiesViewProps) 
   const handleInstallPackage = useCallback(async (packageId: number) => {
     setInstallingPackageId(packageId);
     try {
-      const res = await fetch(`${baseUrl}/api/marketplace/install`, {
+      const res = await authFetch(`${baseUrl}/api/marketplace/install`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ packageId }),
@@ -473,7 +473,7 @@ export default function CapabilitiesView({ onNavigate }: CapabilitiesViewProps) 
   const handleUninstallPackage = useCallback(async (packageId: number) => {
     setUninstallingPackageId(packageId);
     try {
-      const res = await fetch(`${baseUrl}/api/marketplace/uninstall`, {
+      const res = await authFetch(`${baseUrl}/api/marketplace/uninstall`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ packageId }),
@@ -507,7 +507,7 @@ export default function CapabilitiesView({ onNavigate }: CapabilitiesViewProps) 
     }));
 
     try {
-      const detailRes = await fetch(`${baseUrl}/api/marketplace/packs/${slug}`, { signal: controller.signal });
+      const detailRes = await authFetch(`${baseUrl}/api/marketplace/packs/${slug}`, { signal: controller.signal });
       if (!detailRes.ok) {
         setCommunityInstallProgress(prev => ({
           ...prev,
@@ -541,7 +541,7 @@ export default function CapabilitiesView({ onNavigate }: CapabilitiesViewProps) 
         }));
 
         try {
-          const installRes = await fetch(`${baseUrl}/api/marketplace/install`, {
+          const installRes = await authFetch(`${baseUrl}/api/marketplace/install`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ packageId: pkg.id }),
@@ -611,7 +611,7 @@ export default function CapabilitiesView({ onNavigate }: CapabilitiesViewProps) 
     setCreateSuccess(null);
 
     try {
-      const res = await fetch(`${baseUrl}/api/skills/create`, {
+      const res = await authFetch(`${baseUrl}/api/skills/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

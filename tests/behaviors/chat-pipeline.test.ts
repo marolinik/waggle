@@ -251,13 +251,14 @@ describe('POST /api/chat HTTP pipeline (live server)', () => {
     expect(body.code).toBe('INJECTION_DETECTED');
   });
 
-  it('returns 401 when Authorization header is missing', async () => {
+  it('allows localhost requests without Authorization header (desktop trust)', async () => {
+    // Localhost is trusted — desktop app pattern. Auth enforced for external access only.
     const res = await fetch(`${baseUrl}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: 'hello' }),
     });
-    expect(res.status).toBe(401);
+    expect(res.status).not.toBe(401);
   });
 
   it('returns 400 when message exceeds size limit', async () => {

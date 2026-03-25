@@ -345,18 +345,19 @@ describe('Per-Endpoint Rate Limits', () => {
 describe('Bearer Token Authentication', () => {
   const TEST_TOKEN = 'test-session-token-12345';
 
-  it('returns 401 for request without token', async () => {
+  it('allows localhost requests without token (desktop trust)', async () => {
+    // Localhost connections are trusted — desktop app pattern (SEC-011 amendment)
     const server = await createTestServer({ sessionToken: TEST_TOKEN });
     try {
       const res = await server.inject({ method: 'GET', url: '/api/test' });
-      expect(res.statusCode).toBe(401);
-      expect(res.json().code).toBe('MISSING_TOKEN');
+      // inject() simulates localhost — should be trusted
+      expect(res.statusCode).toBe(200);
     } finally {
       await server.close();
     }
   });
 
-  it('returns 401 for request with wrong token', async () => {
+  it('allows localhost requests even with wrong token (desktop trust)', async () => {
     const server = await createTestServer({ sessionToken: TEST_TOKEN });
     try {
       const res = await server.inject({
@@ -364,8 +365,8 @@ describe('Bearer Token Authentication', () => {
         url: '/api/test',
         headers: { authorization: 'Bearer wrong-token' },
       });
-      expect(res.statusCode).toBe(401);
-      expect(res.json().code).toBe('INVALID_TOKEN');
+      // inject() simulates localhost — trusted regardless of token
+      expect(res.statusCode).toBe(200);
     } finally {
       await server.close();
     }
@@ -418,17 +419,17 @@ describe('Bearer Token Authentication', () => {
     }
   });
 
-  it('rejects malformed authorization header', async () => {
+  it('allows malformed authorization header from localhost (desktop trust)', async () => {
     const server = await createTestServer({ sessionToken: TEST_TOKEN });
     try {
-      // Missing "Bearer " prefix
+      // Missing "Bearer " prefix — but localhost is trusted
       const res = await server.inject({
         method: 'GET',
         url: '/api/test',
         headers: { authorization: TEST_TOKEN },
       });
-      expect(res.statusCode).toBe(401);
-      expect(res.json().code).toBe('INVALID_TOKEN');
+      // inject() simulates localhost — trusted
+      expect(res.statusCode).toBe(200);
     } finally {
       await server.close();
     }

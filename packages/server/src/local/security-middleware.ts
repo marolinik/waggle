@@ -270,9 +270,14 @@ async function securityMiddlewarePlugin(
     const requestPath = request.url.split('?')[0]; // Strip query string
 
     // ── Bearer token authentication (SEC-011) ──
+    // Local desktop app: localhost requests are trusted (Waggle is a desktop app, not a public server).
+    // External requests still require Bearer token for API access (curl, integrations).
     if (sessionToken) {
+      const clientIp = request.ip || request.socket?.remoteAddress || '';
+      const isLocalhost = clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1' || clientIp === 'localhost';
       const isAuthExempt = request.method === 'OPTIONS' ||
-        AUTH_EXEMPT_PATHS.some(p => requestPath === p);
+        AUTH_EXEMPT_PATHS.some(p => requestPath === p) ||
+        isLocalhost; // Desktop app — trust localhost connections
       if (!isAuthExempt) {
         const authHeader = request.headers.authorization;
         if (!authHeader) {

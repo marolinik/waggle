@@ -105,6 +105,17 @@ export function OnboardingWizard({
   const [selectedPersona, setSelectedPersona] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState('anthropic');
+  const [customPersonaMode, setCustomPersonaMode] = useState(false);
+  const [customPersonaDesc, setCustomPersonaDesc] = useState('');
+  const [authToken, setAuthToken] = useState<string | null>(null);
+
+  // Fetch auth token from /health on mount
+  useEffect(() => {
+    fetch(`${serverBaseUrl}/health`)
+      .then(r => r.json())
+      .then((d: any) => { if (d.wsToken) setAuthToken(d.wsToken); })
+      .catch(() => {});
+  }, [serverBaseUrl]);
 
   // Auto-advance step 0 (Welcome) after 3 seconds
   useEffect(() => {
@@ -131,6 +142,13 @@ export function OnboardingWizard({
     }, 200);
   }, [onUpdate]);
 
+  // ── Auth helper for API calls ────────────────────────────────────
+  const authHeaders = useCallback((extra?: Record<string, string>): Record<string, string> => {
+    const h: Record<string, string> = { ...extra };
+    if (authToken) h['Authorization'] = `Bearer ${authToken}`;
+    return h;
+  }, [authToken]);
+
   // ── API Key Validation ──────────────────────────────────────────
   const validateKey = useCallback(async (key: string) => {
     if (!key || key.length < 10) return;
@@ -140,7 +158,7 @@ export function OnboardingWizard({
       // Store key in vault with provider name as key
       await fetch(`${serverBaseUrl}/api/vault`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ name: selectedProvider, value: key }),
       });
       // Check health
@@ -164,23 +182,24 @@ export function OnboardingWizard({
 
   // ── Workspace Creation ──────────────────────────────────────────
   const createWorkspace = useCallback(async () => {
-    if (!selectedTemplate) return;
     setCreating(true);
     try {
-      const name = workspaceName.trim() || TEMPLATES.find(t => t.id === selectedTemplate)?.name || 'My Workspace';
+      const template = selectedTemplate && selectedTemplate !== 'blank' ? selectedTemplate : undefined;
+      const name = workspaceName.trim() || (template ? TEMPLATES.find(t => t.id === template)?.name : null) || 'My Workspace';
+      const persona = selectedPersona ?? (template ? TEMPLATE_PERSONA[template] : undefined);
       const res = await fetch(`${serverBaseUrl}/api/workspaces`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           name,
           group: 'Workspaces',
-          templateId: selectedTemplate,
-          personaId: selectedPersona ?? TEMPLATE_PERSONA[selectedTemplate],
+          ...(template && { templateId: template }),
+          ...(persona && { personaId: persona }),
         }),
       });
       if (res.ok) {
         const ws = await res.json();
-        onUpdate({ workspaceId: ws.id, templateId: selectedTemplate, personaId: selectedPersona ?? TEMPLATE_PERSONA[selectedTemplate] });
+        onUpdate({ workspaceId: ws.id, templateId: template, personaId: persona });
         return ws.id;
       }
     } catch { /* handled below */ }
@@ -478,11 +497,12 @@ export function OnboardingWizard({
               {PERSONAS.map(p => (
                 <button
                   key={p.id}
+                  type="button"
                   onClick={() => setSelectedPersona(p.id)}
-                  className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-all ${
+                  className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-all cursor-pointer ${
                     selectedPersona === p.id
-                      ? 'border-primary bg-primary/10'
-                      : 'border-border bg-card hover:border-primary/30'
+                      ? 'border-[var(--honey-500)] bg-[var(--honey-500)]/10 shadow-[0_0_12px_rgba(229,160,0,0.2)]'
+                      : 'border-border bg-card hover:border-[var(--honey-500)]/40 hover:bg-card/80'
                   }`}
                 >
                   <span className="text-xl shrink-0">{p.icon}</span>
@@ -490,9 +510,77 @@ export function OnboardingWizard({
                     <div className="text-sm font-medium text-foreground">{p.name}</div>
                     <div className="text-[10px] text-muted-foreground truncate">{p.desc}</div>
                   </div>
+                  {selectedPersona === p.id && (
+                    <span className="ml-auto text-[10px] font-medium uppercase tracking-wider" style={{ color: 'var(--honey-500)' }}>Selected</span>
+                  )}
                 </button>
               ))}
+              {/* Create Custom Persona */}
+              <button
+                type="button"
+                onClick={() => setCustomPersonaMode(true)}
+                className="flex items-center gap-3 p-3 rounded-lg border border-dashed text-left transition-all cursor-pointer border-border/50 bg-transparent hover:border-[var(--honey-500)]/40 col-span-2"
+              >
+                <span className="text-xl shrink-0 opacity-50">+</span>
+                <div className="min-w-0">
+                  <div className="text-sm text-muted-foreground">Create Custom Persona</div>
+                  <div className="text-[10px] text-muted-foreground/60">Describe your ideal agent and we'll build it</div>
+                </div>
+              </button>
             </div>
+            {/* Custom persona inline form */}
+            {customPersonaMode && (
+              <div className="w-full mt-1 rounded-lg border border-border p-4 space-y-3" style={{ backgroundColor: 'var(--hive-900)' }}>
+                <label className="text-xs font-medium text-muted-foreground block">Describe your ideal agent</label>
+                <textarea
+                  value={customPersonaDesc}
+                  onChange={(e) => setCustomPersonaDesc(e.target.value)}
+                  placeholder="e.g., A financial analyst who specializes in SaaS metrics, speaks in concise bullet points, and always cites data sources..."
+                  rows={3}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-[var(--honey-500)] resize-none"
+                  autoFocus
+                />
+                <div className="flex gap-2 justify-end">
+                  <button
+                    type="button"
+                    onClick={() => { setCustomPersonaMode(false); setCustomPersonaDesc(''); }}
+                    className="rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!customPersonaDesc.trim()) return;
+                      // Create persona via API — agent will refine it later
+                      const name = customPersonaDesc.trim().split(/[.,!?\n]/)[0].slice(0, 40);
+                      try {
+                        const res = await fetch(`${serverBaseUrl}/api/personas`, {
+                          method: 'POST',
+                          headers: authHeaders({ 'Content-Type': 'application/json' }),
+                          body: JSON.stringify({
+                            name: name || 'Custom Persona',
+                            description: customPersonaDesc.trim().slice(0, 120),
+                            systemPrompt: `You are a custom agent persona. ${customPersonaDesc.trim()}\n\nAdapt your communication style, tool usage, and focus areas to match this description.`,
+                          }),
+                        });
+                        if (res.ok) {
+                          const persona = await res.json();
+                          setSelectedPersona(persona.id);
+                          setCustomPersonaMode(false);
+                          setCustomPersonaDesc('');
+                        }
+                      } catch { /* handled — user can proceed with built-in persona */ }
+                    }}
+                    disabled={!customPersonaDesc.trim()}
+                    className="rounded-md px-3 py-1.5 text-sm text-primary-foreground transition-colors disabled:opacity-50"
+                    style={{ backgroundColor: 'var(--honey-500)' }}
+                  >
+                    Create Persona
+                  </button>
+                </div>
+              </div>
+            )}
             <Button
               className="mt-2 px-8"
               size="lg"

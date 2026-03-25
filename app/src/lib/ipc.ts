@@ -18,6 +18,45 @@ export function getServerBaseUrl(): string {
 
 const SERVICE_URL = getServerBaseUrl();
 
+// ── Auth-aware fetch ─────────────────────────────────────────────────
+// The server requires Bearer token auth on all routes except /health.
+// We fetch the token from /health and cache it for subsequent calls.
+
+let _cachedToken: string | null = null;
+
+async function getAuthToken(): Promise<string | null> {
+  if (_cachedToken) return _cachedToken;
+  try {
+    const res = await fetch(`${SERVICE_URL}/health`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.wsToken) {
+        _cachedToken = data.wsToken;
+        return _cachedToken;
+      }
+    }
+  } catch { /* server not available */ }
+  return null;
+}
+
+/**
+ * Auth-aware fetch wrapper. Automatically includes the Bearer token.
+ * Use this instead of raw fetch() for all server API calls.
+ */
+export async function authFetch(url: string | URL, init?: RequestInit): Promise<Response> {
+  const token = await getAuthToken();
+  const headers = new Headers(init?.headers);
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+  return fetch(url, { ...init, headers });
+}
+
+/** Reset cached token (call after server restart) */
+export function resetAuthToken(): void {
+  _cachedToken = null;
+}
+
 /**
  * Ensure the local agent service is running.
  * In web mode the server is already running (it's serving this page).
